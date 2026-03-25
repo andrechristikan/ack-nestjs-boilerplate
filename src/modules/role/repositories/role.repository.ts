@@ -12,7 +12,6 @@ import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.req
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumRoleScope,
     EnumRoleType,
     Prisma,
     Role,
@@ -78,13 +77,9 @@ export class RoleRepository {
         });
     }
 
-    async findAllByScopeAndType(
-        scope: EnumRoleScope,
-        type: EnumRoleType
-    ): Promise<Role[]> {
+    async findAllByType(type: EnumRoleType): Promise<Role[]> {
         return this.databaseService.role.findMany({
             where: {
-                scope,
                 type,
             },
             orderBy: {
@@ -98,20 +93,7 @@ export class RoleRepository {
             where: {
                 name: name,
             },
-            select: { id: true, type: true, scope: true, name: true },
-        });
-    }
-
-    async existByNameAndScope(
-        name: string,
-        scope: EnumRoleScope
-    ): Promise<IRole | null> {
-        return this.databaseService.role.findFirst({
-            where: {
-                name,
-                scope,
-            },
-            select: { id: true, type: true, scope: true, name: true },
+            select: { id: true, type: true, name: true },
         });
     }
 
@@ -120,7 +102,7 @@ export class RoleRepository {
             where: {
                 id,
             },
-            select: { id: true, type: true, scope: true, name: true },
+            select: { id: true, type: true, name: true },
         });
     }
 

@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    MaxLength,
+} from 'class-validator';
 
 export class TenantCreateRequestDto {
     @ApiProperty({
@@ -11,4 +16,14 @@ export class TenantCreateRequestDto {
     @IsNotEmpty()
     @MaxLength(100)
     name: string;
+
+    @ApiProperty({
+        required: false,
+        description: 'Tenant description',
+        example: 'Default workspace for ACME',
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    description?: string;
 }

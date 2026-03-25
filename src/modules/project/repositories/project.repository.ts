@@ -8,16 +8,17 @@ import {
     IProjectCreate,
     IProjectMember,
     IProjectMemberCreate,
+    IProjectMemberDelete,
     IProjectMemberUpdate,
     IProjectMemberWithInvite,
     IProjectMemberWithUser,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
-import { ProjectInviteType } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumProjectInviteStatus,
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     Project,
     ProjectMember,
 } from '@generated/prisma-client';
@@ -53,6 +54,37 @@ export class ProjectRepository {
         );
     }
 
+    async findWithPaginationOffsetByTenantAndUser(
+        tenantId: string,
+        userId: string,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
+    ): Promise<IResponsePagingReturn<Project>> {
+        return this.paginationService.offset<Project>(
+            this.databaseService.project,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    tenantId,
+                    deletedAt: null,
+                    members: {
+                        some: {
+                            userId,
+                            status: EnumProjectMemberStatus.active,
+                            deletedAt: null,
+                        },
+                    },
+                },
+            }
+        );
+    }
+
     async findOneById(projectId: string): Promise<Project | null> {
         return this.databaseService.project.findFirst({
             where: {
@@ -60,6 +92,29 @@ export class ProjectRepository {
                 deletedAt: null,
             },
         });
+    }
+
+    async findUniqueSlug(
+        tenantId: string,
+        baseSlug: string,
+        excludeId?: string
+    ): Promise<string> {
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.project.findFirst({
+                where: { tenantId, slug, deletedAt: null },
+                select: { id: true },
+            });
+
+            if (!existing || existing.id === excludeId) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 
     async findOneByIdAndTenant(
@@ -83,17 +138,20 @@ export class ProjectRepository {
             where: {
                 id: projectId,
                 tenantId,
-                status: EnumProjectStatus.active,
                 deletedAt: null,
             },
         });
     }
 
-    async create(data: IProjectCreate): Promise<Project> {
-        return this.databaseService.project.create({
-            data: {
-                ...data,
-                deletedAt: null,
+    async findOneBySlug(
+        slug: string
+    ): Promise<Pick<Project, 'id'> | null> {
+        return this.databaseService.project.findFirst({
+            where: {
+                slug,
+            },
+            select: {
+                id: true,
             },
         });
     }
@@ -102,20 +160,6 @@ export class ProjectRepository {
         return this.databaseService.project.update({
             where: { id: projectId },
             data,
-        });
-    }
-
-    async delete(projectId: string, deletedBy: string): Promise<Project> {
-        const deletedAt = this.helperService.dateCreate();
-
-        return this.databaseService.project.update({
-            where: { id: projectId, deletedAt: null },
-            data: {
-                status: EnumProjectStatus.inactive,
-                updatedBy: deletedBy,
-                deletedAt,
-                deletedBy,
-            },
         });
     }
 
@@ -144,7 +188,6 @@ export class ProjectRepository {
                 ...(status ? { status } : {}),
             },
             include: {
-                role: true,
                 project: true,
             },
         });
@@ -164,7 +207,6 @@ export class ProjectRepository {
                 },
             },
             include: {
-                role: true,
                 project: true,
                 user: true,
             },
@@ -211,17 +253,15 @@ export class ProjectRepository {
                 },
                 include: {
                     project: true,
-                    role: true,
                     user: {
                         select: {
                             id: true,
                             email: true,
                             isVerified: true,
                             verifiedAt: true,
-                            invites: {
+                            projectInvites: {
                                 where: {
-                                    inviteType: ProjectInviteType,
-                                    contextId: projectId,
+                                    projectId,
                                 },
                                 orderBy: {
                                     createdAt: 'desc',
@@ -230,9 +270,10 @@ export class ProjectRepository {
                                 select: {
                                     id: true,
                                     createdAt: true,
+                                    status: true,
                                     expiresAt: true,
                                     acceptedAt: true,
-                                    deletedAt: true,
+                                    revokedAt: true,
                                 },
                             },
                         },
@@ -242,35 +283,116 @@ export class ProjectRepository {
         );
     }
 
-    async findMembersWithPaginationOffsetByUser(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.paginationService.offset<IProjectMember>(
-            this.databaseService.projectMember,
-            {
-                ...params,
+async softDeleteMember(
+        memberId: string,
+        data: IProjectMemberDelete
+    ): Promise<ProjectMember> {
+        return this.databaseService.projectMember.update({
+            where: { id: memberId },
+            data,
+        });
+    }
+
+    async countActiveMembersByProject(
+        projectId: string,
+        excludeUserId?: string
+    ): Promise<number> {
+        return this.databaseService.projectMember.count({
+            where: {
+                projectId,
+                status: EnumProjectMemberStatus.active,
+                deletedAt: null,
+                ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+            },
+        });
+    }
+
+    async findAnotherAdminMember(
+        projectId: string,
+        excludeUserId: string
+    ): Promise<Pick<ProjectMember, 'id'> | null> {
+        return this.databaseService.projectMember.findFirst({
+            where: {
+                projectId,
+                status: EnumProjectMemberStatus.active,
+                role: EnumProjectMemberRole.admin,
+                deletedAt: null,
+                userId: { not: excludeUserId },
+            },
+            select: { id: true },
+        });
+    }
+
+    async delete(
+        projectId: string,
+        deletedBy: string
+    ): Promise<Project> {
+        const deletedAt = this.helperService.dateCreate();
+
+        return this.databaseService.$transaction(async tx => {
+            const project = await tx.project.update({
+                where: { id: projectId, deletedAt: null },
+                data: { updatedBy: deletedBy, deletedAt, deletedBy },
+            });
+
+            await tx.projectMember.updateMany({
+                where: { projectId, deletedAt: null },
+                data: { updatedBy: deletedBy, deletedAt, deletedBy },
+            });
+
+            await tx.projectInvite.updateMany({
                 where: {
-                    ...where,
-                    userId,
-                    status: EnumProjectMemberStatus.active,
-                    deletedAt: null,
-                    project: {
-                        status: EnumProjectStatus.active,
-                        deletedAt: null,
+                    projectId,
+                    status: {
+                        in: [
+                            EnumProjectInviteStatus.pending
+                        ],
                     },
+                    revokedAt: null,
+                    acceptedAt: null,
                 },
-                include: {
-                    project: true,
-                    role: true,
+                data: {
+                    status: EnumProjectInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    revokedById: deletedBy,
+                    updatedBy: deletedBy,
                 },
+            });
+
+            return project;
+        });
+    }
+
+    async create(
+        tenantId: string,
+        createdBy: string,
+        data: IProjectCreate,
+        members: Array<{
+            userId: string;
+            role: EnumProjectMemberRole;
+            status: EnumProjectMemberStatus;
+            createdBy: string;
+            updatedBy: string;
+        }>
+    ): Promise<Project> {
+        return this.databaseService.$transaction(async tx => {
+            const project = await tx.project.create({
+                data: {
+                    ...data,
+                    tenantId,
+                    createdBy,
+                    updatedBy: createdBy,
+                    deletedAt: null,
+                },
+            });
+
+            for (const member of members) {
+                await tx.projectMember.create({
+                    data: { ...member, projectId: project.id, deletedAt: null },
+                });
             }
-        );
+
+            return project;
+        });
     }
 }

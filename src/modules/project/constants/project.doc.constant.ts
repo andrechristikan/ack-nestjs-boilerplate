@@ -25,3 +25,14 @@ export const ProjectDocParamsProjectMemberId: ApiParamOptions[] = [
     ...ProjectDocParamsId,
     ...ProjectDocParamsMemberId,
 ];
+
+export const ProjectDocParamsInviteId: ApiParamOptions[] = [
+    ...ProjectDocParamsId,
+    {
+        name: 'inviteId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];

@@ -50,6 +50,7 @@ export interface IHelperService {
     dateFormatToIsoTime(date: Date): string;
     dateCreate(date?: Date, options?: IHelperDateCreateOptions): Date;
     dateCreateInstance(date?: Date): DateTime;
+    createSlug(value: string): string;
     dateCreateFromIso(iso: string, options?: IHelperDateCreateOptions): Date;
     dateCreateFromTimestamp(
         timestamp?: number,

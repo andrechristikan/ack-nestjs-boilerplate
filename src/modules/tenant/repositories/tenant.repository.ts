@@ -13,13 +13,17 @@ import {
     ITenantMemberCreate,
     ITenantMemberUpdate,
     ITenantMemberWithTenant,
-    ITenantMemberWithUser,
     ITenantUpdate,
 } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectCreate } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumProjectInviteStatus,
+    EnumProjectMemberRole,
+    EnumProjectMemberStatus,
+    EnumTenantInviteStatus,
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
-    EnumTenantStatus,
     Tenant,
     TenantMember,
 } from '@generated/prisma-client';
@@ -57,23 +61,29 @@ export class TenantRepository {
         });
     }
 
-    async findOneActiveById(id: string): Promise<Tenant | null> {
+    async findOneBySlug(slug: string): Promise<Tenant | null> {
         return this.databaseService.tenant.findFirst({
-            where: {
-                id,
-                status: EnumTenantStatus.active,
-                deletedAt: null,
-            },
+            where: { slug },
         });
     }
 
-    async create(data: ITenantCreate): Promise<Tenant> {
-        return this.databaseService.tenant.create({
-            data: {
-                ...data,
-                deletedAt: null,
-            },
-        });
+    async findUniqueSlug(baseSlug: string): Promise<string> {
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.tenant.findFirst({
+                where: { slug },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            slug = `${baseSlug}-${this.helperService.randomString(6).toLowerCase()}`;
+        }
+
+        return `${baseSlug}-${this.helperService.randomString(10).toLowerCase()}`;
     }
 
     async update(id: string, data: ITenantUpdate): Promise<Tenant> {
@@ -89,7 +99,6 @@ export class TenantRepository {
         return this.databaseService.tenant.update({
             where: { id, deletedAt: null },
             data: {
-                status: EnumTenantStatus.inactive,
                 updatedBy: deletedBy,
                 deletedAt,
                 deletedBy,
@@ -100,17 +109,22 @@ export class TenantRepository {
     async existMemberByTenantAndUser(
         tenantId: string,
         userId: string,
-        status: EnumTenantMemberStatus = EnumTenantMemberStatus.active
+        status?: EnumTenantMemberStatus
     ): Promise<{ id: string } | null> {
-        return this.databaseService.tenantMember.findFirst({
-            where: {
-                tenantId,
-                userId,
-                status,
-                tenant: {
-                    deletedAt: null,
-                },
+        const where: Prisma.TenantMemberWhereInput = {
+            tenantId,
+            userId,
+            tenant: {
+                deletedAt: null,
             },
+        };
+
+        if (status !== undefined) {
+            where.status = status;
+        }
+
+        return this.databaseService.tenantMember.findFirst({
+            where,
             select: {
                 id: true,
             },
@@ -149,16 +163,13 @@ export class TenantRepository {
                     deletedAt: null,
                 },
             },
-            include: {
-                role: true,
-            },
         });
     }
 
     async findOneMemberByIdAndTenant(
         memberId: string,
         tenantId: string
-    ): Promise<ITenantMemberWithTenant | null> {
+    ): Promise<TenantMember | null> {
         return this.databaseService.tenantMember.findFirst({
             where: {
                 id: memberId,
@@ -167,9 +178,32 @@ export class TenantRepository {
                     deletedAt: null,
                 },
             },
-            include: {
-                role: true,
-                tenant: true,
+        });
+    }
+
+    async findOneOwnerMemberByTenant(
+        tenantId: string
+    ): Promise<TenantMember | null> {
+        return this.databaseService.tenantMember.findFirst({
+            where: {
+                tenantId,
+                role: EnumTenantMemberRole.owner,
+                status: EnumTenantMemberStatus.active,
+                tenant: {
+                    deletedAt: null,
+                },
+            },
+        });
+    }
+
+    async countActiveMembersByTenant(tenantId: string): Promise<number> {
+        return this.databaseService.tenantMember.count({
+            where: {
+                tenantId,
+                status: EnumTenantMemberStatus.active,
+                tenant: {
+                    deletedAt: null,
+                },
             },
         });
     }
@@ -177,6 +211,80 @@ export class TenantRepository {
     async createMember(data: ITenantMemberCreate): Promise<TenantMember> {
         return this.databaseService.tenantMember.create({
             data,
+        });
+    }
+
+    async createWithOwner(
+        data: ITenantCreate,
+        ownerUserId: string
+    ): Promise<Tenant> {
+        return this.databaseService.$transaction(async tx => {
+            const tenant = await tx.tenant.create({
+                data: {
+                    ...data,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
+                    deletedAt: null,
+                },
+            });
+
+            await tx.tenantMember.create({
+                data: {
+                    tenantId: tenant.id,
+                    userId: ownerUserId,
+                    role: EnumTenantMemberRole.owner,
+                    status: EnumTenantMemberStatus.active,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
+                },
+            });
+
+            return tenant;
+        });
+    }
+
+    async createWithOwnerAndProject(
+        tenantData: ITenantCreate,
+        projectData: IProjectCreate,
+        ownerUserId: string
+    ): Promise<Tenant> {
+        return this.databaseService.$transaction(async tx => {
+            const tenant = await tx.tenant.create({
+                data: {
+                    ...tenantData,
+                    createdBy: ownerUserId,
+                    updatedBy: ownerUserId,
+                    deletedAt: null,
+                    members: {
+                        create: {
+                            userId: ownerUserId,
+                            role: EnumTenantMemberRole.owner,
+                            status: EnumTenantMemberStatus.active,
+                            createdBy: ownerUserId,
+                            updatedBy: ownerUserId,
+                        },
+                    },
+                    projects: {
+                        create: {
+                            ...projectData,
+                            createdBy: ownerUserId,
+                            updatedBy: ownerUserId,
+                            deletedAt: null,
+                            members: {
+                                create: {
+                                    userId: ownerUserId,
+                                    role: EnumProjectMemberRole.admin,
+                                    status: EnumProjectMemberStatus.active,
+                                    createdBy: ownerUserId,
+                                    updatedBy: ownerUserId,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            return tenant;
         });
     }
 
@@ -198,6 +306,103 @@ export class TenantRepository {
         });
     }
 
+    async deleteWithCascade(
+        tenantId: string,
+        deletedBy: string,
+        memberId?: string
+    ): Promise<void> {
+        const deletedAt = this.helperService.dateCreate();
+
+        await this.databaseService.$transaction(async tx => {
+            await tx.tenant.update({
+                where: { id: tenantId, deletedAt: null },
+                data: {
+                    updatedBy: deletedBy,
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+
+            if (memberId) {
+                await tx.tenantMember.delete({
+                    where: { id: memberId },
+                });
+            }
+
+            await tx.project.updateMany({
+                where: { tenantId, deletedAt: null },
+                data: {
+                    updatedBy: deletedBy,
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+
+            await tx.tenantInvite.updateMany({
+                where: {
+                    tenantId,
+                    status: EnumTenantInviteStatus.pending,
+                    revokedAt: null,
+                },
+                data: {
+                    status: EnumTenantInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    revokedById: deletedBy,
+                    updatedBy: deletedBy,
+                },
+            });
+
+            await tx.projectInvite.updateMany({
+                where: {
+                    project: { tenantId },
+                    status: {
+                        in: [
+                            EnumProjectInviteStatus.pending,
+                            EnumProjectInviteStatus.expired,
+                        ],
+                    },
+                    revokedAt: null,
+                    acceptedAt: null,
+                },
+                data: {
+                    status: EnumProjectInviteStatus.revoked,
+                    revokedAt: deletedAt,
+                    updatedBy: deletedBy,
+                },
+            });
+        });
+    }
+
+    async transferOwnership(
+        _tenantId: string,
+        currentOwnerMemberId: string,
+        newOwnerMemberId: string,
+        updatedBy: string
+    ): Promise<void> {
+        await this.databaseService.$transaction(async tx => {
+            await tx.tenantMember.update({
+                where: {
+                    id: currentOwnerMemberId,
+                },
+                data: {
+                    role: EnumTenantMemberRole.admin,
+                    updatedBy,
+                },
+            });
+
+            await tx.tenantMember.update({
+                where: {
+                    id: newOwnerMemberId,
+                },
+                data: {
+                    role: EnumTenantMemberRole.owner,
+                    status: EnumTenantMemberStatus.active,
+                    updatedBy,
+                },
+            });
+        });
+    }
+
     async findMembersWithPaginationOffset(
         tenantId: string,
         {
@@ -207,8 +412,8 @@ export class TenantRepository {
             Prisma.TenantMemberSelect,
             Prisma.TenantMemberWhereInput
         >
-    ): Promise<IResponsePagingReturn<ITenantMemberWithUser>> {
-        return this.paginationService.offset<ITenantMemberWithUser>(
+    ): Promise<IResponsePagingReturn<TenantMember>> {
+        return this.paginationService.offset<TenantMember>(
             this.databaseService.tenantMember,
             {
                 ...params,
@@ -219,44 +424,8 @@ export class TenantRepository {
                         deletedAt: null,
                     },
                 },
-                include: {
-                    role: true,
-                    user: true,
-                },
             }
         );
-    }
-
-    async findActiveJitMemberByTenantAndUser(
-        tenantId: string,
-        userId: string
-    ): Promise<ITenantMember | null> {
-        return this.databaseService.tenantMember.findFirst({
-            where: {
-                tenantId,
-                userId,
-                isJit: true,
-                status: EnumTenantMemberStatus.active,
-                tenant: {
-                    deletedAt: null,
-                },
-            },
-            include: {
-                role: true,
-            },
-        });
-    }
-
-    async revokeJitMember(memberId: string): Promise<TenantMember> {
-        return this.databaseService.tenantMember.update({
-            where: {
-                id: memberId,
-            },
-            data: {
-                status: EnumTenantMemberStatus.inactive,
-                revokedAt: this.helperService.dateCreate(),
-            },
-        });
     }
 
     async findAllMembershipsByUser(
@@ -267,14 +436,48 @@ export class TenantRepository {
                 userId,
                 status: EnumTenantMemberStatus.active,
                 tenant: {
-                    status: EnumTenantStatus.active,
                     deletedAt: null,
                 },
             },
             include: {
-                role: true,
                 tenant: true,
             },
+        });
+    }
+
+    async findWithPaginationOffsetByUser(
+        userId: string,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<Tenant>> {
+        return this.paginationService.offset<Tenant>(
+            this.databaseService.tenant,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    deletedAt: null,
+                    members: {
+                        some: {
+                            userId,
+                            status: EnumTenantMemberStatus.active,
+                        },
+                    },
+                },
+            }
+        );
+    }
+
+    async updateLastTenant(userId: string, tenantId: string): Promise<void> {
+        await this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { lastTenantId: tenantId, updatedBy: userId },
+            select: { id: true },
         });
     }
 
@@ -297,12 +500,10 @@ export class TenantRepository {
                     userId,
                     status: EnumTenantMemberStatus.active,
                     tenant: {
-                        status: EnumTenantStatus.active,
                         deletedAt: null,
                     },
                 },
                 include: {
-                    role: true,
                     tenant: true,
                 },
             }

@@ -150,6 +150,12 @@ export class UserDto extends DatabaseDto {
     lastLoginWith?: EnumUserLoginWith;
 
     @ApiProperty({
+        required: false,
+        example: faker.database.mongodbObjectId(),
+    })
+    lastTenantId?: string;
+
+    @ApiProperty({
         required: true,
         type: UserTermPolicyDto,
     })

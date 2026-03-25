@@ -1,16 +1,17 @@
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma } from '@generated/prisma-client';
+import {
+    EnumTenantMemberRole,
+    EnumTenantMemberStatus,
+    Prisma,
+} from '@generated/prisma-client';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { PolicyService } from '@modules/policy/services/policy.service';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { TenantCreateRequestDto } from '@modules/tenant/dtos/request/tenant.create.request.dto';
+import { TenantTransferOwnershipRequestDto } from '@modules/tenant/dtos/request/tenant.transfer-ownership.request.dto';
+import { TenantUpdateSlugRequestDto } from '@modules/tenant/dtos/request/tenant.update-slug.request.dto';
 import { TenantUpdateRequestDto } from '@modules/tenant/dtos/request/tenant.update.request.dto';
 import { TenantResponseDto } from '@modules/tenant/dtos/response/tenant.response.dto';
 import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
@@ -27,21 +28,17 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
-    Logger,
     NotFoundException,
 } from '@nestjs/common';
-import { EnumRoleScope, EnumTenantStatus } from '@generated/prisma-client';
+import { HelperService } from '@common/helper/services/helper.service';
 
 @Injectable()
 export class TenantService implements ITenantService {
-    private readonly logger = new Logger(TenantService.name);
-
     constructor(
         private readonly tenantRepository: TenantRepository,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService,
-        private readonly policyService: PolicyService,
-        private readonly tenantUtil: TenantUtil
+        private readonly tenantUtil: TenantUtil,
+        private readonly helperService: HelperService
     ) {}
 
     async validateTenantGuard(
@@ -68,13 +65,6 @@ export class TenantService implements ITenantService {
             throw new NotFoundException({
                 statusCode: EnumTenantStatusCodeError.notFound,
                 message: 'tenant.error.notFound',
-            });
-        }
-
-        if (tenant.status !== EnumTenantStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.inactive,
-                message: 'tenant.error.inactive',
             });
         }
 
@@ -114,35 +104,15 @@ export class TenantService implements ITenantService {
             });
         }
 
-        if (
-            tenantMember.isJit &&
-            tenantMember.expiresAt &&
-            tenantMember.expiresAt < this.helperService.dateCreate()
-        ) {
-            await this.tenantRepository.revokeJitMember(tenantMember.id);
-
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenant.member.error.forbidden',
-            });
-        }
-
-        if (tenantMember.role.scope !== EnumRoleScope.tenant) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.roleScopeMismatch,
-                message: 'tenant.role.error.scopeMismatch',
-            });
-        }
-
         return tenantMember;
     }
 
     async validateTenantRoleGuard(
         request: IRequestAppWithTenant,
-        requiredRoleNames: string[]
+        requiredRoleNames: EnumTenantMemberRole[]
     ): Promise<boolean> {
         const tenantMember = request.__tenantMember;
-        if (!tenantMember?.role) {
+        if (!tenantMember) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.member.error.forbidden',
@@ -156,37 +126,7 @@ export class TenantService implements ITenantService {
             });
         }
 
-        if (!requiredRoleNames.includes(tenantMember.role.name)) {
-            throw new ForbiddenException({
-                statusCode: EnumTenantStatusCodeError.memberForbidden,
-                message: 'tenant.role.error.forbidden',
-            });
-        }
-
-        return true;
-    }
-
-    async validateTenantPermissionGuard(
-        request: IRequestAppWithTenant,
-        requiredAbilities: RoleAbilityRequestDto[]
-    ): Promise<boolean> {
-        if (requiredAbilities.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumTenantStatusCodeError.predefinedRoleNotFound,
-                message: 'tenant.role.error.predefinedNotFound',
-            });
-        }
-
-        const abilities = (request.__tenantMember?.role?.abilities ??
-            []) as RoleAbilityRequestDto[];
-
-        const abilityRule = this.policyService.createAbility(abilities);
-        const isAllowed = this.policyService.hasAbilities(
-            abilityRule,
-            requiredAbilities
-        );
-
-        if (!isAllowed) {
+        if (!requiredRoleNames.includes(tenantMember.role)) {
             throw new ForbiddenException({
                 statusCode: EnumTenantStatusCodeError.memberForbidden,
                 message: 'tenant.role.error.forbidden',
@@ -211,6 +151,25 @@ export class TenantService implements ITenantService {
         };
     }
 
+    async getListByUserOffset(
+        userId: string,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.TenantSelect,
+            Prisma.TenantWhereInput
+        >
+    ): Promise<IResponsePagingReturn<TenantResponseDto>> {
+        const { data, ...others } =
+            await this.tenantRepository.findWithPaginationOffsetByUser(
+                userId,
+                pagination
+            );
+
+        return {
+            ...others,
+            data: data.map(tenant => this.tenantUtil.mapTenant(tenant)),
+        };
+    }
+
     async getOne(id: string): Promise<IResponseReturn<TenantResponseDto>> {
         const tenant = await this.tenantRepository.findOneById(id);
         if (!tenant) {
@@ -225,32 +184,29 @@ export class TenantService implements ITenantService {
         };
     }
 
-    async create(
-        dto: TenantCreateRequestDto,
-        createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
-        const tenant = await this.tenantRepository.create({
-            name: dto.name.trim(),
-            status: EnumTenantStatus.active,
-            createdBy,
-            updatedBy: createdBy,
-        });
-
-        return {
-            data: {
-                id: tenant.id,
-            },
-        };
-    }
-
     async update(
         id: string,
         dto: TenantUpdateRequestDto,
-        updatedBy: string
+        updatedBy: string,
+        callerRole: EnumTenantMemberRole
     ): Promise<IResponseReturn<void>> {
+        if (dto.name === undefined && dto.description === undefined) {
+            return {};
+        }
+
+        if (
+            dto.name !== undefined &&
+            callerRole !== EnumTenantMemberRole.owner
+        ) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.nameUpdateForbidden,
+                message: 'tenant.error.nameUpdateForbidden',
+            });
+        }
+
         const data: {
             name?: string;
-            status?: EnumTenantStatus;
+            description?: string;
             updatedBy: string;
         } = { updatedBy };
 
@@ -258,15 +214,90 @@ export class TenantService implements ITenantService {
             data.name = dto.name.trim();
         }
 
-        if (dto.status !== undefined) {
-            data.status = dto.status;
-        }
-
-        if (dto.name === undefined && dto.status === undefined) {
-            return {};
+        if (dto.description !== undefined) {
+            data.description = dto.description.trim();
         }
 
         await this.tenantRepository.update(id, data);
+
+        return {};
+    }
+
+    async updateSlug(
+        id: string,
+        dto: TenantUpdateSlugRequestDto,
+        updatedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const slug = await this.tenantRepository.findUniqueSlug(dto.slug);
+        await this.tenantRepository.update(id, {
+            slug,
+            updatedBy,
+        });
+
+        return {};
+    }
+
+    async switchTenant(
+        tenantId: string,
+        userId: string
+    ): Promise<IResponseReturn<void>> {
+        const member =
+            await this.tenantRepository.findOneActiveMemberByTenantAndUser(
+                tenantId,
+                userId
+            );
+
+        if (!member) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
+        await this.tenantRepository.updateLastTenant(userId, tenantId);
+        return {};
+    }
+
+    async transferOwnership(
+        tenantId: string,
+        { memberId }: TenantTransferOwnershipRequestDto,
+        requestedBy: string
+    ): Promise<IResponseReturn<void>> {
+        const [currentOwner, targetMember] = await Promise.all([
+            this.tenantRepository.findOneOwnerMemberByTenant(tenantId),
+            this.tenantRepository.findOneMemberByIdAndTenant(
+                memberId,
+                tenantId
+            ),
+        ]);
+
+        if (!currentOwner || currentOwner.userId !== requestedBy) {
+            throw new ForbiddenException({
+                statusCode: EnumTenantStatusCodeError.memberForbidden,
+                message: 'tenant.member.error.forbidden',
+            });
+        }
+
+        if (
+            !targetMember ||
+            targetMember.status !== EnumTenantMemberStatus.active
+        ) {
+            throw new NotFoundException({
+                statusCode: EnumTenantStatusCodeError.memberNotFound,
+                message: 'tenant.member.error.notFound',
+            });
+        }
+
+        if (targetMember.role === EnumTenantMemberRole.owner) {
+            return {};
+        }
+
+        await this.tenantRepository.transferOwnership(
+            tenantId,
+            currentOwner.id,
+            targetMember.id,
+            requestedBy
+        );
 
         return {};
     }
@@ -275,13 +306,7 @@ export class TenantService implements ITenantService {
         id: string,
         deletedBy: string
     ): Promise<IResponseReturn<void>> {
-        try {
-            await this.tenantRepository.delete(id, deletedBy);
-        } catch (error) {
-            this.logger.warn(
-                `Tenant soft-delete failed [id=${id}, deletedBy=${deletedBy}]: ${error?.message ?? error}`
-            );
-        }
+        await this.tenantRepository.deleteWithCascade(id, deletedBy);
 
         return {};
     }

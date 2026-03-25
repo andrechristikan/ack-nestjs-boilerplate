@@ -1,5 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import {
     IMigrationTenantData,
@@ -10,9 +11,9 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumTenantMemberStatus,
-    EnumTenantStatus,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
 
 @Command({
     name: 'tenant',
@@ -24,13 +25,16 @@ export class MigrationTenantSeed
     implements IMigrationSeed
 {
     private readonly logger = new Logger(MigrationTenantSeed.name);
+    private readonly SYSTEM_ID = '000000000000000000000001'; // Sentinel system ID for audit trails
 
     private readonly env: EnumAppEnvironment;
     private readonly tenants: IMigrationTenantData[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService,
+        private readonly tenantUtil: TenantUtil
     ) {
         super();
 
@@ -38,48 +42,63 @@ export class MigrationTenantSeed
         this.tenants = migrationTenantData[this.env];
     }
 
+    private async createUniqueTenantSlug(value: string): Promise<string> {
+        const baseSlug = this.tenantUtil.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.tenant.findFirst({
+                where: {
+                    slug,
+                    deletedAt: null,
+                },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            const suffix = this.helperService.randomString(6).toLowerCase();
+            slug = `${baseSlug}-${suffix}`;
+        }
+
+        const fallbackSuffix = Date.now().toString(36);
+        return `${baseSlug}-${fallbackSuffix}`;
+    }
+
     async seed(): Promise<void> {
         this.logger.log('Seeding Tenants...');
         this.logger.log(`Found ${this.tenants.length} Tenants to seed.`);
 
-        const allMemberEmails = [
-            ...new Set(
-                this.tenants.flatMap(t => t.members.map(m => m.userEmail))
-            ),
-        ];
-        const allTenantRoleNames = [
-            ...new Set(
-                this.tenants.flatMap(t => t.members.map(m => m.tenantRole))
-            ),
-        ];
+        try {
+            const allMemberEmails = [
+                ...new Set(
+                    this.tenants.flatMap(t => t.members.map(m => m.userEmail))
+                ),
+            ];
 
-        const [users, tenantRoles] = await Promise.all([
-            allMemberEmails.length > 0
-                ? this.databaseService.user.findMany({
+            const users = allMemberEmails.length > 0
+                ? await this.databaseService.user.findMany({
                       where: { email: { in: allMemberEmails } },
                       select: { id: true, email: true },
                   })
-                : Promise.resolve([]),
-            allTenantRoleNames.length > 0
-                ? this.databaseService.role.findMany({
-                      where: { name: { in: allTenantRoleNames } },
-                      select: { id: true, name: true },
-                  })
-                : Promise.resolve([]),
-        ]);
-
-        try {
+                : [];
             for (const tenant of this.tenants) {
                 let tenantRecord = await this.databaseService.tenant.findFirst({
                     where: { name: tenant.name },
                 });
 
                 if (!tenantRecord) {
+                    const slug = await this.createUniqueTenantSlug(tenant.name);
                     tenantRecord = await this.databaseService.tenant.create({
                         data: {
                             name: tenant.name,
-                            status: EnumTenantStatus.active,
+                            description: tenant.description ?? '',
+                            slug,
                             deletedAt: null,
+                            createdBy: this.SYSTEM_ID,
+                            updatedBy: this.SYSTEM_ID,
                         },
                     });
                     this.logger.log(`Created tenant: ${tenant.name}`);
@@ -91,20 +110,10 @@ export class MigrationTenantSeed
 
                 for (const member of tenant.members) {
                     const user = users.find(u => u.email === member.userEmail);
-                    const role = tenantRoles.find(
-                        r => r.name === member.tenantRole
-                    );
 
                     if (!user) {
                         this.logger.warn(
                             `User ${member.userEmail} not found, skipping member...`
-                        );
-                        continue;
-                    }
-
-                    if (!role) {
-                        this.logger.warn(
-                            `Tenant role ${member.tenantRole} not found, skipping member...`
                         );
                         continue;
                     }
@@ -122,8 +131,11 @@ export class MigrationTenantSeed
                             data: {
                                 tenantId: tenantRecord.id,
                                 userId: user.id,
-                                roleId: role.id,
+                                role: member.tenantRole,
                                 status: EnumTenantMemberStatus.active,
+                                createdBy: this.SYSTEM_ID,
+                                updatedBy: this.SYSTEM_ID,
+                                deletedAt: null
                             },
                         });
                         this.logger.log(
@@ -134,6 +146,15 @@ export class MigrationTenantSeed
                             `Member ${member.userEmail} already in ${tenant.name}, skipping...`
                         );
                     }
+
+                    await this.databaseService.user.update({
+                        where: { id: user.id, deletedAt: null },
+                        data: { lastTenantId: tenantRecord.id, updatedBy: this.SYSTEM_ID },
+                        select: { id: true },
+                    });
+                    this.logger.log(
+                        `Updated lastTenantId for ${member.userEmail} to ${tenant.name}`
+                    );
                 }
             }
         } catch (error: unknown) {

@@ -3,6 +3,7 @@ import { TenantService } from '@modules/tenant/services/tenant.service';
 import { IRequestAppWithTenant } from '@modules/tenant/interfaces/request.tenant.interface';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { EnumTenantMemberRole } from '@generated/prisma-client';
 
 /**
  * Enforces tenant role requirements based on role metadata.
@@ -24,8 +25,8 @@ export class TenantRoleGuard implements CanActivate {
      * @throws ForbiddenException if the member does not have a required role
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredRoleKeys =
-            this.reflector.get<string[]>(
+        const requiredRoles =
+            this.reflector.get<EnumTenantMemberRole[]>(
                 TenantRoleRequiredMetaKey,
                 context.getHandler()
             ) ?? [];
@@ -36,7 +37,7 @@ export class TenantRoleGuard implements CanActivate {
 
         return this.tenantService.validateTenantRoleGuard(
             request,
-            requiredRoleKeys
+            requiredRoles
         );
     }
 }

@@ -20,3 +20,13 @@ export const TenantDocParamsMemberId: ApiParamOptions[] = [
         example: faker.database.mongodbObjectId(),
     },
 ];
+
+export const TenantDocParamsInviteId: ApiParamOptions[] = [
+    {
+        name: 'inviteId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.database.mongodbObjectId(),
+    },
+];

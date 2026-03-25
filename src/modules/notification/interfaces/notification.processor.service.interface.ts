@@ -6,6 +6,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -84,6 +85,13 @@ export interface INotificationProcessorService {
         data: { userId, data, proceedBy },
     }: Job<
         INotificationWorkerPayload<INotificationInvitePayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processTenantInvite({
+        data: { userId, data, proceedBy },
+    }: Job<
+        INotificationWorkerPayload<INotificationTenantInviteEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;

@@ -11,8 +11,6 @@ import { TermPolicyAdminController } from '@modules/term-policy/controllers/term
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
-import { withTenancyRoute } from '@modules/tenant/utils/tenant.toggle';
-import { TenantRoutesAdminModule } from '@modules/tenant/tenant.routes.admin.module';
 import { SessionModule } from '@modules/session/session.module';
 
 /**
@@ -39,7 +37,6 @@ import { SessionModule } from '@modules/session/session.module';
         PasswordHistoryModule,
         DeviceModule,
         SessionModule,
-        ...withTenancyRoute('/admin', TenantRoutesAdminModule),
     ],
 })
 export class RoutesAdminModule {}

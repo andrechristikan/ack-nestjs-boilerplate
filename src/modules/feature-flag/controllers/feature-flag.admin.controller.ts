@@ -1,6 +1,7 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import {
     Response,
     ResponsePaging,
@@ -78,7 +79,7 @@ export class FeatureFlagAdminController {
     @ApiKeyProtected()
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
@@ -98,7 +99,7 @@ export class FeatureFlagAdminController {
     @ApiKeyProtected()
     @Put('/update/:featureFlagId/metadata')
     async update(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {

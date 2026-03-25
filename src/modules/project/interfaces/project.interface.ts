@@ -1,9 +1,9 @@
 import {
+    EnumProjectInviteStatus,
+    EnumProjectMemberRole,
     EnumProjectMemberStatus,
-    EnumProjectStatus,
     Project,
     ProjectMember,
-    Role,
     User,
 } from '@generated/prisma-client';
 
@@ -12,13 +12,13 @@ export type IProject = Project;
 export interface IProjectMemberInvite {
     id: string;
     createdAt: Date;
+    status: EnumProjectInviteStatus;
     expiresAt: Date;
     acceptedAt: Date | null;
-    deletedAt: Date | null;
+    revokedAt: Date | null;
 }
 
 export interface IProjectMember extends ProjectMember {
-    role: Role;
     project: Project;
 }
 
@@ -32,23 +32,21 @@ export interface IProjectMemberWithInvite extends IProjectMember {
         email: string;
         isVerified: boolean;
         verifiedAt: Date | null;
-        invites: IProjectMemberInvite[];
+        projectInvites: IProjectMemberInvite[];
     };
 }
 
 export interface IProjectCreate {
-    tenantId?: string;
-    ownerUserId?: string;
     name: string;
-    status: EnumProjectStatus;
-    createdBy: string;
-    updatedBy: string;
+    description: string;
+    slug: string;
 }
 
 export interface IProjectUpdate {
     updatedBy: string;
     name?: string;
-    status?: EnumProjectStatus;
+    description?: string;
+    slug?: string;
     deletedAt?: Date | null;
     deletedBy?: string;
 }
@@ -56,7 +54,7 @@ export interface IProjectUpdate {
 export interface IProjectMemberCreate {
     projectId: string;
     userId: string;
-    roleId: string;
+    role: EnumProjectMemberRole;
     status: EnumProjectMemberStatus;
     createdBy: string;
     updatedBy: string;
@@ -64,6 +62,14 @@ export interface IProjectMemberCreate {
 
 export interface IProjectMemberUpdate {
     updatedBy: string;
-    roleId?: string;
+    role?: EnumProjectMemberRole;
     status?: EnumProjectMemberStatus;
+    deletedAt?: Date | null;
+    deletedBy?: string;
+}
+
+export interface IProjectMemberDelete {
+    deletedAt: Date;
+    deletedBy: string;
+    updatedBy: string;
 }

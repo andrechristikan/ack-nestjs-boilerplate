@@ -1,5 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import {
     IMigrationProjectData,
@@ -10,9 +11,9 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumProjectMemberStatus,
-    EnumProjectStatus,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
+import { ProjectUtil } from '@modules/project/utils/project.util';
 
 @Command({
     name: 'project',
@@ -30,7 +31,9 @@ export class MigrationProjectSeed
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperService: HelperService,
+        private readonly projectUtil: ProjectUtil
     ) {
         super();
 
@@ -44,29 +47,20 @@ export class MigrationProjectSeed
 
         // Collect unique lookup keys in one pass
         const emails = new Set<string>();
-        const roleNames = new Set<string>();
         const tenantNames = new Set<string>();
 
         for (const p of this.projects) {
             tenantNames.add(p.tenantName);
-            if (p.ownerUserEmail) {
-                emails.add(p.ownerUserEmail);
-            }
             for (const m of p.members) {
                 emails.add(m.userEmail);
-                roleNames.add(m.projectRole);
             }
         }
 
         // Fetch dependencies
-        const [userRows, roleRows, tenantRows] = await Promise.all([
+        const [userRows, tenantRows] = await Promise.all([
             this.databaseService.user.findMany({
                 where: { email: { in: [...emails] } },
                 select: { id: true, email: true },
-            }),
-            this.databaseService.role.findMany({
-                where: { name: { in: [...roleNames] } },
-                select: { id: true, name: true },
             }),
             this.databaseService.tenant.findMany({
                 where: { name: { in: [...tenantNames] } },
@@ -76,7 +70,6 @@ export class MigrationProjectSeed
 
         // Build lookup Maps for O(1) access
         const userByEmail = new Map(userRows.map(u => [u.email, u]));
-        const roleByName = new Map(roleRows.map(r => [r.name, r]));
         const tenantByName = new Map(tenantRows.map(t => [t.name, t]));
 
         try {
@@ -90,16 +83,6 @@ export class MigrationProjectSeed
                     continue;
                 }
 
-                const ownerUser = project.ownerUserEmail
-                    ? userByEmail.get(project.ownerUserEmail)
-                    : undefined;
-
-                if (project.ownerUserEmail && !ownerUser) {
-                    this.logger.warn(
-                        `Owner user ${project.ownerUserEmail} not found for project ${project.name}, creating without owner...`
-                    );
-                }
-
                 let projectRecord =
                     await this.databaseService.project.findFirst({
                         where: {
@@ -109,12 +92,16 @@ export class MigrationProjectSeed
                     });
 
                 if (!projectRecord) {
+                    const slug = await this.createUniqueProjectSlug(
+                        tenant.id,
+                        project.name
+                    );
                     projectRecord = await this.databaseService.project.create({
                         data: {
                             tenantId: tenant.id,
-                            ownerUserId: ownerUser?.id ?? null,
                             name: project.name,
-                            status: EnumProjectStatus.active,
+                            description: project.description ?? '',
+                            slug,
                             deletedAt: null,
                         },
                     });
@@ -129,18 +116,10 @@ export class MigrationProjectSeed
 
                 for (const member of project.members) {
                     const user = userByEmail.get(member.userEmail);
-                    const role = roleByName.get(member.projectRole);
 
                     if (!user) {
                         this.logger.warn(
                             `User ${member.userEmail} not found, skipping project member...`
-                        );
-                        continue;
-                    }
-
-                    if (!role) {
-                        this.logger.warn(
-                            `Project role ${member.projectRole} not found, skipping project member...`
                         );
                         continue;
                     }
@@ -158,8 +137,9 @@ export class MigrationProjectSeed
                             data: {
                                 projectId: projectRecord.id,
                                 userId: user.id,
-                                roleId: role.id,
+                                role: member.projectRole,
                                 status: EnumProjectMemberStatus.active,
+                                deletedAt: null,
                             },
                         });
                         this.logger.log(
@@ -196,5 +176,34 @@ export class MigrationProjectSeed
         this.logger.log('Projects removed successfully.');
 
         return;
+    }
+
+    private async createUniqueProjectSlug(
+        tenantId: string,
+        value: string
+    ): Promise<string> {
+        const baseSlug = this.projectUtil.createSlug(value);
+        let slug = baseSlug;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const existing = await this.databaseService.project.findFirst({
+                where: {
+                    tenantId,
+                    slug,
+                    deletedAt: null,
+                },
+                select: { id: true },
+            });
+
+            if (!existing) {
+                return slug;
+            }
+
+            const suffix = this.helperService.randomString(6).toLowerCase();
+            slug = `${baseSlug}-${suffix}`;
+        }
+
+        const fallbackSuffix = Date.now().toString(36);
+        return `${baseSlug}-${fallbackSuffix}`;
     }
 }

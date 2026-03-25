@@ -17,7 +17,7 @@ export class TenantMemberGuard implements CanActivate {
      * Resolves and attaches the current tenant member to the request.
      *
      * @throws ForbiddenException if the user is missing, not a member, has an
-     * expired JIT membership, or has a role outside tenant scope
+     * role outside tenant scope
      * @throws BadRequestException/NotFoundException from tenant validation
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {

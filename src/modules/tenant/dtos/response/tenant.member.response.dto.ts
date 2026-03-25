@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumTenantMemberStatus } from '@generated/prisma-client';
-import { TenantRoleResponseDto } from '@modules/tenant/dtos/response/tenant.role.response.dto';
+import { EnumTenantMemberRole, EnumTenantMemberStatus } from '@generated/prisma-client';
 
 export class TenantMemberResponseDto {
     @ApiProperty({
@@ -31,7 +30,7 @@ export class TenantMemberResponseDto {
     @ApiProperty({
         required: true,
         description: 'Membership role',
-        type: TenantRoleResponseDto,
+        enum: EnumTenantMemberRole,
     })
-    role: TenantRoleResponseDto;
+    role: EnumTenantMemberRole;
 }

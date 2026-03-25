@@ -8,6 +8,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -559,7 +560,6 @@ export class NotificationEmailUtil {
             expiredInMinutes,
             reference,
             inviteType,
-            roleScope,
             contextName,
         }: INotificationInvitePayload
     ): Promise<void> {
@@ -577,15 +577,54 @@ export class NotificationEmailUtil {
                     expiredInMinutes,
                     reference,
                     inviteType,
-                    roleScope,
                     contextName,
                 },
             };
 
-        await this.emailQueue.add(EnumNotificationProcess.invite, payload, {
-            jobId: `${EnumNotificationProcess.invite}-${userId}`,
+        await this.emailQueue.add(EnumNotificationProcess.projectInvite, payload, {
+            jobId: `${EnumNotificationProcess.projectInvite}-${userId}`,
             priority: EnumQueuePriority.medium,
         });
+    }
+
+    /**
+     * Enqueues a tenant invite email.
+     *
+     * @param sendPayload - Recipient info (userId, email, username, notificationId)
+     * @param tenantInviteData - Tenant invite payload
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendTenantInvite(
+        { email, username, userId, notificationId }: INotificationEmailSendPayload,
+        { tenantName, token, expiresAt, role }: INotificationTenantInviteEmailPayload
+    ): Promise<void> {
+        const payload: INotificationEmailWorkerPayload<INotificationTenantInviteEmailPayload> =
+            {
+                send: {
+                    userId,
+                    email,
+                    username,
+                    notificationId,
+                },
+                data: {
+                    tenantName,
+                    token,
+                    expiresAt,
+                    role,
+                },
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.tenantInvite,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.tenantInvite}-${email}`,
+                    ttl: 1000,
+                },
+            }
+        );
     }
 
     /**

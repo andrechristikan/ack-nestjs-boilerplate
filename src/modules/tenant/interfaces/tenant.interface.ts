@@ -1,23 +1,14 @@
 import {
+    EnumTenantMemberRole,
     EnumTenantMemberStatus,
-    EnumTenantStatus,
-    Role,
     Tenant,
     TenantMember,
-    User,
 } from '@generated/prisma-client';
 
 export type ITenant = Tenant;
 
-// Base — role always loaded (needed for auth/RBAC on every tenant-scoped request)
-export interface ITenantMember extends TenantMember {
-    role: Role;
-}
-
-// For member listings scoped to a tenant (need to know who the user is)
-export interface ITenantMemberWithUser extends ITenantMember {
-    user: User;
-}
+// TenantMember now includes role enum directly (no relation join needed)
+export type ITenantMember = TenantMember;
 
 // For membership listings scoped to a user (need to know which tenant)
 export interface ITenantMemberWithTenant extends ITenantMember {
@@ -26,15 +17,15 @@ export interface ITenantMemberWithTenant extends ITenantMember {
 
 export interface ITenantCreate {
     name: string;
-    status: EnumTenantStatus;
-    createdBy: string;
-    updatedBy: string;
+    description: string;
+    slug: string;
 }
 
 export interface ITenantUpdate {
     updatedBy: string;
     name?: string;
-    status?: EnumTenantStatus;
+    description?: string;
+    slug?: string;
     deletedAt?: Date | null;
     deletedBy?: string;
 }
@@ -42,17 +33,25 @@ export interface ITenantUpdate {
 export interface ITenantMemberCreate {
     tenantId: string;
     userId: string;
-    roleId: string;
+    role: EnumTenantMemberRole;
     status: EnumTenantMemberStatus;
     createdBy: string;
     updatedBy: string;
-    isJit?: boolean;
-    expiresAt?: Date;
-    reason?: string;
 }
 
 export interface ITenantMemberUpdate {
     updatedBy: string;
-    roleId?: string;
+    role?: EnumTenantMemberRole;
     status?: EnumTenantMemberStatus;
+}
+export interface ITenantInviteCreate {
+    tenantId: string;
+    invitedById: string;
+    invitedEmail: string;
+    tenantRole: EnumTenantMemberRole;
+    type: import('@generated/prisma-client').EnumTenantInviteType;
+    token: string;
+    expiresAt: Date;
+    createdBy?: string;
+    updatedBy?: string;
 }

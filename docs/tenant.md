@@ -4,7 +4,6 @@ This documentation explains the features and usage of the Multi-Tenant system:
 - **TenantProtected**: Located at `src/modules/tenant/decorators`
 - **TenantMemberProtected**: Located at `src/modules/tenant/decorators`
 - **TenantRoleProtected**: Located at `src/modules/tenant/decorators`
-- **TenantPermissionProtected**: Located at `src/modules/tenant/decorators`
 
 ## Overview
 
@@ -50,14 +49,12 @@ The tenant system provides multi-tenancy support for SaaS applications where mul
     - [TenantProtected() Decorator](#tenantprotected-decorator)
     - [TenantMemberProtected() Decorator](#tenantmemberprotected-decorator)
     - [TenantRoleProtected() Decorator](#tenantroleprotected-decorator)
-    - [TenantPermissionProtected() Decorator](#tenantpermissionprotected-decorator)
     - [TenantCurrent Parameter Decorator](#tenantcurrent-parameter-decorator)
     - [TenantMemberCurrent Parameter Decorator](#tenantmembercurrent-parameter-decorator)
   - [Guards](#guards)
     - [TenantGuard](#tenantguard)
     - [TenantMemberGuard](#tenantmemberguard)
     - [TenantRoleGuard](#tenantroleguard)
-    - [TenantPermissionGuard](#tenantpermissionguard)
 - [Tenant Roles](#tenant-roles)
   - [Built-in Roles](#built-in-roles)
   - [Role Scopes](#role-scopes)
@@ -180,8 +177,6 @@ Client Request
 3. @TenantMemberProtected() → TenantMemberGuard → Validates user is active member
     ↓
 4. @TenantRoleProtected() → TenantRoleGuard → Checks role name
-    ↓
-5. @TenantPermissionProtected() → TenantPermissionGuard → Checks abilities
     ↓
 Controller Handler
 ```
@@ -482,43 +477,6 @@ This mirrors the platform role-based decorators described in `docs/authorization
 - `403 Forbidden` - Member's role doesn't match required roles
 - `500 Internal Server Error` - No required roles configured (developer error)
 
-#### TenantPermissionProtected Decorator
-
-**Method decorator** that checks fine-grained permissions based on CASL abilities.
-
-**Parameters:**
-- `...requiredAbilities: RoleAbilityRequestDto[]` - Array of subject-action pairs
-
-**What it does:**
-- Applies `TenantMemberProtected` first
-- Uses member role abilities from `request.__tenantMember.role.abilities`
-- Checks each required ability against member's abilities
-- Uses CASL `PolicyAbilityFactory` for permission checks
-
-**Usage:**
-
-Use `@TenantPermissionProtected({ subject: EnumPolicySubject.tenant, action: [EnumPolicyAction.read] })` to gate tenant-level reads, updates, or tenant member operations. Example:
-
-```typescript
-@TenantPermissionProtected({
-    subject: EnumPolicySubject.tenantMember,
-    action: [EnumPolicyAction.create]
-})
-@UserProtected()
-@AuthJwtAccessProtected()
-@Post('members')
-createMember(@TenantCurrent() tenant: ITenant) {
-    // Handler assumes the member has the tenantMember:create ability in this tenant
-}
-```
-
-The permission metadata feeds the same CASL-based check as described in `docs/authorization.md`, scoped to the current `request.__tenantMember`.
-
-**Error Responses:**
-- All `TenantMemberProtected` errors
-- `403 Forbidden` - Member doesn't have required abilities
-- `500 Internal Server Error` - No required abilities configured (developer error)
-
 #### TenantCurrent Parameter Decorator
 
 Extracts the current tenant from the request context.
@@ -719,7 +677,6 @@ The tenant system includes predefined roles stored in the main `Role` model:
 |-----------|-------------|----------|
 | `tenant-admin` | Full tenant management | Manage tenant settings, members, and tenant projects |
 | `tenant-user` | Standard tenant member | Read tenant/member data and manage tenant projects |
-| `tenant-platform-support` | Temporary JIT support access | Time-limited read access + limited member/project access for platform operators |
 
 ### Role Scopes
 
@@ -761,28 +718,6 @@ To fetch assignable tenant member roles (for member updates and invitations), us
                 EnumPolicyAction.update,
                 EnumPolicyAction.delete
             ]
-        }
-    ]
-}
-```
-
-**Tenant Platform Support Abilities (JIT):**
-
-```typescript
-{
-    name: 'tenant-platform-support',
-    abilities: [
-        {
-            subject: EnumPolicySubject.tenant,
-            action: [EnumPolicyAction.read]
-        },
-        {
-            subject: EnumPolicySubject.tenantMember,
-            action: [EnumPolicyAction.read, EnumPolicyAction.create, EnumPolicyAction.update]
-        },
-        {
-            subject: EnumPolicySubject.project,
-            action: [EnumPolicyAction.read]
         }
     ]
 }
@@ -910,49 +845,6 @@ DELETE /api/v1/admin/tenants/:tenantId
 Authorization: Bearer <access_token>
 ```
 
-**JIT (Just-in-Time) tenant access** (requires platform admin with `tenant:update` ability):
-
-```typescript
-// Assume temporary access to a tenant (creates time-limited membership)
-POST /api/v1/admin/tenants/:tenantId/assume-access
-Authorization: Bearer <access_token>
-Body: {
-    durationInHours: 2,
-    reason: "Customer support ticket #123"
-}
-Response: {
-    data: {
-        memberId: "...",
-        tenantId: "...",
-        tenantName: "Acme Corp",
-        role: "tenant-platform-support",
-        expiresAt: "2025-01-15T14:00:00.000Z",
-        reason: "Customer support ticket #123"
-    }
-}
-
-// Revoke JIT access to a tenant
-DELETE /api/v1/admin/tenants/:tenantId/revoke-access
-Authorization: Bearer <access_token>
-```
-
-`durationInHours` accepts a value between `1` and `12`.
-Request fails with `409 Conflict` (`tenant.error.jitAccessAlreadyActive`) if the caller already has an active membership for the tenant.
-
-**JIT Access Flow:**
-
-1. Platform admin calls `POST /assume-access` with `durationInHours` (1-12) and a required `reason`
-2. A temporary `TenantMember` is created with `role: tenant-platform-support`, `isJit: true`, and an `expiresAt` timestamp
-3. The admin can now use `x-tenant-id` header to access tenant-scoped endpoints
-4. Access is automatically denied after expiry (membership auto-deactivated on next guard check)
-5. Admin can also manually revoke via `DELETE /revoke-access`
-
-- Access is time-limited (1-12 hours controlled via `durationInHours`)
-- Reason is required for audit trail
-- Activity log records both assume and revoke actions
-- Expired JIT memberships are auto-deactivated by the tenant member guard
-- Uses `tenant-platform-support` role with limited abilities (read-all + member management)
-
 ### Shared Endpoints
 
 Base path: `/api/v1/shared/tenants`
@@ -1055,7 +947,6 @@ nest build migration --config nest-cli.json && node dist/migration.js role --typ
 **What gets seeded:**
 - `tenant-admin` role with full tenant management abilities
 - `tenant-user` role with standard tenant member abilities
-- `tenant-platform-support` role for JIT support access
 
 See `src/migration/data/migration.role.data.ts` for the exact seeded abilities.
 
@@ -1071,9 +962,7 @@ reports(@TenantCurrent() tenant: ITenant) {
 }
 ```
 
-- **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` or `@TenantPermissionProtected(...)` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
-
-- **JIT helper:** admin endpoints `POST /api/v1/admin/tenants/:tenantId/assume-access` and `DELETE .../revoke-access` issue temporary `tenant-platform-support` memberships for support workflows.
+- **Member and role gating:** use `@TenantRoleProtected('tenant-admin')` directly with `@AuthJwtAccessProtected()` and `@UserProtected()`. The tenant decorators already include tenant + membership guards.
 
 ### Complete Flow Example
 
@@ -1119,7 +1008,6 @@ handler() {}
 **Notes:**
 - `TenantMemberProtected` automatically applies `TenantProtected` logic
 - `TenantRoleProtected` automatically applies `TenantMemberProtected` logic
-- `TenantPermissionProtected` automatically applies `TenantMemberProtected` logic
 - Add `@AuthJwtAccessProtected()` and `@UserProtected()` for tenant member operations
 
 ### Soft Delete Behavior
@@ -1139,7 +1027,7 @@ handler() {}
 
 1. **Always validate tenant context** - Use `@TenantProtected()` or higher
 2. **Filter queries by tenantId** - Never expose cross-tenant data
-3. **Validate member permissions** - Use `@TenantRoleProtected()` or `@TenantPermissionProtected()`
+3. **Validate member permissions** - Use `@TenantRoleProtected()`
 4. **Audit tenant operations** - Use `@ActivityLog()` for tenant changes
 5. **Validate `x-tenant-id` in guards** - middleware only copies header value to request context
 

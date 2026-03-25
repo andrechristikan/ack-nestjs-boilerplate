@@ -1,14 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-    IsArray,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    ValidateNested,
-} from 'class-validator';
-import { ProjectMemberCreateRequestDto } from '@modules/project/dtos/request/project-member.create.request.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class ProjectCreateRequestDto {
     @ApiProperty({
@@ -21,15 +12,13 @@ export class ProjectCreateRequestDto {
     @MaxLength(100)
     name: string;
 
-    @ApiPropertyOptional({
-        required: false,
-        type: () => ProjectMemberCreateRequestDto,
-        isArray: true,
-        description: 'Optional members to add when creating the project',
+    @ApiProperty({
+        required: true,
+        description: 'Project description',
+        example: 'Workspace for Q3 expansion initiatives',
     })
-    @IsOptional()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => ProjectMemberCreateRequestDto)
-    members?: ProjectMemberCreateRequestDto[];
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(255)
+    description: string;
 }

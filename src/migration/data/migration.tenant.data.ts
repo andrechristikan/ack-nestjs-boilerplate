@@ -1,37 +1,37 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import {
-    TenantRoleAdmin,
-    TenantRoleUser,
-} from '@modules/tenant/constants/tenant.constant';
+import { EnumTenantMemberRole } from '@generated/prisma-client';
 
 export interface IMigrationTenantData {
     name: string;
+    description?: string;
     members: {
         userEmail: string;
-        tenantRole: string;
+        tenantRole: EnumTenantMemberRole;
     }[];
 }
 
 const tenantData: IMigrationTenantData[] = [
     {
-        name: 'Default Organization',
-        members: [
-            { userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin },
-            { userEmail: 'user@mail.com', tenantRole: TenantRoleUser },
-        ],
+        name: "Super Admin's Workspace",
+        description: 'Personal workspace for Super Admin',
+        members: [{ userEmail: 'superadmin@mail.com', tenantRole: EnumTenantMemberRole.admin }],
     },
     {
-        name: 'Another Organization',
-        members: [{ userEmail: 'admin@mail.com', tenantRole: TenantRoleAdmin }],
+        name: "Admin's Workspace",
+        description: 'Personal workspace for Admin',
+        members: [{ userEmail: 'admin@mail.com', tenantRole: EnumTenantMemberRole.admin }],
+    },
+    {
+        name: "User's Workspace",
+        description: 'Personal workspace for User',
+        members: [{ userEmail: 'user@mail.com', tenantRole: EnumTenantMemberRole.admin }],
     },
 ];
 
-export const migrationTenantData: Record<
-    EnumAppEnvironment,
-    IMigrationTenantData[]
-> = {
-    [EnumAppEnvironment.local]: tenantData,
-    [EnumAppEnvironment.development]: tenantData,
-    [EnumAppEnvironment.staging]: tenantData,
-    [EnumAppEnvironment.production]: [],
-};
+export const migrationTenantData: Record<EnumAppEnvironment, IMigrationTenantData[]> =
+    {
+        [EnumAppEnvironment.local]: tenantData,
+        [EnumAppEnvironment.development]: tenantData,
+        [EnumAppEnvironment.staging]: [],
+        [EnumAppEnvironment.production]: [],
+    };

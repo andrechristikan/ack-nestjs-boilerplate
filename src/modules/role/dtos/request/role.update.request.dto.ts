@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
-import { EnumRoleScope, EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client';
 
 export class RoleUpdateRequestDto {
     @ApiProperty({
@@ -34,16 +34,6 @@ export class RoleUpdateRequestDto {
     @IsEnum(EnumRoleType)
     @IsNotEmpty()
     type: EnumRoleType;
-
-    @ApiProperty({
-        description: 'Scope of role (platform or tenant)',
-        example: EnumRoleScope.platform,
-        required: true,
-        enum: EnumRoleScope,
-    })
-    @IsEnum(EnumRoleScope)
-    @IsNotEmpty()
-    scope: EnumRoleScope;
 
     @ApiProperty({
         required: true,

@@ -17,6 +17,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -24,6 +25,7 @@ import {
     INotificationWorkerBulkPayload,
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
+import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -40,6 +42,7 @@ export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
+        private readonly notificationEmailUtil: NotificationEmailUtil,
         private readonly messageService: MessageService
     ) {}
 
@@ -486,13 +489,12 @@ export class NotificationUtil {
             expiredInMinutes,
             reference,
             inviteType,
-            roleScope,
             contextName,
         }: INotificationInvitePayload,
         proceedBy: string
     ): Promise<void> {
         await this.notificationQueue.add(
-            EnumNotificationProcess.invite,
+            EnumNotificationProcess.projectInvite,
             {
                 userId,
                 data: {
@@ -501,7 +503,6 @@ export class NotificationUtil {
                     expiredInMinutes,
                     reference,
                     inviteType,
-                    roleScope,
                     contextName,
                 },
                 proceedBy,
@@ -509,10 +510,58 @@ export class NotificationUtil {
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationProcess.invite}-${userId}`,
+                    id: `${EnumNotificationProcess.projectInvite}-${userId}`,
                     ttl: 1000,
                 },
             }
+        );
+    }
+
+    /**
+     * Queues tenant invite notification.
+     * For registered users, uses orchestration queue (notification entity + channel fanout).
+     * For unregistered users, sends direct email only.
+     *
+     * @param invitedEmail - Email address of the invitee
+     * @param payload - Invite payload (tenantName, token, expiresAt, role)
+     * @param sentBy - User ID who sent the invite
+     * @param registeredUserId - Optional registered user id of invitee
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendTenantInvite(
+        invitedEmail: string,
+        payload: INotificationTenantInviteEmailPayload,
+        sentBy: string,
+        registeredUserId?: string
+    ): Promise<void> {
+        if (registeredUserId) {
+            await this.notificationQueue.add(
+                EnumNotificationProcess.tenantInvite,
+                {
+                    userId: registeredUserId,
+                    data: payload,
+                    proceedBy: sentBy,
+                } as INotificationWorkerPayload<INotificationTenantInviteEmailPayload>,
+                {
+                    priority: EnumQueuePriority.medium,
+                    deduplication: {
+                        id: `${EnumNotificationProcess.tenantInvite}-${registeredUserId}`,
+                        ttl: 1000,
+                    },
+                }
+            );
+
+            return;
+        }
+
+        await this.notificationEmailUtil.sendTenantInvite(
+            {
+                userId: sentBy,
+                notificationId: `${EnumNotificationProcess.tenantInvite}-${invitedEmail}`,
+                email: invitedEmail,
+                username: invitedEmail,
+            },
+            payload
         );
     }
 
