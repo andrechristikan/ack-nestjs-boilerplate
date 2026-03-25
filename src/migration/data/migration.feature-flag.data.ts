@@ -41,6 +41,24 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
             forgotAllowed: true,
         },
     },
+    {
+        key: 'tenant',
+        description: 'Enable multi-tenancy feature',
+        rolloutPercent: 100,
+        isEnable: true,
+        metadata: {
+            inviteAllowed: true,
+        },
+    },
+    {
+        key: 'project',
+        description: 'Enable projects feature',
+        rolloutPercent: 100,
+        isEnable: true,
+        metadata: {
+            inviteAllowed: true,
+        },
+    },
 ];
 
 export const migrationFeatureFlagData: Record<

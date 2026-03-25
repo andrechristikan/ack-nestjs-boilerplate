@@ -4,6 +4,7 @@ import {
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
 import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
@@ -53,6 +54,16 @@ export interface INotificationPushProcessorService {
         },
     }: Job<
         INotificationPushWorkerPayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse>;
+    processTenantInvite({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushWorkerPayload<INotificationTenantInviteEmailPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;

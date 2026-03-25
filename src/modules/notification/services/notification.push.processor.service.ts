@@ -9,6 +9,7 @@ import {
     INotificationPushWorkerCleanupTokenPayload,
     INotificationPushWorkerPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -285,6 +286,67 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Reset password notification processed',
+            result,
+        };
+    }
+
+    async processTenantInvite({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushWorkerPayload<INotificationTenantInviteEmailPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
+            return {
+                message:
+                    'Firebase not initialized, skipping tenant invite notification',
+            };
+        }
+
+        const notification = await this.notificationRepository.updateProcessAt(
+            userId,
+            notificationId,
+            EnumNotificationChannel.push
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping tenant invite notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: { username, tenantName: data.tenantName, role: data.role },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await Promise.all([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
+
+        return {
+            message: 'Tenant invite notification processed',
             result,
         };
     }

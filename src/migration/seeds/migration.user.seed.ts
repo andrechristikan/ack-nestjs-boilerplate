@@ -285,6 +285,10 @@ export class MigrationUserSeed
                 this.databaseService.forgotPassword.deleteMany({}),
                 this.databaseService.activityLog.deleteMany({}),
                 this.databaseService.termPolicyUserAcceptance.deleteMany({}),
+                this.databaseService.deviceOwnership.deleteMany({}),
+                this.databaseService.device.deleteMany({}),
+                this.databaseService.notificationDelivery.deleteMany({}),
+                this.databaseService.notification.deleteMany({}),
                 this.databaseService.notificationUserSetting.deleteMany({}),
                 this.databaseService.user.deleteMany({}),
             ]);

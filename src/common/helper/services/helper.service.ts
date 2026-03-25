@@ -899,4 +899,23 @@ export class HelperService implements IHelperService {
 
         return 'Unknown Device';
     }
+
+    /**
+     * Normalizes a string into a URL-safe slug.
+     * Applies NFKD normalization, removes special characters, and converts to lowercase.
+     * Returns empty string if no valid characters remain after normalization.
+     * @param {string} value - String to normalize into a slug
+     * @returns {string} Slug (lowercase, hyphenated, special chars removed) or empty string
+     */
+    createSlug(value: string): string {
+        return value
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^\w\s-]/g, '')
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
 }

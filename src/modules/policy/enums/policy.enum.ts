@@ -17,4 +17,8 @@ export enum EnumPolicySubject {
     termPolicy = 'termPolicy',
     featureFlag = 'featureFlag',
     device = 'device',
+    tenant = 'tenant',
+    tenantMember = 'tenantMember',
+    project = 'project',
+    projectMember = 'projectMember',
 }

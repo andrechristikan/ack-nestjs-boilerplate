@@ -6,9 +6,11 @@ import {
     INotificationEmailWorkerBulkPayload,
     INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -340,6 +342,87 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
             return { message: 'Email verified email processed', result };
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to process verified email');
+            throw err;
+        }
+    }
+
+    async processInvite(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationInvitePayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { userId, email, username, cc, bcc } = job.data.send;
+            const {
+                link: encryptedLink,
+                expiredAt,
+                expiredInMinutes,
+                reference,
+                inviteType,
+                contextName,
+            } = job.data.data;
+
+            const link = this.userUtil.decryptedLink(userId, encryptedLink);
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.projectInvite,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    ...this.defaultTemplateData,
+                    username,
+                    link,
+                    expiredAt:
+                        this.helperService.dateFormatToRFC2822(expiredAt),
+                    expiredInMinutes,
+                    reference,
+                    inviteType,
+                    contextName,
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Invite email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err, 'Failed to process invite email');
+            throw err;
+        }
+    }
+
+    async processTenantInvite(
+        job: Job<
+            INotificationEmailWorkerPayload<INotificationTenantInviteEmailPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse> {
+        try {
+            const { email, username, cc, bcc } = job.data.send;
+            const { tenantName, token, expiresAt, role } = job.data.data;
+
+            await this.awsSESService.send({
+                templateName: EnumNotificationProcess.tenantInvite,
+                recipients: [email],
+                sender: this.noreplyEmail,
+                templateData: {
+                    ...this.defaultTemplateData,
+                    username,
+                    tenantName,
+                    token,
+                    role,
+                    expiresAt:
+                        this.helperService.dateFormatToRFC2822(expiresAt),
+                },
+                ...(cc?.length && { cc }),
+                ...(bcc?.length && { bcc }),
+            });
+
+            return { message: 'Tenant invite email processed' };
+        } catch (err: unknown) {
+            this.logger.error(err, 'Failed to process tenant invite email');
             throw err;
         }
     }

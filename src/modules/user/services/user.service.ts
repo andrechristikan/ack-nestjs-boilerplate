@@ -80,6 +80,7 @@ import {
     BadRequestException,
     ConflictException,
     ForbiddenException,
+    HttpException,
     Injectable,
     InternalServerErrorException,
     Logger,
@@ -90,9 +91,11 @@ import {
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserSignUpFrom,
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
+    User,
 } from '@generated/prisma-client';
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
@@ -112,6 +115,15 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { TenantInviteRepository } from '@modules/tenant/repositories/tenant-invite.repository';
+import { TenantRepository } from '@modules/tenant/repositories/tenant.repository';
+import { TenantUtil } from '@modules/tenant/utils/tenant.util';
+import { EnumInviteStatusCodeError } from '@modules/tenant/enums/tenant-invite.status-code.enum';
+import { EnumTenantStatusCodeError } from '@modules/tenant/enums/tenant.status-code.enum';
+import { ITenantCreate } from '@modules/tenant/interfaces/tenant.interface';
+import { IProjectCreate } from '@modules/project/interfaces/project.interface';
+import { ProjectUtil } from '@modules/project/utils/project.util';
+import { ProjectRepository } from '@modules/project/repositories/project.repository';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -136,7 +148,11 @@ export class UserService implements IUserService {
         private readonly featureFlagUtil: FeatureFlagUtil,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly configService: ConfigService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly tenantInviteRepository: TenantInviteRepository,
+        private readonly tenantRepository: TenantRepository,
+        private readonly tenantUtil: TenantUtil,
+        private readonly projectUtil: ProjectUtil
     ) {
         this.userRoleName = this.configService.get<string>('user.default.role');
         this.userCountryName = this.configService.get<string>(
@@ -1159,14 +1175,117 @@ export class UserService implements IUserService {
     }
 
     async signUp(
-        {
-            countryId,
-            email,
-            password: passwordString,
-            ...others
-        }: UserSignUpRequestDto,
+        dto: UserSignUpRequestDto,
         requestLog: IRequestLog
     ): Promise<IResponseReturn<void>> {
+        if (dto.inviteToken) {
+            const invite =
+                await this.tenantInviteRepository.findOneActiveByToken(
+                    dto.inviteToken
+                );
+            if (!invite) {
+                throw new NotFoundException({
+                    statusCode: EnumInviteStatusCodeError.notFound,
+                    message: 'tenant.invite.error.tokenInvalid',
+                });
+            }
+
+            if (invite.invitedEmail !== dto.email) {
+                // CAREFUL: Ensure that the email in the invite matches the provided email
+                // If we reach this point, the invite is valid but the email does not match
+                // 1.  The user is trying to use a different email then the invited one.
+                // 2.  Invite token leakage.
+                throw new ForbiddenException({
+                    statusCode: EnumInviteStatusCodeError.tokenInvalid,
+                    message: 'tenant.invite.error.tokenInvalid',
+                });
+            }
+
+            try {
+                const [fetchedUser, role, checkCountry] = await Promise.all([
+                    this.userRepository.findOneByEmail(dto.email),
+                    this.roleRepository.existByName(this.userRoleName),
+                    this.countryRepository.existById(dto.countryId),
+                ]);
+
+                if (!role) {
+                    throw new NotFoundException({
+                        statusCode: EnumRoleStatusCodeError.notFound,
+                        message: 'role.error.notFound',
+                    });
+                }
+                if (!checkCountry) {
+                    throw new NotFoundException({
+                        statusCode: EnumCountryStatusCodeError.notFound,
+                        message: 'country.error.notFound',
+                    });
+                }
+
+                let user: User;
+                if (!fetchedUser) {
+                    const randomUsername = this.userUtil.createRandomUsername();
+                    user = await this.userRepository.createByInvitation(
+                        randomUsername,
+                        dto.email,
+                        role.id,
+                        dto.countryId,
+                        invite.invitedById,
+                        EnumUserSignUpFrom.tenant,
+                        requestLog
+                    );
+                } else {
+                    user = fetchedUser;
+                }
+
+                const existingMember =
+                    await this.tenantRepository.findMemberByTenantAndUser(
+                        invite.tenantId,
+                        user.id
+                    );
+                if (existingMember) {
+                    throw new ConflictException({
+                        statusCode: EnumTenantStatusCodeError.memberExist,
+                        message: 'tenant.member.error.exist',
+                    });
+                }
+
+                const emailName = invite.invitedEmail.split('@')[0]?.trim();
+                const name = dto.name?.trim() || emailName || 'User';
+                const passwordPayload = this.authUtil.createPassword(
+                    user.id,
+                    dto.password
+                );
+
+                //TODO: Check if we should create a Default Tenant and Project
+                await this.tenantInviteRepository.signupAndAccept(
+                    invite.id,
+                    user.id,
+                    invite.tenantId,
+                    invite.tenantRole,
+                    name,
+                    passwordPayload,
+                    requestLog
+                );
+
+                return {};
+            } catch (err: unknown) {
+                if (
+                    err instanceof NotFoundException ||
+                    err instanceof ForbiddenException ||
+                    err instanceof ConflictException
+                ) {
+                    throw err;
+                }
+                throw new InternalServerErrorException({
+                    statusCode: EnumAppStatusCodeError.unknown,
+                    message: 'http.serverError.internalServerError',
+                    _error: err,
+                });
+            }
+        }
+
+        const { countryId, email, password: passwordString, ...others } = dto;
+
         const [role, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.userRepository.existByEmail(email),
@@ -1202,6 +1321,26 @@ export class UserService implements IUserService {
                     EnumVerificationType.email
                 );
 
+            const tenantName = this.tenantUtil.createDefaultName(
+                others.name,
+                email
+            );
+            const tenantSlug = await this.tenantRepository.findUniqueSlug(
+                this.tenantUtil.createSlug(tenantName)
+            );
+            const tenantCreate: ITenantCreate = {
+                name: tenantName,
+                description: `Default workspace for ${email}`,
+                slug: tenantSlug,
+            };
+
+            const defaultProjectName = 'Default Project';
+            const projectCreate: IProjectCreate = {
+                name: defaultProjectName,
+                description: 'Default project for your workspace',
+                slug: this.projectUtil.createSlug(defaultProjectName),
+            };
+
             const created = await this.userRepository.signUp(
                 userId,
                 randomUsername,
@@ -1214,7 +1353,9 @@ export class UserService implements IUserService {
                 },
                 password,
                 emailVerification,
-                requestLog
+                requestLog,
+                tenantCreate,
+                projectCreate
             );
 
             // @note: send email after all creation
@@ -1252,11 +1393,45 @@ export class UserService implements IUserService {
             });
         }
 
+        const user = await this.userRepository.findOneActiveById(
+            verification.userId
+        );
+
+        const tenantName = this.tenantUtil.createDefaultName(
+            user.name,
+            user.email
+        );
+        const tenantSlug = await this.tenantRepository.findUniqueSlug(
+            this.tenantUtil.createSlug(tenantName)
+        );
+
         try {
+            // TODO: the operations below (verifyEmail, createWithOwnerAndProject, updateLastTenant)
+            //  should ideally be wrapped in a single Prisma transaction for full atomicity.
             await this.userRepository.verifyEmail(
                 verification.id,
                 verification.userId,
                 requestLog
+            );
+
+            const tenant =
+                await this.tenantRepository.createWithOwnerAndProject(
+                    {
+                        name: tenantName,
+                        description: `Default workspace for ${user.email}`,
+                        slug: tenantSlug,
+                    },
+                    {
+                        name: 'Default Project',
+                        description: 'Default project for your workspace',
+                        slug: this.projectUtil.createSlug('Default Project'),
+                    },
+                    verification.userId
+                );
+
+            await this.tenantRepository.updateLastTenant(
+                verification.userId,
+                tenant.id
             );
 
             // @note: send email after all creation
@@ -1342,6 +1517,51 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
+            throw new InternalServerErrorException({
+                statusCode: EnumAppStatusCodeError.unknown,
+                message: 'http.serverError.internalServerError',
+                _error: err,
+            });
+        }
+    }
+
+    async createForInvitation(
+        email: string,
+        signUpFrom: EnumUserSignUpFrom,
+        requestLog: IRequestLog,
+        createdBy: string
+    ): Promise<User> {
+        const [role, country] = await Promise.all([
+            this.roleRepository.existByName(this.userRoleName),
+            this.countryRepository.existByAlpha2Code(this.userCountryName),
+        ]);
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: EnumRoleStatusCodeError.notFound,
+                message: 'role.error.notFound',
+            });
+        } else if (!country) {
+            throw new NotFoundException({
+                statusCode: EnumCountryStatusCodeError.notFound,
+                message: 'country.error.notFound',
+            });
+        }
+        try {
+            const randomUsername = this.userUtil.createRandomUsername();
+            return this.userRepository.createByInvitation(
+                randomUsername,
+                email,
+                role.id,
+                country.id,
+                createdBy,
+                signUpFrom,
+                requestLog
+            );
+        } catch (err: unknown) {
+            if (err instanceof HttpException) {
+                throw err;
+            }
+
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
                 message: 'http.serverError.internalServerError',
@@ -1627,6 +1847,7 @@ export class UserService implements IUserService {
                 data: {
                     isTwoFactorEnable: false,
                     tokens,
+                    tenant: { id: user.lastTenantId },
                 },
             };
         }
@@ -1660,6 +1881,7 @@ export class UserService implements IUserService {
                         otpauthUrl,
                         secret,
                     },
+                    tenant: { id: user.lastTenantId },
                 },
             };
         }
@@ -1674,6 +1896,7 @@ export class UserService implements IUserService {
                     backupCodesRemaining:
                         user.twoFactor.backupCodes.length ?? 0,
                 },
+                tenant: { id: user.lastTenantId },
             },
         };
     }

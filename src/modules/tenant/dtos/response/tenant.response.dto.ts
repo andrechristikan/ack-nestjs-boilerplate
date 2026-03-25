@@ -1,0 +1,45 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+export class TenantResponseDto {
+    @ApiProperty({
+        required: true,
+        description: 'Tenant id',
+    })
+    id: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Tenant name',
+    })
+    name: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Tenant description',
+    })
+    description: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Tenant slug',
+    })
+    slug: string;
+
+    @ApiProperty({
+        required: true,
+        description: 'Date created',
+    })
+    createdAt: Date;
+
+    @ApiProperty({
+        required: true,
+        description: 'Date updated',
+    })
+    updatedAt: Date;
+
+    @ApiProperty({
+        required: false,
+        description: 'Date deleted',
+    })
+    deletedAt?: Date;
+}

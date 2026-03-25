@@ -24,13 +24,12 @@ export class DeviceRequestDto {
     @ApiProperty({
         description: 'Device platform',
         example: EnumDevicePlatform.ios,
-        required: false,
+        required: true,
         enum: EnumDevicePlatform,
     })
-    @IsOptional()
     @IsEnum(EnumDevicePlatform)
     @IsString()
-    platform?: EnumDevicePlatform;
+    platform: EnumDevicePlatform;
 
     @ApiProperty({
         description: 'Notification token for push notifications',

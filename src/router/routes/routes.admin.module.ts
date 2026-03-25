@@ -11,6 +11,7 @@ import { TermPolicyAdminController } from '@modules/term-policy/controllers/term
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
+import { SessionModule } from '@modules/session/session.module';
 
 /**
  * Admin routes module providing administrative API endpoints.
@@ -31,6 +32,11 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, PasswordHistoryModule, DeviceModule],
+    imports: [
+        UserModule,
+        PasswordHistoryModule,
+        DeviceModule,
+        SessionModule,
+    ],
 })
 export class RoutesAdminModule {}

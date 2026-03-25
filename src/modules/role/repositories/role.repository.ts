@@ -11,7 +11,11 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma, Role } from '@generated/prisma-client';
+import {
+    EnumRoleType,
+    Prisma,
+    Role,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class RoleRepository {
@@ -70,6 +74,17 @@ export class RoleRepository {
     async findOneById(id: string): Promise<Role> {
         return this.databaseService.role.findUnique({
             where: { id },
+        });
+    }
+
+    async findAllByType(type: EnumRoleType): Promise<Role[]> {
+        return this.databaseService.role.findMany({
+            where: {
+                type,
+            },
+            orderBy: {
+                name: 'asc',
+            },
         });
     }
 

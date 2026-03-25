@@ -4,6 +4,7 @@ import {
     IsBoolean,
     IsEnum,
     IsNotEmpty,
+    IsOptional,
     IsString,
     MaxLength,
     MinLength,
@@ -58,4 +59,12 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @IsString()
     @IsEnum([EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website])
     from: EnumUserSignUpFrom;
+
+    @ApiProperty({
+        description: 'Optional invite token, required when signing up via invitation link',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    inviteToken?: string;
 }

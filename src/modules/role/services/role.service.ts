@@ -77,6 +77,16 @@ export class RoleService implements IRoleService {
         };
     }
 
+    async getListRolesByType(
+        type: EnumRoleType
+    ): Promise<IResponseReturn<RoleListResponseDto[]>> {
+        const roles = await this.roleRepository.findAllByType(type);
+
+        return {
+            data: this.roleUtil.mapList(roles),
+        };
+    }
+
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {

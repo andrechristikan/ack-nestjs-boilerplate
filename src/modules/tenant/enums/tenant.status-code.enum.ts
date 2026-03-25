@@ -1,0 +1,17 @@
+export enum EnumTenantStatusCodeError {
+    xTenantIdRequired = 5190,
+    xTenantIdInvalid = 5191,
+    notFound = 5192,
+    inactive = 5193,
+    roleNotFound = 5194,
+    memberNotFound = 5195,
+    memberForbidden = 5196,
+    memberExist = 5197,
+    predefinedRoleNotFound = 5198,
+    memberUserIdInvalid = 5199,
+    memberIdInvalid = 5200,
+    loginNoMembership = 5201,
+    roleScopeMismatch = 5202,
+    nameUpdateForbidden = 5203,
+    ownerMustTransferBeforeLeaving = 5204,
+}

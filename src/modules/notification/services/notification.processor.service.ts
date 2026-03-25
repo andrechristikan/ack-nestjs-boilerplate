@@ -10,10 +10,12 @@ import {
     INotificationAcceptTermPolicyPayload,
     INotificationEmailSendPayload,
     INotificationForgotPasswordPayload,
+    INotificationInvitePayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
@@ -387,6 +389,93 @@ export class NotificationProcessorService implements INotificationProcessorServi
         ]);
 
         return { message: 'Change password notification processed', results };
+    }
+
+    async processInvite({
+        data: { userId, data, proceedBy },
+    }: Job<
+        INotificationWorkerPayload<INotificationInvitePayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const user = await this.userRepository.findOneActiveById(userId);
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        await Promise.all([
+            this.notificationRepository.createInvite(
+                notificationId,
+                user.id,
+                user.username,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendInvite(emailPayload, data),
+        ]);
+
+        return { message: 'Invite notification processed' };
+    }
+
+    async processTenantInvite({
+        data: { userId, data, proceedBy },
+    }: Job<
+        INotificationWorkerPayload<INotificationTenantInviteEmailPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
+        ]);
+
+        if (!user) {
+            return {
+                message:
+                    'User not found, skipping tenant invite notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        const promises = [
+            this.notificationRepository.createTenantInvite(
+                notificationId,
+                user.id,
+                user.username,
+                data.tenantName,
+                data.role,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendTenantInvite(emailPayload, data),
+        ];
+
+        if (devices.length > 0) {
+            const pushPayload: INotificationSendPushPayload = {
+                userId,
+                notificationId,
+                notificationTokens: devices.map(d => d.device.notificationToken),
+                username: user.username,
+            };
+
+            promises.push(
+                this.notificationPushUtil.sendTenantInvite(pushPayload, data)
+            );
+        }
+
+        const results = await Promise.allSettled(promises);
+
+        return { message: 'Tenant invite notification processed', results };
     }
 
     async processForgotPassword({

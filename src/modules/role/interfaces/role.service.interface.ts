@@ -34,6 +34,9 @@ export interface IRoleService {
         >,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>>;
+    getListRolesByType(
+        type: EnumRoleType
+    ): Promise<IResponseReturn<RoleListResponseDto[]>>;
     getOne(id: string): Promise<IResponseReturn<RoleDto>>;
     getAbilities(
         id: string

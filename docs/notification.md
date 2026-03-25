@@ -113,6 +113,11 @@ Jobs are dispatched via `NotificationUtil`, which applies deduplication per `use
 | `newDeviceLogin` | Login detected from a new/unknown device |
 | `resetTwoFactorByAdmin` | Admin reset user 2FA |
 | `publishTermPolicy` | New term policy published (bulk, all active users) |
+| `tenantInvite` | Tenant invite for registered users (notification entity + email + push) |
+
+`NotificationUtil.sendTenantInvite()` supports both invite types with one entrypoint:
+- Registered invitees are enqueued to `EnumQueue.notification` as `tenantInvite` (entity + channel fanout).
+- Unregistered invitees are sent directly to `EnumQueue.notificationEmail` (email-only, no notification entity).
 
 ### Email Queue
 
@@ -123,6 +128,8 @@ Rate-limited to match the AWS SES sending quota (`AwsSESRateLimitPerDuration` pe
 Each job calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event, with `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) merged automatically.
 
 Jobs are dispatched via `NotificationEmailUtil`, which uses `jobId`-based deduplication per `userId`.
+
+In addition to the events orchestrated through `EnumQueue.notification`, this queue also accepts direct email jobs such as `tenantInvite`.
 
 ### Push Queue
 
@@ -138,6 +145,7 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `resetPassword` | Push alert when password is reset |
 | `resetTwoFactorByAdmin` | Push alert when admin resets 2FA |
 | `temporaryPasswordByAdmin` | Push alert for temporary password |
+| `tenantInvite` | Push alert for registered tenant invitees |
 | `cleanupTokens` | Remove reported invalid FCM tokens |
 | `cleanupStaleTokens` | Clean up tokens inactive for ≥ 60 days |
 
@@ -211,6 +219,7 @@ Available templates (one per `EnumNotificationProcess` that uses email):
 | `notification.verified-email.template.hbs` | `verifiedEmail` |
 | `notification.verified-mobile-number.template.hbs` | `verifiedMobileNumber` |
 | `notification.reset-two-factor-by-admin.template.hbs` | `resetTwoFactorByAdmin` |
+| `notification.tenant-invite.template.hbs` | `tenantInvite` |
 | `notification.publish-term-policy.template.hbs` | `publishTermPolicy` |
 
 Templates are managed independently from migrations. Use `NotificationTemplateService` methods (e.g., `emailImportWelcome()`, `emailDeleteWelcome()`) to sync them to SES.

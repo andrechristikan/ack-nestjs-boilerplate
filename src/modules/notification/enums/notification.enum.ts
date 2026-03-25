@@ -12,6 +12,8 @@ export enum EnumNotificationProcess {
     newDeviceLogin = 'newDeviceLogin',
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
+    projectInvite = 'projectInvite',
+    tenantInvite = 'tenantInvite',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
 }
 
@@ -22,4 +24,5 @@ export enum EnumNotificationPushProcess {
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
     resetPassword = 'resetPassword',
     newDeviceLogin = 'newDeviceLogin',
+    tenantInvite = 'tenantInvite',
 }

@@ -5,6 +5,7 @@ import {
     INotificationPushWorkerPayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationTenantInviteEmailPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -133,6 +134,36 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /**
+     * Enqueues a tenant invite push notification.
+     *
+     * @param sendPayload - User to notify (userId, fcmTokens, username)
+     * @param data - Tenant invite payload
+     * @returns Promise resolving when job is enqueued
+     */
+    async sendTenantInvite(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationTenantInviteEmailPayload
+    ): Promise<void> {
+        const payload: INotificationPushWorkerPayload<INotificationTenantInviteEmailPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.tenantInvite,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.tenantInvite}-${sendPayload.userId}`,
                     ttl: 1000,
                 },
             }

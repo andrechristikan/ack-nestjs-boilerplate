@@ -32,10 +32,10 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        EnumRoleType  @default(user)
+  type        EnumRoleType @default(user)
   abilities   RoleAbility[]
 
   // timestamps fields
@@ -49,6 +49,169 @@ model Role {
   @@unique(fields: [name])
   @@index(fields: [type, createdAt(sort: Desc)])
   @@map("Roles")
+}
+
+model Tenant {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String @default("")
+  slug        String @unique
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  members  TenantMember[] @relation("TenantMembers")
+  projects Project[]      @relation("TenantProjects")
+  invites  TenantInvite[] @relation("TenantInvites")
+
+  @@index(fields: [name, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Tenants")
+}
+
+model TenantMember {
+  id       String                 @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String                 @db.ObjectId
+  userId   String                 @db.ObjectId
+  role     EnumTenantMemberRole
+  status   EnumTenantMemberStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  tenant Tenant? @relation("TenantMembers", fields: [tenantId], references: [id])
+  user   User?   @relation("UserTenantMembers", fields: [userId], references: [id])
+
+  @@unique(fields: [tenantId, userId])
+  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [userId, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("TenantMembers")
+}
+
+model TenantInvite {
+  id           String                 @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String                 @db.ObjectId
+  invitedById  String                 @db.ObjectId
+  invitedEmail String
+  tenantRole   EnumTenantMemberRole
+  type         EnumTenantInviteType
+  status       EnumTenantInviteStatus @default(pending)
+  token        String                 @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  revokedById  String?                @db.ObjectId
+  acceptedAt   DateTime?
+  acceptedById String?                @db.ObjectId
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  tenant     Tenant? @relation("TenantInvites", fields: [tenantId], references: [id])
+  invitedBy  User?   @relation("UserTenantInvitesSent", fields: [invitedById], references: [id])
+  acceptedBy User?   @relation("UserTenantInvites", fields: [acceptedById], references: [id])
+
+  @@index(fields: [tenantId, status, createdAt])
+  @@index(fields: [token, status, expiresAt])
+  @@index(fields: [invitedEmail, tenantId, status, createdAt])
+  @@index(fields: [createdAt])
+  @@map("TenantInvites")
+}
+
+model Project {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String @db.ObjectId
+  name        String
+  description String
+  slug        String
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  tenant  Tenant          @relation("TenantProjects", fields: [tenantId], references: [id])
+  members ProjectMember[] @relation("ProjectMembers")
+  invites ProjectInvite[] @relation("ProjectInvites")
+
+  @@unique(fields: [tenantId, slug])
+  @@index(fields: [tenantId, deletedAt, createdAt])
+  @@index(fields: [createdAt])
+  @@map("Projects")
+}
+
+model ProjectInvite {
+  id            String                  @id @default(auto()) @map("_id") @db.ObjectId
+  inviteeById String                  @db.ObjectId
+  inviteeEmail  String
+  projectId     String                  @db.ObjectId
+  projectRole   EnumProjectMemberRole
+  status        EnumProjectInviteStatus @default(pending)
+  token         String                  @unique
+  expiresAt     DateTime
+  sentAt        DateTime?
+  revokedAt     DateTime?
+  revokedById   String?                 @db.ObjectId
+  acceptedAt    DateTime?
+  acceptedById  String?                 @db.ObjectId
+
+  // timestamps fields
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  project    Project? @relation("ProjectInvites", fields: [projectId], references: [id])
+  invitee    User?    @relation("UserProjectInvitesReceived", fields: [inviteeById], references: [id])
+  acceptedBy User?    @relation("UserProjectInvites", fields: [acceptedById], references: [id])
+
+  @@index(fields: [projectId, status, createdAt])
+  @@index(fields: [token, status, expiresAt])
+  @@index(fields: [inviteeById, status, expiresAt])
+  @@index(fields: [createdAt])
+  @@map("ProjectInvites")
+}
+
+model ProjectMember {
+  id        String                  @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String                  @db.ObjectId
+  userId    String                  @db.ObjectId
+  role      EnumProjectMemberRole
+  status    EnumProjectMemberStatus @default(active)
+
+  // timestamps fields
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
+
+  project Project? @relation("ProjectMembers", fields: [projectId], references: [id])
+  user    User?    @relation("UserProjectMembers", fields: [userId], references: [id])
+
+  @@unique(fields: [projectId, userId])
+  @@index(fields: [projectId, status, deletedAt, createdAt])
+  @@index(fields: [userId, status, deletedAt, createdAt])
+  @@index(fields: [role])
+  @@index(fields: [createdAt])
+  @@map("ProjectMembers")
 }
 
 model Country {
@@ -122,6 +285,7 @@ model User {
   lastIPAddress   String?
   lastLoginFrom   EnumUserLoginFrom?
   lastLoginWith   EnumUserLoginWith?
+  lastTenantId    String?            @db.ObjectId
   termPolicy      UserTermPolicy
   photo           UserPhoto?
 
@@ -148,6 +312,12 @@ model User {
   deviceOwnerships        DeviceOwnership[]          @relation("DeviceOwnershipUser")
   revokedSessions         Session[]                  @relation("SessionRevokedByUser")
   revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
+  tenantMemberships       TenantMember[]             @relation("UserTenantMembers")
+  projectMemberships      ProjectMember[]            @relation("UserProjectMembers")
+  tenantInvitesSent       TenantInvite[]             @relation("UserTenantInvitesSent")
+  projectInvitesReceived  ProjectInvite[]            @relation("UserProjectInvitesReceived")
+  tenantInvites           TenantInvite[]             @relation("UserTenantInvites")
+  projectInvites          ProjectInvite[]            @relation("UserProjectInvites")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -170,6 +340,7 @@ model Verification {
   verifiedAt     DateTime?
   isUsed         Boolean              @default(false)
   reference      String
+  metadata       Json?
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -561,6 +732,8 @@ enum EnumUserSignUpFrom {
   admin
   website
   mobile
+  tenant
+  project
 }
 
 enum EnumUserSignUpWith {
@@ -589,6 +762,54 @@ enum EnumRoleType {
 enum EnumApiKeyType {
   system
   default
+}
+
+enum EnumTenantStatus {
+  active
+  inactive
+}
+
+enum EnumTenantMemberStatus {
+  pending
+  active
+  inactive
+}
+
+enum EnumTenantMemberRole {
+  owner
+  admin
+  member
+}
+
+enum EnumTenantInviteType {
+  registered
+  unregistered
+}
+
+enum EnumTenantInviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum EnumProjectInviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum EnumProjectMemberStatus {
+  pending
+  active
+  inactive
+}
+
+enum EnumProjectMemberRole {
+  admin
+  member
+  viewer
 }
 
 enum EnumTermPolicyType {
@@ -635,6 +856,12 @@ enum EnumActivityLogAction {
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userCreateTenantInvite
+  userRevokeTenantInvite
+  userAcceptTenantInvite
+  userCreateProjectInvite
+  userRevokeProjectInvite
+  userAcceptProjectInvite
   userSignedUp
   userResetPassword
   userRevokeSession
