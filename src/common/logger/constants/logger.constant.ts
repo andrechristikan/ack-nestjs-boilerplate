@@ -40,10 +40,14 @@ export const LoggerRequestIdHeaders = [
 export const LoggerSensitivePaths = [
     'req.body',
     'req.headers',
+    'req.query',
+    'req.params',
     'res.body',
     'res.headers',
     'request.body',
     'request.headers',
+    'request.query',
+    'request.params',
     'response.body',
     'response.headers',
 ];

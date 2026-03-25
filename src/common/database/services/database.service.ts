@@ -132,33 +132,39 @@ export class DatabaseService
 
             const message = `[Prisma Query] ${duration}ms - ${sanitizedQuery}${params !== '[]' ? ` | Params: ${params}` : ''}`;
 
-            this.logger.debug({
-                ...other,
-                message,
-                params,
-                duration,
-                slowQuery: duration > 1000,
-            });
+            this.logger.verbose(
+                {
+                    ...other,
+                    message,
+                    params,
+                    duration,
+                    slowQuery: duration > 1000,
+                },
+                'A Prisma query was executed'
+            );
         } else {
-            this.logger.debug({
-                ...other,
-                message: query,
-                params,
-                duration,
-                slowQuery: duration > 1000,
-            });
+            this.logger.verbose(
+                {
+                    ...other,
+                    message: query,
+                    params,
+                    duration,
+                    slowQuery: duration > 1000,
+                },
+                'A Prisma query was executed'
+            );
         }
     }
 
     private logError(event: Prisma.LogEvent): void {
-        this.logger.error(event);
+        this.logger.error(event, 'A Prisma error occurred');
     }
 
     private logWarn(event: Prisma.LogEvent): void {
-        this.logger.warn(event);
+        this.logger.warn(event, 'A Prisma warning occurred');
     }
 
     private logInfo(event: Prisma.LogEvent): void {
-        this.logger.log(event);
+        this.logger.log(event, 'A Prisma info event occurred');
     }
 }
