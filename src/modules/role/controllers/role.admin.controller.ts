@@ -65,7 +65,6 @@ export class RoleAdminController {
     constructor(private readonly roleService: RoleService) {}
 
     @RoleAdminListDoc()
-    @Response('role.list')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
@@ -75,6 +74,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @Response('role.list')
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -91,7 +91,6 @@ export class RoleAdminController {
     }
 
     @RoleAdminGetDoc()
-    @Response('role.get')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
@@ -101,6 +100,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @Response('role.get')
     @Get('/get/:roleId')
     async get(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -110,17 +110,17 @@ export class RoleAdminController {
     }
 
     @RoleAdminCreateDoc()
-    @Response('role.create')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
+    @Response('role.create')
     @Post('/create')
     async create(
         @Body()
@@ -130,17 +130,17 @@ export class RoleAdminController {
     }
 
     @RoleAdminUpdateDoc()
-    @Response('role.update')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
+    @Response('role.update')
     @Put('/update/:roleId')
     async update(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -152,17 +152,17 @@ export class RoleAdminController {
     }
 
     @RoleAdminDeleteDoc()
-    @Response('role.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
+    @Response('role.delete')
     @Delete('/delete/:roleId')
     async delete(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

@@ -67,7 +67,6 @@ export class DeviceAdminController {
     constructor(private readonly deviceService: DeviceService) {}
 
     @DeviceAdminListDoc()
-    @ResponsePaging('device.list')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -83,6 +82,7 @@ export class DeviceAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ResponsePaging('device.list')
     @Get('/list')
     async list(
         @PaginationOffsetQuery()
@@ -103,7 +103,6 @@ export class DeviceAdminController {
     }
 
     @DeviceAdminRemoveDoc()
-    @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -116,10 +115,11 @@ export class DeviceAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminDeviceRemove)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminDeviceRemove)
+    @Response('device.remove')
     @HttpCode(HttpStatus.OK)
     @Delete('/remove/:deviceOwnershipId')
     async remove(

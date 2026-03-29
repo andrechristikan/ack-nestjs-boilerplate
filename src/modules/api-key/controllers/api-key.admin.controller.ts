@@ -76,7 +76,6 @@ export class ApiKeyAdminController {
     constructor(private readonly apiKeyService: ApiKeyService) {}
 
     @ApiKeyAdminListDoc()
-    @ResponsePaging('apiKey.list')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
@@ -86,6 +85,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ResponsePaging('apiKey.list')
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -104,17 +104,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminCreateDoc()
-    @Response('apiKey.create')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyCreate)
+    @Response('apiKey.create')
     @Post('/create')
     async create(
         @Body() body: ApiKeyCreateRequestDto
@@ -123,17 +123,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminResetDoc()
-    @Response('apiKey.reset')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyReset)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyReset)
+    @Response('apiKey.reset')
     @Patch('/update/:apiKeyId/reset')
     async reset(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -143,17 +143,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminUpdateDoc()
-    @Response('apiKey.update')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdate)
+    @Response('apiKey.update')
     @Put('/update/:apiKeyId')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
@@ -164,17 +164,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminUpdateDateDoc()
-    @Response('apiKey.updateDate')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateDate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateDate)
+    @Response('apiKey.updateDate')
     @Put('/update/:apiKeyId/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
@@ -185,17 +185,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminUpdateStatusDoc()
-    @Response('apiKey.updateStatus')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateStatus)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyUpdateStatus)
+    @Response('apiKey.updateStatus')
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -206,17 +206,17 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminDeleteDoc()
-    @Response('apiKey.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected({
         subject: EnumPolicySubject.apiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminApiKeyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminApiKeyDelete)
+    @Response('apiKey.delete')
     @Delete('/delete/:apiKeyId')
     async delete(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

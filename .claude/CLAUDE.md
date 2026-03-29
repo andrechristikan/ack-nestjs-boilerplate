@@ -72,13 +72,14 @@ module/
 @TermPolicyAcceptanceProtected(...)    // 2. Term policy
 @PolicyAbilityProtected({...})         // 3. CASL policy
 @RoleProtected(...)                    // 4. Role check
-@ActivityLog(...)                      // 5. Activity log
-@UserProtected()                       // 6. User status check
-@AuthJwtAccessProtected()              // 7. JWT validation
-@FeatureFlagProtected(...)             // 8. Feature flag
-@ApiKeyProtected()                     // 9. API key
-@HttpCode(HttpStatus.OK)               // 10. HTTP status (only when needed)
-@Get('/endpoint')                      // 11. HTTP method (always last)
+@UserProtected()                       // 5. User status check
+@AuthJwtAccessProtected()              // 6. JWT validation
+@FeatureFlagProtected(...)             // 7. Feature flag
+@ApiKeyProtected()                     // 8. API key
+@ActivityLog(...)                      // 9. Activity log
+@Response('key')                       // 10. Response / @ResponsePaging
+@HttpCode(HttpStatus.OK)               // 11. HTTP status (only when needed)
+@Get('/endpoint')                      // 12. HTTP method (always last)
 async method() {}
 ```
 

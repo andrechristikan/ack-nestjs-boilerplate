@@ -61,7 +61,6 @@ export class SessionAdminController {
     constructor(private readonly sessionService: SessionService) {}
 
     @SessionAdminListDoc()
-    @ResponsePaging('session.list')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -77,6 +76,7 @@ export class SessionAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ResponsePaging('session.list')
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -99,7 +99,6 @@ export class SessionAdminController {
     }
 
     @SessionAdminRevokeDoc()
-    @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -112,10 +111,11 @@ export class SessionAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
+    @Response('session.revoke')
     @Delete('/revoke/:sessionId')
     async revoke(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

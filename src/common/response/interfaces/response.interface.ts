@@ -34,7 +34,8 @@ export interface IResponseCacheOptions {
 
 /**
  * Mixin shape for controller return values that include activity log metadata.
- * When present, `ResponseInterceptor` forwards this to the `@ActivityLog` handler.
+ * When combined with `@ActivityLog`, place `@ActivityLog` above `@Response`
+ * so the activity log interceptor can read this field before the response is normalized.
  */
 export interface IResponseActivityLogReturn {
     metadataActivityLog?: IActivityLogMetadata;
