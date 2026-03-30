@@ -24,12 +24,10 @@ export class TermPolicyUtil {
         private readonly helperService: HelperService,
         private readonly fileService: FileService
     ) {
-        this.uploadContentPath = this.configService.get<string>(
-            'termPolicy.uploadContentPath'
-        );
-        this.contentPublicPath = this.configService.get<string>(
-            'termPolicy.contentPublicPath'
-        );
+        this.uploadContentPath =
+            this.configService.get<string>('termPolicy.uploadContentPath') ?? '';
+        this.contentPublicPath =
+            this.configService.get<string>('termPolicy.contentPublicPath') ?? '';
     }
 
     mapList(termPolicies: TermPolicy[]): TermPolicyResponseDto[] {
@@ -122,7 +120,6 @@ export class TermPolicyUtil {
         contents: TermContentDto[],
         language: EnumMessageLanguage
     ): TermContentDto | null {
-        const content = contents.find(c => c.language === language);
-        return content || null;
+        return contents.find(c => c.language === language) ?? null;
     }
 }

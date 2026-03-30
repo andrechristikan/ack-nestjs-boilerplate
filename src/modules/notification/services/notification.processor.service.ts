@@ -45,7 +45,8 @@ export class NotificationProcessorService implements INotificationProcessorServi
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationEmailUtil: NotificationEmailUtil
     ) {
-        this.emailBatchSize = this.configService.get<number>('email.batchSize');
+        this.emailBatchSize =
+            this.configService.get<number>('email.batchSize') ?? 10;
     }
 
     async processWelcomeByAdmin({

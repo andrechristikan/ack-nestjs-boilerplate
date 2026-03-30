@@ -54,42 +54,45 @@ export class AuthTwoFactorUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.strategy = this.configService.get<OTPStrategy>(
-            'auth.twoFactor.strategy'
-        );
-        this.algorithm = this.configService.get<HashAlgorithm>(
-            'auth.twoFactor.algorithm'
-        );
-        this.issuer = this.configService.get<string>('auth.twoFactor.issuer');
-        this.digits = this.configService.get<number>('auth.twoFactor.digits');
-        this.periodInSeconds = this.configService.get<number>(
-            'auth.twoFactor.periodInSeconds'
-        );
-        this.window = this.configService.get<number>('auth.twoFactor.window');
-        this.secretLength = this.configService.get<number>(
-            'auth.twoFactor.secretLength'
-        );
-        this.challengeTtlInMs = this.configService.get<number>(
-            'auth.twoFactor.challengeTtlInMs'
-        );
-        this.cachePrefixKey = this.configService.get<string>(
-            'auth.twoFactor.cachePrefixKey'
-        );
-        this.backupCodesCount = this.configService.get<number>(
-            'auth.twoFactor.backupCodes.count'
-        );
-        this.backupCodesLength = this.configService.get<number>(
-            'auth.twoFactor.backupCodes.length'
-        );
-        this.encryptionKey = this.configService.get<string>(
-            'auth.twoFactor.encryption.key'
-        );
-        this.maxAttempt = this.configService.get<number>(
-            'auth.twoFactor.maxAttempt'
-        );
-        this.lockAttemptDuration = this.configService.get<number>(
-            'auth.twoFactor.lockAttemptDuration'
-        );
+        this.strategy =
+            (this.configService.get<OTPStrategy>('auth.twoFactor.strategy') ??
+                'totp') as OTPStrategy;
+        this.algorithm =
+            (this.configService.get<HashAlgorithm>(
+                'auth.twoFactor.algorithm'
+            ) ?? 'SHA1') as HashAlgorithm;
+        this.issuer =
+            this.configService.get<string>('auth.twoFactor.issuer') ?? 'ACK';
+        this.digits =
+            this.configService.get<number>('auth.twoFactor.digits') ?? 6;
+        this.periodInSeconds =
+            this.configService.get<number>('auth.twoFactor.periodInSeconds') ??
+            30;
+        this.window =
+            this.configService.get<number>('auth.twoFactor.window') ?? 1;
+        this.secretLength =
+            this.configService.get<number>('auth.twoFactor.secretLength') ?? 32;
+        this.challengeTtlInMs =
+            this.configService.get<number>('auth.twoFactor.challengeTtlInMs') ??
+            300000;
+        this.cachePrefixKey =
+            this.configService.get<string>('auth.twoFactor.cachePrefixKey') ??
+            '';
+        this.backupCodesCount =
+            this.configService.get<number>('auth.twoFactor.backupCodes.count') ??
+            10;
+        this.backupCodesLength =
+            this.configService.get<number>('auth.twoFactor.backupCodes.length') ??
+            8;
+        this.encryptionKey =
+            this.configService.get<string>('auth.twoFactor.encryption.key') ??
+            '';
+        this.maxAttempt =
+            this.configService.get<number>('auth.twoFactor.maxAttempt') ?? 5;
+        this.lockAttemptDuration =
+            this.configService.get<number>(
+                'auth.twoFactor.lockAttemptDuration'
+            ) ?? 3600000;
     }
 
     /**

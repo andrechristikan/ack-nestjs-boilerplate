@@ -25,7 +25,7 @@ export class NotificationPushUtil {
         private readonly notificationPushQueue: Queue,
         private readonly configService: ConfigService
     ) {
-        this.defTz = this.configService.get<string>('app.timezone');
+        this.defTz = this.configService.get<string>('app.timezone') ?? 'UTC';
     }
 
     /**

@@ -139,10 +139,10 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil
     ) {
-        this.userRoleName = this.configService.get<string>('user.default.role');
-        this.userCountryName = this.configService.get<string>(
-            'user.default.country'
-        );
+        this.userRoleName =
+            this.configService.get<string>('user.default.role') ?? '';
+        this.userCountryName =
+            this.configService.get<string>('user.default.country') ?? '';
     }
 
     async validateUserGuard(

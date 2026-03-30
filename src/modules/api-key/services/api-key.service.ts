@@ -211,7 +211,7 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    validateApiKey(apiKey: ApiKey, includeActive: boolean = false): void {
+    validateApiKey(apiKey: ApiKey | null, includeActive: boolean = false): void {
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -223,8 +223,6 @@ export class ApiKeyService implements IApiKeyService {
                 message: 'apiKey.error.inactive',
             });
         }
-
-        return;
     }
 
     async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {

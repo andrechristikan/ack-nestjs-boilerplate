@@ -23,11 +23,13 @@ export class ApiKeyUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.cachePrefixKey = this.configService.get<string>(
-            'auth.xApiKey.cachePrefixKey'
-        );
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
-        this.header = this.configService.get<string>('auth.xApiKey.header');
+        this.cachePrefixKey =
+            this.configService.get<string>('auth.xApiKey.cachePrefixKey') ?? '';
+        this.env =
+            this.configService.get<EnumAppEnvironment>('app.env') ??
+            EnumAppEnvironment.production;
+        this.header =
+            this.configService.get<string>('auth.xApiKey.header') ?? '';
     }
 
     mapList(apiKeys: ApiKey[]): ApiKeyDto[] {
@@ -44,26 +46,17 @@ export class ApiKeyUtil {
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
-        const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
-        if (cachedApiKey) {
-            return cachedApiKey;
-        }
-
-        return null;
+        return (await this.cacheManager.get<ApiKey>(cacheKey)) ?? null;
     }
 
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.set(cacheKey, apiKey);
-
-        return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.del(cacheKey);
-
-        return;
     }
 
     createKey(key?: string): string {

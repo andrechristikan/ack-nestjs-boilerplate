@@ -52,7 +52,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         const featureFlag = await this.featureFlagUtil.getByKeyAndCache(
             keys[0]
         );
-        if (!featureFlag || !featureFlag.isEnable) {
+        if (!featureFlag?.isEnable) {
             throw new ServiceUnavailableException({
                 statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
                 message: 'featureFlag.error.serviceUnavailable',

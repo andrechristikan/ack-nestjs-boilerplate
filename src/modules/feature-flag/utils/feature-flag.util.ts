@@ -20,37 +20,25 @@ export class FeatureFlagUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.cachePrefixKey = this.configService.get<string>(
-            'featureFlag.cachePrefixKey'
-        );
-        this.cacheTtlMs = this.configService.get<number>(
-            'featureFlag.cacheTtlMs'
-        );
+        this.cachePrefixKey =
+            this.configService.get<string>('featureFlag.cachePrefixKey') ?? '';
+        this.cacheTtlMs =
+            this.configService.get<number>('featureFlag.cacheTtlMs') ?? 3600000;
     }
 
     async getCacheByKey(key: string): Promise<FeatureFlag | null> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
-        const cachedFeatureFlag =
-            await this.cacheManager.get<FeatureFlag>(cacheKey);
-        if (cachedFeatureFlag) {
-            return cachedFeatureFlag;
-        }
-
-        return null;
+        return (await this.cacheManager.get<FeatureFlag>(cacheKey)) ?? null;
     }
 
     async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.set(cacheKey, featureFlag, this.cacheTtlMs);
-
-        return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.del(cacheKey);
-
-        return;
     }
 
     mapList(featureFlags: FeatureFlag[]): FeatureFlagResponseDto[] {
@@ -119,10 +107,6 @@ export class FeatureFlagUtil {
 
     async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
         const cached = await this.getByKeyAndCache(key);
-        if (cached && cached.metadata) {
-            return cached.metadata as T;
-        }
-
-        return null;
+        return (cached?.metadata as T) ?? null;
     }
 }

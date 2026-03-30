@@ -47,13 +47,16 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         private readonly userUtil: UserUtil,
         private readonly authUtil: AuthUtil
     ) {
-        this.noreplyEmail = this.configService.get<string>('email.noreply');
-        this.supportEmail = this.configService.get<string>('email.support');
+        this.noreplyEmail =
+            this.configService.get<string>('email.noreply') ?? 'noreply@example.com';
+        this.supportEmail =
+            this.configService.get<string>('email.support') ?? 'support@example.com';
 
-        this.homeName = this.configService.get<string>('home.name');
-        this.homeUrl = this.configService.get<string>('home.url');
+        this.homeName = this.configService.get<string>('home.name') ?? 'ACK';
+        this.homeUrl =
+            this.configService.get<string>('home.url') ?? 'https://example.com';
 
-        this.batchSize = this.configService.get<number>('email.batchSize');
+        this.batchSize = this.configService.get<number>('email.batchSize') ?? 10;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
