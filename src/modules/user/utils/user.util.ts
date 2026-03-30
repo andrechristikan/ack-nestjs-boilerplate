@@ -15,7 +15,11 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumVerificationType, TwoFactor, User } from '@generated/prisma-client';
+import {
+    EnumVerificationType,
+    TwoFactor,
+    User,
+} from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
@@ -52,58 +56,43 @@ export class UserUtil {
         private readonly helperService: HelperService,
         private readonly fileService: FileService
     ) {
-        this.usernamePrefix = this.configService.get<string>(
-            'user.usernamePrefix'
-        );
-        this.usernamePattern = this.configService.get<RegExp>(
-            'user.usernamePattern'
-        );
-        this.uploadPhotoProfilePath = this.configService.get<string>(
-            'user.uploadPhotoProfilePath'
-        );
+        this.usernamePrefix =
+            this.configService.get<string>('user.usernamePrefix') ?? '';
+        this.usernamePattern =
+            this.configService.get<RegExp>('user.usernamePattern') ??
+            /^[a-zA-Z0-9_-]+$/;
+        this.uploadPhotoProfilePath =
+            this.configService.get<string>('user.uploadPhotoProfilePath') ?? '';
 
-        this.homeUrl = this.configService.get('home.url');
+        this.homeUrl = this.configService.get('home.url') ?? '';
 
-        this.forgotPasswordReferencePrefix = this.configService.get(
-            'forgotPassword.reference.prefix'
-        );
-        this.forgotPasswordReferenceLength = this.configService.get(
-            'forgotPassword.reference.length'
-        );
-        this.forgotExpiredInMinutes = this.configService.get(
-            'forgotPassword.expiredInMinutes'
-        );
-        this.forgotTokenLength = this.configService.get(
-            'forgotPassword.tokenLength'
-        );
-        this.forgotResendInMinutes = this.configService.get(
-            'forgotPassword.resendInMinutes'
-        );
-        this.forgotLinkBaseUrl = this.configService.get(
-            'forgotPassword.linkBaseUrl'
-        );
+        this.forgotPasswordReferencePrefix =
+            this.configService.get('forgotPassword.reference.prefix') ?? '';
+        this.forgotPasswordReferenceLength =
+            this.configService.get('forgotPassword.reference.length') ?? 10;
+        this.forgotExpiredInMinutes =
+            this.configService.get('forgotPassword.expiredInMinutes') ?? 30;
+        this.forgotTokenLength =
+            this.configService.get('forgotPassword.tokenLength') ?? 20;
+        this.forgotResendInMinutes =
+            this.configService.get('forgotPassword.resendInMinutes') ?? 5;
+        this.forgotLinkBaseUrl =
+            this.configService.get('forgotPassword.linkBaseUrl') ?? '';
 
-        this.verificationReferencePrefix = this.configService.get(
-            'verification.reference.prefix'
-        );
-        this.verificationReferenceLength = this.configService.get(
-            'verification.reference.length'
-        );
-        this.verificationOtpLength = this.configService.get(
-            'verification.otpLength'
-        );
-        this.verificationExpiredInMinutes = this.configService.get(
-            'verification.expiredInMinutes'
-        );
-        this.verificationTokenLength = this.configService.get(
-            'verification.tokenLength'
-        );
-        this.verificationResendInMinutes = this.configService.get(
-            'verification.resendInMinutes'
-        );
-        this.verificationLinkBaseUrl = this.configService.get(
-            'verification.linkBaseUrl'
-        );
+        this.verificationReferencePrefix =
+            this.configService.get('verification.reference.prefix') ?? '';
+        this.verificationReferenceLength =
+            this.configService.get('verification.reference.length') ?? 10;
+        this.verificationOtpLength =
+            this.configService.get('verification.otpLength') ?? 6;
+        this.verificationExpiredInMinutes =
+            this.configService.get('verification.expiredInMinutes') ?? 30;
+        this.verificationTokenLength =
+            this.configService.get('verification.tokenLength') ?? 20;
+        this.verificationResendInMinutes =
+            this.configService.get('verification.resendInMinutes') ?? 5;
+        this.verificationLinkBaseUrl =
+            this.configService.get('verification.linkBaseUrl') ?? '';
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
@@ -176,8 +165,8 @@ export class UserUtil {
                 !!twoFactor.iv &&
                 !twoFactor.confirmedAt,
             backupCodesRemaining: twoFactor.backupCodes.length,
-            confirmedAt: twoFactor.confirmedAt,
-            lastUsedAt: twoFactor.lastUsedAt,
+            confirmedAt: twoFactor.confirmedAt ?? undefined,
+            lastUsedAt: twoFactor.lastUsedAt ?? undefined,
         };
     }
 
@@ -261,29 +250,35 @@ export class UserUtil {
         userId: string,
         type: EnumVerificationType
     ): IUserVerificationCreate {
-        const token =
-            type === EnumVerificationType.mobileNumber
-                ? this.verificationCreateOtp()
-                : this.verificationCreateToken();
+        if (type === EnumVerificationType.mobileNumber) {
+            const token = this.verificationCreateOtp();
+            const hashedToken = this.hashedToken(token);
+
+            return {
+                reference: this.verificationCreateReference(),
+                expiredAt: this.verificationSetExpiredDate(),
+                type: EnumVerificationType.mobileNumber,
+                token,
+                hashedToken,
+                expiredInMinutes: this.verificationExpiredInMinutes,
+                resendInMinutes: this.verificationResendInMinutes,
+            };
+        }
+
+        const token = this.verificationCreateToken();
         const hashedToken = this.hashedToken(token);
-        const link =
-            type === EnumVerificationType.mobileNumber
-                ? null
-                : `${this.homeUrl}/${this.verificationLinkBaseUrl}/${token}`;
-        const encryptedLink =
-            type === EnumVerificationType.mobileNumber
-                ? null
-                : this.encryptedLink(userId, link);
+        const link = `${this.homeUrl}/${this.verificationLinkBaseUrl}/${token}`;
+        const encryptedLink = this.encryptedLink(userId, link ?? '');
 
         return {
             reference: this.verificationCreateReference(),
             expiredAt: this.verificationSetExpiredDate(),
-            type,
+            type: EnumVerificationType.email,
             token,
             hashedToken,
             expiredInMinutes: this.verificationExpiredInMinutes,
-            link,
-            encryptedLink,
+            link: link,
+            encryptedLink: encryptedLink,
             resendInMinutes: this.verificationResendInMinutes,
         };
     }

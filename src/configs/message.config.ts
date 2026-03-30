@@ -10,6 +10,6 @@ export default registerAs(
     'message',
     (): IConfigMessage => ({
         availableLanguage: Object.values(EnumMessageLanguage),
-        language: process.env.APP_LANGUAGE ?? EnumMessageLanguage.en,
+        language: process.env.APP_LANGUAGE!,
     })
 );

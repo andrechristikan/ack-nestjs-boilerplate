@@ -1018,6 +1018,7 @@ export class UserRepository {
         }
 
         let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        platform = platform ?? EnumDevicePlatform.web;
         switch (platform) {
             case EnumDevicePlatform.android:
                 notificationProvider = EnumDeviceNotificationProvider.fcm;
@@ -1056,7 +1057,7 @@ export class UserRepository {
                 });
 
                 let isNewDevice = false;
-                let sessionShouldBeInactive = [];
+                let sessionShouldBeInactive: { id: string }[] = [];
                 let deviceOwnership = await tx.deviceOwnership.findFirst({
                     where: {
                         deviceId: device.id,
@@ -1140,6 +1141,7 @@ export class UserRepository {
                                 expiredAt,
                                 isRevoked: false,
                                 ipAddress,
+                                deviceOwnershipId: deviceOwnership.id,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
                                 geoLocation:
@@ -1864,7 +1866,7 @@ export class UserRepository {
                     twoFactor: {
                         update: {
                             enabled: true,
-                            confirmedAt: twoFactor.confirmedAt ?? now,
+                            confirmedAt: twoFactor?.confirmedAt ?? now,
                             backupCodes: backupCodesHashed,
                             lastUsedAt: now,
                             updatedAt: now,

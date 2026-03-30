@@ -49,7 +49,7 @@ export function IsTwoFactorBackupCode(validationOptions?: ValidationOptions) {
     return function (object: unknown, propertyName: string): void {
         registerDecorator({
             name: 'IsTwoFactorBackupCode',
-            target: object.constructor,
+            target: (object as Record<string, unknown>)?.constructor,
             propertyName: propertyName,
             options: validationOptions,
             constraints: [],

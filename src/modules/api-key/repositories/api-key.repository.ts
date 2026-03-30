@@ -25,16 +25,16 @@ export class ApiKeyRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
+            Prisma.ApiKeySelect,
+            Prisma.ApiKeyWhereInput
         >,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>> {
         return this.paginationService.offset<
             ApiKey,
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
+            Prisma.ApiKeySelect,
+            Prisma.ApiKeyWhereInput
         >(this.databaseService.apiKey, {
             ...params,
             where: {

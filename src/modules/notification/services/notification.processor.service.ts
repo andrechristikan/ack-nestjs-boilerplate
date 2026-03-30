@@ -46,7 +46,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
         private readonly notificationEmailUtil: NotificationEmailUtil
     ) {
         this.emailBatchSize =
-            this.configService.get<number>('email.batchSize') ?? 10;
+            this.configService.get<number>('email.batchSize')!;
     }
 
     async processWelcomeByAdmin({
@@ -80,7 +80,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 user.username,
                 proceedBy
             ),
-            this.notificationEmailUtil.sendWelcomeByAdmin(emailPayload, data),
+            this.notificationEmailUtil.sendWelcomeByAdmin(emailPayload, data!),
         ]);
 
         return { message: 'Welcome by admin notification processed', results };
@@ -125,7 +125,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
             this.notificationEmailUtil.sendWelcome(welcomePayload),
             this.notificationEmailUtil.sendVerificationEmail(
                 verificationEmailPayload,
-                data
+                data!
             ),
         ]);
 
@@ -196,7 +196,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 user.id,
                 user.username
             ),
-            this.notificationEmailUtil.sendVerifiedEmail(emailPayload, data),
+            this.notificationEmailUtil.sendVerifiedEmail(emailPayload, data!),
         ]);
 
         return { message: 'Verified email notification processed', results };
@@ -234,7 +234,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
             ),
             this.notificationEmailUtil.sendVerificationEmail(
                 emailPayload,
-                data
+                data!
             ),
         ]);
 
@@ -273,11 +273,11 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
-                data.mobileNumber
+                data!.mobileNumber
             ),
             this.notificationEmailUtil.sendVerifiedMobileNumber(
                 emailPayload,
-                data
+                data!
             ),
         ]);
 
@@ -319,12 +319,12 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
-                this.helperService.dateCreateFromIso(data.passwordExpiredAt),
+                this.helperService.dateCreateFromIso(data!.passwordExpiredAt),
                 proceedBy
             ),
             this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
                 emailPayload,
-                data
+                data!
             ),
         ];
 
@@ -332,16 +332,16 @@ export class NotificationProcessorService implements INotificationProcessorServi
             const pushPayload: INotificationSendPushPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices.map(
-                    d => d.device.notificationToken
-                ),
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
                 username: user.username,
             };
 
             promises.push(
                 this.notificationPushUtil.sendTemporaryPasswordByAdmin(
                     pushPayload,
-                    data
+                    data!
                 )
             );
         }
@@ -420,7 +420,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 user.id,
                 user.username
             ),
-            this.notificationEmailUtil.sendForgotPassword(emailPayload, data),
+            this.notificationEmailUtil.sendForgotPassword(emailPayload, data!),
         ]);
 
         return { message: 'Forgot password notification processed', results };
@@ -465,9 +465,9 @@ export class NotificationProcessorService implements INotificationProcessorServi
             const pushPayload: INotificationSendPushPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices.map(
-                    d => d.device.notificationToken
-                ),
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
                 username: user.username,
             };
 
@@ -522,9 +522,9 @@ export class NotificationProcessorService implements INotificationProcessorServi
             const pushPayload: INotificationSendPushPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices.map(
-                    d => d.device.notificationToken
-                ),
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
                 username: user.username,
             };
 
@@ -568,10 +568,10 @@ export class NotificationProcessorService implements INotificationProcessorServi
             notificationId,
         };
         const device = this.helperService.resolveDevice(
-            data.requestLog.userAgent
+            data!.requestLog.userAgent
         );
         const city = this.helperService.resolveCity(
-            data.requestLog.geoLocation
+            data!.requestLog.geoLocation ?? undefined
         );
 
         const promises = [
@@ -579,27 +579,27 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
-                data.loginFrom,
-                data.loginWith,
+                data!.loginFrom,
+                data!.loginWith,
                 device,
                 city,
-                this.helperService.dateCreateFromIso(data.loginAt)
+                this.helperService.dateCreateFromIso(data!.loginAt)
             ),
-            this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data),
+            this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data!),
         ];
 
         if (devices.length > 0) {
             const pushPayload: INotificationSendPushPayload = {
                 userId,
                 notificationId,
-                notificationTokens: devices.map(
-                    d => d.device.notificationToken
-                ),
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
                 username: user.username,
             };
 
             promises.push(
-                this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data)
+                this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data!)
             );
         }
 
@@ -655,12 +655,12 @@ export class NotificationProcessorService implements INotificationProcessorServi
             await Promise.all([
                 this.notificationRepository.createManyPublishTermPolicy(
                     emailPayload,
-                    data,
+                    data!,
                     proceedBy
                 ),
                 this.notificationEmailUtil.sendPublishTermPolicy(
                     emailPayload,
-                    data
+                    data!
                 ),
             ]);
         }
@@ -695,8 +695,8 @@ export class NotificationProcessorService implements INotificationProcessorServi
             notificationId,
             user.id,
             user.username,
-            data.type,
-            data.version
+            data!.type,
+            data!.version
         );
 
         return {

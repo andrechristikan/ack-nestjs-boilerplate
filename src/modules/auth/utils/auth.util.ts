@@ -82,22 +82,23 @@ export class AuthUtil {
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService
     ) {
-        this.jwtAccessTokenKid =
-            this.configService.get<string>('auth.jwt.accessToken.kid') ?? '';
+        this.jwtAccessTokenKid = this.configService.get<string>(
+            'auth.jwt.accessToken.kid'
+        )!;
         this.jwtAccessTokenExpirationTimeInSeconds =
             this.configService.get<number>(
                 'auth.jwt.accessToken.expirationTimeInSeconds'
-            ) ?? 900;
-        this.jwtRefreshTokenKid =
-            this.configService.get<string>('auth.jwt.refreshToken.kid') ?? '';
+            )!;
+        this.jwtRefreshTokenKid = this.configService.get<string>(
+            'auth.jwt.refreshToken.kid'
+        )!;
         this.jwtRefreshTokenExpirationTimeInSeconds =
             this.configService.get<number>(
                 'auth.jwt.refreshToken.expirationTimeInSeconds'
-            ) ?? 2592000;
+            )!;
 
         const jwtAccessTokenPrivateKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.accessToken.privateKey') ??
-                '',
+            this.configService.get<string>('auth.jwt.accessToken.privateKey')!,
             'base64'
         );
         this.jwtAccessTokenPrivateKey = createPrivateKey({
@@ -106,8 +107,7 @@ export class AuthUtil {
             type: 'pkcs8',
         }).export({ type: 'pkcs8', format: 'pem' }) as string;
         const jwtAccessTokenPublicKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.accessToken.publicKey') ??
-                '',
+            this.configService.get<string>('auth.jwt.accessToken.publicKey')!,
             'base64'
         );
         this.jwtAccessTokenPublicKey = createPublicKey({
@@ -118,15 +118,12 @@ export class AuthUtil {
             type: 'spki',
             format: 'pem',
         }) as string;
-        this.jwtAccessTokenAlgorithm =
-            (this.configService.get<Algorithm>(
-                'auth.jwt.accessToken.algorithm'
-            ) ?? 'ES256') as Algorithm;
+        this.jwtAccessTokenAlgorithm = this.configService.get<Algorithm>(
+            'auth.jwt.accessToken.algorithm'
+        )!;
 
         const jwtRefreshTokenPrivateKeyBuffer = Buffer.from(
-            this.configService.get<string>(
-                'auth.jwt.refreshToken.privateKey'
-            ) ?? '',
+            this.configService.get<string>('auth.jwt.refreshToken.privateKey')!,
             'base64'
         );
         this.jwtRefreshTokenPrivateKey = createPrivateKey({
@@ -135,8 +132,7 @@ export class AuthUtil {
             type: 'pkcs8',
         }).export({ type: 'pkcs8', format: 'pem' }) as string;
         const jwtRefreshTokenPublicKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.refreshToken.publicKey') ??
-                '',
+            this.configService.get<string>('auth.jwt.refreshToken.publicKey')!,
             'base64'
         );
         this.jwtRefreshTokenPublicKey = createPublicKey({
@@ -147,58 +143,55 @@ export class AuthUtil {
             type: 'spki',
             format: 'pem',
         }) as string;
-        this.jwtRefreshTokenAlgorithm =
-            (this.configService.get<Algorithm>(
-                'auth.jwt.refreshToken.algorithm'
-            ) ?? 'ES512') as Algorithm;
+        this.jwtRefreshTokenAlgorithm = this.configService.get<Algorithm>(
+            'auth.jwt.refreshToken.algorithm'
+        )!;
 
-        this.jwtPrefix =
-            this.configService.get<string>('auth.jwt.prefix') ?? '';
-        this.jwtAudience =
-            this.configService.get<string>('auth.jwt.audience') ?? '';
-        this.jwtIssuer =
-            this.configService.get<string>('auth.jwt.issuer') ?? '';
-        this.jwtHeader =
-            this.configService.get<string>('auth.jwt.header') ?? 'authorization';
+        this.jwtPrefix = this.configService.get<string>('auth.jwt.prefix')!;
+        this.jwtAudience = this.configService.get<string>('auth.jwt.audience')!;
+        this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer')!;
+        this.jwtHeader = this.configService.get<string>('auth.jwt.header')!;
 
-        this.appleHeader =
-            this.configService.get<string>('auth.apple.header') ?? '';
-        this.applePrefix =
-            this.configService.get<string>('auth.apple.prefix') ?? '';
+        this.appleHeader = this.configService.get<string>('auth.apple.header')!;
+        this.applePrefix = this.configService.get<string>('auth.apple.prefix')!;
 
         this.googleHeader =
-            this.configService.get<string>('auth.google.header') ?? '';
+            this.configService.get<string>('auth.google.header')!;
         this.googlePrefix =
-            this.configService.get<string>('auth.google.prefix') ?? '';
+            this.configService.get<string>('auth.google.prefix')!;
 
         // password
-        this.passwordExpiredInSeconds =
-            this.configService.get<number>('auth.password.expiredInSeconds') ??
-            15811200;
-        this.passwordExpiredTemporaryInSeconds =
-            this.configService.get<number>(
-                'auth.password.expiredTemporaryInSeconds'
-            ) ?? 259200;
-        this.passwordSaltLength =
-            this.configService.get<number>('auth.password.saltLength') ?? 10;
-        this.passwordPeriodInSeconds =
-            this.configService.get<number>('auth.password.periodInSeconds') ??
-            7776000;
-        this.passwordAttempt =
-            this.configService.get<boolean>('auth.password.attempt') ?? true;
-        this.passwordMaxAttempt =
-            this.configService.get<number>('auth.password.maxAttempt') ?? 5;
+        this.passwordExpiredInSeconds = this.configService.get<number>(
+            'auth.password.expiredInSeconds'
+        )!;
+        this.passwordExpiredTemporaryInSeconds = this.configService.get<number>(
+            'auth.password.expiredTemporaryInSeconds'
+        )!;
+        this.passwordSaltLength = this.configService.get<number>(
+            'auth.password.saltLength'
+        )!;
+        this.passwordPeriodInSeconds = this.configService.get<number>(
+            'auth.password.periodInSeconds'
+        )!;
+        this.passwordAttempt = this.configService.get<boolean>(
+            'auth.password.attempt'
+        )!;
+        this.passwordMaxAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
+        )!;
 
         // apple
-        this.appleClientId =
-            this.configService.get<string>('auth.apple.clientId') ?? '';
-        this.appleSignInClientId =
-            this.configService.get<string>('auth.apple.signInClientId') ?? '';
+        this.appleClientId = this.configService.get<string>(
+            'auth.apple.clientId'
+        )!;
+        this.appleSignInClientId = this.configService.get<string>(
+            'auth.apple.signInClientId'
+        )!;
 
         // google
         this.googleClient = new OAuth2Client(
-            this.configService.get<string>('auth.google.clientId') ?? '',
-            this.configService.get<string>('auth.google.clientSecret') ?? ''
+            this.configService.get<string>('auth.google.clientId')!,
+            this.configService.get<string>('auth.google.clientSecret')!
         );
     }
 
@@ -379,7 +372,7 @@ export class AuthUtil {
      */
     checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
-            ? user.passwordAttempt >= this.passwordMaxAttempt
+            ? (user.passwordAttempt ?? 0) >= this.passwordMaxAttempt
             : false;
     }
 
@@ -462,7 +455,7 @@ export class AuthUtil {
      * @param passwordExpired - Optional password expiration date
      * @returns True if password expired
      */
-    checkPasswordExpired(passwordExpired?: Date): boolean {
+    checkPasswordExpired(passwordExpired?: Date | null): boolean {
         if (!passwordExpired) {
             return false;
         }
@@ -494,9 +487,9 @@ export class AuthUtil {
             idToken: token,
         });
 
-        const payload: TokenPayload = login.getPayload();
+        const payload = login.getPayload();
 
-        return payload;
+        return payload as TokenPayload;
     }
 
     /**
@@ -644,7 +637,7 @@ export class AuthUtil {
 
         const today = this.helperService.dateCreate();
         const expiredAt = this.helperService.dateCreateFromTimestamp(
-            oldExp * 1000
+            (oldExp ?? 0) * 1000
         );
 
         const newRefreshTokenExpire = this.helperService.dateDiff(

@@ -195,7 +195,7 @@ export class TermPolicyService implements ITermPolicyService {
                 version: policy.version,
             });
 
-            return;
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -268,7 +268,7 @@ export class TermPolicyService implements ITermPolicyService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        const termPolicy: TermPolicy =
+        const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
             throw new NotFoundException({

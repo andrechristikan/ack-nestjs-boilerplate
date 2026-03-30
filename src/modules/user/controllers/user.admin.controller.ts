@@ -271,7 +271,7 @@ export class UserAdminController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
             ipAddress,
             userAgent,
@@ -308,7 +308,7 @@ export class UserAdminController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.importByAdmin(data, createdBy, {
             ipAddress,
             userAgent,

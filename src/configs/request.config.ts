@@ -27,13 +27,13 @@ export default registerAs(
     (): IConfigRequest => ({
         body: {
             json: {
-                limitInBytes: bytes('500kb'),
+                limitInBytes: bytes('500kb') ?? 512000,
             },
             text: {
-                limitInBytes: bytes('1mb'),
+                limitInBytes: bytes('1mb') ?? 1048576,
             },
             urlencoded: {
-                limitInBytes: bytes('1mb'),
+                limitInBytes: bytes('1mb') ?? 1048576,
             },
             applicationOctetStream: {
                 limitInBytes: FileSizeInBytes,
@@ -50,7 +50,7 @@ export default registerAs(
                 'HEAD',
                 'OPTIONS',
             ],
-            allowedOrigin: process.env.CORS_ALLOWED_ORIGIN?.split(',') ?? [],
+            allowedOrigin: process.env.CORS_ALLOWED_ORIGIN!.split(','),
             allowedHeader: [
                 'Accept',
                 'Accept-Language',

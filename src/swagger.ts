@@ -11,8 +11,8 @@ export default async function (app: NestApplication): Promise<void> {
     const messageService = app.get(MessageService);
 
     const env: string = configService.get<string>('app.env')!;
-    const appName: string = configService.get<string>('app.name');
-    const appVersion: string = configService.get<string>('app.version');
+    const appName: string = configService.get<string>('app.name')!;
+    const appVersion: string = configService.get<string>('app.version')!;
     const appUrl: string = configService.get<string>('app.url')!;
 
     const appAuthorName: string = configService.get<string>('app.author.name')!;

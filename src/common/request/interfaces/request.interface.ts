@@ -5,7 +5,10 @@ import { ApiKey, GeoLocation, UserAgent } from '@generated/prisma-client';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 
-export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
+export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
+    Request,
+    'user'
+> {
     correlationId: string;
     user?: T;
 
@@ -21,6 +24,6 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Request {
 
 export interface IRequestLog {
     userAgent: UserAgent;
-    ipAddress: string;
-    geoLocation?: GeoLocation;
+    ipAddress?: string | null;
+    geoLocation?: GeoLocation | null;
 }

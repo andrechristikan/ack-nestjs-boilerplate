@@ -18,7 +18,7 @@ export default registerAs(
     'logger',
     (): IConfigDebug => ({
         enable: process.env.LOGGER_ENABLE === 'true',
-        level: process.env.LOGGER_LEVEL ?? 'debug',
+        level: process.env.LOGGER_LEVEL!,
         intoFile: process.env.LOGGER_INTO_FILE === 'true',
         filePath: '/logs',
         auto: process.env.LOGGER_AUTO === 'true',

@@ -47,16 +47,13 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         private readonly userUtil: UserUtil,
         private readonly authUtil: AuthUtil
     ) {
-        this.noreplyEmail =
-            this.configService.get<string>('email.noreply') ?? 'noreply@example.com';
-        this.supportEmail =
-            this.configService.get<string>('email.support') ?? 'support@example.com';
+        this.noreplyEmail = this.configService.get<string>('email.noreply')!;
+        this.supportEmail = this.configService.get<string>('email.support')!;
 
-        this.homeName = this.configService.get<string>('home.name') ?? 'ACK';
-        this.homeUrl =
-            this.configService.get<string>('home.url') ?? 'https://example.com';
+        this.homeName = this.configService.get<string>('home.name')!;
+        this.homeUrl = this.configService.get<string>('home.url')!;
 
-        this.batchSize = this.configService.get<number>('email.batchSize') ?? 10;
+        this.batchSize = this.configService.get<number>('email.batchSize')!;
 
         this.defaultTemplateData = {
             homeName: this.homeName,
@@ -136,7 +133,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 password: passwordString,
                 passwordExpiredAt,
                 passwordCreatedAt,
-            } = job.data.data;
+            } = job.data.data!;
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcomeByAdmin,
@@ -177,7 +174,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 password: encryptedPasswordString,
                 passwordExpiredAt,
                 passwordCreatedAt,
-            } = job.data.data;
+            } = job.data.data!;
 
             const passwordString = this.authUtil.decryptPassword(
                 userId,
@@ -285,7 +282,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 reference,
                 link: encryptedLink,
                 expiredInMinutes,
-            } = job.data.data;
+            } = job.data.data!;
 
             const link = this.userUtil.decryptedLink(userId, encryptedLink);
             const expiredAtFormatted = this.helperService.dateFormatToRFC2822(
@@ -325,7 +322,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     ): Promise<IQueueResponse> {
         try {
             const { email, username, cc, bcc } = job.data.send;
-            const { reference } = job.data.data;
+            const { reference } = job.data.data!;
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedEmail,
@@ -361,7 +358,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 link: encryptedLink,
                 reference,
                 expiredInMinutes,
-            } = job.data.data;
+            } = job.data.data!;
 
             const link = this.userUtil.decryptedLink(userId, encryptedLink);
 
@@ -399,7 +396,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
     ): Promise<IQueueResponse> {
         try {
             const { email, username, cc, bcc } = job.data.send;
-            const { reference, mobileNumber } = job.data.data;
+            const { reference, mobileNumber } = job.data.data!;
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.verifiedMobileNumber,
@@ -477,7 +474,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 loginWith,
                 loginAt,
                 requestLog: { userAgent, ipAddress },
-            } = job.data.data;
+            } = job.data.data!;
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.newDeviceLogin,
@@ -513,7 +510,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         >
     ): Promise<IQueueResponse> {
         try {
-            const { type, version } = job.data.data;
+            const { type, version } = job.data.data!;
             const users = await this.userRepository.findActive();
             const userChunks = this.helperService.arrayChunk(
                 users,

@@ -22,6 +22,6 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
-    @GreaterThanEqualOtherProperty('startDate')
+    @GreaterThanEqualOtherProperty('startAt')
     endAt: Date;
 }

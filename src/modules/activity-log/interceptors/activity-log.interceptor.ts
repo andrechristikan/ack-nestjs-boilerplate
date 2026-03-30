@@ -46,7 +46,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         const { headers, user } = request;
         const { metadataActivityLog, rawError } = payload;
 
-        const { userId } = user;
+        const { userId } = user!;
         const userAgent = UAParser(headers['user-agent']) as UserAgent;
         const ipAddress = getClientIp(request);
         const geo = ipAddress ? geoIp.lookup(ipAddress) : null;

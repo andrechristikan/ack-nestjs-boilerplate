@@ -59,7 +59,7 @@ export class FeatureFlagService implements IFeatureFlagService {
             });
         } else if (keys.length > 1) {
             const metadata: boolean | number | string | null =
-                featureFlag.metadata[keys[1]];
+                ((featureFlag?.metadata as any)?.[keys[1]]) ?? null;
             if (typeof metadata !== 'boolean') {
                 throw new InternalServerErrorException({
                     statusCode:

@@ -142,7 +142,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.updateProfile(userId, body, {
             ipAddress,
             userAgent,
@@ -180,7 +180,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.updatePhotoProfile(userId, body, {
             ipAddress,
             userAgent,
@@ -213,7 +213,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
             userAgent,
@@ -235,7 +235,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.changePassword(user, body, {
             ipAddress,
             userAgent,
@@ -339,7 +339,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
@@ -417,7 +417,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.disableTwoFactor(user, body, {
             ipAddress,
             userAgent,
@@ -459,7 +459,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.logout(userId, sessionId, deviceOwnershipId, {
             ipAddress,
             userAgent,

@@ -23,4 +23,5 @@ export enum EnumUserStatusCodeError {
     mobileNumberExist = 5171,
     verificationEmailResendLimitExceeded = 5172,
     forgotPasswordRequestLimitExceeded = 5173,
+    twoFactorMethodRequired = 5174,
 }

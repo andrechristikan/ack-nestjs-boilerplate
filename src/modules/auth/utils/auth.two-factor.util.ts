@@ -54,45 +54,42 @@ export class AuthTwoFactorUtil {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.strategy =
-            (this.configService.get<OTPStrategy>('auth.twoFactor.strategy') ??
-                'totp') as OTPStrategy;
-        this.algorithm =
-            (this.configService.get<HashAlgorithm>(
-                'auth.twoFactor.algorithm'
-            ) ?? 'SHA1') as HashAlgorithm;
-        this.issuer =
-            this.configService.get<string>('auth.twoFactor.issuer') ?? 'ACK';
-        this.digits =
-            this.configService.get<number>('auth.twoFactor.digits') ?? 6;
-        this.periodInSeconds =
-            this.configService.get<number>('auth.twoFactor.periodInSeconds') ??
-            30;
-        this.window =
-            this.configService.get<number>('auth.twoFactor.window') ?? 1;
-        this.secretLength =
-            this.configService.get<number>('auth.twoFactor.secretLength') ?? 32;
-        this.challengeTtlInMs =
-            this.configService.get<number>('auth.twoFactor.challengeTtlInMs') ??
-            300000;
-        this.cachePrefixKey =
-            this.configService.get<string>('auth.twoFactor.cachePrefixKey') ??
-            '';
-        this.backupCodesCount =
-            this.configService.get<number>('auth.twoFactor.backupCodes.count') ??
-            10;
-        this.backupCodesLength =
-            this.configService.get<number>('auth.twoFactor.backupCodes.length') ??
-            8;
-        this.encryptionKey =
-            this.configService.get<string>('auth.twoFactor.encryption.key') ??
-            '';
-        this.maxAttempt =
-            this.configService.get<number>('auth.twoFactor.maxAttempt') ?? 5;
-        this.lockAttemptDuration =
-            this.configService.get<number>(
-                'auth.twoFactor.lockAttemptDuration'
-            ) ?? 3600000;
+        this.strategy = this.configService.get<OTPStrategy>(
+            'auth.twoFactor.strategy'
+        )!;
+        this.algorithm = this.configService.get<HashAlgorithm>(
+            'auth.twoFactor.algorithm'
+        )!;
+        this.issuer = this.configService.get<string>('auth.twoFactor.issuer')!;
+        this.digits = this.configService.get<number>('auth.twoFactor.digits')!;
+        this.periodInSeconds = this.configService.get<number>(
+            'auth.twoFactor.periodInSeconds'
+        )!;
+        this.window = this.configService.get<number>('auth.twoFactor.window')!;
+        this.secretLength = this.configService.get<number>(
+            'auth.twoFactor.secretLength'
+        )!;
+        this.challengeTtlInMs = this.configService.get<number>(
+            'auth.twoFactor.challengeTtlInMs'
+        )!;
+        this.cachePrefixKey = this.configService.get<string>(
+            'auth.twoFactor.cachePrefixKey'
+        )!;
+        this.backupCodesCount = this.configService.get<number>(
+            'auth.twoFactor.backupCodes.count'
+        )!;
+        this.backupCodesLength = this.configService.get<number>(
+            'auth.twoFactor.backupCodes.length'
+        )!;
+        this.encryptionKey = this.configService.get<string>(
+            'auth.twoFactor.encryption.key'
+        )!;
+        this.maxAttempt = this.configService.get<number>(
+            'auth.twoFactor.maxAttempt'
+        )!;
+        this.lockAttemptDuration = this.configService.get<number>(
+            'auth.twoFactor.lockAttemptDuration'
+        )!;
     }
 
     /**
@@ -297,7 +294,7 @@ export class AuthTwoFactorUtil {
         if (!twoFactor.secret || !twoFactor.iv || !normalizedCode) {
             return {
                 isValid: false,
-                method,
+                method: method!,
             };
         } else if (
             method === EnumAuthTwoFactorMethod.backupCodes &&
@@ -305,7 +302,7 @@ export class AuthTwoFactorUtil {
         ) {
             return {
                 isValid: false,
-                method,
+                method: method!,
             };
         }
 
@@ -315,13 +312,13 @@ export class AuthTwoFactorUtil {
             if (!isValidCode) {
                 return {
                     isValid: false,
-                    method,
+                    method: method!,
                 };
             }
 
             return {
                 isValid: true,
-                method,
+                method: method!,
             };
         }
 
@@ -332,7 +329,7 @@ export class AuthTwoFactorUtil {
         if (!backupValidation.isValid) {
             return {
                 isValid: false,
-                method,
+                method: method!,
             };
         }
 
@@ -341,7 +338,7 @@ export class AuthTwoFactorUtil {
 
         return {
             isValid: true,
-            method,
+            method: method!,
             newBackupCodes: updatedTwoFactorBackupCodes,
         };
     }
@@ -373,7 +370,7 @@ export class AuthTwoFactorUtil {
      * @returns True if attempts >= maxAttempt, otherwise false
      */
     checkAttempt(user: IUser): boolean {
-        return user.twoFactor.attempt >= this.maxAttempt;
+        return (user.twoFactor?.attempt ?? 0) >= this.maxAttempt;
     }
 
     /**
@@ -392,7 +389,7 @@ export class AuthTwoFactorUtil {
     async lockTwoFactorAttempt(user: IUser): Promise<void> {
         const key = `${this.cachePrefixKey}:lock:${user.id}`;
         const ttlExponentialInMs =
-            Math.pow(2, user.twoFactor.attempt / this.maxAttempt) *
+            Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDuration;
         await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
 
@@ -414,6 +411,6 @@ export class AuthTwoFactorUtil {
         const isLocked = await this.cacheManager.get<boolean>(key);
         const retryAfterMs = await this.cacheManager.ttl(key);
 
-        return isLocked ? retryAfterMs : 0;
+        return isLocked ? (retryAfterMs ?? 0) : 0;
     }
 }

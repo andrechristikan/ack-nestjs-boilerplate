@@ -81,7 +81,7 @@ export interface IAuthTwoFactorChallengeCache {
 }
 
 export interface IAuthTwoFactorVerify {
-    method: EnumAuthTwoFactorMethod;
+    method?: EnumAuthTwoFactorMethod;
     code?: string;
     backupCode?: string;
 }

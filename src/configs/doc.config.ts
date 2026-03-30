@@ -10,7 +10,7 @@ export interface IConfigDoc {
 export default registerAs(
     'doc',
     (): IConfigDoc => ({
-        name: `${process.env.APP_NAME ?? 'ACKNestJs'} APIs Specification`,
+        name: `${process.env.APP_NAME!} APIs Specification`,
         description: 'Section for describe whole APIs',
         prefix: '/docs',
         version: '3.1.0',

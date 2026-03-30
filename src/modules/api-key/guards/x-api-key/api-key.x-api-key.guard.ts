@@ -3,8 +3,8 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 /**
- * Guard that validates X-API-Key header authentication.
- * Extracts and validates the API key from request headers and attaches it to the request object.
+ * Guard that validates the X-API-Key header authentication.
+ * Extracts and validates the API key from request headers, then attaches the resolved `ApiKey` entity to `request.__apiKey`.
  */
 @Injectable()
 export class ApiKeyXApiKeyGuard implements CanActivate {
@@ -14,7 +14,10 @@ export class ApiKeyXApiKeyGuard implements CanActivate {
      * Validates the X-API-Key header and attaches the API key to the request.
      *
      * @param {ExecutionContext} context - The execution context containing request information
-     * @returns {Promise<boolean>} Promise that resolves to true if API key is valid
+     * @returns {Promise<boolean>} Resolves to true if the API key is valid and attached to the request
+     * @throws {UnauthorizedException} If the X-API-Key header is missing or has an invalid format
+     * @throws {ForbiddenException} If the API key is not found
+     * @throws {UnauthorizedException} If the API key credentials are invalid or the key is inactive/expired
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<IRequestApp>();

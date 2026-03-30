@@ -54,18 +54,29 @@ export default registerAs(
             },
             config: {
                 public: {
-                    bucket: process.env.AWS_S3_PUBLIC_BUCKET ?? 'bucketPublic',
-                    baseUrl: `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`,
-                    arn: `arn:aws:s3:::${process.env.AWS_S3_PUBLIC_BUCKET}`,
+                    bucket: process.env.AWS_S3_PUBLIC_BUCKET,
+                    baseUrl:
+                        process.env.AWS_S3_PUBLIC_BUCKET &&
+                        process.env.AWS_S3_REGION
+                            ? `https://${process.env.AWS_S3_PUBLIC_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`
+                            : undefined,
+                    arn: process.env.AWS_S3_PUBLIC_BUCKET
+                        ? `arn:aws:s3:::${process.env.AWS_S3_PUBLIC_BUCKET}`
+                        : undefined,
                     cdnUrl: process.env.AWS_S3_PUBLIC_CDN
                         ? `https://${process.env.AWS_S3_PUBLIC_CDN}`
                         : undefined,
                 },
                 private: {
-                    bucket:
-                        process.env.AWS_S3_PRIVATE_BUCKET ?? 'bucketPrivate',
-                    baseUrl: `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`,
-                    arn: `arn:aws:s3:::${process.env.AWS_S3_PRIVATE_BUCKET}`,
+                    bucket: process.env.AWS_S3_PRIVATE_BUCKET,
+                    baseUrl:
+                        process.env.AWS_S3_PRIVATE_BUCKET &&
+                        process.env.AWS_S3_PRIVATE_REGION
+                            ? `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`
+                            : undefined,
+                    arn: process.env.AWS_S3_PRIVATE_BUCKET
+                        ? `arn:aws:s3:::${process.env.AWS_S3_PRIVATE_BUCKET}`
+                        : undefined,
                     cdnUrl: process.env.AWS_S3_PRIVATE_REGION
                         ? `https://${process.env.AWS_S3_PRIVATE_REGION}`
                         : undefined,

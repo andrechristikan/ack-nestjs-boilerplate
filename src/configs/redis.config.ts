@@ -16,12 +16,12 @@ export default registerAs(
     'redis',
     (): IConfigRedis => ({
         cache: {
-            url: process.env.CACHE_REDIS_URL ?? 'redis://localhost:6379',
+            url: process.env.CACHE_REDIS_URL!,
             namespace: 'Cache',
             ttlInMs: 5 * 60 * 1000,
         },
         queue: {
-            url: process.env.QUEUE_REDIS_URL ?? 'redis://localhost:6379',
+            url: process.env.QUEUE_REDIS_UR!,
             namespace: 'Queue',
         },
     })

@@ -1,15 +1,6 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { PickType } from '@nestjs/swagger';
 
-export class ApiKeyUpdateRequestDto {
-    @ApiProperty({
-        description: 'Api Key name',
-        example: faker.company.name(),
-        required: false,
-    })
-    @IsOptional()
-    @IsString()
-    @MaxLength(100)
-    name?: string;
-}
+export class ApiKeyUpdateRequestDto extends PickType(ApiKeyCreateRequestDto, [
+    'name',
+] as const) {}

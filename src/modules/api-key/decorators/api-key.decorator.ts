@@ -12,21 +12,23 @@ import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-ke
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
 
 /**
- * Parameter decorator that extracts API key data from the request context
- * @param {string} data - Optional property name to extract from the API key object
- * @param {ExecutionContext} ctx - NestJS execution context
- * @returns {T} The API key object or specific property if data is provided
+ * Parameter decorator that extracts the authenticated API key from the request context.
+ * Must be used on a controller method parameter after `@ApiKeyProtected()` or `@ApiKeySystemProtected()` has been applied.
+ *
+ * @returns {ApiKey | T} The full API key object, or the value of a specific property if a property name is passed
  */
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     <T = ApiKey>(data: string, ctx: ExecutionContext): T => {
         const { __apiKey } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return data ? __apiKey[data] : (__apiKey as T);
+        return data ? (__apiKey?.[data as keyof ApiKey] as T) : (__apiKey as T);
     }
 );
 
 /**
- * Method decorator that applies system-level API key protection guards
- * @returns {MethodDecorator} Combined decorators for system API key validation
+ * Method decorator that applies API key authentication and restricts access to system-type API keys only.
+ * Combines `ApiKeyXApiKeyGuard` and `ApiKeyXApiKeyTypeGuard` with type set to `EnumApiKeyType.system`.
+ *
+ * @returns {MethodDecorator} Combined decorators for system API key authentication and type validation
  */
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
@@ -36,8 +38,10 @@ export function ApiKeySystemProtected(): MethodDecorator {
 }
 
 /**
- * Method decorator that applies default API key protection guards
- * @returns {MethodDecorator} Combined decorators for default API key validation
+ * Method decorator that applies API key authentication and restricts access to default-type API keys only.
+ * Combines `ApiKeyXApiKeyGuard` and `ApiKeyXApiKeyTypeGuard` with type set to `EnumApiKeyType.default`.
+ *
+ * @returns {MethodDecorator} Combined decorators for default API key authentication and type validation
  */
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(

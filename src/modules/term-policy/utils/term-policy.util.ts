@@ -11,7 +11,11 @@ import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dt
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyType, Prisma, TermPolicy } from '@generated/prisma-client';
+import {
+    EnumTermPolicyType,
+    Prisma,
+    TermPolicy,
+} from '@generated/prisma-client';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()
@@ -24,10 +28,12 @@ export class TermPolicyUtil {
         private readonly helperService: HelperService,
         private readonly fileService: FileService
     ) {
-        this.uploadContentPath =
-            this.configService.get<string>('termPolicy.uploadContentPath') ?? '';
-        this.contentPublicPath =
-            this.configService.get<string>('termPolicy.contentPublicPath') ?? '';
+        this.uploadContentPath = this.configService.get<string>(
+            'termPolicy.uploadContentPath'
+        )!;
+        this.contentPublicPath = this.configService.get<string>(
+            'termPolicy.contentPublicPath'
+        )!;
     }
 
     mapList(termPolicies: TermPolicy[]): TermPolicyResponseDto[] {

@@ -20,7 +20,7 @@ import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-ke
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyDefaultAvailableSearch } from '@modules/api-key/constants/api-key.list.constant';
-import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
+import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -33,8 +33,8 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
-        DocResponsePaging<ApiKeyDto>('apiKey.list', {
-            dto: ApiKeyDto,
+        DocResponsePaging<ApiKeyResponseDto>('apiKey.list', {
+            dto: ApiKeyResponseDto,
             availableSearch: ApiKeyDefaultAvailableSearch,
         })
     );
@@ -70,7 +70,7 @@ export function ApiKeyAdminUpdateStatusDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.updateStatus', {
-            dto: ApiKeyDto,
+            dto: ApiKeyResponseDto,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocDefault({
@@ -132,7 +132,7 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponse('apiKey.update', {
-            dto: ApiKeyDto,
+            dto: ApiKeyResponseDto,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,
@@ -167,7 +167,7 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponse('apiKey.updateDate', {
-            dto: ApiKeyDto,
+            dto: ApiKeyResponseDto,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,
@@ -200,7 +200,7 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponse('apiKey.delete', {
-            dto: ApiKeyDto,
+            dto: ApiKeyResponseDto,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,

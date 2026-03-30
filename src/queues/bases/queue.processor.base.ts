@@ -18,7 +18,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
      * @param error - The error that caused the job to fail
      */
     @OnWorkerEvent('failed')
-    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+    onFailed(job: Job<unknown, null, string>, error: Error): void {
         const maxAttempts = job.opts.attempts ?? 1;
         const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
 
