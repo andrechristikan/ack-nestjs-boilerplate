@@ -3,33 +3,32 @@
 This document provides instructions for GitHub Copilot to generate code that follows the patterns, conventions, and architecture of this project.
 
 > **Copilot Behavior Note**
+> - Always read relevant source files before suggesting changes — never assume code structure.
 > - Every suggestion or implementation **must consider best practices** (security, maintainability, scalability, readability).
 > - If an approach is chosen for **performance** reasons or to **match an existing implementation**, **it must be explicitly noted** — e.g., with a comment like `// NOTE: this approach is chosen for performance` or `// NOTE: aligned with existing pattern in codebase`.
 > - If an example is needed to clarify a suggestion, **provide the code example immediately** — do not defer or ask for confirmation first.
 
 ## Project Overview
 
-ACK NestJS Boilerplate (v8.2.0+) is a comprehensive authentication and authorization service built with NestJS v11.x. It uses:
-- **Prisma ORM** for database operations (MongoDB with replication set)
-- **PNPM** as the package manager
+ACK NestJS Boilerplate is an enterprise-grade authentication and authorization service built with:
+- **NestJS v11** + **TypeScript** with strict mode (`strictNullChecks: true`, `noImplicitAny: true`) and path aliases
+- **Prisma ORM** → MongoDB (replica set required for transactions)
+- **Redis** → cache + session store (`db:0`) and BullMQ queues (`db:1`)
+- **PNPM** as the only allowed package manager (npm/yarn blocked)
+- **Node.js** >= 24.11.0
+- **ES256** (access token) / **ES512** (refresh token) JWT algorithms
 - **Repository Design Pattern** for data access layer
 - **Modular Architecture** with clear separation of concerns
 - **SOLID Principles** throughout the codebase
-- **Redis** for caching and session management
-- **BullMQ** for queue processing
-- **ES256/ES512** JWT algorithms for authentication
-- **RedisSessionStore** for session handling
 - **class-validator** and **class-transformer** for DTO validation and transformation
 - **Swagger** for API documentation
 - **i18n** for internationalization with nested JSON structure
-- **BullMQ** for background job processing
-- **TypeScript** with strict path aliases
 
-## Architecture Patterns
+## Architecture
 
 ### Module Structure
 
-Every feature module follows this structure:
+Every feature module follows:
 ```
 module/
 ├── bases/              # Abstract base classes for shared functionality
@@ -56,12 +55,15 @@ module/
 └── validations/       # Custom validators
 ```
 
-### Repository Pattern with Prisma
+### Repository Design Pattern
 
-Always use repository pattern for database operations. The `DatabaseService` extends `PrismaClient`, so inject it directly without `@Inject`:
+- `Repository` → data access only, injects `DatabaseService` directly (no `@Inject`)
+- `Service` → business logic only, injects repository as class (no interface for repo)
+- `Service` always implements an **interface** (`IUserService`)
+- Never inject `DatabaseService` directly into services
 
 ```typescript
-// Repository — no interface needed, inject directly as class
+// ✅ Repository — no interface needed
 @Injectable()
 export class UserRepository {
     constructor(private readonly databaseService: DatabaseService) {}
@@ -73,23 +75,19 @@ export class UserRepository {
     }
 }
 
-// Service Interface — services always have an interface
+// ✅ Service Interface — services always have an interface
 export interface IUserService {
     findById(id: string): Promise<User | null>;
-    // ... other methods
 }
 
-// Service Implementation — injects repository directly as class
+// ✅ Service Implementation — injects repo as class
 export class UserService implements IUserService {
-    constructor(
-        private readonly userRepository: UserRepository
-    ) {}
+    constructor(private readonly userRepository: UserRepository) {}
 }
 ```
 
-### Path Aliases
+### Path Aliases (always use, never relative paths)
 
-Always use TypeScript path aliases defined in `tsconfig.json`:
 - `@app/*` → `src/app/*`
 - `@common/*` → `src/common/*`
 - `@config` → `src/configs/index.ts`
@@ -102,57 +100,131 @@ Always use TypeScript path aliases defined in `tsconfig.json`:
 - `@generated/*` → `generated/*`
 - `@prisma/client` → `generated/prisma-client`
 
-Example:
 ```typescript
 import { DatabaseModule } from '@common/database/database.module';
 import { IConfigAuth } from '@configs/auth.config';
 import { UserModule } from '@modules/user/user.module';
 ```
 
-## Authentication & Authorization
+## Naming Conventions
 
-### Decorator Order
+| Type | Convention | Example |
+|---|---|---|
+| Class | PascalCase | `UserService` |
+| Interface | `I` + PascalCase | `IUserService` |
+| Enum | `Enum` + PascalCase | `EnumUserStatus` |
+| Enum keys/values | camelCase | `active`, `inactive` |
+| Constants | PascalCase | `MaxAttempt`, `DefaultPageSize` |
+| Files | kebab-case | `user.service.ts` |
+| Methods/Variables | camelCase | `findById`, `userId` |
+| DTO suffix | `RequestDto` / `ResponseDto` | `CreateUserRequestDto` |
 
-When using multiple protection decorators, apply them in this **EXACT** order (top to bottom):
+### Enum Usage
 
 ```typescript
-@ExampleDoc()                              // Documentation (always first)
-@TermPolicyAcceptanceProtected(...)       // Terms acceptance verification
-@PolicyAbilityProtected({...})            // CASL policy-based permissions
-@RoleProtected(...)                       // Role-based access control
-@ActivityLog(...)                         // Activity logging
-@UserProtected()                          // User authentication check
-@AuthJwtAccessProtected()                 // JWT access token validation
-@FeatureFlagProtected(...)                // Feature flag check
-@ApiKeyProtected()                        // API key authentication
-@HttpCode(HttpStatus.OK)                  // HTTP status override (only when needed, always directly above HTTP method)
-@Get('/endpoint')                         // HTTP method (always last)
-async method() { }
+export enum EnumUserStatus {
+    active = 'active',
+    inactive = 'inactive',
+    deleted = 'deleted'
+}
+
+export enum EnumUserStatusCodeError {
+    notFound = 5000,
+    alreadyExists = 5001,
+    inactive = 5002
+}
 ```
 
-### JWT Authentication
+### Import Order
 
-- Access Token uses **ES256** algorithm
-- Refresh Token uses **ES512** algorithm
-- Sessions are stored in Redis (validation) and Database (management)
-- JWT ID (jti) is validated on every request for session tracking
+Import order is enforced using ESLint's `sort-imports` rule:
 
-### Session Management
+```
+const importOrderRules = {
+    'sort-imports': [
+        'error',
+        {
+            ignoreCase: false,
+            ignoreDeclarationSort: true,
+            ignoreMemberSort: false,
+            memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+            allowSeparatedGroups: true,
+        },
+    ],
+};
+```
 
-Sessions use dual storage:
-- **Redis**: Primary validation, automatic expiration, high performance
-- **Database**: Session listing, management, audit trail
+This rule sorts import members within each import statement, but does **not** enforce the order of entire import blocks. You are still required to use **absolute path aliases** for all project imports (never use relative paths like `./` or `../`).
 
-Always invalidate sessions when:
-- Password is changed
-- Password is reset
-- User logs out
-- Session is revoked manually
+## Decorator Order (EXACT — never change)
+
+```typescript
+@ExampleDoc()                          // 1. Swagger doc
+@TermPolicyAcceptanceProtected(...)    // 2. Term policy
+@PolicyAbilityProtected({...})         // 3. CASL policy
+@RoleProtected(...)                    // 4. Role check
+@ActivityLog(...)                      // 5. Activity log
+@UserProtected()                       // 6. User status check
+@AuthJwtAccessProtected()              // 7. JWT validation
+@FeatureFlagProtected(...)             // 8. Feature flag
+@ApiKeyProtected()                     // 9. API key
+@HttpCode(HttpStatus.OK)               // 10. HTTP status (only when needed)
+@Get('/endpoint')                      // 11. HTTP method (always last)
+async method() {}
+```
+
+## Authentication & Session
+
+- Dual storage: **Redis** (validation, jti matching) + **Database** (audit, listing)
+- `jti` rotated on every token refresh — old tokens immediately invalid
+- Redis key: `User:{userId}:Session:{sessionId}`
+- TTL: fixed at login (30d default), NOT extended on refresh
+- Always invalidate sessions on: password change, password reset, logout, device removal
+
+### Session Lifecycle
+1. Login → create session in Redis + DB, linked to `DeviceOwnership`
+2. Every request → verify signature → check Redis → match `jti`
+3. Refresh → verify → rotate `jti` in Redis + DB → issue new tokens
+4. Revoke → delete from Redis → mark DB as revoked
+
+## Device Module
+
+- Device identified by `fingerprint` (use FingerprintJS on frontend)
+- `DeviceOwnership` = relationship between `User` and `Device`
+- **Max 1 active session per device-user pair** (new login replaces old session)
+- Same `fingerprint` + different browsers = different `DeviceOwnership` (by design)
+- Platforms: `ios`, `android`, `web`
+- Notification: `fcm` (android), `apns` (ios), none (web)
+
+### Remove Device Flow
+```
+DELETE /user/device/remove/:deviceId
+→ DeviceOwnership: isRevoked = true (retained for audit)
+→ Device: clear notificationToken + notificationProvider
+→ Session: isRevoked = true in DB
+→ Redis: DELETE session key → immediate 401
+→ ActivityLog: userRemoveDevice
+```
+
+### Device List API Behavior
+- User endpoint → return `isRevoked = false` only
+- Admin endpoint → default `isRevoked = false`, support `?includeRevoked=true` for audit
+
+## Authorization Layers
+
+```
+@AuthJwtAccessProtected()       JWT signature + jti + Redis session check
+@UserProtected(isVerified?)     User status: active, not deleted, optionally email-verified
+@RoleProtected(role)            RBAC role check
+@PolicyAbilityProtected({})     CASL fine-grained permissions (subject + action)
+@TermPolicyAcceptanceProtected  Require accepted term policies (default: termsOfService + privacy)
+@FeatureFlagProtected(key)      Feature flag + rollout percentage
+@ApiKeyProtected()              Machine-to-machine API key auth
+```
 
 ## Request & Response
 
 ### DTOs (Data Transfer Objects)
-
 
 **Naming Convention:**
 - Request DTOs **must** use the `RequestDto` suffix (e.g., `CreateUserRequestDto`, `LoginRequestDto`).
@@ -164,7 +236,7 @@ Use `class-validator` decorators for validation:
 import { IsString, IsEmail, MinLength } from 'class-validator';
 import { Expose } from 'class-transformer';
 
-export class CreateUserDto {
+export class CreateUserRequestDto {
     @IsEmail()
     @Expose()
     email: string;
@@ -188,9 +260,7 @@ Use standardized response decorators. The return object supports two optional fi
 @Response('user.get')
 @Get('/:id')
 async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-    return {
-        data: await this.userService.findById(id)
-    };
+    return { data: await this.userService.findById(id) };
 }
 
 // Override response message or statusCode via metadata
@@ -216,18 +286,13 @@ async listUsers(@Query() query: UserListDto): Promise<IResponsePagingReturn<User
 
 ### Request Context Decorators (IP, Geo, User Agent)
 
-Use these parameter decorators from `@common/request/decorators/request.decorator.ts` to extract client context in route handlers:
+Use these parameter decorators from `@common/request/decorators/request.decorator.ts`:
 
 - **`@RequestIPAddress()`** — real client IP via `nestjs-real-ip`
-- **`@RequestGeoLocation()`** — `GeoLocation | null` via `geoip-lite` (country, region, city, lat/lng)
-- **`@RequestUserAgent()`** — parsed `UserAgent` object via `ua-parser-js` (browser, OS, device, engine, CPU)
-
-They are typically used together and passed to services that need to record or react to client context (e.g., session creation, new device detection, activity logging):
+- **`@RequestGeoLocation()`** — `GeoLocation | null` via `geoip-lite`
+- **`@RequestUserAgent()`** — parsed `UserAgent` object via `ua-parser-js`
 
 ```typescript
-import { RequestGeoLocation, RequestIPAddress, RequestUserAgent } from '@common/request/decorators/request.decorator';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
-
 @Post('/login')
 async login(
     @Body() body: UserLoginRequestDto,
@@ -241,114 +306,57 @@ async login(
 }
 ```
 
-The combined shape is modelled by `IRequestLog` in `@common/request/interfaces/request.interface.ts`:
-
-```typescript
-export interface IRequestLog {
-    userAgent: UserAgent;
-    ipAddress: string;
-    geoLocation?: GeoLocation;
-}
-```
-
 ### Error Handling
 
-Throw exceptions with proper message paths:
-
 ```typescript
-if (!user) {
-    throw new NotFoundException({
-        statusCode: EnumUserStatusCodeError.notFound,
-        message: 'user.error.notFound'
-    });
-}
+throw new NotFoundException({
+    statusCode: EnumUserStatusCodeError.notFound,
+    message: 'user.error.notFound',          // i18n key
+    messageProperties: { id: userId },       // optional interpolation
+    data: { userId },                        // optional debug context
+});
 ```
 
 Optional exception properties (all from `IAppException`):
-- **`messageProperties?: IMessageProperties`** — `Record<string, string | number>` for i18n interpolation (e.g., `{ field: 'email', max: 100 }`)
-- **`errors?: IMessageValidationError[]`** — validation error details; only read when thrown via `RequestValidationException` or `FileImportException`
-- **`metadata?: Record<string, string | number>`** — extra context for debugging or logging
+- **`messageProperties?: IMessageProperties`** — `Record<string, string | number>` for i18n interpolation
+- **`errors?: IMessageValidationError[]`** — validation error details
+- **`metadata?: Record<string, string | number>`** — extra context for debugging
 
-## Database Operations
+## Database & Transactions
 
-### Prisma Migrations
+- MongoDB must run as **replica set** (required for transactions)
+- Use callback syntax for complex transactions:
 
-MongoDB doesn't support migrations with Prisma. Use `prisma db push`:
-
-```bash
-pnpm db:migrate     # Syncs schema to database
-pnpm db:generate    # Generates Prisma client
-pnpm db:studio      # Opens Prisma Studio
-```
-
-### Seeding
-
-Create seeds in `src/migration/seeds/`:
-
-```bash
-pnpm migration {module} --type seed    # Add data
-pnpm migration {module} --type remove  # Remove data
-```
-
-Available modules: `apiKey`, `country`, `featureFlag`, `role`, `termPolicy`, `user`
-
-### Transactions
-
-MongoDB requires **replica set** for transactions. Prisma supports two transaction types:
-
-**1. Array Syntax** - For simple sequential operations:
 ```typescript
+// ✅ Complex logic — callback
+await this.databaseService.$transaction(async (tx) => {
+    const user = await tx.user.create({ data });
+    if (condition) await tx.profile.create({ data: profileData });
+    return user;
+});
+
+// ✅ Simple sequential — array
 await this.databaseService.$transaction([
-    this.databaseService.user.create({ data: userData }),
-    this.databaseService.profile.create({ data: profileData })
+    this.databaseService.user.create({ data }),
+    this.databaseService.log.create({ data: logData }),
 ]);
 ```
 
-**2. Callback Syntax** - For complex logic with conditional operations:
-```typescript
-await this.databaseService.$transaction(async (tx) => {
-    const user = await tx.user.create({ data: userData });
-    
-    if (user.role === 'admin') {
-        await tx.profile.create({ data: { ...profileData, userId: user.id } });
-    }
-    
-    return user;
-});
+### Scripts
+```bash
+pnpm db:migrate        # Sync schema to MongoDB
+pnpm db:generate       # Regenerate Prisma client (after schema changes)
+pnpm db:studio         # Open Prisma Studio
+pnpm migration:seed    # Seed all data
+pnpm migration {module} --type seed    # Seed specific module
 ```
 
 ## Queue System (BullMQ)
 
-### Creating Jobs
-
-Inject queue and add jobs:
-
-```typescript
-export class NotificationPushUtil {
-    constructor(
-        @InjectQueue(EnumQueue.notificationPush) 
-        private readonly notificationPushQueue: Queue
-    ) {}
-
-    async sendNewDeviceLogin(payload: INotificationPushWorkerPayload): Promise<void> {
-        await this.notificationPushQueue.add(
-            EnumNotificationPushProcess.newDeviceLogin,
-            payload,
-            {
-                priority: EnumQueuePriority.high,
-                deduplication: {
-                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${payload.send.userId}`,
-                    ttl: 1000,
-                },
-            }
-        );
-    }
-}
-```
-
-### Creating Processors
-
-Extend `QueueProcessorBase` and implement a single `process(job)` method with a switch statement:
+- Extend `QueueProcessorBase`, implement `process(job)` with switch
+- Use `QueueException(msg, isFatal)` — `isFatal: true` reports to Sentry
+- Default: 3 attempts, exponential backoff (5s)
+- Available queues: `notification`, `notificationEmail`, `notificationPush`
 
 ```typescript
 @QueueProcessor(EnumQueue.notificationPush)
@@ -381,63 +389,110 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 }
 ```
 
+## Cache (Redis)
+
+- `CacheMainProvider` → general app cache (`db:0`)
+- `SessionCacheProvider` → session management only (`db:0`)
+- BullMQ → `db:1` (never mix with cache)
+- Default TTL: 5 minutes; feature flags: 1 hour
+- Single Redis connection shared via `RedisCacheModule` (DRY pattern)
+
 ## Logging
 
-Always use `Logger` from `@nestjs/common` with class context.
-
-**Parameter order**: when logging with details or an error object, pass the **object/detail as param 1** and the **message string as param 2** — never reversed:
-
 ```typescript
-import { Logger } from '@nestjs/common';
+private readonly logger = new Logger(UserService.name);
 
-export class UserService {
-    private readonly logger = new Logger(UserService.name);
+// ✅ object first, message second
+this.logger.error(error, 'Failed to create user');
+this.logger.log('User created');
+```
 
-    async createUser(data: CreateUserDto): Promise<User> {
-        this.logger.log('Creating new user');
-        
-        try {
-            const user = await this.userRepository.create(data);
-            this.logger.log(`User created: ${user.id}`);
-            return user;
-        } catch (error) {
-            // ✅ CORRECT: object first, message second
-            this.logger.error(error, 'Failed to create user');
-            throw error;
-        }
-    }
+Sensitive data (password, token, apiKey, etc.) auto-redacted by Pino.
+
+## i18n Messages
+
+- Files in `src/languages/en/` — **nested JSON**, filename = prefix
+- `user.error.notFound` → `src/languages/en/user.json` → `error.notFound`
+- Never assume flat structure
+
+```json
+{
+  "get": "Get user successfully",
+  "error": {
+    "notFound": "User not found",
+    "statusInvalid": "User status {status} is invalid"
+  }
 }
 ```
 
-Sensitive data is automatically redacted (password, token, apiKey, etc.).
+## Activity Log
 
-## Caching
+- `@ActivityLog(EnumActivityLogAction.xxx)` — admin endpoints only
+- Requires `@AuthJwtAccessProtected()` to be present
+- Only logs **successful** requests
+- Capture metadata via `metadataActivityLog` in service response
+- Never log: passwords, tokens, entire objects
 
-Redis is split into two databases:
-- **`CACHE_REDIS_URL`** (db `0`) — general cache and session store (`CacheMainProvider`, `SessionCacheProvider`)
-- **`QUEUE_REDIS_URL`** (db `1`) — BullMQ queue processing
+## Notification
 
-Use Redis for caching with decorators:
+- 4 channels: `email` (SES), `push` (FCM), `inApp`, `silent`
+- 3 BullMQ queues: `notification`, `notificationEmail`, `notificationPush`
+- Push tokens managed via Device module
+- `inApp` + `silent` → marked delivered immediately at creation
+- `email` + `push` → async queue processing
 
-- Use `CacheMainProvider` for general caching purposes.
-- Use `SessionCacheProvider` specifically for session management.
+## Third-Party Services (No-Op Mode)
+
+All external services operate in **no-op mode** when credentials are missing:
+- AWS S3: check `isInitialized()` before S3 operations
+- AWS SES: check `isInitialized()` before sending email
+- Firebase: leave env vars empty to disable push
+- Sentry: leave `SENTRY_DSN` empty to disable monitoring
+
+## Feature Flags
 
 ```typescript
-@Response('user.get', { cache: true })
-@Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-    return {
-        data: await this.userService.findById(id)
-    };
-}
+@FeatureFlagProtected('loginWithGoogle')           // simple check
+@FeatureFlagProtected('changePassword.forgotAllowed') // metadata check (must be boolean)
 ```
+
+Rollout uses deterministic MD5 hash of `userId` — same user always gets same result.
+
+## Term Policy
+
+- 4 types: `termsOfService`, `privacy`, `marketing`, `cookies`
+- Publishing invalidates ALL user acceptances for that type
+- Draft → editable, private S3; Published → immutable, public S3
+- `@TermPolicyAcceptanceProtected()` defaults to requiring `termsOfService` + `privacy`
+
+## Rate Limiting
+
+- Global default: **100 requests / 60 seconds** per IP
+- Auth endpoints (login, signup, forgot-password): **5 req / 60s**
+- OTP/2FA verification: **5 req / 60s**
+- Token refresh: **10 req / 60s**
+- File upload: **10 req / 60s**
+- Admin endpoints: **30 req / 60s**
+- Public read (list, get): **60 req / 60s**
+- Override per-endpoint with `@Throttle({ default: { ttl: 60000, limit: N } })`
+- `ThrottlerGuard` must be registered as global guard via `APP_GUARD`
+- Response 429 must follow standard error response format
+
+## Password Security
+
+- Bcrypt salt rounds: **10** minimum, **11** recommended for sensitive apps
+- Password expiration: 182 days
+- Password rotation period: 90 days
+- Max login attempts: 5 (then lockout)
+- Temporary password expiration: 3 days
+- Password history tracked to prevent reuse
+- Always invalidate ALL sessions on password change/reset
 
 ## Environment Configuration
 
 Configuration files are in `src/configs/` and use environment variables. **Every config file must export a TypeScript interface** alongside the `registerAs` function:
 
 ```typescript
-// Always define an interface
 export interface IConfigAuth {
     password: {
         attempt: boolean;
@@ -464,29 +519,12 @@ export default registerAs(
 );
 ```
 
-## Internationalization (i18n)
+## Docker
 
-Message files are in `src/languages/en/`. Keys support **nested JSON** structure, and the file name acts as the prefix:
-
-```typescript
-// src/languages/en/user.json
-{
-    "get": "Get user successfully",
-    "error": {
-        "notFound": "User not found",
-        "alreadyExists": "User already exists"
-    }
-}
-
-// Usage in code - prefix comes from filename
-@Response('user.get')  // Resolves to user.json -> "get" key
-
-throw new NotFoundException({
-    message: 'user.error.notFound'  // Resolves to user.json -> error.notFound
-});
-```
-
-**Important**: Don't use direct keys like `'user.get'` assuming it's a flat structure. The `user` prefix references the JSON file, and the rest navigates the nested object.
+- `dockerfile` (root) → **development only** (`start:dev`, includes devDependencies)
+- CI/CD uses separate production Dockerfile with multi-stage build
+- Production image: `node:lts-alpine`, `NODE_ENV=production`, `CMD ["node", "dist/main.js"]`, `USER node`
+- Never copy `.env` into Docker image — inject via environment variables at runtime
 
 ## Testing
 
@@ -495,99 +533,12 @@ Follow test file naming conventions:
 - Integration tests: `*.integration-spec.ts`
 - E2E tests: `*.e2e-spec.ts`
 
-```bash
-pnpm test              # Run all tests
-pnpm lint              # Run linter
-pnpm format            # Format code
-```
-
-## Code Style
-
-### Naming Conventions
-
-- **Classes**: PascalCase (`UserService`, `CreateUserDto`)
-- **Interfaces**: PascalCase with `I` prefix (`IUserRepository`, `IConfigAuth`)
-- **Enums**: PascalCase with `Enum` prefix (`EnumUserStatus`, `EnumQueue`)
-- **Constants**: PascalCase (`MaxAttempt`, `DefaultPageSize`)
-- **Files**: kebab-case (`user.service.ts`, `auth.config.ts`)
-- **Methods/Variables**: camelCase (`findById`, `userId`)
-- **Enum Keys/Values**: camelCase (`active`, `inactive`, `deleted`)
-
-### Enum Usage
-
-Define enums in dedicated files using **PascalCase** for enum names and **camelCase** for keys/values:
-
-```typescript
-// enums/user-status.enum.ts
-export enum EnumUserStatus {
-    active = 'active',
-    inactive = 'inactive',
-    deleted = 'deleted'
-}
-
-// enums/user-status-code.enum.ts
-export enum EnumUserStatusCodeError {
-    notFound = 5000,
-    alreadyExists = 5001,
-    inactive = 5002
-}
-```
-
-### Import Order
-
-
-Import order is enforced using ESLint's `sort-imports` rule:
-
-```
-const importOrderRules = {
-    'sort-imports': [
-        'error',
-        {
-            ignoreCase: false,
-            ignoreDeclarationSort: true,
-            ignoreMemberSort: false,
-            memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
-            allowSeparatedGroups: true,
-        },
-    ],
-};
-```
-
-This rule sorts import members within each import statement, but does **not** enforce the order of entire import blocks (e.g., external vs internal). You are still required to use **absolute path aliases** for all project imports (never use relative paths like `./` or `../`).
-
-## Best Practices
-
-1. **Use interfaces for services only** — repositories and utils are injected directly as classes; services always define and implement an interface
-2. **Inject repositories**, not Prisma directly in services
-3. **Use enums** for constants and status codes
-4. **Validate DTOs** with class-validator decorators
-5. **Handle errors** with custom exceptions and proper status codes
-6. **Log operations** with context and proper log levels
-7. **Use decorators** for cross-cutting concerns (auth, logging, caching)
-8. **Follow module structure** - keep related code together
-9. **Write type-safe code** - avoid `any` types
-10. **Document APIs** with Swagger decorators
-11. **Use transactions** for multi-step database operations
-12. **Cache frequently accessed data** in Redis
-13. **Process heavy tasks** in background queues
-14. **Invalidate sessions** on security-sensitive operations
-15. **Test your code** - write unit, integration, and e2e tests
-
-## Important Notes
-
-- **Production Mode**: Documentation is disabled when `APP_ENV=production`
-- **MongoDB**: Must run as replica set for transactions
-- **Prisma Client**: Regenerate after schema changes with `pnpm db:generate`
-- **Sessions**: Dual storage (Redis + Database) for performance and management
-- **JWT Algorithms**: ES256 for access tokens, ES512 for refresh tokens (since v8.0.0)
-- **Package Manager**: Use PNPM only (enforced by preinstall script)
-
-## Scripts Reference
+## Key Scripts
 
 ```bash
 # Development
-pnpm start:dev         # Start development server
-pnpm build             # Build project
+pnpm start:dev         # Dev server with hot reload
+pnpm build             # Production build
 pnpm format            # Format code with Prettier
 pnpm lint              # Run ESLint
 pnpm lint:fix          # Fix ESLint errors
@@ -600,246 +551,81 @@ pnpm db:studio         # Open Prisma Studio
 # Migration & Seeding
 pnpm migration:seed    # Seed all data
 pnpm migration:remove  # Remove all seeded data
-pnpm migration:fresh   # Reset DB and re-seed (force push + seed)
+pnpm migration:fresh   # Reset DB and re-seed
 pnpm migration {module} --type seed    # Seed specific module
 pnpm migration {module} --type remove  # Remove specific module
 
-# Testing
+# Testing & Quality
 pnpm test              # Run tests
 pnpm deadcode          # Check for unused code
 pnpm spell             # Spell check
 pnpm typecheck         # TypeScript type checking
 
 # Docker
-docker-compose up -d   # Start MongoDB + Redis
+docker-compose up -d   # Start MongoDB + Redis + JWKS server
 docker-compose down    # Stop containers
 
-# Keys
+# Keys & Utilities
 pnpm generate:keys     # Generate JWT keys (ES256/ES512)
-
-# Utilities
 pnpm clean             # Clean build and dependencies
 pnpm package:upgrade   # Upgrade packages
 pnpm package:check     # Check package updates
 ```
 
+## Anti-Patterns (Never Do)
+
+- Inject `DatabaseService` directly into services → use repository
+- Use relative imports → use path aliases
+- Multiple Redis connections → share via `RedisCacheModule`
+- Wrong decorator order → follow exact order above
+- Flat i18n keys → use nested JSON structure
+- Log sensitive data → auto-redacted, but don't explicitly log it
+- Skip session invalidation on password change/reset
+- Use `UPPER_SNAKE_CASE` for enums → use `PascalCase` name, `camelCase` keys
+- Use array transaction for conditional logic → use callback syntax
+- Use `--passWithNoTests` in CI after tests are written → remove flag once first test exists
+- Use `any` type → use proper typing (enforced by `noImplicitAny: true`)
+- Ignore null checks → handle nulls properly (enforced by `strictNullChecks: true`)
+- Use `@Inject` unnecessarily for repositories → direct class injection
+
 ## Design Patterns & Principles
 
-### ✅ Patterns to Follow
+### Patterns to Follow
 
-1. **DRY (Don't Repeat Yourself)**
-   - Single Redis connection shared across all services
-   - Single configuration source in `src/configs/`
-   - Reusable base classes (e.g., `QueueProcessorBase`)
-   - Global modules for shared functionality
+1. **DRY** — Single Redis connection, single config source, reusable base classes, global modules
+2. **Repository Pattern** — Abstract DB ops through repositories, never inject `DatabaseService` in services
+3. **Global Module Pattern** — `@Global()` for shared modules, avoid repeated imports
+4. **Decorator-Based Protection** — Stack decorators in correct order, declarative cross-cutting concerns
+5. **Singleton Pattern** — One Redis connection for cache AND session, centralized config
+6. **Dual Storage Strategy** — Redis for performance, Database for persistence (e.g., sessions)
+7. **Nested JSON for i18n** — File name as prefix, navigate nested objects
+8. **Type-Safe Enums** — `Enum` prefix PascalCase, camelCase keys, dedicated files
+9. **Metadata Pattern** — `metadataActivityLog` in service responses, auto-captured by decorators
+10. **Feature Flag Pattern** — Dynamic control, deterministic rollout, metadata for granular control
 
-2. **Repository Pattern**
-   - Always abstract database operations through repositories
-   - Never inject `DatabaseService` directly into services
-   - Use interfaces for dependency inversion
-   - Keep business logic in services, data access in repositories
+### Global Modules Reference
+- **Common**: `DatabaseModule`, `PaginationModule`, `CacheMainModule`, `RedisCacheModule`, `MessageModule`, `HelperModule`, `FileModule`, `FirebaseModule`
+- **Feature**: `AuthModule`, `SessionModule`, `RoleModule`, `ApiKeyModule`, `PolicyModule`, `ActivityLogModule`, `NotificationModule`, `FeatureFlagModule`, `TermPolicyModule`
+- **Queue**: `QueueRegisterModule`
 
-3. **Global Module Pattern**
-   - Mark shared modules with `@Global()` decorator
-   - Avoid repeated imports in feature modules
-   - Common globals: `DatabaseModule`, `PaginationModule`, `CacheMainModule`, `RedisCacheModule`, `MessageModule`, `HelperModule`, `FileModule`, `FirebaseModule`
-   - Module globals: `AuthModule`, `SessionModule`, `RoleModule`, `ApiKeyModule`, `PolicyModule`, `ActivityLogModule`, `NotificationModule`, `FeatureFlagModule`, `TermPolicyModule`
-   - Queue globals: `QueueRegisterModule`
+## Important Notes
 
-4. **Decorator-Based Protection**
-   - Stack decorators in correct order (see [Decorator Order](#decorator-order))
-   - Use declarative approach for cross-cutting concerns
-   - Combine guards through decorators, not in code
+- **Production Mode**: Documentation is disabled when `APP_ENV=production`
+- **MongoDB**: Must run as replica set for transactions
+- **Prisma Client**: Regenerate after schema changes with `pnpm db:generate`
+- **Sessions**: Dual storage (Redis + Database) for performance and management
+- **JWT Algorithms**: ES256 for access tokens, ES512 for refresh tokens
+- **Package Manager**: Use PNPM only (enforced by preinstall script)
 
-5. **Singleton Pattern for Resources**
-   - One Redis connection for cache AND session
-   - Centralized configuration loading
-   - Shared utilities and helpers
+## Docs Reference
 
-6. **Dual Storage Strategy**
-   - Redis for performance-critical operations (validation, caching)
-   - Database for persistence and management (audit trail, listings)
-   - Example: Session management uses both Redis and Database
-
-7. **Nested JSON for i18n**
-   - Message keys support nested structure
-   - File name as prefix: `user.json` → `user.*` keys
-   - Navigate nested objects: `user.error.notFound`
-
-8. **Type-Safe Enums**
-   - PascalCase with `Enum` prefix: `EnumUserStatus`
-   - camelCase for keys/values: `active`, `inactive`
-   - Dedicated files per enum
-
-9. **Metadata Pattern**
-   - Use `metadataActivityLog` in service responses
-   - Decorators automatically capture and log metadata
-   - Store context for audit trail
-
-10. **Feature Flag Pattern**
-    - Dynamic feature control without deployment
-    - Gradual rollout with percentage-based access
-    - Metadata for granular control within features
-
-### ❌ Anti-Patterns to Avoid
-
-1. **Direct Database Access**
-   ```typescript
-   // ❌ WRONG - Never inject DatabaseService in services
-   export class UserService {
-       constructor(private readonly databaseService: DatabaseService) {}
-   }
-   
-   // ✅ CORRECT - Use repository pattern
-   export class UserService {
-       constructor(private readonly userRepository: IUserRepository) {}
-   }
-   ```
-
-2. **Relative Imports**
-   ```typescript
-   // ❌ WRONG - Never use relative paths
-   import { UserDto } from './dtos/user.dto';
-   import { IUserService } from '../interfaces/user-service.interface';
-   
-   // ✅ CORRECT - Always use absolute path aliases
-   import { UserDto } from '@modules/user/dtos/user.dto';
-   import { IUserService } from '@modules/user/interfaces/user-service.interface';
-   ```
-
-3. **Multiple Redis Connections**
-   ```typescript
-   // ❌ WRONG - Creating separate connections
-   const cacheRedis = new Redis();
-   const sessionRedis = new Redis();
-   
-   // ✅ CORRECT - Share one connection via RedisClientCachedProvider
-   ```
-
-4. **Ignoring Decorator Order**
-   ```typescript
-   // ❌ WRONG - Incorrect order
-   @Get('/endpoint')
-   @AuthJwtAccessProtected()
-   @UserProtected()
-   @ExampleDoc()
-   
-   // ✅ CORRECT - Follow the exact order
-   @ExampleDoc()
-   @UserProtected()
-   @AuthJwtAccessProtected()
-   @Get('/endpoint')
-   ```
-
-5. **Flat i18n Structure**
-   ```typescript
-   // ❌ WRONG - Assuming flat structure
-   {
-       "user.get": "Get user",
-       "user.error.notFound": "Not found"
-   }
-   
-   // ✅ CORRECT - Use nested structure
-   {
-       "get": "Get user",
-       "error": {
-           "notFound": "Not found"
-       }
-   }
-   ```
-
-6. **Missing @Inject for Repositories**
-   ```typescript
-   // ❌ WRONG - Using @Inject unnecessarily
-   constructor(@Inject(...) private readonly userRepository: IUserRepository) {}
-   
-   // ✅ CORRECT - Direct injection
-   constructor(private readonly userRepository: IUserRepository) {}
-   ```
-
-7. **UPPER_SNAKE_CASE for Enums**
-   ```typescript
-   // ❌ WRONG - UPPER_SNAKE_CASE
-   export enum ENUM_USER_STATUS {
-       ACTIVE = 'ACTIVE',
-       INACTIVE = 'INACTIVE'
-   }
-   
-   // ✅ CORRECT - PascalCase name, camelCase keys
-   export enum EnumUserStatus {
-       active = 'active',
-       inactive = 'inactive'
-   }
-   ```
-
-8. **Logging Sensitive Data**
-   ```typescript
-   // ❌ WRONG - Logging sensitive information
-   this.logger.log(`User logged in with password: ${password}`);
-   
-   // ✅ CORRECT - Sensitive fields are auto-redacted
-   this.logger.log(`User logged in: ${userId}`);
-   ```
-
-9. **Missing Session Invalidation**
-   ```typescript
-   // ❌ WRONG - Not invalidating sessions on security changes
-   async changePassword(userId: string, newPassword: string) {
-       await this.userRepository.updatePassword(userId, newPassword);
-       // Missing session invalidation!
-   }
-   
-   // ✅ CORRECT - Always invalidate sessions
-   async changePassword(userId: string, newPassword: string) {
-       await this.userRepository.updatePassword(userId, newPassword);
-       await this.sessionService.deleteAllByUserId(userId); // Invalidate all sessions
-   }
-   ```
-
-10. **Using Array Transaction for Complex Logic**
-    ```typescript
-    // ❌ WRONG - Array syntax can't handle conditionals
-    await this.databaseService.$transaction([
-        this.databaseService.user.create({ data }),
-        // Can't add conditional operations here
-    ]);
-    
-    // ✅ CORRECT - Use callback for complex logic
-    await this.databaseService.$transaction(async (tx) => {
-        const user = await tx.user.create({ data });
-        if (user.role === 'admin') {
-            await tx.profile.create({ data: profileData });
-        }
-    });
-    ```
-
-## Additional Resources
-
-Refer to these documentation files in `/docs`:
-- `project-structure.md` - Detailed project architecture
-- `authentication.md` - Authentication and session management
-- `two-factor.md` - Two-factor authentication (TOTP)
-- `authorization.md` - Authorization and access control
-- `database.md` - Database setup and operations
-- `request-validation.md` - Request validation patterns
-- `response.md` - Response formatting
-- `handling-error.md` - Error handling
-- `logger.md` - Logging system
-- `queue.md` - Queue processing
-- `cache.md` - Caching strategies
-- `configuration.md` - Configuration management
-- `environment.md` - Environment variables
-- `file-upload.md` - File upload handling
-- `presign.md` - Presigned URL handling
-- `pagination.md` - Pagination patterns
-- `message.md` - Internationalization
-- `activity-log.md` - Activity logging
-- `term-policy.md` - Terms and policies
-- `feature-flag.md` - Feature flags
-- `security-and-middleware.md` - Security features
-- `third-party-integration.md` - External integrations
-- `notification.md` - Notification system (push, email, in-app)
-- `doc.md` - Swagger/API documentation setup
+Full documentation in `/docs`:
+`authentication.md` · `authorization.md` · `database.md` · `device.md`
+`two-factor.md` · `activity-log.md` · `cache.md` · `queue.md`
+`notification.md` · `response.md` · `request-validation.md` · `handling-error.md`
+`message.md` · `pagination.md` · `file-upload.md` · `feature-flag.md`
+`term-policy.md` · `security-and-middleware.md` · `third-party-integration.md`
+`analytics.md` (planned) · `configuration.md` · `environment.md`
 
 ---
 

@@ -31,7 +31,7 @@
         "lint": "eslint",
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
-        "test": "TZ=UTC jest --config test/jest.json --passWithNoTests --detectOpenHandles",
+        "test": "TZ=UTC jest --config test/jest.json --detectOpenHandles",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",
         "migration": "nest build migration --config nest-cli.json && node dist/migration.js",

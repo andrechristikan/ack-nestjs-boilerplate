@@ -64,7 +64,25 @@ tmp/
 .turbo/
 .parcel-cache/
 
-# Claude Code - cache data
+# AI Tools
+## Claude Code
 .claude/agent-memory/
 .claude/*.local.md
 .claude/settings.local.json
+.claude/worktrees/
+.claude/todos.json
+.claude/scheduled-tasks/
+
+## Cursor
+.cursorignore
+.cursorindexingignore
+.cursor/
+
+## GitHub Copilot
+.copilot/
+
+## Windsurf
+.windsurfrules
+
+## AI generated files
+plan.md

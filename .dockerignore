@@ -60,10 +60,19 @@ nodemon.json
 # CI configuration (except ci/dockerfile which is used for production build)
 ci/jwks-server/
 
+# AI Tools
+.claude/
+.cursor/
+.cursorignore
+.cursorindexingignore
+.copilot/
+.windsurfrules
+plan.md
+
 # Keep these files as they are needed for production build:
 # - ci/dockerfile (used by GitHub Actions)
 # - eslint.config.mjs (might be needed for linting)
-# - nest-cli.json (needed for NestJS CLI commands)  
+# - nest-cli.json (needed for NestJS CLI commands)
 # - tsconfig.json (needed for TypeScript compilation)
 # - test/ (keep for testing capabilities)
 # - scripts/ (might contain build scripts)

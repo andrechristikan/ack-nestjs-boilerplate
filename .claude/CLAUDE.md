@@ -1,17 +1,60 @@
 # ACK NestJS Boilerplate — Claude Code Instructions
 
+> **Claude Code Behavior Note**
+> - Always read relevant source files before suggesting changes — never assume code structure.
+> - Every suggestion or implementation **must consider best practices** (security, maintainability, scalability, readability).
+> - If an approach is chosen for **performance** reasons or to **match an existing implementation**, **it must be explicitly noted**.
+> - Provide code examples immediately when clarifying a suggestion — do not ask for confirmation first.
+
 ## Project Overview
 
-ACK NestJS Boilerplate (v8.2.0+) is an enterprise-grade authentication and authorization service built with:
-- **NestJS v11** + **TypeScript** (strict)
+ACK NestJS Boilerplate is an enterprise-grade authentication and authorization service built with:
+- **NestJS v11** + **TypeScript** with strict mode (`strictNullChecks: true`, `noImplicitAny: true`) and path aliases
 - **Prisma ORM** → MongoDB (replica set required for transactions)
 - **Redis** → cache + session store (`db:0`) and BullMQ queues (`db:1`)
-- **PNPM** as the only allowed package manager
+- **PNPM** as the only allowed package manager (npm/yarn blocked)
+- **Node.js** >= 24.11.0
 - **ES256** (access token) / **ES512** (refresh token) JWT algorithms
+- **Repository Design Pattern** for data access layer
+- **Modular Architecture** with clear separation of concerns
+- **SOLID Principles** throughout the codebase
+- **class-validator** and **class-transformer** for DTO validation and transformation
+- **Swagger** for API documentation
+- **i18n** for internationalization with nested JSON structure
 
 ## Architecture
 
+### Module Structure
+
+Every feature module follows:
+```
+module/
+├── bases/              # Abstract base classes for shared functionality
+├── constants/          # Static values and configuration
+├── controllers/        # API endpoint handlers
+├── decorators/         # Custom metadata decorators
+├── docs/              # Swagger/OpenAPI documentation decorators
+├── dtos/              # Data Transfer Objects with validation
+├── entities/          # Database entity types
+├── enums/             # Type-safe enumerations
+├── exceptions/        # Custom error classes
+├── factories/         # Object creation patterns
+├── filters/           # Exception/validation filters
+├── guards/            # Authorization and access control
+├── interceptors/      # Request/response transformation
+├── interfaces/        # TypeScript contracts
+├── middlewares/       # Request preprocessing
+├── pipes/             # Data transformation and validation
+├── processors/        # Background job handlers (BullMQ)
+├── repositories/      # Data access layer (Prisma)
+├── services/          # Business logic
+├── templates/         # Email/document templates
+├── utils/             # Helper utilities
+└── validations/       # Custom validators
+```
+
 ### Repository Design Pattern
+
 - `Repository` → data access only, injects `DatabaseService` directly (no `@Inject`)
 - `Service` → business logic only, injects repository as class (no interface for repo)
 - `Service` always implements an **interface** (`IUserService`)
@@ -22,35 +65,43 @@ ACK NestJS Boilerplate (v8.2.0+) is an enterprise-grade authentication and autho
 @Injectable()
 export class UserRepository {
     constructor(private readonly databaseService: DatabaseService) {}
+
+    async findById(id: string): Promise<User | null> {
+        return this.databaseService.user.findFirst({
+            where: { id }
+        });
+    }
 }
 
-// ✅ Service — always has interface, injects repo as class
+// ✅ Service Interface — services always have an interface
+export interface IUserService {
+    findById(id: string): Promise<User | null>;
+}
+
+// ✅ Service Implementation — injects repo as class
 export class UserService implements IUserService {
     constructor(private readonly userRepository: UserRepository) {}
 }
 ```
 
-### Module Structure
-
-Every feature module follows:
-```
-module/
-├── controllers/    dtos/        entities/     enums/
-├── exceptions/     guards/      interfaces/   repositories/
-├── services/       utils/       decorators/   docs/
-└── processors/     templates/   validations/
-```
-
 ### Path Aliases (always use, never relative paths)
-```
-@app/*      → src/app/*
-@common/*   → src/common/*
-@config     → src/configs/index.ts
-@configs/*  → src/configs/*
-@modules/*  → src/modules/*
-@routes/*   → src/router/routes/*
-@generated/* → generated/*
-@prisma/client → generated/prisma-client
+
+- `@app/*` → `src/app/*`
+- `@common/*` → `src/common/*`
+- `@config` → `src/configs/index.ts`
+- `@configs/*` → `src/configs/*`
+- `@modules/*` → `src/modules/*`
+- `@routes/*` → `src/router/routes/*`
+- `@router` → `src/router/router.module.ts`
+- `@migration/*` → `src/migration/*`
+- `@test/*` → `test/*`
+- `@generated/*` → `generated/*`
+- `@prisma/client` → `generated/prisma-client`
+
+```typescript
+import { DatabaseModule } from '@common/database/database.module';
+import { IConfigAuth } from '@configs/auth.config';
+import { UserModule } from '@modules/user/user.module';
 ```
 
 ## Naming Conventions
@@ -61,9 +112,26 @@ module/
 | Interface | `I` + PascalCase | `IUserService` |
 | Enum | `Enum` + PascalCase | `EnumUserStatus` |
 | Enum keys/values | camelCase | `active`, `inactive` |
+| Constants | PascalCase | `MaxAttempt`, `DefaultPageSize` |
 | Files | kebab-case | `user.service.ts` |
 | Methods/Variables | camelCase | `findById`, `userId` |
 | DTO suffix | `RequestDto` / `ResponseDto` | `CreateUserRequestDto` |
+
+### Enum Usage
+
+```typescript
+export enum EnumUserStatus {
+    active = 'active',
+    inactive = 'inactive',
+    deleted = 'deleted'
+}
+
+export enum EnumUserStatusCodeError {
+    notFound = 5000,
+    alreadyExists = 5001,
+    inactive = 5002
+}
+```
 
 ## Decorator Order (EXACT — never change)
 
@@ -131,6 +199,106 @@ DELETE /user/device/remove/:deviceId
 @ApiKeyProtected()              Machine-to-machine API key auth
 ```
 
+## Request & Response
+
+### DTOs (Data Transfer Objects)
+
+**Naming Convention:**
+- Request DTOs **must** use the `RequestDto` suffix (e.g., `CreateUserRequestDto`, `LoginRequestDto`).
+- Response DTOs **must** use the `ResponseDto` suffix (e.g., `UserResponseDto`, `LoginResponseDto`).
+
+Use `class-validator` decorators for validation:
+
+```typescript
+import { IsString, IsEmail, MinLength } from 'class-validator';
+import { Expose } from 'class-transformer';
+
+export class CreateUserRequestDto {
+    @IsEmail()
+    @Expose()
+    email: string;
+
+    @IsString()
+    @MinLength(8)
+    @Expose()
+    password: string;
+}
+```
+
+### Response Decorators
+
+Use standardized response decorators. The return object supports two optional fields:
+
+- **`metadata?: IResponseMetadata`** — override response behavior: `statusCode`, `httpStatus`, `messagePath`, `messageProperties`
+- **`metadataActivityLog?: IActivityLogMetadata`** — pass activity log context (captured automatically by `@ActivityLog` decorator)
+
+```typescript
+// Standard response
+@Response('user.get')
+@Get('/:id')
+async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
+    return { data: await this.userService.findById(id) };
+}
+
+// Override response message or statusCode via metadata
+@Response('user.create')
+@Post('/')
+async createUser(@Body() body: CreateUserRequestDto): Promise<IResponseReturn<UserDto>> {
+    return {
+        data: await this.userService.create(body),
+        metadata: {
+            statusCode: EnumUserStatusCodeError.alreadyExists,
+            messageProperties: { name: body.name },
+        },
+    };
+}
+
+// Paginated response
+@ResponsePaging('user.list')
+@Get('/')
+async listUsers(@Query() query: UserListDto): Promise<IResponsePagingReturn<UserDto[]>> {
+    return await this.userService.list(query);
+}
+```
+
+### Request Context Decorators (IP, Geo, User Agent)
+
+Use these parameter decorators from `@common/request/decorators/request.decorator.ts`:
+
+- **`@RequestIPAddress()`** — real client IP via `nestjs-real-ip`
+- **`@RequestGeoLocation()`** — `GeoLocation | null` via `geoip-lite`
+- **`@RequestUserAgent()`** — parsed `UserAgent` object via `ua-parser-js`
+
+```typescript
+@Post('/login')
+async login(
+    @Body() body: UserLoginRequestDto,
+    @RequestIPAddress() ipAddress: string,
+    @RequestUserAgent() userAgent: UserAgent,
+    @RequestGeoLocation() geoLocation: GeoLocation | null
+): Promise<IResponseReturn<AuthTokenResponseDto>> {
+    return {
+        data: await this.userService.login(body, { ipAddress, userAgent, geoLocation })
+    };
+}
+```
+
+### Error Handling
+
+```typescript
+throw new NotFoundException({
+    statusCode: EnumUserStatusCodeError.notFound,
+    message: 'user.error.notFound',          // i18n key
+    messageProperties: { id: userId },       // optional interpolation
+    data: { userId },                        // optional debug context
+});
+```
+
+Optional exception properties (all from `IAppException`):
+- **`messageProperties?: IMessageProperties`** — `Record<string, string | number>` for i18n interpolation
+- **`errors?: IMessageValidationError[]`** — validation error details
+- **`metadata?: Record<string, string | number>`** — extra context for debugging
+
 ## Database & Transactions
 
 - MongoDB must run as **replica set** (required for transactions)
@@ -160,6 +328,44 @@ pnpm migration:seed    # Seed all data
 pnpm migration {module} --type seed    # Seed specific module
 ```
 
+## Queue System (BullMQ)
+
+- Extend `QueueProcessorBase`, implement `process(job)` with switch
+- Use `QueueException(msg, isFatal)` — `isFatal: true` reports to Sentry
+- Default: 3 attempts, exponential backoff (5s)
+- Available queues: `notification`, `notificationEmail`, `notificationPush`
+
+```typescript
+@QueueProcessor(EnumQueue.notificationPush)
+export class NotificationPushProcessor extends QueueProcessorBase {
+    private readonly logger = new Logger(NotificationPushProcessor.name);
+
+    constructor(
+        private readonly notificationPushProcessorService: NotificationPushProcessorService
+    ) {
+        super();
+    }
+
+    async process(
+        job: Job<unknown, IQueueResponse, EnumNotificationPushProcess>
+    ): Promise<IQueueResponse> {
+        try {
+            switch (job.name) {
+                case EnumNotificationPushProcess.newDeviceLogin:
+                    return this.notificationPushProcessorService.processNewDeviceLogin(
+                        job as Job<INotificationPushWorkerPayload, IQueueResponse>
+                    );
+                default:
+                    return { success: false };
+            }
+        } catch (error: unknown) {
+            this.logger.error(error);
+            throw new QueueException('Process failed', error as Error, job.data);
+        }
+    }
+}
+```
+
 ## Cache (Redis)
 
 - `CacheMainProvider` → general app cache (`db:0`)
@@ -167,62 +373,6 @@ pnpm migration {module} --type seed    # Seed specific module
 - BullMQ → `db:1` (never mix with cache)
 - Default TTL: 5 minutes; feature flags: 1 hour
 - Single Redis connection shared via `RedisCacheModule` (DRY pattern)
-
-## Response Pattern
-
-```typescript
-// Standard
-@Response('user.get')
-async get(): Promise<IResponseReturn<UserDto>> {
-    return { data: await this.userService.findById(id) };
-}
-
-// Paginated
-@ResponsePaging('user.list')
-async list(): Promise<IResponsePagingReturn<UserDto[]>> {
-    return { type: 'offset', data, totalPage, page, perPage, count, ... };
-}
-
-// With activity log metadata
-return {
-    data: updated,
-    metadataActivityLog: { userId, oldStatus, newStatus }
-};
-```
-
-## Error Handling
-
-```typescript
-throw new NotFoundException({
-    statusCode: EnumUserStatusCodeError.notFound,
-    message: 'user.error.notFound',          // i18n key
-    messageProperties: { id: userId },       // optional interpolation
-    data: { userId },                        // optional debug context
-});
-```
-
-## i18n Messages
-
-- Files in `src/languages/en/` — **nested JSON**, filename = prefix
-- `user.error.notFound` → `src/languages/en/user.json` → `error.notFound`
-- Never assume flat structure
-
-```json
-// user.json
-{
-  "error": {
-    "notFound": "User not found",
-    "statusInvalid": "User status {status} is invalid"
-  }
-}
-```
-
-## Queue (BullMQ)
-
-- Extend `QueueProcessorBase`, implement `process(job)` with switch
-- Use `QueueException(msg, isFatal)` — `isFatal: true` reports to Sentry
-- Default: 3 attempts, exponential backoff (5s)
-- Available queues: `notification`, `notificationEmail`, `notificationPush`
 
 ## Logging
 
@@ -235,6 +385,22 @@ this.logger.log('User created');
 ```
 
 Sensitive data (password, token, apiKey, etc.) auto-redacted by Pino.
+
+## i18n Messages
+
+- Files in `src/languages/en/` — **nested JSON**, filename = prefix
+- `user.error.notFound` → `src/languages/en/user.json` → `error.notFound`
+- Never assume flat structure
+
+```json
+{
+  "get": "Get user successfully",
+  "error": {
+    "notFound": "User not found",
+    "statusInvalid": "User status {status} is invalid"
+  }
+}
+```
 
 ## Activity Log
 
@@ -276,18 +442,104 @@ Rollout uses deterministic MD5 hash of `userId` — same user always gets same r
 - Draft → editable, private S3; Published → immutable, public S3
 - `@TermPolicyAcceptanceProtected()` defaults to requiring `termsOfService` + `privacy`
 
+## Rate Limiting
+
+- Global default: **100 requests / 60 seconds** per IP
+- Auth endpoints (login, signup, forgot-password): **5 req / 60s**
+- OTP/2FA verification: **5 req / 60s**
+- Token refresh: **10 req / 60s**
+- File upload: **10 req / 60s**
+- Admin endpoints: **30 req / 60s**
+- Public read (list, get): **60 req / 60s**
+- Override per-endpoint with `@Throttle({ default: { ttl: 60000, limit: N } })`
+- `ThrottlerGuard` must be registered as global guard via `APP_GUARD`
+- Response 429 must follow standard error response format
+
+## Password Security
+
+- Bcrypt salt rounds: **10** minimum, **11** recommended for sensitive apps
+- Password expiration: 182 days
+- Password rotation period: 90 days
+- Max login attempts: 5 (then lockout)
+- Temporary password expiration: 3 days
+- Password history tracked to prevent reuse
+- Always invalidate ALL sessions on password change/reset
+
+## Environment Configuration
+
+Configuration files are in `src/configs/` and use environment variables. **Every config file must export a TypeScript interface** alongside the `registerAs` function:
+
+```typescript
+export interface IConfigAuth {
+    password: {
+        attempt: boolean;
+        maxAttempt: number;
+    };
+    accessToken: {
+        secretKey: string;
+        expirationTime: string;
+    };
+}
+
+export default registerAs(
+    'auth',
+    (): IConfigAuth => ({
+        password: {
+            attempt: true,
+            maxAttempt: 5,
+        },
+        accessToken: {
+            secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY,
+            expirationTime: '15m',
+        }
+    })
+);
+```
+
+## Docker
+
+- `dockerfile` (root) → **development only** (`start:dev`, includes devDependencies)
+- CI/CD uses separate production Dockerfile with multi-stage build
+- Production image: `node:lts-alpine`, `NODE_ENV=production`, `CMD ["node", "dist/main.js"]`, `USER node`
+- Never copy `.env` into Docker image — inject via environment variables at runtime
+
 ## Key Scripts
 
 ```bash
+# Development
 pnpm start:dev         # Dev server with hot reload
 pnpm build             # Production build
-pnpm lint              # ESLint
-pnpm lint:fix          # Auto-fix lint
-pnpm format            # Prettier
+pnpm format            # Format code with Prettier
+pnpm lint              # Run ESLint
+pnpm lint:fix          # Fix ESLint errors
+
+# Database
+pnpm db:migrate        # Sync Prisma schema to DB
+pnpm db:generate       # Generate Prisma client
+pnpm db:studio         # Open Prisma Studio
+
+# Migration & Seeding
+pnpm migration:seed    # Seed all data
+pnpm migration:remove  # Remove all seeded data
+pnpm migration:fresh   # Reset DB and re-seed
+pnpm migration {module} --type seed    # Seed specific module
+pnpm migration {module} --type remove  # Remove specific module
+
+# Testing & Quality
 pnpm test              # Run tests
-pnpm generate:keys     # Generate ES256/ES512 JWT key pairs
-pnpm clean             # Clean node_modules + dist
+pnpm deadcode          # Check for unused code
+pnpm spell             # Spell check
+pnpm typecheck         # TypeScript type checking
+
+# Docker
 docker-compose up -d   # Start MongoDB + Redis + JWKS server
+docker-compose down    # Stop containers
+
+# Keys & Utilities
+pnpm generate:keys     # Generate JWT keys (ES256/ES512)
+pnpm clean             # Clean build and dependencies
+pnpm package:upgrade   # Upgrade packages
+pnpm package:check     # Check package updates
 ```
 
 ## Anti-Patterns (Never Do)
@@ -301,6 +553,39 @@ docker-compose up -d   # Start MongoDB + Redis + JWKS server
 - Skip session invalidation on password change/reset
 - Use `UPPER_SNAKE_CASE` for enums → use `PascalCase` name, `camelCase` keys
 - Use array transaction for conditional logic → use callback syntax
+- Use `--passWithNoTests` in CI after tests are written → remove flag once first test exists
+- Use `any` type → use proper typing (enforced by `noImplicitAny: true`)
+- Ignore null checks → handle nulls properly (enforced by `strictNullChecks: true`)
+- Use `@Inject` unnecessarily for repositories → direct class injection
+
+## Design Patterns & Principles
+
+### Patterns to Follow
+
+1. **DRY** — Single Redis connection, single config source, reusable base classes, global modules
+2. **Repository Pattern** — Abstract DB ops through repositories, never inject `DatabaseService` in services
+3. **Global Module Pattern** — `@Global()` for shared modules, avoid repeated imports
+4. **Decorator-Based Protection** — Stack decorators in correct order, declarative cross-cutting concerns
+5. **Singleton Pattern** — One Redis connection for cache AND session, centralized config
+6. **Dual Storage Strategy** — Redis for performance, Database for persistence (e.g., sessions)
+7. **Nested JSON for i18n** — File name as prefix, navigate nested objects
+8. **Type-Safe Enums** — `Enum` prefix PascalCase, camelCase keys, dedicated files
+9. **Metadata Pattern** — `metadataActivityLog` in service responses, auto-captured by decorators
+10. **Feature Flag Pattern** — Dynamic control, deterministic rollout, metadata for granular control
+
+### Global Modules Reference
+- **Common**: `DatabaseModule`, `PaginationModule`, `CacheMainModule`, `RedisCacheModule`, `MessageModule`, `HelperModule`, `FileModule`, `FirebaseModule`
+- **Feature**: `AuthModule`, `SessionModule`, `RoleModule`, `ApiKeyModule`, `PolicyModule`, `ActivityLogModule`, `NotificationModule`, `FeatureFlagModule`, `TermPolicyModule`
+- **Queue**: `QueueRegisterModule`
+
+## Important Notes
+
+- **Production Mode**: Documentation is disabled when `APP_ENV=production`
+- **MongoDB**: Must run as replica set for transactions
+- **Prisma Client**: Regenerate after schema changes with `pnpm db:generate`
+- **Sessions**: Dual storage (Redis + Database) for performance and management
+- **JWT Algorithms**: ES256 for access tokens, ES512 for refresh tokens
+- **Package Manager**: Use PNPM only (enforced by preinstall script)
 
 ## Docs Reference
 

@@ -111,7 +111,7 @@ export default registerAs(
         password: {
             attempt: true,
             maxAttempt: 5,
-            saltLength: 8,
+            saltLength: 12,
             expiredInSeconds: ms('182d') / 1000,
             expiredTemporaryInSeconds: ms('3d') / 1000,
             periodInSeconds: ms('90d') / 1000,
