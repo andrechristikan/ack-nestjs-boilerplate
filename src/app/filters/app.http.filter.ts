@@ -160,7 +160,7 @@ export class AppHttpFilter implements ExceptionFilter {
         }
 
         try {
-            this.logger.error(exception);
+            this.logger.error(exception, 'An unhandled exception occurred');
             Sentry.captureException(exception);
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to send exception to Sentry');

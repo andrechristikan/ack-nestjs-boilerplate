@@ -339,6 +339,8 @@ export class LoggerOptionService {
                     maxDepth,
                     currentDepth + 1
                 );
+            } else {
+                result[key] = this.sanitizeMessage(result[key]);
             }
         }
 
