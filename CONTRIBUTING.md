@@ -56,7 +56,7 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 |------|---------|
-| Node.js | >= 20.x |
+| Node.js | >= 24.11.0 |
 | pnpm | >= 9.x |
 | Docker | Latest stable |
 | MongoDB | Replication set (required for transactions) |
@@ -99,6 +99,8 @@ This project uses **TypeScript** with strict mode. Please follow these standards
   ```
 - No `any` types unless absolutely unavoidable — justify it in a comment
 - All public methods/functions should have proper TypeScript typings
+- **Strict null convention** — `undefined` is only allowed in Request DTO optional fields (`variable?: string`); all other layers (entity, service, repository, response DTO) must use `T | null`
+- Never use `variable?: string | null` — ambiguous; use `?: string` for input or `string | null` for output
 
 ---
 

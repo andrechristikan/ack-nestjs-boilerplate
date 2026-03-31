@@ -39,5 +39,13 @@
     "better-comments.multilineComments": true,
     "better-comments.highlightPlainText": true,
 
-    "prisma.pinToPrisma6": true
+    "prisma.pinToPrisma6": true,
+    "npm-visual-manager.ignoredPackages": [
+        {
+            "name": "@prisma/client"
+        },
+        {
+            "name": "prisma"
+        }
+    ]
 }

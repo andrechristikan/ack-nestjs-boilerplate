@@ -8,12 +8,14 @@ import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 
 /**
- * Decorator that enables activity logging for controller methods.
- * Automatically tracks user actions with optional metadata for audit trail purposes.
+ * Method decorator that enables activity logging for a controller method.
+ * Attaches `ActivityLogInterceptor` and stores the action and optional static metadata via `SetMetadata`.
+ * Dynamic metadata from the service response is captured automatically via `metadataActivityLog` in the response object.
+ * Requires `@AuthJwtAccessProtected()` to be present so that `request.user` is populated before the interceptor runs.
  *
- * @param {EnumActivityLogAction} action - The activity action to be logged
- * @param {IActivityLogMetadata} metadata - Optional metadata to include with the activity log
- * @returns {MethodDecorator} Method decorator function
+ * @param {EnumActivityLogAction} action - The activity action enum value to be recorded
+ * @param {IActivityLogMetadata} [metadata] - Static metadata set at decoration time; merged with dynamic `metadataActivityLog` from the service response
+ * @returns {MethodDecorator} Combined method decorator applying the interceptor and metadata
  */
 export function ActivityLog(
     action: EnumActivityLogAction,

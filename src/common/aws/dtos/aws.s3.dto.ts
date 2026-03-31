@@ -40,7 +40,7 @@ export class AwsS3Dto {
         example: `${faker.internet.url()}/${faker.system.filePath()}`,
         description: 'CDN URL for the object',
     })
-    cdnUrl?: string;
+    cdnUrl?: string | null;
 
     /**
      * Complete URL to access the object

@@ -36,7 +36,7 @@ export interface IAwsSESService {
     deleteTemplate({
         name,
     }: AwsSESGetTemplateDto): Promise<DeleteTemplateCommandOutput>;
-    send<T>({
+    send<T extends Record<string, unknown>>({
         recipients,
         sender,
         replyTo,

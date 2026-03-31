@@ -40,6 +40,20 @@ Every controller method must have decorators in this exact top-to-bottom order:
 - Response DTOs must end with `ResponseDto` (e.g., `UserResponseDto`)
 - Violations are **MAJOR**
 
+### 2a. TypeScript Strict Null Convention
+- `undefined` is only allowed in **Request DTOs** as optional fields (`variable?: string`)
+- Entity, Response DTO, Service params/return types must use `T | null` — never `T | undefined`
+- `variable?: string | null` is **never** allowed anywhere — ambiguous, pick one
+- Correct normalization pattern at the boundary:
+  ```typescript
+  // ✅ DTO has undefined (optional)
+  class UpdateUserRequestDto { bio?: string }
+  // ✅ Service receives null (normalized)
+  service.update(id, dto.bio ?? null)
+  ```
+- Using `undefined` outside of Request DTOs is **MAJOR**
+- Using `?: string | null` anywhere is **MAJOR**
+
 ### 3. Response Pattern
 - Single object: `@Response('i18n.key')` → return type `Promise<IResponseReturn<T>>`
 - Paginated list: `@ResponsePaging('i18n.key')` → return type `Promise<IResponsePagingReturn<T>>`

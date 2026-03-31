@@ -259,6 +259,23 @@ When encountering ambiguity:
 - Prefer asking once with multiple questions over iterating back and forth
 - State assumptions explicitly when proceeding without confirmation
 
+## TypeScript Strict Null Convention
+
+`undefined` is only allowed at the **request boundary** (Request DTOs). The repository layer must always use `null` — never `undefined`.
+
+- Repository return types: `Promise<User | null>` — not `Promise<User | undefined>`
+- Repository method params for optional filters: `string | null` — not `string | undefined` or `string?`
+- Prisma `findFirst` / `findUnique` already return `T | null` — match this in all method signatures
+
+```typescript
+// ✅ Correct
+async findOneById(id: string): Promise<User | null> { ... }
+async findOneByEmail(email: string): Promise<User | null> { ... }
+
+// ❌ Wrong — undefined not allowed in repository layer
+async findOneById(id: string): Promise<User | undefined> { ... }
+```
+
 ## Anti-Patterns — Never Do These
 
 - Inject `DatabaseService` directly into a Service class
@@ -274,6 +291,8 @@ When encountering ambiguity:
 - Use `Record<string, any>` for query filter parameters — use `Prisma.XxxWhereInput`
 - Manually set `updatedAt: new Date()` in update calls — Prisma handles this automatically
 - Use `npm` or `yarn` — always `pnpm`
+- Use `T | undefined` as repository return type — use `T | null` to match Prisma output
+- Use `?: string | null` in any type definition — ambiguous, use `string | null` for internal layers
 
 **Update your agent memory** as you discover schema patterns, common query shapes, model relationships, index strategies, and repository conventions specific to this codebase. This builds institutional knowledge across conversations.
 

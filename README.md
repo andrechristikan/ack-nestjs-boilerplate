@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate designed for backend services. Production-ready NestJS boilerplate with authentication, authorization, and enterprise features
+[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma, works with any database. Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -61,10 +61,10 @@ This boilerplate is perfect for:
 - When using multiple protection decorators, they must be applied in the correct order:
     ```typescript
     @ExampleDoc()
-    @ActivityLog(...)
     @TermPolicyAcceptanceProtected(...)
     @PolicyAbilityProtected({...})
     @RoleProtected(...)
+    @ActivityLog(...)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected(...)
@@ -75,6 +75,7 @@ This boilerplate is perfect for:
 - Since version `8.0.0`, the project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - Since version `8.0.0`, the project uses prisma `6.19` for handle database.
 - Since version `8.0.0`, the project uses pnpm for package manager.
+- **Strict null convention** — `undefined` is only allowed in Request DTO optional fields; all other layers use `T | null`.
 
 ## TODO
 

@@ -572,6 +572,45 @@ pnpm package:upgrade   # Upgrade packages
 pnpm package:check     # Check package updates
 ```
 
+## TypeScript Strict Null Convention
+
+`undefined` is only allowed at the **request boundary** (Request DTOs). Every other layer must use `null` for absent values — never `undefined`.
+
+| Layer | Convention | Reason |
+|---|---|---|
+| Request DTO (optional field) | `variable?: string` | User may omit the field |
+| Entity, Response DTO, Service, Repository | `variable: string \| null` | Explicit absence, aligns with Prisma nullable columns |
+| Return type that may not exist | `T \| null` | Signals intentional "not found", not accidental unset |
+| `variable?: string \| null` | **Never** — ambiguous, pick one |
+
+```typescript
+// ✅ Request DTO — undefined allowed at the boundary
+class UpdateUserRequestDto {
+    @IsOptional()
+    @IsString()
+    bio?: string
+}
+
+// ✅ Entity / internal — null only, no undefined
+class UserEntity {
+    bio: string | null
+    phoneNumber: string | null
+}
+
+// ✅ Service / Repository — null only
+interface IUserService {
+    findById(id: string): Promise<UserEntity | null>
+    update(id: string, bio: string | null): Promise<void>
+}
+
+// ✅ Normalize at the boundary before passing into service
+async update(id: string, dto: UpdateUserRequestDto) {
+    await this.userService.update(id, dto.bio ?? null)
+}
+```
+
+**Rule:** `undefined` stops at the DTO layer. Once data enters the service or deeper, all optional values must be typed as `T | null`.
+
 ## Anti-Patterns (Never Do)
 
 - Inject `DatabaseService` directly into services → use repository
@@ -587,6 +626,8 @@ pnpm package:check     # Check package updates
 - Use `any` type → use proper typing (enforced by `noImplicitAny: true`)
 - Ignore null checks → handle nulls properly (enforced by `strictNullChecks: true`)
 - Use `@Inject` unnecessarily for repositories → direct class injection
+- Use `undefined` in entity, service, or repository layer → use `null` instead
+- Use `variable?: string | null` anywhere → ambiguous, use `?: string` for input or `string | null` for output
 
 ## Design Patterns & Principles
 

@@ -28,7 +28,7 @@ export class AwsSESTemplateDto {
     })
     @IsOptional()
     @IsString()
-    htmlBody?: string;
+    htmlBody?: string | null;
 
     @ApiProperty({
         required: true,
@@ -42,7 +42,7 @@ export class AwsSESTemplateDto {
     })
     @IsOptional()
     @IsString()
-    plainTextBody?: string;
+    plainTextBody?: string | null;
 }
 
 /**
@@ -57,7 +57,7 @@ export class AwsSESGetTemplateDto extends PickType(AwsSESTemplateDto, [
  * Supports single email sending with recipients, CC, BCC, and template data.
  * @template T - Type of template data object
  */
-export class AwsSESSendDto<T> {
+export class AwsSESSendDto<T extends Record<string, unknown>> {
     @ApiProperty({
         required: true,
     })
@@ -71,7 +71,7 @@ export class AwsSESSendDto<T> {
     @IsOptional()
     @IsObject()
     @IsNotEmptyObject()
-    templateData?: T;
+    templateData?: T | null;
 
     @ApiProperty({
         required: true,
@@ -87,7 +87,7 @@ export class AwsSESSendDto<T> {
     @IsCustomEmail()
     @IsString()
     @IsOptional()
-    replyTo?: string;
+    replyTo?: string | null;
 
     @ApiProperty({
         required: true,
@@ -106,7 +106,7 @@ export class AwsSESSendDto<T> {
     @IsOptional()
     @IsCustomEmail({ each: true })
     @IsArray()
-    cc?: string[];
+    cc?: string[] | null;
 
     @ApiProperty({
         required: true,
@@ -115,7 +115,7 @@ export class AwsSESSendDto<T> {
     @IsOptional()
     @IsCustomEmail({ each: true })
     @IsArray()
-    bcc?: string[];
+    bcc?: string[] | null;
 }
 
 /**

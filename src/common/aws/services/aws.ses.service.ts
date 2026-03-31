@@ -54,11 +54,11 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
     private sesClient: SESClient;
 
     constructor(private readonly configService: ConfigService) {
-        this.iamKey = this.configService.get<string | null>('aws.ses.iam.key');
+        this.iamKey = this.configService.get<string | null>('aws.ses.iam.key')!;
         this.iamSecret = this.configService.get<string | null>(
             'aws.ses.iam.secret'
-        );
-        this.region = this.configService.get<string | null>('aws.ses.region');
+        )!;
+        this.region = this.configService.get<string | null>('aws.ses.region')!;
     }
 
     /**
@@ -93,9 +93,9 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
     }
 
     /**
-     * Verifies connectivity to AWS SES by sending a GetSendQuota request.
-     * Returns `false` immediately if the service is not initialized.
-     * @returns {Promise<boolean>} `true` if connected successfully, `false` if not initialized or request fails
+     * Verifies connectivity to AWS SES by sending a `GetSendQuota` request.
+     * Returns `false` immediately if the service is not initialized or if the request throws.
+     * @returns {Promise<boolean>} `true` if connected successfully, `false` otherwise
      */
     async checkConnection(): Promise<boolean> {
         if (!this.isInitialized()) {
@@ -120,9 +120,10 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
 
     /**
      * Retrieves a paginated list of email templates from AWS SES.
+     * Each page returns at most 20 templates. Pass `nextToken` from the previous response to fetch the next page.
      * Returns an empty `TemplatesMetadata` array if the service is not initialized.
-     * @param {string} [nextToken] - Optional pagination token to retrieve the next page of results
-     * @returns {Promise<ListTemplatesCommandOutput>} List of template metadata with an optional `NextToken` for pagination
+     * @param {string} [nextToken] - Optional pagination token from the previous `listTemplates` response
+     * @returns {Promise<ListTemplatesCommandOutput>} List of template metadata with an optional `NextToken` for the next page
      */
     async listTemplates(
         nextToken?: string
@@ -167,7 +168,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
 
             return {
                 $metadata: {},
-                Template: null,
+                Template: undefined,
             } as GetTemplateCommandOutput;
         }
 
@@ -213,8 +214,8 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
             Template: {
                 TemplateName: name,
                 SubjectPart: subject,
-                HtmlPart: htmlBody,
-                TextPart: plainTextBody,
+                HtmlPart: htmlBody ?? undefined,
+                TextPart: plainTextBody ?? undefined,
             },
         });
 
@@ -256,8 +257,8 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
             Template: {
                 TemplateName: name,
                 SubjectPart: subject,
-                HtmlPart: htmlBody,
-                TextPart: plainTextBody,
+                HtmlPart: htmlBody ?? undefined,
+                TextPart: plainTextBody ?? undefined,
             },
         });
 
@@ -300,12 +301,13 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
 
     /**
      * Sends a templated email to one or more recipients using AWS SES.
-     * Returns an empty output with a `null` MessageId if the service is not initialized.
-     * @template T - Shape of the template data object
+     * If `replyTo` is not provided, it falls back to `sender`.
+     * Returns an empty output with `MessageId: undefined` if the service is not initialized.
+     * @template T - Shape of the template data object used to populate the template variables
      * @param {AwsSESSendDto<T>} dto - DTO containing recipients, sender, reply-to, CC, BCC, template name, and template data
      * @returns {Promise<SendTemplatedEmailCommandOutput>} Send result including the SES `MessageId`
      */
-    async send<T>({
+    async send<T extends Record<string, unknown>>({
         recipients,
         sender,
         replyTo,
@@ -320,7 +322,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
             );
 
             return {
-                MessageId: null,
+                MessageId: undefined,
                 $metadata: {},
             } as SendTemplatedEmailCommandOutput;
         }
@@ -348,10 +350,12 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
     }
 
     /**
-     * Sends templated emails to multiple recipients in bulk using AWS SES.
-     * Each recipient can have individual template data via `ReplacementTemplateData`.
+     * Sends a templated email to multiple recipients in bulk using AWS SES.
+     * Each recipient is sent individually and can override template variables via their own `templateData`.
+     * `defaultTemplateData` is used as the fallback template data when a recipient's `templateData` is absent; defaults to `{}` if not provided.
+     * If `replyTo` is not provided, it falls back to `sender`.
      * Returns an empty `Status` array if the service is not initialized.
-     * @param {AwsSESSendBulkDto} dto - DTO containing per-recipient data, sender, reply-to, CC, BCC, template name, and default template data
+     * @param {AwsSESSendBulkDto} dto - DTO containing per-recipient entries, sender, reply-to, CC, BCC, template name, and default template data
      * @returns {Promise<SendBulkTemplatedEmailCommandOutput>} Bulk send result with per-destination status and message IDs
      */
     async sendBulk({

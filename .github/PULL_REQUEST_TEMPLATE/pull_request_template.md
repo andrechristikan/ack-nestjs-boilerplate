@@ -34,6 +34,8 @@
 - [ ] `pnpm deadcode` passes
 - [ ] No `any` types introduced (`noImplicitAny: true`)
 - [ ] Null values handled properly (`strictNullChecks: true`)
+- [ ] `undefined` only used in Request DTO optional fields (`variable?: string`) — all other layers use `T | null`
+- [ ] No `variable?: string | null` anywhere — use `?: string` for input or `string | null` for output
 - [ ] No breaking changes (or documented below)
 
 ### Architecture (if applicable)
