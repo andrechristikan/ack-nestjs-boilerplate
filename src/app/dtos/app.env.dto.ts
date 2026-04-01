@@ -378,9 +378,9 @@ export class AppEnvDto {
     AWS_S3_IAM_ARN?: string;
 
     /**
-     * AWS S3 region where the buckets are located
+     * AWS S3 region where the public bucket is located
      */
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     AWS_S3_REGION?: string;
 

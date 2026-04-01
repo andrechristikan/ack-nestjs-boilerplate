@@ -6,7 +6,7 @@ import {
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 export interface INotificationPushProcessorService {
     processNewDeviceLogin({

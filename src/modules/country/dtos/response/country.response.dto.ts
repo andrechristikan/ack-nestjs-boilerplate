@@ -1,8 +1,8 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CountryResponseDto extends DatabaseDto {
+export class CountryResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         description: 'Country name',

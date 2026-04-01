@@ -1,9 +1,9 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumNotificationPriority, EnumNotificationType } from '@generated/prisma-client';
 
-export class NotificationResponseDto extends DatabaseDto {
+export class NotificationResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),

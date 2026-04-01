@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumUserGender,
     EnumUserLoginFrom,
@@ -10,12 +10,12 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client';
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { AwsS3ResponseDto } from '@common/aws/dtos/response/aws.s3.response.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
 import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
 
-export class UserDto extends DatabaseDto {
+export class UserDto extends DatabaseResponseDto {
     @ApiProperty({
         required: false,
         maxLength: 100,
@@ -158,10 +158,10 @@ export class UserDto extends DatabaseDto {
 
     @ApiProperty({
         required: false,
-        type: AwsS3Dto,
+        type: AwsS3ResponseDto,
     })
-    @Type(() => AwsS3Dto)
-    photo?: AwsS3Dto;
+    @Type(() => AwsS3ResponseDto)
+    photo?: AwsS3ResponseDto;
 
     @ApiProperty({
         required: true,

@@ -35,8 +35,8 @@
         "disable": "Two-factor authentication has been disabled.",
         "resetByAdmin": "Two-factor authentication has been reset."
     },
+    "updateStatus": "User status updated successfully.",
     "import": "User data imported successfully.",
-    "export": "User data export initiated successfully.",
     "loginSetupTwoFactor": "Two-factor setup initiated successfully.",
     "loginVerifyTwoFactor": "Two-factor verification successful.",
     "logout": "Logged out successfully.",

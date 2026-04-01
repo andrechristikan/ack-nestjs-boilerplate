@@ -83,6 +83,7 @@ class RequestUserAgentOsResponseDto {
     version?: string;
 }
 
+/** Response DTO representing parsed User-Agent information from the request header. */
 export class RequestUserAgentResponseDto {
     @ApiProperty({
         required: false,

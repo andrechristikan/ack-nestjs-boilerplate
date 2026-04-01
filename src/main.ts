@@ -5,7 +5,7 @@ import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from '@app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer, validate } from 'class-validator';
-import swaggerInit from 'src/swagger';
+import swaggerInit from './swagger';
 import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from '@app/dtos/app.env.dto';
 import { MessageService } from '@common/message/services/message.service';
@@ -21,26 +21,26 @@ async function bootstrap(): Promise<void> {
     app.useLogger(app.get(PinoLogger));
 
     const configService = app.get(ConfigService);
-    const env: string = configService.get<string>('app.env');
-    const timezone: string = configService.get<string>('app.timezone');
-    const host: string = configService.get<string>('app.http.host');
-    const port: number = configService.get<number>('app.http.port');
-    const globalPrefix: string = configService.get<string>('app.globalPrefix');
+    const env: string = configService.get<string>('app.env')!;
+    const timezone: string = configService.get<string>('app.timezone')!;
+    const host: string = configService.get<string>('app.http.host')!;
+    const port: number = configService.get<number>('app.http.port')!;
+    const globalPrefix: string = configService.get<string>('app.globalPrefix')!;
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
-    );
-    const version: string = configService.get<string>('app.urlVersion.version');
-    const appName: string = configService.get<string>('app.name');
-    const databaseUrl = configService.get<string>('database.url');
-    const databaseDebug = configService.get<boolean>('database.debug');
-    const loggerAuto = configService.get<boolean>('logger.auto');
-    const loggerDebugEnable = configService.get<boolean>('logger.enable');
-    const loggerDebugLevel = configService.get<string>('logger.level');
+    )!;
+    const version: string = configService.get<string>('app.urlVersion.version')!;
+    const appName: string = configService.get<string>('app.name')!;
+    const databaseUrl = configService.get<string>('database.url')!;
+    const databaseDebug = configService.get<boolean>('database.debug')!;
+    const loggerAuto = configService.get<boolean>('logger.auto')!;
+    const loggerDebugEnable = configService.get<boolean>('logger.enable')!;
+    const loggerDebugLevel = configService.get<string>('logger.level')!;
 
     // enable
-    const versionEnable: string = configService.get<string>(
+    const versionEnable: boolean = configService.get<boolean>(
         'app.urlVersion.enable'
-    );
+    )!;
 
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
@@ -74,10 +74,7 @@ async function bootstrap(): Promise<void> {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);
 
-        logger.error(
-            `Env Variable Invalid: ${JSON.stringify(errorsMessage)}`,
-            'NestApplication'
-        );
+        logger.error(errorsMessage, 'Env Variable Invalid');
 
         throw new Error('Env Variable Invalid', {
             cause: errorsMessage,
@@ -104,7 +101,8 @@ async function bootstrap(): Promise<void> {
         `App URL: http://${host}:${port}${globalPrefix}`,
         'NestApplication'
     );
-    logger.log(`Database URL: ${databaseUrl}`, 'NestApplication');
+    const databaseHost = new URL(databaseUrl).host;
+    logger.log(`Database Host: ${databaseHost}`, 'NestApplication');
     logger.log(`Database Debug: ${databaseDebug}`, 'NestApplication');
     logger.log(`Logger Auto: ${loggerAuto}`, 'NestApplication');
     logger.log(`Logger Debug Enable: ${loggerDebugEnable}`, 'NestApplication');

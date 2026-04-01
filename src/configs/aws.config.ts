@@ -4,7 +4,7 @@ import ms from 'ms';
 export interface IConfigAws {
     s3: {
         multipartExpiredInDay: number;
-        presignExpired: number;
+        presignExpiredInSeconds: number;
         maxAttempts: number;
         timeoutInMs: number;
         region: string | null;
@@ -43,7 +43,7 @@ export default registerAs(
     (): IConfigAws => ({
         s3: {
             multipartExpiredInDay: 3,
-            presignExpired: 30 * 60,
+            presignExpiredInSeconds: 30 * 60,
             maxAttempts: 3,
             timeoutInMs: ms('30s'),
             region: process.env.AWS_S3_REGION ?? null,
@@ -71,14 +71,14 @@ export default registerAs(
                     bucket: process.env.AWS_S3_PRIVATE_BUCKET ?? null,
                     baseUrl:
                         process.env.AWS_S3_PRIVATE_BUCKET &&
-                        process.env.AWS_S3_PRIVATE_REGION
-                            ? `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_PRIVATE_REGION}.amazonaws.com`
+                        process.env.AWS_S3_REGION
+                            ? `https://${process.env.AWS_S3_PRIVATE_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`
                             : null,
                     arn: process.env.AWS_S3_PRIVATE_BUCKET
                         ? `arn:aws:s3:::${process.env.AWS_S3_PRIVATE_BUCKET}`
                         : null,
-                    cdnUrl: process.env.AWS_S3_PRIVATE_REGION
-                        ? `https://${process.env.AWS_S3_PRIVATE_REGION}`
+                    cdnUrl: process.env.AWS_S3_PRIVATE_CDN
+                        ? `https://${process.env.AWS_S3_PRIVATE_CDN}`
                         : null,
                 },
             },

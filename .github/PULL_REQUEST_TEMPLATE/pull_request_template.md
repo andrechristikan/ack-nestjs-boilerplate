@@ -34,8 +34,12 @@
 - [ ] `pnpm deadcode` passes
 - [ ] No `any` types introduced (`noImplicitAny: true`)
 - [ ] Null values handled properly (`strictNullChecks: true`)
-- [ ] `undefined` only used in Request DTO optional fields (`variable?: string`) — all other layers use `T | null`
-- [ ] No `variable?: string | null` anywhere — use `?: string` for input or `string | null` for output
+- [ ] `undefined` only at input boundary (Request DTO, Query DTO) and exception/options interfaces — domain data, response DTO domain data fields, and service/repository params use `T | null`
+- [ ] No `variable?: string | null` anywhere — use `?: string` for input boundary or `string | null` for internal layers
+- [ ] Response DTO **domain data fields** use `field: Type | null` (wrapper/structural fields like `data?`, `errors?` may use `?:`)
+- [ ] Repository filter params use `Type | null`, normalization `null → {}` done inside repository before Prisma
+- [ ] Controller normalizes `undefined → null` with `??` before passing to service
+- [ ] `src/configs/` config interfaces use `field: Type | null`; exception/options interfaces outside `src/configs/` may use `field?: Type`
 - [ ] No breaking changes (or documented below)
 
 ### Architecture (if applicable)

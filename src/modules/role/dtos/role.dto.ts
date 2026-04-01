@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { EnumRoleType } from '@generated/prisma-client';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 
-export class RoleDto extends DatabaseDto {
+export class RoleDto extends DatabaseResponseDto {
     @ApiProperty({
         description: 'Name of role',
         example: faker.person.jobTitle(),

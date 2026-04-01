@@ -17,12 +17,19 @@ import { FileMaxDataImport } from '@common/file/constants/file.constant';
  * @template TRaw - The raw data type from the Csv sheet before transformation
  */
 @Injectable()
-export class FilCsvValidationPipe<
+export class FileCsvValidationPipe<
     TDto extends ClassConstructor<unknown>,
     TRaw,
 > implements PipeTransform {
     constructor(private readonly dto: TDto) {}
 
+    /**
+     * Entry point for the NestJS pipe. Returns undefined when the value or DTO class is absent,
+     * otherwise delegates to the internal parse and validation flow.
+     *
+     * @param {TRaw[]} value - Raw CSV row objects to validate
+     * @returns {Promise<TDto[] | undefined>} Validated DTO instances, or undefined if input is empty
+     */
     async transform(value: TRaw[]): Promise<TDto[] | undefined> {
         if (!value || !this.dto) {
             return undefined;
@@ -32,6 +39,14 @@ export class FilCsvValidationPipe<
         return data;
     }
 
+    /**
+     * Validates presence and size of the raw data array before dispatching to DTO validation.
+     * Throws when the array is empty or exceeds the maximum allowed import row count.
+     *
+     * @param {TRaw[]} value - Raw CSV row objects to check and forward
+     * @throws {UnprocessableEntityException} When value is empty or exceeds FileMaxDataImport
+     * @returns {Promise<TDto[]>} Validated DTO instances
+     */
     private async parse(value: TRaw[]): Promise<TDto[]> {
         if (!value || value.length === 0) {
             throw new UnprocessableEntityException({

@@ -188,7 +188,9 @@ export class ResponseFileInterceptor implements NestInterceptor {
     ): void {
         filename =
             filename ?? `export-${timestamp}.${EnumFileExtensionDocument.csv}`;
-        const mime = this.fileService.extractMimeFromFilename(filename);
+        const mime =
+            this.fileService.extractMimeFromFilename(filename) ??
+            'application/octet-stream';
         response
             .setHeader('Content-Type', mime)
             .setHeader(
@@ -212,13 +214,13 @@ export class ResponseFileInterceptor implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
             request.__language ??
-            this.configService.get<EnumMessageLanguage>('message.language');
+            this.configService.get<EnumMessageLanguage>('message.language')!;
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =
             request.__version ??
-            this.configService.get<string>('app.urlVersion.version');
-        const xRepoVersion = this.configService.get<string>('app.version');
+            this.configService.get<string>('app.urlVersion.version')!;
+        const xRepoVersion = this.configService.get<string>('app.version')!;
 
         response.setHeader('x-custom-lang', xLanguage);
         response.setHeader('x-timestamp', xTimestamp);

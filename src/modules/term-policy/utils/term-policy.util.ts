@@ -1,4 +1,4 @@
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -99,7 +99,7 @@ export class TermPolicyUtil {
     }
 
     mapPublicContent(
-        newItems: AwsS3Dto[],
+        newItems: IAwsS3[],
         contents: TermContentDto[]
     ): TermContentDto[] {
         return newItems.map(item => {

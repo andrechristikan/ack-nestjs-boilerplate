@@ -1,8 +1,8 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class FeatureFlagResponseDto extends DatabaseDto {
+export class FeatureFlagResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         description: 'Feature flag key',
     })

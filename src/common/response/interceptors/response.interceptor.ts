@@ -60,11 +60,11 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
-                    let messageProperties: IMessageProperties;
+                    let messageProperties: IMessageProperties | undefined;
 
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
-                    let data: T = undefined;
+                    let data: T | undefined = undefined;
 
                     const metadata: ResponseMetadataDto =
                         this.createResponseMetadata(request);
@@ -115,10 +115,10 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
             (request.__language as EnumMessageLanguage) ??
-            this.configService.get<EnumMessageLanguage>('message.language');
+            this.configService.get<EnumMessageLanguage>('message.language')!;
         const xVersion =
             request.__version ??
-            this.configService.get<string>('app.urlVersion.version');
+            this.configService.get<string>('app.urlVersion.version')!;
 
         return {
             language: xLanguage,
@@ -126,7 +126,7 @@ export class ResponseInterceptor<T> implements NestInterceptor {
             timezone: this.helperService.dateGetZone(today),
             path: request.path,
             version: xVersion,
-            repoVersion: this.configService.get<string>('app.version'),
+            repoVersion: this.configService.get<string>('app.version')!,
             requestId: String(request.id),
             correlationId: String(request.correlationId),
         };

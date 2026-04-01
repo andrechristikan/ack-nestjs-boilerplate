@@ -10,17 +10,21 @@
 
 ACK NestJS Boilerplate is an enterprise-grade authentication and authorization service built with:
 - **NestJS v11** + **TypeScript** with strict mode (`strictNullChecks: true`, `noImplicitAny: true`) and path aliases
-- **Prisma ORM** → MongoDB (replica set required for transactions)
+- **Prisma ORM** → MongoDB (replica set required for transactions; must run as replica set)
 - **Redis** → cache + session store (`db:0`) and BullMQ queues (`db:1`)
-- **PNPM** as the only allowed package manager (npm/yarn blocked)
+- **PNPM** as the only allowed package manager (npm/yarn blocked; enforced by preinstall script)
 - **Node.js** >= 24.11.0
 - **ES256** (access token) / **ES512** (refresh token) JWT algorithms
 - **Repository Design Pattern** for data access layer
 - **Modular Architecture** with clear separation of concerns
 - **SOLID Principles** throughout the codebase
 - **class-validator** and **class-transformer** for DTO validation and transformation
-- **Swagger** for API documentation
+- **Swagger** for API documentation (disabled when `APP_ENV=production`)
 - **i18n** for internationalization with nested JSON structure
+- Sessions use dual storage (Redis + Database) for performance and management — regenerate Prisma client after schema changes with `pnpm db:generate`
+- Full docs in `/docs`: `authentication.md` · `authorization.md` · `database.md` · `device.md` · `two-factor.md` · `activity-log.md` · `cache.md` · `queue.md` · `notification.md` · `response.md` · `request-validation.md` · `handling-error.md` · `message.md` · `pagination.md` · `file-upload.md` · `feature-flag.md` · `term-policy.md` · `security-and-middleware.md` · `third-party-integration.md` · `analytics.md` (planned) · `configuration.md` · `environment.md`
+
+> Scripts & CLI reference: `/scripts` — New module scaffold: `/new-module`
 
 ## Architecture
 
@@ -496,90 +500,120 @@ export default registerAs(
 );
 ```
 
-## Docker
-
-- `dockerfile` (root) → **development only** (`start:dev`, includes devDependencies)
-- CI/CD uses separate production Dockerfile with multi-stage build
-- Production image: `node:lts-alpine`, `NODE_ENV=production`, `CMD ["node", "dist/main.js"]`, `USER node`
-- Never copy `.env` into Docker image — inject via environment variables at runtime
-
-## Key Scripts
-
-```bash
-# Development
-pnpm start:dev         # Dev server with hot reload
-pnpm build             # Production build
-pnpm format            # Format code with Prettier
-pnpm lint              # Run ESLint
-pnpm lint:fix          # Fix ESLint errors
-
-# Database
-pnpm db:migrate        # Sync Prisma schema to DB
-pnpm db:generate       # Generate Prisma client
-pnpm db:studio         # Open Prisma Studio
-
-# Migration & Seeding
-pnpm migration:seed    # Seed all data
-pnpm migration:remove  # Remove all seeded data
-pnpm migration:fresh   # Reset DB and re-seed
-pnpm migration {module} --type seed    # Seed specific module
-pnpm migration {module} --type remove  # Remove specific module
-
-# Testing & Quality
-pnpm test              # Run tests
-pnpm deadcode          # Check for unused code
-pnpm spell             # Spell check
-pnpm typecheck         # TypeScript type checking
-
-# Docker
-docker-compose up -d   # Start MongoDB + Redis + JWKS server
-docker-compose down    # Stop containers
-
-# Keys & Utilities
-pnpm generate:keys     # Generate JWT keys (ES256/ES512)
-pnpm clean             # Clean build and dependencies
-pnpm package:upgrade   # Upgrade packages
-pnpm package:check     # Check package updates
-```
-
 ## TypeScript Strict Null Convention
 
-`undefined` is only allowed at the **request boundary** (Request DTOs). Every other layer must use `null` for absent values — never `undefined`.
+`undefined` is only allowed at the **input boundary** — where data enters the system from outside. Every other layer must use `null` for absent values — never `undefined`.
 
 | Layer | Convention | Reason |
 |---|---|---|
-| Request DTO (optional field) | `variable?: string` | User may omit the field |
-| Entity, Response DTO, Service, Repository | `variable: string \| null` | Explicit absence, aligns with Prisma nullable columns |
-| Return type that may not exist | `T \| null` | Signals intentional "not found", not accidental unset |
-| `variable?: string \| null` | **Never** — ambiguous, pick one |
+| Request DTO (body / form) | `field?: Type` | User/client may omit the field |
+| Query DTO (`@Query()`) | `field?: Type` | URL param may not be present |
+| Response DTO — wrapper/structure fields | `field?: Type` | Structural fields that may not exist in every response variant (e.g. `data?`, `errors?` on `ResponseDto<T>`) |
+| Response DTO — domain data fields | `field: Type \| null` | Fields representing data from database/domain — absence must be explicit to consumer |
+| Domain Interface — data | `field: Type \| null` | Processed data, absence must be explicit |
+| Domain Interface — request lifecycle | `field?: Type` | Set progressively by middleware/guard |
+| Domain Interface — external spec | `field?: Type` | Follow spec we don't control (JWT claims, Prisma types) |
+| Exception / Options Interface | `field?: Type` | Fields are genuinely optional; callers must not be forced to pass `null` (e.g. `IAppException`, service options bags) |
+| Config Interface (`src/configs/`) | `field: Type \| null` | Caller must be explicit, not skip |
+| Service / Util — method param (data) | `param: Type \| null` | No `undefined` enters this layer |
+| Service / Util — method param (filter) | `param?: Type` | Additive filter, absent = not applied |
+| Repository — method param (data) | `param: Type \| null` | No `undefined` enters this layer |
+| Repository — method param (filter) | `param: Type \| null` | Normalize `null → {}` inside repository before Prisma |
+| Database (Prisma return) | `Type \| null` | Follow Prisma convention |
+| `field?: Type \| null` | **Never** — ambiguous, pick one |
 
 ```typescript
-// ✅ Request DTO — undefined allowed at the boundary
+// ✅ Request DTO — undefined allowed at input boundary
 class UpdateUserRequestDto {
     @IsOptional()
     @IsString()
     bio?: string
 }
 
-// ✅ Entity / internal — null only, no undefined
-class UserEntity {
-    bio: string | null
-    phoneNumber: string | null
+// ✅ Query DTO — undefined allowed at input boundary
+class UserListRequestDto {
+    @IsOptional()
+    @IsString()
+    status?: string
 }
 
-// ✅ Service / Repository — null only
+// ✅ Response DTO — wrapper/structural fields use ?:
+class ResponseDto<T> {
+    statusCode: number
+    message: string
+    metadata: ResponseMetadataDto
+    data?: T           // ?: correct — not all responses return data
+}
+
+// ✅ Response DTO — domain data fields use | null
+class UserProfileResponseDto {
+    photo: AwsS3Dto | null        // from database, absence must be explicit
+    lastLoginAt: Date | null      // from database
+    bio: string | null            // from database
+}
+
+// ✅ Domain Interface — data
+interface IUser {
+    twoFactor: TwoFactor | null
+}
+
+// ✅ Domain Interface — request lifecycle (progressive, set by middleware/guard)
+interface IRequestApp {
+    __user?: IUser       // not yet set before UserProtected guard runs
+    __apiKey?: ApiKey    // not present on non-api-key requests
+}
+
+// ✅ Exception / Options Interface — optional fields, no forced null
+interface IAppException<T> {
+    statusCode: number
+    message: string
+    messageProperties?: IMessageProperties   // ?: correct — caller may omit
+    data?: T                                 // ?: correct
+    errors?: IMessageValidationError[]       // ?: correct
+    _error?: unknown                         // ?: correct
+}
+
+// ✅ Config Interface (src/configs/ only) — explicit null
+interface IConfigAuth {
+    accessToken: {
+        secretKey: string
+        expirationTime: string | null
+    }
+}
+
+// ✅ Service — data param uses null, filter param uses ?
 interface IUserService {
-    findById(id: string): Promise<UserEntity | null>
+    findById(id: string): Promise<IUser | null>
     update(id: string, bio: string | null): Promise<void>
+    getList(
+        pagination: IPaginationQueryOffsetParams,
+        status?: Record<string, IPaginationIn>   // additive filter
+    ): Promise<IResponsePagingReturn<UserListResponseDto>>
 }
 
-// ✅ Normalize at the boundary before passing into service
-async update(id: string, dto: UpdateUserRequestDto) {
-    await this.userService.update(id, dto.bio ?? null)
+// ✅ Repository — filter param uses null, normalization happens inside
+class UserRepository {
+    async findExport(
+        status: Record<string, IPaginationIn> | null,
+        role: Record<string, IPaginationEqual> | null
+    ): Promise<IUser[]> {
+        return this.databaseService.user.findMany({
+            where: {
+                ...(status ?? {}),   // normalize null → {} here, not at caller
+                ...(role ?? {}),
+                deletedAt: null,
+            },
+        })
+    }
+}
+
+// ✅ Controller — normalize undefined → null before passing to service
+async updateProfile(userId: string, dto: UpdateUserRequestDto) {
+    await this.userService.update(userId, dto.bio ?? null)
 }
 ```
 
-**Rule:** `undefined` stops at the DTO layer. Once data enters the service or deeper, all optional values must be typed as `T | null`.
+**Rule:** `undefined` stops at the input boundary (Request DTO, Query DTO). Once data enters service or deeper, all optional values must be `T | null`. The only exceptions are: request lifecycle fields, external spec fields (JWT claims, Prisma generated types), exception/options interfaces, response DTO structural/wrapper fields, and service/util additive filter params.
 
 ## Anti-Patterns (Never Do)
 
@@ -596,8 +630,9 @@ async update(id: string, dto: UpdateUserRequestDto) {
 - Use `any` type → use proper typing (enforced by `noImplicitAny: true`)
 - Ignore null checks → handle nulls properly (enforced by `strictNullChecks: true`)
 - Use `@Inject` unnecessarily for repositories → direct class injection
-- Use `undefined` in entity, service, or repository layer → use `null` instead
-- Use `variable?: string | null` anywhere → ambiguous, use `?: string` for input or `string | null` for output
+- Use `undefined` in domain data interface, response DTO domain data fields, `src/configs/` config interface, or service/repository data params → use `null` instead
+- Use `variable?: string | null` anywhere → ambiguous, use `?: string` for input boundary or `string | null` for internal layers
+- Normalize filter params in caller instead of repository → repository owns the `null → {}` normalization before Prisma
 
 ## Design Patterns & Principles
 
@@ -619,21 +654,3 @@ async update(id: string, dto: UpdateUserRequestDto) {
 - **Feature**: `AuthModule`, `SessionModule`, `RoleModule`, `ApiKeyModule`, `PolicyModule`, `ActivityLogModule`, `NotificationModule`, `FeatureFlagModule`, `TermPolicyModule`
 - **Queue**: `QueueRegisterModule`
 
-## Important Notes
-
-- **Production Mode**: Documentation is disabled when `APP_ENV=production`
-- **MongoDB**: Must run as replica set for transactions
-- **Prisma Client**: Regenerate after schema changes with `pnpm db:generate`
-- **Sessions**: Dual storage (Redis + Database) for performance and management
-- **JWT Algorithms**: ES256 for access tokens, ES512 for refresh tokens
-- **Package Manager**: Use PNPM only (enforced by preinstall script)
-
-## Docs Reference
-
-Full documentation in `/docs`:
-`authentication.md` · `authorization.md` · `database.md` · `device.md`
-`two-factor.md` · `activity-log.md` · `cache.md` · `queue.md`
-`notification.md` · `response.md` · `request-validation.md` · `handling-error.md`
-`message.md` · `pagination.md` · `file-upload.md` · `feature-flag.md`
-`term-policy.md` · `security-and-middleware.md` · `third-party-integration.md`
-`analytics.md` (planned) · `configuration.md` · `environment.md`

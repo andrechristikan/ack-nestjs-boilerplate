@@ -1,10 +1,10 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { EnumApiKeyType } from '@generated/prisma-client';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 
-export class ApiKeyResponseDto extends DatabaseDto {
+export class ApiKeyResponseDto extends DatabaseResponseDto {
     @ApiHideProperty()
     @Exclude()
     hash: string;

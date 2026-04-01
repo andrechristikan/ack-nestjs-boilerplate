@@ -30,7 +30,8 @@
             "@migration/*": ["src/migration/*"],
             "@test/*": ["test/*"],
             "@generated/*": ["generated/*"],
-            "@prisma/client": ["generated/prisma-client"]
+            "@prisma/client": ["generated/prisma-client"],
+            "@queues/*": ["src/queues/*"]
         },
         "target": "esnext",
         "parser": {

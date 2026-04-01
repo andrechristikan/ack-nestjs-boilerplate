@@ -27,11 +27,11 @@ import {
 } from '@aws-sdk/client-ses';
 import { IAwsSESService } from '@common/aws/interfaces/aws.ses-service.interface';
 import {
-    AwsSESGetTemplateDto,
-    AwsSESSendBulkDto,
-    AwsSESSendDto,
-    AwsSESTemplateDto,
-} from '@common/aws/dtos/aws.ses.dto';
+    IAwsSESGetTemplate,
+    IAwsSESSend,
+    IAwsSESSendBulk,
+    IAwsSESTemplate,
+} from '@common/aws/interfaces/aws.ses.interface';
 
 /**
  * Service for AWS SES (Simple Email Service) operations.
@@ -155,12 +155,12 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
     /**
      * Retrieves a specific email template from AWS SES by name.
      * Returns an empty output if the service is not initialized.
-     * @param {AwsSESGetTemplateDto} dto - DTO containing the template name to look up
+     * @param {IAwsSESGetTemplate} dto - DTO containing the template name to look up
      * @returns {Promise<GetTemplateCommandOutput>} Template detail including subject, HTML body, and plain text body
      */
     async getTemplate({
         name,
-    }: AwsSESGetTemplateDto): Promise<GetTemplateCommandOutput> {
+    }: IAwsSESGetTemplate): Promise<GetTemplateCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
@@ -188,7 +188,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
      * Creates a new email template in AWS SES.
      * Returns an empty output if the service is not initialized.
      * Throws an error if neither `htmlBody` nor `plainTextBody` is provided.
-     * @param {AwsSESTemplateDto} dto - DTO containing the template name, subject, HTML body, and/or plain text body
+     * @param {IAwsSESTemplate} dto - DTO containing the template name, subject, HTML body, and/or plain text body
      * @returns {Promise<CreateTemplateCommandOutput>} Result of the create operation
      * @throws {Error} If both `htmlBody` and `plainTextBody` are missing
      */
@@ -197,7 +197,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESTemplateDto): Promise<CreateTemplateCommandOutput> {
+    }: IAwsSESTemplate): Promise<CreateTemplateCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
@@ -214,8 +214,8 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
             Template: {
                 TemplateName: name,
                 SubjectPart: subject,
-                HtmlPart: htmlBody ?? undefined,
-                TextPart: plainTextBody ?? undefined,
+                HtmlPart: htmlBody,
+                TextPart: plainTextBody,
             },
         });
 
@@ -231,7 +231,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
      * Updates an existing email template in AWS SES.
      * Returns an empty output if the service is not initialized.
      * Throws an error if neither `htmlBody` nor `plainTextBody` is provided.
-     * @param {AwsSESTemplateDto} dto - DTO containing the template name, subject, HTML body, and/or plain text body
+     * @param {IAwsSESTemplate} dto - DTO containing the template name, subject, HTML body, and/or plain text body
      * @returns {Promise<UpdateTemplateCommandOutput>} Result of the update operation
      * @throws {Error} If both `htmlBody` and `plainTextBody` are missing
      */
@@ -240,7 +240,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         subject,
         htmlBody,
         plainTextBody,
-    }: AwsSESTemplateDto): Promise<UpdateTemplateCommandOutput> {
+    }: IAwsSESTemplate): Promise<UpdateTemplateCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
@@ -257,8 +257,8 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
             Template: {
                 TemplateName: name,
                 SubjectPart: subject,
-                HtmlPart: htmlBody ?? undefined,
-                TextPart: plainTextBody ?? undefined,
+                HtmlPart: htmlBody,
+                TextPart: plainTextBody,
             },
         });
 
@@ -273,12 +273,12 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
     /**
      * Deletes an email template from AWS SES.
      * Returns an empty output if the service is not initialized.
-     * @param {AwsSESGetTemplateDto} dto - DTO containing the name of the template to delete
+     * @param {IAwsSESGetTemplate} dto - DTO containing the name of the template to delete
      * @returns {Promise<DeleteTemplateCommandOutput>} Result of the delete operation
      */
     async deleteTemplate({
         name,
-    }: AwsSESGetTemplateDto): Promise<DeleteTemplateCommandOutput> {
+    }: IAwsSESGetTemplate): Promise<DeleteTemplateCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
@@ -303,11 +303,10 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
      * Sends a templated email to one or more recipients using AWS SES.
      * If `replyTo` is not provided, it falls back to `sender`.
      * Returns an empty output with `MessageId: undefined` if the service is not initialized.
-     * @template T - Shape of the template data object used to populate the template variables
-     * @param {AwsSESSendDto<T>} dto - DTO containing recipients, sender, reply-to, CC, BCC, template name, and template data
+     * @param {IAwsSESSend} dto - DTO containing recipients, sender, reply-to, CC, BCC, template name, and template data
      * @returns {Promise<SendTemplatedEmailCommandOutput>} Send result including the SES `MessageId`
      */
-    async send<T extends Record<string, unknown>>({
+    async send({
         recipients,
         sender,
         replyTo,
@@ -315,7 +314,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         cc,
         templateName,
         templateData,
-    }: AwsSESSendDto<T>): Promise<SendTemplatedEmailCommandOutput> {
+    }: IAwsSESSend): Promise<SendTemplatedEmailCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
@@ -355,7 +354,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
      * `defaultTemplateData` is used as the fallback template data when a recipient's `templateData` is absent; defaults to `{}` if not provided.
      * If `replyTo` is not provided, it falls back to `sender`.
      * Returns an empty `Status` array if the service is not initialized.
-     * @param {AwsSESSendBulkDto} dto - DTO containing per-recipient entries, sender, reply-to, CC, BCC, template name, and default template data
+     * @param {IAwsSESSendBulk} dto - DTO containing per-recipient entries, sender, reply-to, CC, BCC, template name, and default template data
      * @returns {Promise<SendBulkTemplatedEmailCommandOutput>} Bulk send result with per-destination status and message IDs
      */
     async sendBulk({
@@ -366,7 +365,7 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         cc,
         templateName,
         defaultTemplateData,
-    }: AwsSESSendBulkDto): Promise<SendBulkTemplatedEmailCommandOutput> {
+    }: IAwsSESSendBulk): Promise<SendBulkTemplatedEmailCommandOutput> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'

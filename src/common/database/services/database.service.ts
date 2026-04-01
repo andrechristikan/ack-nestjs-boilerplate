@@ -7,12 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorResult } from '@nestjs/terminus';
 import { Prisma, PrismaClient } from '@generated/prisma-client';
-import { IDatabaseService } from 'src/common/database/interfaces/database.service.interface';
+import { IDatabaseService } from '@common/database/interfaces/database.service.interface';
 
 /**
- * Database service that extends PrismaClient with additional functionality.
+ * Prisma-based database service with NestJS lifecycle integration.
  *
- * Handles database connections, health checks, and logging with lifecycle management.
+ * Extends PrismaClient to provide connection management, health-check support,
+ * and configurable query/error logging. All Prisma events are wired up as
+ * event-emitter listeners so they can be toggled via the `database.debug` config flag.
  */
 @Injectable()
 export class DatabaseService
@@ -37,12 +39,14 @@ export class DatabaseService
             errorFormat: 'pretty',
         });
 
-        this.isDebugMode = this.configService.get<boolean>('database.debug');
-        this.prettier = this.configService.get<boolean>('logger.prettier');
+        this.isDebugMode = this.configService.get<boolean>('database.debug')!;
+        this.prettier = this.configService.get<boolean>('logger.prettier')!;
     }
 
     /**
-     * Performs database health check by pinging the database connection.
+     * Pings the database and returns a Terminus health indicator result.
+     *
+     * @returns {Promise<HealthIndicatorResult>} Object keyed by `"database"` with status `"up"` or `"down"`
      */
     async isHealthy(): Promise<HealthIndicatorResult> {
         try {
@@ -52,11 +56,12 @@ export class DatabaseService
                     status: 'up',
                 },
             };
-        } catch (error) {
+        } catch (error: unknown) {
             return {
                 database: {
                     status: 'down',
-                    error: error.message,
+                    error:
+                        error instanceof Error ? error.message : String(error),
                 },
             };
         }
@@ -88,6 +93,12 @@ export class DatabaseService
         await this.disconnect();
     }
 
+    /**
+     * Opens the Prisma database connection and logs the result.
+     *
+     * @throws {Error} When the underlying `$connect` call fails
+     * @returns {Promise<void>}
+     */
     private async connect(): Promise<void> {
         try {
             await this.$connect();
@@ -98,6 +109,12 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Closes the Prisma database connection and logs the result.
+     *
+     * @throws {Error} When the underlying `$disconnect` call fails
+     * @returns {Promise<void>}
+     */
     private async disconnect(): Promise<void> {
         try {
             await this.$disconnect();
@@ -108,6 +125,14 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Registers Prisma event listeners when debug mode is enabled.
+     *
+     * Binds handlers for `query`, `error`, `warn`, and `info` Prisma events.
+     * No-ops when `database.debug` config is false.
+     *
+     * @returns {Promise<void>}
+     */
     private async setupLogging(): Promise<void> {
         if (this.isDebugMode) {
             this.$on('query', this.logQuery.bind(this));
@@ -117,6 +142,15 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Logs a Prisma query event at verbose level.
+     *
+     * When `logger.prettier` is enabled, sanitizes escape sequences and
+     * collapses whitespace before logging. Marks queries exceeding 1 000 ms
+     * as slow via the `slowQuery` flag.
+     *
+     * @param {Prisma.QueryEvent} event - The Prisma query event emitted by PrismaClient
+     */
     private logQuery(event: Prisma.QueryEvent): void {
         const { query, duration, params, ...other } = event;
         if (this.prettier) {
@@ -156,14 +190,29 @@ export class DatabaseService
         }
     }
 
+    /**
+     * Logs a Prisma error event at error level.
+     *
+     * @param {Prisma.LogEvent} event - The Prisma error event emitted by PrismaClient
+     */
     private logError(event: Prisma.LogEvent): void {
         this.logger.error(event, 'A Prisma error occurred');
     }
 
+    /**
+     * Logs a Prisma warning event at warn level.
+     *
+     * @param {Prisma.LogEvent} event - The Prisma warning event emitted by PrismaClient
+     */
     private logWarn(event: Prisma.LogEvent): void {
         this.logger.warn(event, 'A Prisma warning occurred');
     }
 
+    /**
+     * Logs a Prisma info event at log level.
+     *
+     * @param {Prisma.LogEvent} event - The Prisma info event emitted by PrismaClient
+     */
     private logInfo(event: Prisma.LogEvent): void {
         this.logger.log(event, 'A Prisma info event occurred');
     }

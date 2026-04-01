@@ -15,7 +15,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationPushProcessorService

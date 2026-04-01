@@ -9,21 +9,14 @@ import compression from 'compression';
  */
 @Injectable()
 export class RequestCompressionMiddleware implements NestMiddleware {
-    constructor() {}
-
     /**
      * Applies compression middleware to HTTP responses.
      *
-     * @param _req - The Express request object
-     * @param _res - The Express response object
+     * @param req - The Express request object
+     * @param res - The Express response object
      * @param next - The next middleware function
      */
-    async use(
-        _req: IRequestApp,
-        _res: Response,
-        next: NextFunction
-    ): Promise<void> {
-        compression();
-        next();
+    use(req: IRequestApp, res: Response, next: NextFunction): void {
+        compression()(req, res, next);
     }
 }

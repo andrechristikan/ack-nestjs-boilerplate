@@ -180,6 +180,7 @@ model Verification {
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed, type])
+  @@index(fields: [userId, type, isUsed])
   @@map("Verifications")
 }
 
@@ -249,8 +250,6 @@ model Session {
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
   @@index(fields: [userId, deviceOwnershipId, isRevoked])
   @@index(fields: [deviceOwnershipId])
-  @@index(fields: [createdAt])
-  @@index(fields: [updatedAt])
   @@map("Sessions")
 }
 
@@ -299,6 +298,7 @@ model DeviceOwnership {
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
   @@index(fields: [deviceId, revokedAt])
+  @@index(fields: [userId, isRevoked])
   @@index(fields: [userId, revokedAt])
   @@index(fields: [deviceId, userId, revokedAt])
   @@map("DeviceOwnerships")
@@ -472,6 +472,8 @@ model NotificationUserSetting {
   @@map("NotificationUserSettings")
 }
 
+// NOTE: Fields must stay in sync with EnumTermPolicyType manually.
+// If a new EnumTermPolicyType value is added, add the corresponding field here.
 type UserTermPolicy {
   termsOfService Boolean
   privacy        Boolean

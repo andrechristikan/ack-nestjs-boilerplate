@@ -1,8 +1,8 @@
 import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
 import * as Sentry from '@sentry/nestjs';
 import { Job } from 'bullmq';
-import { QueueException } from 'src/queues/exceptions/queue.exception';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { QueueException } from '@queues/exceptions/queue.exception';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Base class for all queue job processors.

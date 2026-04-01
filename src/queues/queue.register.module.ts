@@ -5,8 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
     QueueConfigKey,
     QueueProcessorConfigKey,
-} from 'src/queues/constants/queue.constant';
-import { EnumQueue } from 'src/queues/enums/queue.enum';
+} from '@queues/constants/queue.constant';
+import { EnumQueue } from '@queues/enums/queue.enum';
 
 /**
  * Global module for registering Bull queues with default configurations.

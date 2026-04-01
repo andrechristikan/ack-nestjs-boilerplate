@@ -1,4 +1,4 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { RequestGeoLocationResponseDto } from '@common/request/dtos/response/request.geo-location.response.dto';
 import { RequestUserAgentResponseDto } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { faker } from '@faker-js/faker';
@@ -6,7 +6,7 @@ import { UserListResponseDto } from '@modules/user/dtos/response/user.list.respo
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 
-export class SessionResponseDto extends DatabaseDto {
+export class SessionResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),

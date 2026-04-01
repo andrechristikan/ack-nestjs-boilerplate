@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -8,7 +8,7 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { FileSingleDto } from '@common/file/dtos/file.single.dto';
+import { FileUploadSingleRequestDto } from '@common/file/dtos/file.single.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
 import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -103,8 +103,8 @@ export function UserSharedGeneratePhotoProfilePresignDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: UserGeneratePhotoProfileRequestDto,
         }),
-        DocResponse<AwsS3PresignDto>('user.generatePhotoProfilePresign', {
-            dto: AwsS3PresignDto,
+        DocResponse<AwsS3PresignResponseDto>('user.generatePhotoProfilePresign', {
+            dto: AwsS3PresignResponseDto,
         })
     );
 }
@@ -142,7 +142,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequestFile({
-            dto: FileSingleDto,
+            dto: FileUploadSingleRequestDto,
         }),
         DocResponse('user.uploadPhotoProfile')
     );

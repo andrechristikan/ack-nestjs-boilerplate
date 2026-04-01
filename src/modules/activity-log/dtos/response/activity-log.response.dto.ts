@@ -1,4 +1,4 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { RequestGeoLocationResponseDto } from '@common/request/dtos/response/request.geo-location.response.dto';
 import { RequestUserAgentResponseDto } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { faker } from '@faker-js/faker';
@@ -7,7 +7,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 import { Type } from 'class-transformer';
 
-export class ActivityLogResponseDto extends DatabaseDto {
+export class ActivityLogResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),

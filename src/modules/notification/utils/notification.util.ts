@@ -27,7 +27,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
-import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
+import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
  * Central notification utility for multi-channel notifications.

@@ -21,7 +21,7 @@ export default registerAs(
             ttlInMs: 5 * 60 * 1000,
         },
         queue: {
-            url: process.env.QUEUE_REDIS_UR!,
+            url: process.env.QUEUE_REDIS_URL!,
             namespace: 'Queue',
         },
     })

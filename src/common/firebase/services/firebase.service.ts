@@ -6,13 +6,14 @@ import {
     IFirebasePushPayload,
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
+import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.interface';
 import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
-import { Messaging } from 'firebase-admin/lib/messaging/messaging';
+import { Messaging } from 'firebase-admin/messaging';
 
 /**
  * Service responsible for managing Firebase Admin SDK initialization
@@ -22,12 +23,12 @@ import { Messaging } from 'firebase-admin/lib/messaging/messaging';
  * The service gracefully degrades when Firebase credentials are not configured.
  */
 @Injectable()
-export class FirebaseService implements OnModuleInit {
+export class FirebaseService implements IFirebaseService, OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
 
-    private readonly projectId: string;
-    private readonly clientEmail: string;
-    private readonly privateKey: string;
+    private readonly projectId: string | null;
+    private readonly clientEmail: string | null;
+    private privateKey: string | null;
 
     private app: FirebaseApp | null = null;
     private messaging: Messaging | null = null;
@@ -36,20 +37,26 @@ export class FirebaseService implements OnModuleInit {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.projectId = this.configService.get<string>('firebase.projectId');
-        this.clientEmail = this.configService.get<string>(
+        this.projectId = this.configService.get<string | null>(
+            'firebase.projectId'
+        )!;
+        this.clientEmail = this.configService.get<string | null>(
             'firebase.clientEmail'
-        );
+        )!;
 
-        const privateKeyBuffer = Buffer.from(
-            this.configService.get<string>('firebase.privateKey'),
-            'base64'
-        );
-        this.privateKey = createPrivateKey({
-            key: privateKeyBuffer,
-            format: 'der',
-            type: 'pkcs8',
-        }).export({ type: 'pkcs8', format: 'pem' }) as string;
+        const rawKey = this.configService.get<string | null>(
+            'firebase.privateKey'
+        )!;
+        if (rawKey) {
+            const privateKeyBuffer = Buffer.from(rawKey, 'base64');
+            this.privateKey = createPrivateKey({
+                key: privateKeyBuffer,
+                format: 'der',
+                type: 'pkcs8',
+            }).export({ type: 'pkcs8', format: 'pem' }) as string;
+        } else {
+            this.privateKey = null;
+        }
     }
 
     /**
@@ -88,7 +95,7 @@ export class FirebaseService implements OnModuleInit {
     /**
      * Checks whether the Firebase Admin SDK has been successfully initialized.
      *
-     * @returns `true` if both the Firebase app and messaging instances are available, otherwise `false`.
+     * @returns {boolean} `true` if both the Firebase app and messaging instances are available, otherwise `false`.
      */
     isInitialized(): boolean {
         return !!this.app && !!this.messaging;
@@ -97,11 +104,11 @@ export class FirebaseService implements OnModuleInit {
     /**
      * Determines whether a Firebase error is caused by an invalid or expired FCM token.
      *
-     * @param error - The error object returned by Firebase, optionally containing a `code` property.
-     * @returns `true` if the error code matches a known invalid token error code, otherwise `false`.
+     * @param {object | null} error - The error object returned by Firebase, optionally containing a `code` string property. Accepts `null` safely.
+     * @returns {boolean} `true` if the error code matches a known invalid token code in `FirebaseInvalidTokenCodes`, otherwise `false`.
      */
-    private isInvalidTokenError(error?: { code?: string }): boolean {
-        return FirebaseInvalidTokenCodes.includes(error?.code);
+    private isInvalidTokenError(error: { code?: string } | null): boolean {
+        return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
     }
 
     /**
@@ -110,9 +117,9 @@ export class FirebaseService implements OnModuleInit {
      * If Firebase is not initialized, the operation is skipped and `false` is returned.
      * Invalid token errors are logged as warnings; all other errors are logged as errors.
      *
-     * @param token - The FCM registration token of the target device.
-     * @param payload - The push notification payload containing title, body, image URL, and custom data.
-     * @returns `true` if the notification was sent successfully, otherwise `false`.
+     * @param {string} token - FCM registration token of the target device.
+     * @param {IFirebasePushPayload} payload - Push notification payload containing title, body, image URL, and custom data.
+     * @returns {Promise<boolean>} `true` if the notification was delivered successfully, otherwise `false`.
      */
     async sendPush(
         token: string,
@@ -125,7 +132,7 @@ export class FirebaseService implements OnModuleInit {
         }
 
         try {
-            await this.messaging.send({
+            await this.messaging!.send({
                 token,
                 notification: {
                     title: payload.title,
@@ -161,11 +168,11 @@ export class FirebaseService implements OnModuleInit {
      * If Firebase is not initialized, the operation is skipped and all tokens are counted as failures.
      * If the token list is empty, an empty result is returned immediately.
      *
-     * @param tokens - Array of FCM registration tokens to send the notification to.
-     * @param payload - The push notification payload containing title, body, image URL, and custom data.
-     * @param chunkSize - Number of tokens per batch. Must be between 1 and `FirebaseMaxSendPushBatchSize`. Defaults to `FirebaseMaxSendPushBatchSize`.
-     * @returns An object containing `successCount`, `failureCount`, and `failureTokens` (invalid tokens).
-     * @throws {Error} If `chunkSize` is outside the valid range.
+     * @param {string[]} tokens - FCM registration tokens to send the notification to.
+     * @param {IFirebasePushPayload} payload - Push notification payload containing title, body, image URL, and custom data.
+     * @param {number} [chunkSize] - Number of tokens per batch. Must be between 1 and `FirebaseMaxSendPushBatchSize`. Defaults to `FirebaseMaxSendPushBatchSize`.
+     * @throws {Error} When `chunkSize` is outside the valid range [1, `FirebaseMaxSendPushBatchSize`].
+     * @returns {Promise<IFirebasePushResult>} Aggregated result containing `successCount`, `failureCount`, and `failureTokens`.
      */
     async sendMulticast(
         tokens: string[],
@@ -199,7 +206,7 @@ export class FirebaseService implements OnModuleInit {
         const chunkedTokens = this.helperService.arrayChunk(tokens, chunkSize);
 
         const promises = chunkedTokens.map(chunk =>
-            this.messaging.sendEachForMulticast({
+            this.messaging!.sendEachForMulticast({
                 tokens: chunk,
                 notification: {
                     title: payload.title,

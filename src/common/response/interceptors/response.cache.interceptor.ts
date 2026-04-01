@@ -22,7 +22,7 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
 
         this.cachePrefix = this.configService.get<string>(
             'response.cachePrefix'
-        );
+        )!;
     }
 
     /**

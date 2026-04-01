@@ -1,5 +1,6 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -46,7 +47,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
 } from '@generated/prisma-client';
 
 @Injectable()
@@ -313,7 +313,7 @@ export class TermPolicyService implements ITermPolicyService {
         type,
         version,
     }: TermPolicyContentPresignRequestDto): Promise<
-        IResponseReturn<AwsS3PresignDto>
+        IResponseReturn<AwsS3PresignResponseDto>
     > {
         const termPolicy =
             await this.termPolicyRepository.existByVersionAndType(
@@ -340,7 +340,7 @@ export class TermPolicyService implements ITermPolicyService {
                 }
             );
 
-        const aws: AwsS3PresignDto | null =
+        const aws: IAwsS3Presign | null =
             await this.awsS3Service.presignPutItem(
                 {
                     key,
@@ -524,7 +524,7 @@ export class TermPolicyService implements ITermPolicyService {
     async getContentByAdmin(
         termPolicyId: string,
         language: EnumMessageLanguage
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -545,7 +545,7 @@ export class TermPolicyService implements ITermPolicyService {
             });
         }
 
-        const awsPresign: AwsS3PresignDto | null =
+        const awsPresign: IAwsS3Presign | null =
             await this.awsS3Service.presignGetItem(existContent.key, {
                 access: EnumAwsS3Accessibility.private,
             });

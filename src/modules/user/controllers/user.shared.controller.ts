@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
@@ -162,7 +162,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body() body: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         return this.userService.generatePhotoProfilePresign(userId, body);
     }
 

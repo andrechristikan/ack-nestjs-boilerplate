@@ -22,7 +22,7 @@ export class RequestEnvGuard implements CanActivate {
         private readonly reflector: Reflector,
         private readonly configService: ConfigService
     ) {
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
     }
 
     /**

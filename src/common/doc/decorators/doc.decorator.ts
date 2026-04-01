@@ -90,7 +90,7 @@ function createSchemaObject(doc: IDocOfOptions): SchemaObject {
  * @returns {MethodDecorator} A method decorator that applies Swagger API documentation
  */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
-    const docs = [];
+    const docs: MethodDecorator[] = [];
     const schema: SchemaObject = {
         allOf: [{ $ref: getSchemaPath(ResponseDto) }],
         properties: {
@@ -136,8 +136,8 @@ export function DocOneOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs = [];
-    const oneOf = [];
+    const docs: MethodDecorator[] = [];
+    const oneOf: SchemaObject[] = [];
 
     for (const doc of documents) {
         const oneOfSchema = createSchemaObject(doc);
@@ -173,8 +173,8 @@ export function DocAnyOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs = [];
-    const anyOf = [];
+    const docs: MethodDecorator[] = [];
+    const anyOf: SchemaObject[] = [];
 
     for (const doc of documents) {
         const anyOfSchema = createSchemaObject(doc);
@@ -210,8 +210,8 @@ export function DocAllOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs = [];
-    const allOf = [];
+    const docs: MethodDecorator[] = [];
+    const allOf: SchemaObject[] = [];
 
     for (const doc of documents) {
         const allOfSchema = createSchemaObject(doc);
@@ -282,17 +282,25 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 
 /**
  * Creates an API documentation decorator for request specifications including body, parameters, and queries.
- * This decorator handles different content types and automatically adds validation error responses.
+ *
+ * `ApiConsumes` is only applied when `bodyType` maps to a known MIME type in `DocContentTypeMapping`.
+ * When `bodyType` is `EnumDocRequestBodyType.none` or omitted, no `ApiConsumes` decorator is added.
+ *
  * @param {IDocRequestOptions} [options] - Optional configuration for request documentation
  * @returns {MethodDecorator} A method decorator that applies Swagger request documentation
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
-    if (options?.bodyType && options.bodyType in DocContentTypeMapping) {
-        docs.push(ApiConsumes(DocContentTypeMapping[options.bodyType]));
-    } else {
-        docs.push(ApiConsumes('none'));
+    const mimeType =
+        options?.bodyType && options.bodyType in DocContentTypeMapping
+            ? DocContentTypeMapping[
+                  options.bodyType as keyof typeof DocContentTypeMapping
+              ]
+            : null;
+
+    if (mimeType) {
+        docs.push(ApiConsumes(mimeType));
     }
 
     if (options?.params?.length) {
@@ -388,7 +396,7 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
  * @returns {MethodDecorator} A method decorator that applies Swagger authentication documentation
  */
 export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
-    const docs: Array<ClassDecorator | MethodDecorator> = [];
+    const docs: MethodDecorator[] = [];
     const oneOfUnauthorized: IDocOfOptions[] = [];
 
     if (options?.jwtRefreshToken) {
@@ -515,7 +523,7 @@ export function DocResponsePaging<T>(
     messagePath: string,
     options: IDocResponsePagingOptions<T>
 ): MethodDecorator {
-    const docs = [
+    const docs: MethodDecorator[] = [
         ApiProduces('application/json'),
         ApiExtraModels(ResponsePagingDto),
         ApiExtraModels(options.dto),

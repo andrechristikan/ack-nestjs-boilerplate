@@ -25,10 +25,10 @@ export class HelperService implements IHelperService {
     private readonly encryptionSecretKey: string;
 
     constructor(private readonly configService: ConfigService) {
-        this.defTz = this.configService.get<string>('app.timezone');
+        this.defTz = this.configService.get<string>('app.timezone')!;
         this.encryptionSecretKey = this.configService.get<string>(
             'app.encryptionSecretKey'
-        );
+        )!;
     }
 
     /**
@@ -118,13 +118,20 @@ export class HelperService implements IHelperService {
     private parseAesIv(iv: string): lib.WordArray {
         if (!iv) {
             throw new Error('AES IV parsing failed: missing IV value');
-        } else if (iv.startsWith('hex:') || iv.startsWith('b64:')) {
+        } else if (iv.startsWith('hex:')) {
             const stringIv = iv.slice(4);
             if (!stringIv) {
                 throw new Error('AES IV parsing failed: missing IV value');
             }
 
-            return enc.Hex.parse(iv.slice(4));
+            return enc.Hex.parse(stringIv);
+        } else if (iv.startsWith('b64:')) {
+            const stringIv = iv.slice(4);
+            if (!stringIv) {
+                throw new Error('AES IV parsing failed: missing IV value');
+            }
+
+            return enc.Base64.parse(stringIv);
         }
 
         return enc.Utf8.parse(iv);
@@ -286,11 +293,11 @@ export class HelperService implements IHelperService {
     }
 
     /**
-     *
      * Compares two MD5 hashes for equality.
-     * @param {string} hashOne - First hash
-     * @param {string} hashTwo - Second hash
-     * @returns {boolean} True if hashes are identical
+     *
+     * @param {string} hashOne - First MD5 hash
+     * @param {string} hashTwo - Second MD5 hash
+     * @returns {boolean} True when both hashes are identical
      */
     md5Compare(hashOne: string, hashTwo: string): boolean {
         return hashOne === hashTwo;
@@ -608,7 +615,7 @@ export class HelperService implements IHelperService {
      * @returns {Duration} Duration object representing age
      */
     calculateAge(dateOfBirth: Date, fromYear?: number): Duration {
-        const dateTime = DateTime.now()
+        let dateTime = DateTime.now()
             .setZone(this.defTz)
             .plus({
                 day: 1,
@@ -629,9 +636,7 @@ export class HelperService implements IHelperService {
             });
 
         if (fromYear) {
-            dateTime.set({
-                year: fromYear,
-            });
+            dateTime = dateTime.set({ year: fromYear });
         }
 
         return dateTime.diff(dateTimeDob);
@@ -670,7 +675,7 @@ export class HelperService implements IHelperService {
      * @returns {string} Timezone offset string
      */
     dateGetZoneOffset(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort;
+        return DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort ?? 'UTC';
     }
 
     /**
@@ -688,7 +693,7 @@ export class HelperService implements IHelperService {
      * @returns {string} RFC2822 formatted date string
      */
     dateFormatToRFC2822(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toRFC2822();
+        return DateTime.fromJSDate(date).setZone(this.defTz).toRFC2822()!;
     }
 
     /**
@@ -697,7 +702,7 @@ export class HelperService implements IHelperService {
      * @returns {string} ISO formatted date string
      */
     dateFormatToIso(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISO();
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISO()!;
     }
 
     /**
@@ -706,7 +711,7 @@ export class HelperService implements IHelperService {
      * @returns {string} ISO date string
      */
     dateFormatToIsoDate(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISODate();
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISODate()!;
     }
 
     /**
@@ -715,7 +720,7 @@ export class HelperService implements IHelperService {
      * @returns {string} ISO time string
      */
     dateFormatToIsoTime(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).toISOTime();
+        return DateTime.fromJSDate(date).setZone(this.defTz).toISOTime()!;
     }
 
     /**
@@ -757,15 +762,15 @@ export class HelperService implements IHelperService {
      * @returns {Date} Created date
      */
     dateCreateFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
-        const date = DateTime.fromISO(iso).setZone(this.defTz);
+        let date = DateTime.fromISO(iso).setZone(this.defTz);
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
-            date.startOf('day');
+            date = date.startOf('day');
         } else if (
             options?.dayOf &&
             options?.dayOf === EnumHelperDateDayOf.end
         ) {
-            date.endOf('day');
+            date = date.endOf('day');
         }
 
         return date.toJSDate();
@@ -781,17 +786,17 @@ export class HelperService implements IHelperService {
         timestamp?: number,
         options?: IHelperDateCreateOptions
     ): Date {
-        const date = timestamp
+        let date = timestamp
             ? DateTime.fromMillis(timestamp).setZone(this.defTz)
             : DateTime.now().setZone(this.defTz);
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
-            date.startOf('day');
+            date = date.startOf('day');
         } else if (
             options?.dayOf &&
             options?.dayOf === EnumHelperDateDayOf.end
         ) {
-            date.endOf('day');
+            date = date.endOf('day');
         }
 
         return date.toJSDate();

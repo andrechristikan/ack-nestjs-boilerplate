@@ -82,8 +82,8 @@ export default registerAs(
             ],
         },
         throttle: {
-            ttlInMs: ms('500'),
-            limit: 10,
+            ttlInMs: ms('60s'),
+            limit: 100,
         },
     })
 );

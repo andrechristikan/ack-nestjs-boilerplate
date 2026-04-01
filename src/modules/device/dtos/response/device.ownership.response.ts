@@ -1,11 +1,11 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { Session } from '@generated/prisma-client';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
 
-export class DeviceOwnershipResponseDto extends DatabaseDto {
+export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         description: 'Device ownership ID',

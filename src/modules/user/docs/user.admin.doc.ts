@@ -17,9 +17,9 @@ import {
 } from '@modules/user/constants/user.doc.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { FileSingleDto } from '@common/file/dtos/file.single.dto';
+import { FileUploadSingleRequestDto } from '@common/file/dtos/file.single.dto';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 export function UserAdminListDoc(): MethodDecorator {
@@ -74,9 +74,9 @@ export function UserAdminCreateDoc(): MethodDecorator {
             dto: UserCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponse<DatabaseIdDto>('user.create', {
+        DocResponse<DatabaseIdResponseDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdDto,
+            dto: DatabaseIdResponseDto,
         })
     );
 }
@@ -140,7 +140,7 @@ export function UserAdminImportDoc(): MethodDecorator {
             summary: 'import users via csv file',
         }),
         DocRequestFile({
-            dto: FileSingleDto,
+            dto: FileUploadSingleRequestDto,
         }),
         DocAuth({
             xApiKey: true,

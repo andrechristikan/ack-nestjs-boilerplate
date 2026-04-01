@@ -1,8 +1,8 @@
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 
 export interface ITermPolicyTemplateService {
-    importTermsOfService(): Promise<AwsS3Dto | null>;
-    importPrivacy(): Promise<AwsS3Dto | null>;
-    importCookie(): Promise<AwsS3Dto | null>;
-    importMarketing(): Promise<AwsS3Dto | null>;
+    importTermsOfService(): Promise<IAwsS3 | null>;
+    importPrivacy(): Promise<IAwsS3 | null>;
+    importCookie(): Promise<IAwsS3 | null>;
+    importMarketing(): Promise<IAwsS3 | null>;
 }

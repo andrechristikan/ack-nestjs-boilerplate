@@ -72,12 +72,7 @@ export class FileCsvParsePipe<T> implements PipeTransform {
             value.originalname
         );
 
-        if (
-            extension === undefined ||
-            extension === null ||
-            extension === '' ||
-            extension !== EnumFileExtensionDocument.csv
-        ) {
+        if (!extension || extension !== EnumFileExtensionDocument.csv) {
             throw new UnsupportedMediaTypeException({
                 statusCode: EnumFileStatusCodeError.extensionInvalid,
                 message: 'file.error.extensionInvalid',

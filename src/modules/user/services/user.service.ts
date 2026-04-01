@@ -1,8 +1,8 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     EnumFileExtensionDocument,
     EnumFileExtensionImage,
@@ -262,7 +262,7 @@ export class UserService implements IUserService {
         { countryId, email, name, roleId }: UserCreateRequestDto,
         requestLog: IRequestLog,
         createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
+    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         const [checkRole, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existById(roleId),
             this.userRepository.existByEmail(email),
@@ -480,14 +480,13 @@ export class UserService implements IUserService {
     async generatePhotoProfilePresign(
         userId: string,
         { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         const key: string =
             this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
                 extension,
             });
 
-        const aws: AwsS3PresignDto | null =
-            await this.awsS3Service.presignPutItem(
+        const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
                 {
                     key,
                     size,
@@ -513,7 +512,7 @@ export class UserService implements IUserService {
         requestLog: IRequestLog
     ): Promise<void> {
         try {
-            const aws: AwsS3Dto = this.awsS3Service.mapPresign({
+            const aws: IAwsS3 = this.awsS3Service.mapPresign({
                 key: photoKey,
                 size,
             });
@@ -780,7 +779,7 @@ export class UserService implements IUserService {
                     extension,
                 });
 
-            const aws: AwsS3Dto | null = await this.awsS3Service.putItem({
+            const aws: IAwsS3 | null = await this.awsS3Service.putItem({
                 key,
                 size: file.size,
                 file: file.buffer,

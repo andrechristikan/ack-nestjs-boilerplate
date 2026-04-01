@@ -3,69 +3,51 @@ import { Prisma } from '@generated/prisma-client';
 import ObjectID from 'bson-objectid';
 
 /**
- * Database utility service providing common database operations.
+ * Utility service for common database operations.
  *
- * This injectable service provides utility methods for database-related operations,
- * including ID generation using BSON ObjectID format. The generated IDs are
- * compatible with MongoDB ObjectID format and provide unique identifiers
- * for database records.
- *
- * @class DatabaseUtil
- * @injectable
+ * Provides BSON ObjectID generation and validation, plus deep-clone helpers
+ * for converting in-memory objects to Prisma-compatible `JsonObject` types.
  */
 @Injectable()
 export class DatabaseUtil {
     /**
-     * Checks if the provided ID string is a valid BSON ObjectID.
+     * Checks whether the given string is a valid BSON ObjectID.
      *
-     * Utilizes the BSON ObjectID library's isValid method to determine
-     * if the given string conforms to the ObjectID format.
-     *
-     * @param {string} id - The ID string to validate
-     * @returns {boolean} True if the ID is a valid ObjectID, false otherwise
+     * @param {string} id - The identifier string to validate
+     * @returns {boolean} True when the string conforms to the 24-character hex ObjectID format
      */
     checkIdIsValid(id: string): boolean {
         return ObjectID.isValid(id);
     }
 
     /**
-     * Creates a new unique identifier using BSON ObjectID.
+     * Generates a new unique BSON ObjectID as a hexadecimal string.
      *
-     * Generates a new ObjectID and converts it to a hexadecimal string format.
-     * The generated ID is unique and follows the BSON ObjectID specification,
-     * making it suitable for use as primary keys in database records.
-     *
-     * @returns {string} A 24-character hexadecimal string representing the ObjectID
+     * @returns {string} A 24-character hex string suitable for use as a MongoDB document ID
      */
     createId(): string {
         return ObjectID().toHexString();
     }
 
     /**
-     * Converts the provided data to a plain object compatible with Prisma JsonObject format.
-     *
-     * Performs a deep clone of the input and casts it to Prisma.JsonObject, ensuring
-     * compatibility for Prisma JSON fields.
+     * Deep-clones the input and casts it to a Prisma-compatible plain object.
      *
      * @template T Input data type
-     * @template N Output type, defaults to Prisma.JsonObject
-     * @param {T} data - The data to convert
-     * @returns {N} The plain object representation, compatible with Prisma JsonObject
+     * @template N Output type, defaults to `Prisma.JsonObject`
+     * @param {T} data - The value to clone and cast
+     * @returns {N} A deep clone of `data` typed as `N`
      */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {
         return structuredClone(data as unknown) as N;
     }
 
     /**
-     * Converts the provided data to a plain array compatible with Prisma JsonObject array format.
-     *
-     * Performs a deep clone of the input and casts it to an array of Prisma.JsonObject,
-     * making it suitable for Prisma JSON array fields.
+     * Deep-clones the input and casts it to a Prisma-compatible plain array.
      *
      * @template T Input data type
-     * @template N Output array element type, defaults to Prisma.JsonObject
-     * @param {T} data - The data to convert
-     * @returns {N[]} The plain array representation, compatible with Prisma JsonObject[]
+     * @template N Array element type, defaults to `Prisma.JsonObject`
+     * @param {T} data - The value to clone and cast
+     * @returns {N[]} A deep clone of `data` typed as `N[]`
      */
     toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
         return structuredClone(data) as N[];

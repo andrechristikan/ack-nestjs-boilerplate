@@ -19,7 +19,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
 import { Job } from 'bullmq';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 
@@ -374,7 +374,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                         this.helperService.dateCreateFromIso(expiredAt)
                     ),
                     reference,
-                    expiredInMinutes,
+                    expiredInMinutes: String(expiredInMinutes),
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -489,7 +489,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                         this.helperService.dateCreateFromIso(loginAt)
                     ),
                     userAgent: flatten(userAgent),
-                    ipAddress,
+                    ipAddress: ipAddress ?? '',
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -529,7 +529,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     defaultTemplateData: {
                         ...this.defaultTemplateData,
                         type,
-                        version,
+                        version: String(version),
                     },
                 });
 

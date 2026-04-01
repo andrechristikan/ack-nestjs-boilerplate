@@ -56,17 +56,17 @@ export class LoggerOptionService {
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
     ) {
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
-        this.name = this.configService.get<string>('app.name');
-        this.version = this.configService.get<string>('app.version');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
+        this.name = this.configService.get<string>('app.name')!;
+        this.version = this.configService.get<string>('app.version')!;
 
-        this.autoLogger = this.configService.get<boolean>('logger.auto');
+        this.autoLogger = this.configService.get<boolean>('logger.auto')!;
 
-        this.enable = this.configService.get<boolean>('logger.enable');
-        this.level = this.configService.get<string>('logger.level');
-        this.intoFile = this.configService.get<boolean>('logger.intoFile');
-        this.filePath = this.configService.get<string>('logger.filePath');
-        this.prettier = this.configService.get<boolean>('logger.prettier');
+        this.enable = this.configService.get<boolean>('logger.enable')!;
+        this.level = this.configService.get<string>('logger.level')!;
+        this.intoFile = this.configService.get<boolean>('logger.intoFile')!;
+        this.filePath = this.configService.get<string>('logger.filePath')!;
+        this.prettier = this.configService.get<boolean>('logger.prettier')!;
 
         this.sensitiveFields = new Set(
             LoggerSensitiveFields.map(field => field.toLowerCase())
@@ -100,7 +100,7 @@ export class LoggerOptionService {
                 redact: this.createRedactionConfig(),
                 serializers: this.createSerializers(),
                 autoLogging: this.createAutoLoggingConfig(),
-            },
+            } as unknown as Params['pinoHttp'],
         };
     }
 
@@ -132,7 +132,13 @@ export class LoggerOptionService {
      * @returns {Options['transport']} Array of transport configurations or undefined
      */
     private buildTransports(): Options['transport'] {
-        const transport = {
+        const transport: {
+            targets: {
+                target: string;
+                level: string;
+                options: Record<string, unknown>;
+            }[];
+        } = {
             targets: [],
         };
 
@@ -164,7 +170,9 @@ export class LoggerOptionService {
             });
         }
 
-        return transport.targets.length > 0 ? transport : undefined;
+        return transport.targets.length > 0
+            ? (transport as unknown as Options['transport'])
+            : undefined;
     }
 
     /**
@@ -227,21 +235,22 @@ export class LoggerOptionService {
                 ...(Object.keys(additionalData).length > 0 && {
                     additionalData: this.sanitizeObject(additionalData),
                 }),
+
                 ...(this.env !== EnumAppEnvironment.production && {
                     debug: this.addDebugInfo({
                         pid,
                         hostname,
                     }),
                 }),
-                ...(err && {
+                ...(!!err && {
                     err: this.createErrorSerializer()(
                         (error as Error) ?? (err as Error)
                     ),
                 }),
-                ...(res && {
+                ...(!!res && {
                     res,
                 }),
-                ...(req && {
+                ...(!!req && {
                     req,
                 }),
             };
@@ -328,7 +337,9 @@ export class LoggerOptionService {
             );
         }
 
-        const result = { ...obj };
+        const result: Record<string, unknown> = {
+            ...obj,
+        };
 
         for (const key in result) {
             if (this.sensitiveFields.has(key.toLowerCase())) {

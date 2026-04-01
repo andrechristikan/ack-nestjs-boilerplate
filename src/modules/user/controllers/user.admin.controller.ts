@@ -71,7 +71,7 @@ import {
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     RequestGeoLocation,
     RequestIPAddress,
@@ -85,7 +85,7 @@ import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
-import { FilCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
+import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 
 @ApiTags('modules.admin.user')
@@ -173,7 +173,7 @@ export class UserAdminController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<DatabaseIdDto>> {
+    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         return this.userService.createByAdmin(
             body,
             {
@@ -302,7 +302,7 @@ export class UserAdminController {
             RequestRequiredPipe,
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
             FileCsvParsePipe,
-            new FilCsvValidationPipe(UserImportRequestDto)
+            new FileCsvValidationPipe(UserImportRequestDto)
         )
         data: UserImportRequestDto[],
         @RequestIPAddress() ipAddress: string,

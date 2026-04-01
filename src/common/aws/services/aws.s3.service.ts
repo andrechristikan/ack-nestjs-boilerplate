@@ -66,35 +66,31 @@ import {
     _Object,
 } from '@aws-sdk/client-s3';
 import { IAwsS3Service } from '@common/aws/interfaces/aws.s3-service.interface';
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
 import {
+    IAwsS3,
     IAwsS3ConfigBucket,
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
     IAwsS3MoveItemOptions,
+    IAwsS3Multipart,
+    IAwsS3MultipartPart,
     IAwsS3Options,
+    IAwsS3Presign,
     IAwsS3PresignGetItemOptions,
+    IAwsS3PresignPart,
     IAwsS3PresignPutItemOptions,
     IAwsS3PresignPutItemPartOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
 } from '@common/aws/interfaces/aws.interface';
 import {
-    AwsS3MultipartDto,
-    AwsS3MultipartPartDto,
-} from '@common/aws/dtos/aws.s3-multipart.dto';
-import {
     AwsS3MaxFetchItems,
     AwsS3MaxPartNumber,
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import {
-    AwsS3PresignDto,
-    AwsS3PresignPartDto,
-} from '@common/aws/dtos/aws.s3-presign.dto';
 import {
     AwsS3PresignPartRequestDto,
     AwsS3PresignRequestDto,
@@ -121,7 +117,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
 
-    private readonly presignExpired: number;
+    private readonly presignExpiredInSeconds: number;
     private readonly multipartExpiredInDay: number;
 
     private readonly iamArn: string | null;
@@ -144,9 +140,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         )!;
         this.region = this.configService.get<string | null>('aws.s3.region')!;
         this.maxAttempts =
-            this.configService.get<number>('aws.s3.maxAttempts') ?? 3;
+            this.configService.get<number>('aws.s3.maxAttempts')!;
         this.timeoutInMs =
-            this.configService.get<number>('aws.s3.timeoutInMs') ?? 5000;
+            this.configService.get<number>('aws.s3.timeoutInMs')!;
 
         this.config.set(EnumAwsS3Accessibility.public, {
             ...this.configService.get<IAwsS3ConfigBucket>(
@@ -162,8 +158,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             access: EnumAwsS3Accessibility.private,
         } as IAwsS3ConfigBucket);
 
-        this.presignExpired = this.configService.get<number>(
-            'aws.s3.presignExpired'
+        this.presignExpiredInSeconds = this.configService.get<number>(
+            'aws.s3.presignExpiredInSeconds'
         )!;
         this.multipartExpiredInDay = this.configService.get<number>(
             'aws.s3.multipartExpiredInDay'
@@ -224,7 +220,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const extension: string =
             this.fileService.extractExtensionFromFilename(filename);
-        const mime = this.fileService.extractMimeFromFilename(filename);
+        const mime =
+            this.fileService.extractMimeFromFilename(filename) ??
+            'application/octet-stream';
 
         return { pathWithFilename, filename, extension, mime };
     }
@@ -303,13 +301,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns `null` immediately if the service is not initialized.
      * @param {string} key - The S3 object key to check (must not start with "/")
      * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<AwsS3Dto>} Object metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3>} Object metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/"
      */
     async checkItem(
         key: string,
         options?: IAwsS3Options
-    ): Promise<AwsS3Dto | null> {
+    ): Promise<IAwsS3 | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -356,13 +354,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns an empty array immediately if the service is not initialized.
      * @param {string} path - The path prefix to search (must not start with "/")
      * @param {IAwsS3GetItemsOptions} [options] - Optional configuration including access level and continuation token
-     * @returns {Promise<AwsS3Dto[]>} List of matching objects, or `[]` if not initialized
+     * @returns {Promise<IAwsS3[]>} List of matching objects, or `[]` if not initialized
      * @throws {Error} If the path starts with "/"
      */
     async getItems(
         path: string,
         options?: IAwsS3GetItemsOptions
-    ): Promise<AwsS3Dto[]> {
+    ): Promise<IAwsS3[]> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -378,7 +376,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
 
-        const allItems: AwsS3Dto[] = [];
+        const allItems: IAwsS3[] = [];
         let continuationToken: string | null =
             options?.continuationToken ?? null;
 
@@ -418,9 +416,10 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                 allItems.push(...mappedItems);
             }
 
-            continuationToken = listItems.IsTruncated
-                ? (listItems.NextContinuationToken ?? null)
-                : null;
+            continuationToken =
+                listItems.IsTruncated && listItems.NextContinuationToken
+                    ? listItems.NextContinuationToken
+                    : null;
         } while (continuationToken);
 
         return allItems;
@@ -431,13 +430,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns `null` immediately if the service is not initialized.
      * @param {string} key - The S3 object key to retrieve (must not start with "/")
      * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<AwsS3Dto>} Object with content data, or `null` if not initialized
+     * @returns {Promise<IAwsS3>} Object with content data, or `null` if not initialized
      * @throws {Error} If the key starts with "/"
      */
     async getItem(
         key: string,
         options?: IAwsS3Options
-    ): Promise<AwsS3Dto | null> {
+    ): Promise<IAwsS3 | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -485,13 +484,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * By default throws if the key already exists; pass `forceUpdate: true` to overwrite.
      * @param {IAwsS3PutItem} file - File object containing the key, buffer, and optional size
      * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
-     * @returns {Promise<AwsS3Dto>} Uploaded object metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3>} Uploaded object metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/", file is missing, path traversal is detected, or key already exists
      */
     async putItem(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3Dto | null> {
+    ): Promise<IAwsS3 | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -716,14 +715,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * @param {IAwsS3CreateMultiplePart} file - File descriptor containing the key and optional size
      * @param {number} maxPartNumber - Total number of parts planned for this upload (max: `AwsS3MaxPartNumber`)
      * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
-     * @returns {Promise<AwsS3MultipartDto>} Multipart upload metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3Multipart>} Multipart upload metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/", max part number is exceeded, or key already exists
      */
     async createMultiPart(
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3MultipartDto | null> {
+    ): Promise<IAwsS3Multipart | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -804,18 +803,18 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     /**
      * Uploads a single part within an active multipart upload session.
      * Returns the unmodified `multipart` object if the service is not initialized.
-     * @param {AwsS3MultipartDto} multipart - Active multipart upload metadata
+     * @param {IAwsS3Multipart} multipart - Active multipart upload metadata
      * @param {number} partNumber - 1-based part number for this chunk
      * @param {Buffer} file - Raw file buffer for this part
      * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<AwsS3MultipartDto>} Updated multipart DTO with the new part appended
+     * @returns {Promise<IAwsS3Multipart>} Updated multipart with the new part appended
      */
     async putItemMultiPart(
-        multipart: AwsS3MultipartDto,
+        multipart: IAwsS3Multipart,
         partNumber: number,
         file: Buffer,
         options?: IAwsS3Options
-    ): Promise<AwsS3MultipartDto> {
+    ): Promise<IAwsS3Multipart> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -839,7 +838,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             UploadPartCommandOutput
         >(uploadPartCommand);
 
-        const part: AwsS3MultipartPartDto = {
+        const part: IAwsS3MultipartPart = {
             eTag: ETag!,
             partNumber: partNumber,
             size: file.length,
@@ -856,14 +855,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns immediately if the service is not initialized.
      * @param {string} key - The S3 object key for the multipart upload
      * @param {string} uploadId - The upload session ID returned by `createMultiPart`
-     * @param {AwsS3MultipartPartDto[]} parts - Ordered list of uploaded parts with ETags
+     * @param {IAwsS3MultipartPart[]} parts - Ordered list of uploaded parts with ETags
      * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
      * @returns {Promise<void>}
      */
     async completeMultipart(
         key: string,
         uploadId: string,
-        parts: AwsS3MultipartPartDto[],
+        parts: IAwsS3MultipartPart[],
         options?: IAwsS3Options
     ): Promise<void> {
         if (!this.isInitialized()) {
@@ -942,13 +941,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns `null` immediately if the service is not initialized.
      * @param {string} key - The S3 object key to generate a download URL for (must not start with "/")
      * @param {IAwsS3PresignGetItemOptions} [options] - Optional expiration time and access level
-     * @returns {Promise<AwsS3PresignDto>} Presigned URL with expiry and file metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3Presign>} Presigned URL with expiry and file metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/"
      */
     async presignGetItem(
         key: string,
         options?: IAwsS3PresignGetItemOptions
-    ): Promise<AwsS3PresignDto | null> {
+    ): Promise<IAwsS3Presign | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -984,7 +983,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             Bucket: config.bucket,
             Key: key,
         });
-        const expiresIn = options?.expired ?? this.presignExpired;
+        const expiresIn =
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -1005,13 +1005,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * By default throws if the key already exists; pass `forceUpdate: true` to overwrite.
      * @param {AwsS3PresignRequestDto} dto - DTO containing the target key and expected file size
      * @param {IAwsS3PresignPutItemOptions} [options] - Optional expiration time, force update, and access level
-     * @returns {Promise<AwsS3PresignDto>} Presigned URL with expiry and file metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3Presign>} Presigned URL with expiry and file metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/" or key already exists
      */
     async presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3PresignPutItemOptions
-    ): Promise<AwsS3PresignDto | null> {
+    ): Promise<IAwsS3Presign | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -1056,7 +1056,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             ChecksumAlgorithm: 'SHA256',
             ContentDisposition: 'inline',
         });
-        const expiresIn = options?.expired ?? this.presignExpired;
+        const expiresIn =
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -1076,13 +1077,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Returns `null` immediately if the service is not initialized.
      * @param {AwsS3PresignPartRequestDto} dto - DTO containing the key, size, upload ID, and part number
      * @param {IAwsS3PresignPutItemPartOptions} [options] - Optional expiration time and access level
-     * @returns {Promise<AwsS3PresignPartDto>} Presigned URL with part metadata, or `null` if not initialized
+     * @returns {Promise<IAwsS3PresignPart>} Presigned URL with part metadata, or `null` if not initialized
      * @throws {Error} If the key starts with "/"
      */
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
         options?: IAwsS3PresignPutItemPartOptions
-    ): Promise<AwsS3PresignPartDto | null> {
+    ): Promise<IAwsS3PresignPart | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -1105,7 +1106,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         });
 
         const { extension, mime } = this.getFileInfoFromKey(key);
-        const expiresIn = options?.expired ?? this.presignExpired;
+        const expiresIn =
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -1126,18 +1128,18 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     }
 
     /**
-     * Builds an `AwsS3Dto` from a presign request without making any S3 API calls.
+     * Builds an `IAwsS3` from a presign request without making any S3 API calls.
      * Useful for constructing object metadata from a known key before the file is actually uploaded.
      * Does not require the S3 client to be initialized.
      * @param {AwsS3PresignRequestDto} dto - DTO containing the target key and optional size
      * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {AwsS3Dto} Object metadata derived from the key and bucket configuration
+     * @returns {IAwsS3} Object metadata derived from the key and bucket configuration
      * @throws {Error} If the key starts with "/"
      */
     mapPresign(
         { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
-    ): AwsS3Dto {
+    ): IAwsS3 {
         if (key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
         }
@@ -1167,17 +1169,17 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * The source object is **not deleted** after the copy.
      * Supports cross-bucket copies by specifying different source and destination access levels via `options.accessFrom` and `options.accessTo`.
      * Returns `null` immediately if the service is not initialized.
-     * @param {AwsS3Dto} source - Source object metadata (must have a key not starting with "/")
+     * @param {IAwsS3} source - Source object metadata (must have a key not starting with "/")
      * @param {string} destination - Destination path prefix (must not start with "/")
      * @param {IAwsS3MoveItemOptions} [options] - Optional source and destination bucket access levels
-     * @returns {Promise<AwsS3Dto>} New object metadata at the destination, or `null` if not initialized
+     * @returns {Promise<IAwsS3>} New object metadata at the destination, or `null` if not initialized
      * @throws {Error} If the source key or destination starts with "/"
      */
     async moveItem(
-        source: AwsS3Dto,
+        source: IAwsS3,
         destination: string,
         options?: IAwsS3MoveItemOptions
-    ): Promise<AwsS3Dto | null> {
+    ): Promise<IAwsS3 | null> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -1235,17 +1237,17 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
      * Each source's `access` level is used as its `accessFrom`; the destination access level is taken from `options.access`.
      * Parts that fail to copy are silently excluded from the result.
      * Returns an empty array immediately if the service is not initialized.
-     * @param {AwsS3Dto[]} sources - Source objects to copy (none may have a key starting with "/")
+     * @param {IAwsS3[]} sources - Source objects to copy (none may have a key starting with "/")
      * @param {string} destination - Destination path prefix (must not start with "/")
      * @param {IAwsS3Options} [options] - Optional configuration for destination bucket access level
-     * @returns {Promise<AwsS3Dto[]>} New object metadata for all successfully copied files, or `[]` if not initialized
+     * @returns {Promise<IAwsS3[]>} New object metadata for all successfully copied files, or `[]` if not initialized
      * @throws {Error} If any source key or the destination starts with "/"
      */
     async moveItems(
-        sources: AwsS3Dto[],
+        sources: IAwsS3[],
         destination: string,
         options?: IAwsS3Options
-    ): Promise<AwsS3Dto[]> {
+    ): Promise<IAwsS3[]> {
         if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
@@ -1264,10 +1266,11 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const promises = [];
 
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         for (const source of sources) {
             promises.push(
                 this.moveItem(source, destination, {
-                    accessTo: options?.access,
+                    accessTo: accessibility,
                     accessFrom: source.access,
                 })
             );
@@ -1276,7 +1279,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         const movedItems = await Promise.allSettled(promises);
         return movedItems
             .filter(item => item.status === 'fulfilled' && item.value !== null)
-            .map(item => (item as PromiseFulfilledResult<AwsS3Dto>).value!);
+            .map(item => (item as PromiseFulfilledResult<IAwsS3>).value!);
     }
 
     /**

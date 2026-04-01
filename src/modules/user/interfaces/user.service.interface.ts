@@ -1,5 +1,5 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { IFile } from '@common/file/interfaces/file.interface';
 import {
     IPaginationEqual,
@@ -85,7 +85,7 @@ export interface IUserService {
         { countryId, email, name, roleId }: UserCreateRequestDto,
         requestLog: IRequestLog,
         createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>>;
+    ): Promise<IResponseReturn<DatabaseIdResponseDto>>;
     updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
@@ -113,7 +113,7 @@ export interface IUserService {
     generatePhotoProfilePresign(
         userId: string,
         { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>>;
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
     updatePhotoProfile(
         userId: string,
         { photoKey, size }: UserUpdateProfilePhotoRequestDto,

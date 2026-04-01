@@ -1,6 +1,6 @@
 {
     "name": "ack-nestjs-boilerplate",
-    "version": "8.2.2",
+    "version": "8.2.3",
     "description": "Ack NestJs Boilerplate",
     "repository": {
         "type": "git",
@@ -119,8 +119,8 @@
         "@commitlint/config-conventional": "^20.5.0",
         "@eslint/js": "^10.0.1",
         "@golevelup/ts-jest": "^3.0.0",
-        "@nestjs/cli": "^11.0.16",
-        "@nestjs/schematics": "^11.0.9",
+        "@nestjs/cli": "^11.0.17",
+        "@nestjs/schematics": "^11.0.10",
         "@nestjs/testing": "^11.1.17",
         "@swc/cli": "^0.8.0",
         "@swc/core": "^1.15.21",
@@ -173,7 +173,7 @@
             "prettier --write"
         ]
     },
-    "packageManager": "pnpm@10.30.3",
+    "packageManager": "pnpm@10.33.0",
     "engines": {
         "npm": "please-use-pnpm",
         "yarn": "please-use-pnpm",

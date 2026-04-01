@@ -1,4 +1,4 @@
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -582,7 +582,7 @@ export class UserRepository {
 
     async updatePhotoProfile(
         userId: string,
-        photo: AwsS3Dto,
+        photo: IAwsS3,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({

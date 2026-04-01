@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import fs from 'fs';
-import path, { join } from 'path';
+import path from 'path';
 
 /**
  * Utility class for generating and managing JWT key pairs (ES256 for access, ES512 for refresh) and separate JWKS files.
@@ -165,27 +165,6 @@ class JwtKeysGenerator {
     }
 
     /**
-     * Extracts elliptic curve parameters from public key file for JWK creation.
-     * @param publicKeyPath - Path to public key file
-     * @returns Object containing x, y coordinates and curve type
-     */
-    extractECParams(publicKeyPath: string): {
-        x?: string;
-        y?: string;
-        crv?: string;
-    } {
-        try {
-            const pemContent = fs.readFileSync(publicKeyPath, 'utf8');
-            return this.extractECParamsFromString(pemContent);
-        } catch (error) {
-            console.error(
-                `Error extracting EC parameters from ${publicKeyPath}: ${error instanceof Error ? error.message : String(error)}`
-            );
-            throw error;
-        }
-    }
-
-    /**
      * Creates JSON Web Key (JWK) object from elliptic curve parameters.
      * @param params - EC parameters containing x, y coordinates and curve type
      * @param params.x - The x coordinate of the elliptic curve point
@@ -221,80 +200,6 @@ class JwtKeysGenerator {
             alg: alg,
             kid,
         };
-    }
-
-    /**
-     * Creates JSON Web Key Set (JWKS) from access and refresh token public keys.
-     * Generates random key identifiers and creates a complete JWKS structure.
-     * @param accessKeyPath - File path to access token public key in PEM format
-     * @param refreshKeyPath - File path to refresh token public key in PEM format
-     * @param outputPath - File path where JWKS JSON will be written
-     * @throws {Error} When key files cannot be read or JWKS cannot be created
-     */
-    createJwks(
-        accessKeyPath: string,
-        refreshKeyPath: string,
-        outputPath: string
-    ): void {
-        try {
-            const accessParams = this.extractECParams(accessKeyPath);
-            const refreshParams = this.extractECParams(refreshKeyPath);
-
-            // randomly generate a kid for the keys
-            const accessKid = crypto.randomBytes(16).toString('hex');
-            const refreshKid = crypto.randomBytes(16).toString('hex');
-            const accessJwk = this.createJwk(accessParams, accessKid, 'ES256');
-            const refreshJwk = this.createJwk(
-                refreshParams,
-                refreshKid,
-                'ES512'
-            );
-
-            const jwks = {
-                keys: [accessJwk, refreshJwk],
-            };
-
-            const outputDir = path.dirname(outputPath);
-            this.ensureDir(outputDir);
-
-            fs.writeFileSync(outputPath, JSON.stringify(jwks, null, 2));
-            console.log(`JWKS successfully created at ${outputPath}`);
-        } catch (error) {
-            console.error(
-                `Error creating JWKS: ${error instanceof Error ? error.message : String(error)}`
-            );
-            throw error;
-        }
-    }
-
-    /**
-     * Creates JWKS from public key strings and returns both JWKS and generated KIDs.
-     * This method generates random key identifiers and creates a complete JWKS structure.
-     * @param accessPublicKey - Access token public key string in PEM format
-     * @param refreshPublicKey - Refresh token public key string in PEM format
-     * @returns Object containing JWKS structure and the generated key identifiers
-     * @returns returns.jwks - Complete JWKS object with keys array
-     * @returns returns.accessKid - Generated access token key identifier
-     * @returns returns.refreshKid - Generated refresh token key identifier
-     */
-    createJwksFromStrings(
-        accessPublicKey: string,
-        refreshPublicKey: string
-    ): { jwks: any; accessKid: string; refreshKid: string } {
-        const accessParams = this.extractECParamsFromString(accessPublicKey);
-        const refreshParams = this.extractECParamsFromString(refreshPublicKey);
-
-        // randomly generate a kid for the keys
-        const accessKid = crypto.randomBytes(16).toString('hex');
-        const refreshKid = crypto.randomBytes(16).toString('hex');
-        const accessJwk = this.createJwk(accessParams, accessKid, 'ES256');
-        const refreshJwk = this.createJwk(refreshParams, refreshKid, 'ES512');
-
-        const jwks = {
-            keys: [accessJwk, refreshJwk],
-        };
-
-        return { jwks, accessKid, refreshKid };
     }
 
     /**
@@ -487,11 +392,11 @@ class JwtKeysGenerator {
             }
 
             console.log('✅ JWT keys and JWKS generated successfully!');
-            console.log('� Algorithm Configuration:');
+            console.log('🔑 Algorithm Configuration:');
             console.log('   • Access Token:  ES256 (ECDSA with P-256 curve)');
             console.log('   • Refresh Token: ES512 (ECDSA with P-521 curve)');
             console.log('');
-            console.log('�📝 Keys have been:');
+            console.log('📝 Keys have been:');
             console.log(
                 '   1. ✅ Printed to console (raw format for easy copy-paste)'
             );
@@ -638,7 +543,7 @@ function main() {
     const command = argv.find(arg => !arg.startsWith('--')) || 'generate';
 
     // Always use ./keys directory
-    const keyDir = join(process.cwd(), 'keys');
+    const keyDir = path.join(process.cwd(), 'keys');
 
     const generator = new JwtKeysGenerator(keyDir);
 

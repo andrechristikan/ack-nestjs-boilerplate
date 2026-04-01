@@ -90,9 +90,10 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 });
             }
 
-            this.addToRequestInstance(metadata.data, finalValue);
+            const field = metadata.data!;
+            this.addToRequestInstance(field, finalValue);
 
-            const customField = options?.customField ?? metadata.data;
+            const customField = options?.customField ?? field;
             return {
                 [customField]: {
                     in: finalValue,
@@ -106,7 +107,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
          * @param {(string | number)[]} value - The filter values
          * @returns {void}
          */
-        addToRequestInstance(field: string, value: (string | number)[]): void {
+        private addToRequestInstance(field: string, value: (string | number)[]): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 filters: this.request.__pagination?.filters
@@ -186,9 +187,10 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 });
             }
 
-            this.addToRequestInstance(metadata.data, finalValue);
+            const field = metadata.data!;
+            this.addToRequestInstance(field, finalValue);
 
-            const customField = options?.customField ?? metadata.data;
+            const customField = options?.customField ?? field;
             return {
                 [customField]: {
                     notIn: finalValue,
@@ -202,7 +204,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
          * @param {(string | number)[]} value - The filter values
          * @returns {void}
          */
-        addToRequestInstance(field: string, value: (string | number)[]): void {
+        private addToRequestInstance(field: string, value: (string | number)[]): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 filters: this.request.__pagination?.filters
@@ -278,12 +280,13 @@ export function PaginationQueryFilterEqualPipe<T>(
                 finalValue = value.trim() as T;
             }
 
+            const field = metadata.data!;
             this.addToRequestInstance(
-                metadata.data,
+                field,
                 finalValue as string | number | boolean
             );
 
-            const customField = options?.customField ?? metadata.data;
+            const customField = options?.customField ?? field;
 
             return {
                 [customField]: {
@@ -298,7 +301,7 @@ export function PaginationQueryFilterEqualPipe<T>(
          * @param {string | number | boolean} value - The filter value
          * @returns {void}
          */
-        addToRequestInstance(
+        private addToRequestInstance(
             field: string,
             value: string | number | boolean
         ): void {
@@ -328,7 +331,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
     options?: IPaginationQueryFilterEqualOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
-    class MixinPaginationFilterEqualPipe implements PipeTransform {
+    class MixinPaginationFilterNotEqualPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
         /**
@@ -377,12 +380,13 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 finalValue = value.trim() as T;
             }
 
+            const field = metadata.data!;
             this.addToRequestInstance(
-                metadata.data,
+                field,
                 finalValue as string | number | boolean
             );
 
-            const customField = options?.customField ?? metadata.data;
+            const customField = options?.customField ?? field;
 
             return {
                 [customField]: {
@@ -397,7 +401,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
          * @param {string | number | boolean} value - The filter value
          * @returns {void}
          */
-        addToRequestInstance(
+        private addToRequestInstance(
             field: string,
             value: string | number | boolean
         ): void {
@@ -413,7 +417,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
         }
     }
 
-    return mixin(MixinPaginationFilterEqualPipe);
+    return mixin(MixinPaginationFilterNotEqualPipe);
 }
 
 /**
@@ -461,9 +465,10 @@ export function PaginationQueryFilterDatePipe(
                 dayOf: options?.dayOf,
             });
 
-            this.addToRequestInstance(metadata.data, finalValue);
+            const field = metadata.data!;
+            this.addToRequestInstance(field, finalValue);
 
-            const customField = options?.customField ?? metadata.data;
+            const customField = options?.customField ?? field;
             const operation = options?.type
                 ? options.type === EnumPaginationFilterDateBetweenType.start
                     ? 'gte'

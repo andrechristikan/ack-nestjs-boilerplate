@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 
+/** Response DTO representing resolved geolocation data derived from the client's IP address. */
 export class RequestGeoLocationResponseDto {
     @ApiProperty({
         description: 'Latitude of the geo-location',

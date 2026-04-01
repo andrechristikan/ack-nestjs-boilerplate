@@ -1,11 +1,11 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { EnumPasswordHistoryType } from '@generated/prisma-client';
 import { Exclude, Type } from 'class-transformer';
 
-export class PasswordHistoryResponseDto extends DatabaseDto {
+export class PasswordHistoryResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
