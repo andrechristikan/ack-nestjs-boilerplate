@@ -120,7 +120,7 @@
         "@eslint/js": "^10.0.1",
         "@golevelup/ts-jest": "^1.2.1",
         "@nestjs/cli": "^11.0.16",
-        "@nestjs/schematics": "^11.0.9",
+        "@nestjs/schematics": "^11.0.10",
         "@nestjs/testing": "^11.1.15",
         "@swc/cli": "^0.8.0",
         "@swc/core": "^1.15.18",
