@@ -29,6 +29,7 @@ When in doubt about a behavior, the matching doc is the source of truth. Read it
 - Leave the index exactly as the user arranged it. Already-staged files stay staged; unstaged stay unstaged.
 - Stage or commit ONLY when the user explicitly asks, and only the files they name.
 - When asked to commit: READ `.commitlintrc` first, then PROPOSE the commit message(s) and wait for approval. Never commit before the user accepts the message. The message must pass commitlint.
+- Commit message = single-line subject ONLY. No body, no bullet lists, no `Co-Authored-By` footer. Match the repo's convention (`type(scope): summary`). Keep it terse.
 
 ### Prisma — schema is off-limits
 - Do NOT edit the Prisma schema.
