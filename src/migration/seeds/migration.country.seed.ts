@@ -28,7 +28,7 @@ export class MigrationCountrySeed
     ) {
         super();
 
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.countries = migrationCountryData[this.env];
     }
 

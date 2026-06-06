@@ -5,7 +5,11 @@ This document provides instructions for GitHub Copilot to generate code that fol
 > **Copilot Behavior Note**
 > - Always read relevant source files before suggesting changes — never assume code structure.
 > - Every suggestion or implementation **must consider best practices** (security, maintainability, scalability, readability).
-> - If an approach is chosen for **performance** reasons or to **match an existing implementation**, **it must be explicitly noted** — e.g., with a comment like `// NOTE: this approach is chosen for performance` or `// NOTE: aligned with existing pattern in codebase`.
+> - If an approach is chosen for **performance** reasons or to **match an existing implementation**, **it must be explicitly noted** — mark it with `// @note <text>` (e.g. `// @note chosen for performance`, `// @note aligned with existing pattern`). If the symbol already has a JSDoc block, put the note inside that block instead of a separate `// @note`.
+> - **Minimal comments.** Code self-documents — comment only the non-obvious (tricky invariant, security reason, deliberate deviation). Do not narrate obvious code.
+> - **Do not write or scaffold tests** unless the user explicitly asks for them.
+> - **Never edit the Prisma schema** or run schema/DB-mutating commands (`db:migrate`, `db:push`, `migration:*`, `db:generate`). If a schema change is needed, stop and tell the user.
+> - **Never commit, stage, or unstage** on your own — leave the git tree exactly as the user arranged it.
 > - If an example is needed to clarify a suggestion, **provide the code example immediately** — do not defer or ask for confirmation first.
 
 ## Project Overview
@@ -97,8 +101,10 @@ export class UserService implements IUserService {
 - `@routes/*` → `src/router/routes/*`
 - `@router` → `src/router/router.module.ts`
 - `@migration/*` → `src/migration/*`
+- `@queues/*` → `src/queues/*`
 - `@test/*` → `test/*`
 - `@generated/*` → `generated/*`
+- `@package` → `package.json`
 - `@prisma/client` → `generated/prisma-client`
 
 ```typescript
@@ -513,7 +519,7 @@ export default registerAs(
 
 ## Testing
 
-Follow test file naming conventions:
+**Do not write or scaffold tests unless the user explicitly asks.** When tests are explicitly requested, follow these file naming conventions:
 - Unit tests: `*.spec.ts`
 - Integration tests: `*.integration-spec.ts`
 - E2E tests: `*.e2e-spec.ts`
@@ -651,6 +657,10 @@ async updateProfile(userId: string, dto: UpdateUserRequestDto) {
 - Use `undefined` in domain data interface, response DTO domain data fields, `src/configs/` config interface, or service/repository data params → use `null` instead
 - Use `variable?: string | null` anywhere → ambiguous, use `?: string` for input boundary or `string | null` for internal layers
 - Normalize filter params in caller instead of repository → repository owns the `null → {}` normalization before Prisma
+- Edit the Prisma schema or run schema/DB commands (`db:migrate`, `db:push`, `migration:*`, `db:generate`) → stop and tell the user
+- Commit, stage, or unstage without an explicit user request → leave the git tree alone
+- Write or scaffold unit tests unprompted → only when the user explicitly asks
+- Over-comment / narrate obvious code → minimal comments, mark deliberate notes with `// @note`
 
 ## Design Patterns & Principles
 

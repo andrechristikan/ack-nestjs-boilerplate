@@ -1,6 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
-import { author, repository, version } from 'package.json';
+import { author, repository, version } from '@package';
 
 export interface IConfigApp {
     name: string;

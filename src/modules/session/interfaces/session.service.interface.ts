@@ -31,7 +31,7 @@ export interface ISessionService {
         userId: string,
         sessionId: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     revokeByAdmin(
         userId: string,
         sessionId: string,

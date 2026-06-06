@@ -17,7 +17,6 @@ async function bootstrap(): Promise<void> {
         bufferLogs: true,
     });
 
-    // Custom Logger
     app.useLogger(app.get(PinoLogger));
 
     const configService = app.get(ConfigService);
@@ -29,7 +28,9 @@ async function bootstrap(): Promise<void> {
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
     )!;
-    const version: string = configService.get<string>('app.urlVersion.version')!;
+    const version: string = configService.get<string>(
+        'app.urlVersion.version'
+    )!;
     const appName: string = configService.get<string>('app.name')!;
     const databaseUrl = configService.get<string>('database.url')!;
     const databaseDebug = configService.get<boolean>('database.debug')!;
@@ -37,7 +38,6 @@ async function bootstrap(): Promise<void> {
     const loggerDebugEnable = configService.get<boolean>('logger.enable')!;
     const loggerDebugLevel = configService.get<string>('logger.level')!;
 
-    // enable
     const versionEnable: boolean = configService.get<boolean>(
         'app.urlVersion.enable'
     )!;
@@ -45,11 +45,9 @@ async function bootstrap(): Promise<void> {
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
 
-    // Setting
     app.setGlobalPrefix(globalPrefix);
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
-    // Versioning
     if (versionEnable) {
         app.enableVersioning({
             type: VersioningType.URI,
@@ -58,7 +56,6 @@ async function bootstrap(): Promise<void> {
         });
     }
 
-    // Validate Env
     const logger = new Logger(`${appName}-Main`);
     const classEnv = plainToInstance(AppEnvDto, process.env);
     const errors = await validate(classEnv, {
@@ -81,13 +78,11 @@ async function bootstrap(): Promise<void> {
         });
     }
 
-    // Swagger
     await swaggerInit(app);
 
-    // Listen
     await app.listen(port, host);
 
-    logger.log('=='.repeat(30), 'NestApplication');
+    logger.log('=='.repeat(10), 'NestApplication');
     logger.log(`App Environment: ${env}`, 'NestApplication');
     logger.log(`App Name: ${appName}`, 'NestApplication');
     logger.log(`App Global Prefix: ${globalPrefix}`, 'NestApplication');
@@ -107,7 +102,7 @@ async function bootstrap(): Promise<void> {
     logger.log(`Logger Auto: ${loggerAuto}`, 'NestApplication');
     logger.log(`Logger Debug Enable: ${loggerDebugEnable}`, 'NestApplication');
     logger.log(`Logger Debug Level: ${loggerDebugLevel}`, 'NestApplication');
-    logger.log('=='.repeat(30), 'NestApplication');
+    logger.log('=='.repeat(10), 'NestApplication');
 
     return;
 }

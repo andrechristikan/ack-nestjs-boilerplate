@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/andrechristikan/ack-nestjs-boilerplate/security/advisories/new
+    about: Report security issues privately. Do NOT open a public issue for vulnerabilities.
+  - name: 💬 Question / Discussion
+    url: https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions
+    about: Ask usage questions or start a discussion here.
+  - name: 📚 Documentation
+    url: https://github.com/andrechristikan/ack-nestjs-boilerplate/tree/main/docs
+    about: Read the docs before opening an issue.

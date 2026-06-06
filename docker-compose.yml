@@ -48,9 +48,9 @@ services:
         ports:
             - "3011:80"
         volumes:
-            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json
-            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json
-            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
+            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json:ro
+            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json:ro
+            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf:ro
         networks:
             - app-network
         deploy:

@@ -18,6 +18,7 @@
         "esModuleInterop": true,
         "moduleResolution": "nodenext",
         "resolveJsonModule": true,
+        "types": ["node", "jest", "multer"],
         "strictNullChecks": true,
         "noImplicitAny": true,
         "strictPropertyInitialization": false,
@@ -33,7 +34,8 @@
             "@test/*": ["./test/*"],
             "@generated/*": ["./generated/*"],
             "@prisma/client": ["./generated/prisma-client"],
-            "@queues/*": ["./src/queues/*"]
+            "@queues/*": ["./src/queues/*"],
+            "@package": ["./package.json"]
         }
     },
     "include": ["src/**/*", "test/**/*"],

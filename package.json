@@ -17,16 +17,16 @@
         "prebuild": "rimraf dist",
         "prepare": "husky",
         "clean": "rimraf dist && rimraf node_modules && pnpm store prune",
-        "generate:keys": "npx ts-node scripts/generate-keys.ts",
+        "generate:keys": "node scripts/generate-keys.ts",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",
         "deadcode": "ts-prune --project tsconfig.json --skip *.json --skip generated/* | grep -v 'used in module'",
         "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
         "typecheck": "tsc --noEmit",
-        "typecheck:watch": "tsc --noEmit --watch",
-        "build": "nest build application --config nest-cli.json",
-        "build:dev": "nest build application --config nest-cli.json --watch",
+        "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput",
+        "build": "nest build application --config nest-cli.json && pnpm typecheck",
+        "build:dev": "nest build application --config nest-cli.json --watch && pnpm typecheck",
         "start": "nest start application --config nest-cli.json",
-        "start:dev": "nest start application --watch --config nest-cli.json",
+        "start:dev": "concurrently -n \"App,Types\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json\" \"pnpm typecheck:watch\"",
         "start:prod": "node dist/main",
         "lint": "eslint",
         "lint:staged": "lint-staged",
@@ -162,7 +162,8 @@
         "ts-prune": "^0.10.3",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^6.0.2",
-        "typescript-eslint": "^8.58.0"
+        "typescript-eslint": "^8.58.0",
+        "concurrently": "^9.2.1"
     },
     "lint-staged": {
         "**/*.ts": [
@@ -179,16 +180,5 @@
         "yarn": "please-use-pnpm",
         "node": ">= 24.11.0",
         "pnpm": ">= 10.25.0"
-    },
-    "resolutions": {
-        "form-data": "^4.0.5",
-        "glob": "^13.0.0",
-        "jws": "^4.0.1",
-        "@babel/helpers": "^7.26.10",
-        "js-yaml": "^4.1.1",
-        "brace-expansion": "^4.0.1",
-        "tmp": "^0.2.4",
-        "body-parser": "^2.2.1",
-        "minimatch": "^10.0.0"
     }
 }

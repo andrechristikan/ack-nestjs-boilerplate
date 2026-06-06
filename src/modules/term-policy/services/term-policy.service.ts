@@ -188,7 +188,7 @@ export class TermPolicyService implements ITermPolicyService {
                 requestLog
             );
 
-            // send notification after accepting term policy
+            // @note: send notification after accepting term policy
             await this.notificationUtil.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,
                 type: policy.type,

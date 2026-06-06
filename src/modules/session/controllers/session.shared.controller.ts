@@ -11,10 +11,7 @@ import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
@@ -74,7 +71,7 @@ export class SessionSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.sessionService.revoke(userId, sessionId, {
             ipAddress,
             userAgent,

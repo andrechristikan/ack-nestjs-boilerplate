@@ -30,7 +30,7 @@ export class MigrationRoleSeed
     ) {
         super();
 
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.roles = migrationRoleData[this.env];
     }
 

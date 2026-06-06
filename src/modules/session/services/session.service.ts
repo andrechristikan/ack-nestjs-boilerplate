@@ -100,7 +100,7 @@ export class SessionService implements ISessionService {
         userId: string,
         sessionId: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId

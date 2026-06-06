@@ -1,0 +1,79 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement
+title: "[FEAT] "
+labels:
+  - feature
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I read the relevant docs in the `/docs` folder.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? Why is it needed?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like.
+    validations:
+      required: true
+  - type: textarea
+    id: modules
+    attributes:
+      label: Affected Modules
+      description: Which existing modules are affected, or is a new module needed?
+      placeholder: "e.g. auth, user, session — or new module: payment"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What must be true for this feature to be considered complete?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: API Design (if applicable)
+      render: shell
+      placeholder: |
+        METHOD /api/v1/path
+        Request body: { ... }
+        Response: { ... }
+    validations:
+      required: false
+  - type: textarea
+    id: database
+    attributes:
+      label: Database Changes (if applicable)
+      description: Will new models, fields, or indexes be needed in the Prisma schema?
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you've considered.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, references, related issues, or anything else relevant.
+    validations:
+      required: false

@@ -67,7 +67,7 @@ export class RoleRepository {
         });
     }
 
-    async findOneById(id: string): Promise<Role> {
+    async findOneById(id: string): Promise<Role | null> {
         return this.databaseService.role.findUnique({
             where: { id },
         });

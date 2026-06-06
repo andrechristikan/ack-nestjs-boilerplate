@@ -57,7 +57,7 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 | Tool | Version |
 |------|---------|
 | Node.js | >= 24.11.0 |
-| pnpm | >= 9.x |
+| pnpm | >= 10.25.0 |
 | Docker | Latest stable |
 | MongoDB | Replication set (required for transactions) |
 | Redis | Latest stable |
@@ -95,7 +95,6 @@ This project uses **TypeScript** with strict mode. Please follow these standards
 - Run tests:
   ```bash
   pnpm test
-  pnpm test:e2e
   ```
 - No `any` types unless absolutely unavoidable — justify it in a comment
 - All public methods/functions should have proper TypeScript typings
@@ -121,16 +120,19 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 |------|-------------|
 | `feat` | New feature |
 | `fix` | Bug fix |
-| `docs` | Documentation changes |
+| `hotfix` | Urgent production fix |
+| `doc` | Documentation changes |
 | `refactor` | Code refactor (no feature/fix) |
 | `test` | Adding or updating tests |
+| `ci` | CI/CD pipeline changes |
 | `chore` | Build process, dependencies |
+| `revert` | Revert a previous commit |
 
 **Examples:**
 ```
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
-docs(readme): update docker setup instructions
+doc(readme): update docker setup instructions
 ```
 
 ---

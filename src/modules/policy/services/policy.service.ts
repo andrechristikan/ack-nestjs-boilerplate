@@ -40,7 +40,7 @@ export class PolicyService implements IPolicyService {
         }
 
         const userAbilities =
-            this.policyAbilityFactory.createForUser(__abilities);
+            this.policyAbilityFactory.createForUser(__abilities ?? []);
         const policyHandler = this.policyAbilityFactory.handlerAbilities(
             userAbilities,
             requiredAbilities

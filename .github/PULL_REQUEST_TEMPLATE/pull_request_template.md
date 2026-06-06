@@ -26,7 +26,7 @@
 ## Checklist
 
 ### General
-- [ ] I have read [CONTRIBUTING.md](../CONTRIBUTING.md)
+- [ ] I have read [CONTRIBUTING.md](/CONTRIBUTING.md)
 - [ ] Code follows the existing architecture and patterns
 - [ ] `pnpm lint` passes
 - [ ] `pnpm test` passes
@@ -53,7 +53,7 @@
 ### Security (if applicable)
 - [ ] Decorator order follows project convention (Doc → TermPolicy → Policy → Role → ActivityLog → User → JWT → FeatureFlag → ApiKey → HttpCode → Method)
 - [ ] Sessions invalidated on security-sensitive operations (password change/reset, logout, device removal)
-- [ ] Rate limiting applied on sensitive endpoints (`@Throttle()`)
+- [ ] Rate limiting verified — global `ThrottlerGuard` covers all endpoints; use `@Throttle()` only to tighten limits on sensitive endpoints (optional)
 - [ ] No sensitive data logged (password, token, apiKey, secret)
 - [ ] Input validated via class-validator DTOs
 

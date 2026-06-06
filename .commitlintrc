@@ -1,4 +1,5 @@
 {
+    "$schema": "https://json.schemastore.org/commitlintrc.json",
     "extends": [
         "@commitlint/config-conventional"
     ],
@@ -23,14 +24,17 @@
             2,
             "always",
             [
+                "build",
+                "chore",
                 "ci",
-                "doc",
+                "docs",
                 "feat",
                 "fix",
                 "hotfix",
-                "chore",
+                "perf",
                 "refactor",
                 "revert",
+                "style",
                 "test"
             ]
         ]

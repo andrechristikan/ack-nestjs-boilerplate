@@ -125,7 +125,10 @@ export class SessionRepository {
         });
     }
 
-    async findOneActive(userId: string, sessionId: string): Promise<Session> {
+    async findOneActive(
+        userId: string,
+        sessionId: string
+    ): Promise<Session | null> {
         const today = this.helperService.dateCreate();
 
         return this.databaseService.session.findFirst({

@@ -140,8 +140,8 @@ export interface IPaginationCursorReturn<T = unknown> {
 }
 
 export interface IPaginationRepository {
-    findMany: (args?: unknown) => Promise<unknown[]>;
-    count: (args?: unknown) => Promise<number>;
+    findMany(args?: unknown): Promise<unknown[]>;
+    count(args?: unknown): Promise<number>;
 }
 
 export interface IPaginationCursorValue {

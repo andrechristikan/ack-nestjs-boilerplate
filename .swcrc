@@ -1,6 +1,7 @@
 {
     "$schema": "https://swc.rs/schema.json",
     "sourceMaps": true,
+    "minify": true,
     "module": {
         "type": "commonjs"
     },
@@ -31,7 +32,8 @@
             "@test/*": ["test/*"],
             "@generated/*": ["generated/*"],
             "@prisma/client": ["generated/prisma-client"],
-            "@queues/*": ["src/queues/*"]
+            "@queues/*": ["src/queues/*"],
+            "@package": ["package.json"]
         },
         "target": "esnext",
         "parser": {
@@ -43,6 +45,5 @@
             "legacyDecorator": true,
             "decoratorMetadata": true
         }
-    },
-    "minify": false
+    }
 }

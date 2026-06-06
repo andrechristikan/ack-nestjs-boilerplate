@@ -1609,7 +1609,7 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            // send notification after all creation
+            // @note: send notification after all creation
             await this.notificationUtil.sendVerificationEmail(user.id, {
                 expiredAt: this.helperService.dateFormatToIso(
                     emailVerification.expiredAt

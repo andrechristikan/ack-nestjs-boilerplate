@@ -110,7 +110,6 @@ export class RequestCorsMiddleware implements NestMiddleware {
      * @returns True if origin matches any pattern
      */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
-        // Validate origin format
         if (!this.isValidOrigin(origin)) {
             return false;
         }
