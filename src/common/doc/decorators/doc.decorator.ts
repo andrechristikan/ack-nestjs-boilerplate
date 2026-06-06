@@ -11,6 +11,7 @@ import {
     ApiQuery,
     ApiResponse,
     ApiSecurity,
+    generateSchema,
     getSchemaPath,
 } from '@nestjs/swagger';
 import {
@@ -30,7 +31,6 @@ import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
-import { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumPaginationOrderDirectionType,
@@ -50,6 +50,10 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+
+// @note SchemaObject is not part of @nestjs/swagger's public exports; derive it from
+// the public generateSchema return type instead of deep-importing dist internals.
+type SchemaObject = ReturnType<typeof generateSchema>['schema'];
 
 /**
  * Helper function to create a schema object with consistent structure.

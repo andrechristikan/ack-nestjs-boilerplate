@@ -1,12 +1,35 @@
-ignoredBuiltDependencies:
-    - '@scarf/scarf'
-    - '@sentry-internal/node-cpu-profiler'
-    - msgpackr-extract
-    - unrs-resolver
+allowBuilds:
+    '@firebase/util': true
+    '@nestjs/core': true
+    '@prisma/client': true
+    '@prisma/engines': true
+    '@scarf/scarf': true
+    '@sentry-internal/node-cpu-profiler': true
+    '@swc/core': true
+    msgpackr-extract: true
+    prisma: true
+    protobufjs: true
+    unrs-resolver: true
 
-onlyBuiltDependencies:
-    - '@nestjs/core'
-    - '@prisma/client'
-    - '@prisma/engines'
-    - '@swc/core'
-    - prisma
+minimumReleaseAgeExclude:
+    - '@aws-sdk/checksums@3.1000.2'
+    - '@aws-sdk/client-s3@3.1063.0'
+    - '@aws-sdk/client-ses@3.1063.0'
+    - '@aws-sdk/core@3.974.18'
+    - '@aws-sdk/credential-provider-env@3.972.44'
+    - '@aws-sdk/credential-provider-http@3.972.46'
+    - '@aws-sdk/credential-provider-ini@3.972.50'
+    - '@aws-sdk/credential-provider-login@3.972.49'
+    - '@aws-sdk/credential-provider-node@3.972.52'
+    - '@aws-sdk/credential-provider-process@3.972.44'
+    - '@aws-sdk/credential-provider-sso@3.972.49'
+    - '@aws-sdk/credential-provider-web-identity@3.972.49'
+    - '@aws-sdk/middleware-flexible-checksums@3.974.27'
+    - '@aws-sdk/middleware-sdk-s3@3.972.48'
+    - '@aws-sdk/nested-clients@3.997.17'
+    - '@aws-sdk/s3-request-presigner@3.1063.0'
+    - '@aws-sdk/signature-v4-multi-region@3.996.32'
+    - '@aws-sdk/token-providers@3.1063.0'
+    - '@aws-sdk/types@3.973.11'
+    - '@aws-sdk/xml-builder@3.972.28'
+    - '@types/node@25.9.2'
