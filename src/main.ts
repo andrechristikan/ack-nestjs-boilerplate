@@ -82,7 +82,7 @@ async function bootstrap(): Promise<void> {
 
     await app.listen(port, host);
 
-    logger.log('=='.repeat(10), 'NestApplication');
+    logger.log('=='.repeat(20), 'NestApplication');
     logger.log(`App Environment: ${env}`, 'NestApplication');
     logger.log(`App Name: ${appName}`, 'NestApplication');
     logger.log(`App Global Prefix: ${globalPrefix}`, 'NestApplication');
@@ -102,7 +102,7 @@ async function bootstrap(): Promise<void> {
     logger.log(`Logger Auto: ${loggerAuto}`, 'NestApplication');
     logger.log(`Logger Debug Enable: ${loggerDebugEnable}`, 'NestApplication');
     logger.log(`Logger Debug Level: ${loggerDebugLevel}`, 'NestApplication');
-    logger.log('=='.repeat(10), 'NestApplication');
+    logger.log('=='.repeat(20), 'NestApplication');
 
     return;
 }
