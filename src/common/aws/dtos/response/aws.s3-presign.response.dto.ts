@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 /**
  * Response DTO for an AWS S3 presigned URL.
@@ -10,6 +11,7 @@ export class AwsS3PresignResponseDto {
         example: faker.system.filePath(),
         description: 'S3 object key/path',
     })
+    @Expose()
     key: string;
 
     @ApiProperty({
@@ -17,6 +19,7 @@ export class AwsS3PresignResponseDto {
         example: 'image/jpeg',
         description: 'MIME type of the object',
     })
+    @Expose()
     mime: string;
 
     @ApiProperty({
@@ -24,6 +27,7 @@ export class AwsS3PresignResponseDto {
         example: 'jpg',
         description: 'File extension',
     })
+    @Expose()
     extension: string;
 
     @ApiProperty({
@@ -31,6 +35,7 @@ export class AwsS3PresignResponseDto {
         example: faker.internet.url(),
         description: 'Presigned URL for uploading the object to S3',
     })
+    @Expose()
     presignUrl: string;
 
     @ApiProperty({
@@ -38,6 +43,7 @@ export class AwsS3PresignResponseDto {
         example: 10000,
         description: 'Expired in millisecond for each presign url',
     })
+    @Expose()
     expiredIn: number;
 }
 
@@ -50,6 +56,7 @@ export class AwsS3PresignPartResponseDto extends AwsS3PresignResponseDto {
         example: 1,
         description: 'Part number in the multipart upload',
     })
+    @Expose()
     partNumber: number;
 
     @ApiProperty({
@@ -57,5 +64,6 @@ export class AwsS3PresignPartResponseDto extends AwsS3PresignResponseDto {
         example: 1024,
         description: 'Size of the part in bytes',
     })
+    @Expose()
     size: number;
 }

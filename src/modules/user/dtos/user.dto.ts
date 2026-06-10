@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { Expose, Type } from 'class-transformer';
 import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumUserGender,
@@ -21,6 +21,7 @@ export class UserDto extends DatabaseResponseDto {
         maxLength: 100,
         minLength: 1,
     })
+    @Expose()
     name?: string;
 
     @ApiProperty({
@@ -28,18 +29,21 @@ export class UserDto extends DatabaseResponseDto {
         maxLength: 50,
         minLength: 3,
     })
+    @Expose()
     username: Lowercase<string>;
 
     @ApiProperty({
         required: true,
         example: true,
     })
+    @Expose()
     isVerified: boolean;
 
     @ApiProperty({
         required: false,
         example: faker.date.past(),
     })
+    @Expose()
     verifiedAt?: Date;
 
     @ApiProperty({
@@ -47,44 +51,49 @@ export class UserDto extends DatabaseResponseDto {
         example: faker.internet.email(),
         maxLength: 100,
     })
+    @Expose()
     email: Lowercase<string>;
 
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
     })
+    @Expose()
     roleId: string;
 
     @ApiProperty({
         required: true,
         type: RoleDto,
     })
+    @Expose()
     @Type(() => RoleDto)
     role: RoleDto;
 
-    @ApiHideProperty()
-    @Exclude()
     password?: string;
 
     @ApiProperty({
         required: false,
         example: faker.date.future(),
     })
+    @Expose()
     passwordExpired?: Date;
 
     @ApiProperty({
         required: false,
         example: faker.date.past(),
     })
+    @Expose()
     passwordCreated?: Date;
 
     @ApiProperty({ required: false, example: 0, minimum: 0 })
+    @Expose()
     passwordAttempt?: number;
 
     @ApiProperty({
         required: true,
         example: faker.date.recent(),
     })
+    @Expose()
     signUpDate: Date;
 
     @ApiProperty({
@@ -92,6 +101,7 @@ export class UserDto extends DatabaseResponseDto {
         example: EnumUserSignUpFrom.admin,
         enum: EnumUserSignUpFrom,
     })
+    @Expose()
     signUpFrom: EnumUserSignUpFrom;
 
     @ApiProperty({
@@ -99,6 +109,7 @@ export class UserDto extends DatabaseResponseDto {
         example: EnumUserSignUpWith.credential,
         enum: EnumUserSignUpWith,
     })
+    @Expose()
     signUpWith: EnumUserSignUpWith;
 
     @ApiProperty({
@@ -106,12 +117,14 @@ export class UserDto extends DatabaseResponseDto {
         example: EnumUserStatus.active,
         enum: EnumUserStatus,
     })
+    @Expose()
     status: EnumUserStatus;
 
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
     })
+    @Expose()
     countryId: string;
 
     @ApiProperty({
@@ -119,6 +132,7 @@ export class UserDto extends DatabaseResponseDto {
         enum: EnumUserGender,
         required: false,
     })
+    @Expose()
     gender?: EnumUserGender;
 
     @ApiProperty({
@@ -126,6 +140,7 @@ export class UserDto extends DatabaseResponseDto {
         description: 'Last login time of user',
         example: faker.date.recent(),
     })
+    @Expose()
     lastLoginAt?: Date;
 
     @ApiProperty({
@@ -133,6 +148,7 @@ export class UserDto extends DatabaseResponseDto {
         description: 'Last IP Address of user',
         example: faker.internet.ipv4(),
     })
+    @Expose()
     lastIPAddress?: string;
 
     @ApiProperty({
@@ -140,6 +156,7 @@ export class UserDto extends DatabaseResponseDto {
         enum: EnumUserLoginFrom,
         example: EnumUserLoginFrom.website,
     })
+    @Expose()
     lastLoginFrom?: EnumUserLoginFrom;
 
     @ApiProperty({
@@ -147,12 +164,14 @@ export class UserDto extends DatabaseResponseDto {
         enum: EnumUserLoginWith,
         example: EnumUserLoginWith.credential,
     })
+    @Expose()
     lastLoginWith?: EnumUserLoginWith;
 
     @ApiProperty({
         required: true,
         type: UserTermPolicyDto,
     })
+    @Expose()
     @Type(() => UserTermPolicyDto)
     termPolicy: UserTermPolicyDto;
 
@@ -160,6 +179,7 @@ export class UserDto extends DatabaseResponseDto {
         required: false,
         type: AwsS3ResponseDto,
     })
+    @Expose()
     @Type(() => AwsS3ResponseDto)
     photo?: AwsS3ResponseDto;
 
@@ -167,6 +187,7 @@ export class UserDto extends DatabaseResponseDto {
         required: true,
         type: UserTwoFactorDto,
     })
+    @Expose()
     @Type(() => UserTwoFactorDto)
     twoFactor: UserTwoFactorDto;
 }

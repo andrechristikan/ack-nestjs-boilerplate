@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
@@ -21,7 +21,8 @@ export class ApiKeyUtil {
     constructor(
         @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.cachePrefixKey = this.configService.get<string>(
             'auth.xApiKey.cachePrefixKey'
@@ -31,15 +32,18 @@ export class ApiKeyUtil {
     }
 
     mapList(apiKeys: ApiKey[]): ApiKeyResponseDto[] {
-        return plainToInstance(ApiKeyResponseDto, apiKeys);
+        return this.responseUtil.serialize(ApiKeyResponseDto, apiKeys);
     }
 
     mapOne(apiKey: ApiKey): ApiKeyResponseDto {
-        return plainToInstance(ApiKeyResponseDto, apiKey);
+        return this.responseUtil.serialize(ApiKeyResponseDto, apiKey);
     }
 
     mapCreate(apiKey: ApiKey, secret: string): ApiKeyCreateResponseDto {
-        return plainToInstance(ApiKeyCreateResponseDto, { ...apiKey, secret });
+        return this.responseUtil.serialize(ApiKeyCreateResponseDto, {
+            ...apiKey,
+            secret,
+        });
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class UserTwoFactorSetupResponseDto {
     @ApiProperty({
@@ -6,6 +7,7 @@ export class UserTwoFactorSetupResponseDto {
         description: 'Base32 encoded secret to be stored in authenticator apps',
         example: 'JBSWY3DPEHPK3PXP',
     })
+    @Expose()
     secret: string;
 
     @ApiProperty({
@@ -15,5 +17,6 @@ export class UserTwoFactorSetupResponseDto {
         example:
             'otpauth://totp/ACK%20Auth:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ACK',
     })
+    @Expose()
     otpauthUrl: string;
 }

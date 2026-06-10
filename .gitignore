@@ -82,6 +82,7 @@ tmp/
 .claude/worktrees/
 .claude/todos.json
 .claude/scheduled-tasks/
+docs/superpowers
 
 ## Cursor
 .cursorignore

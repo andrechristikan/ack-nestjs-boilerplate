@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
+import { ResponseModule } from '@common/response/response.module';
 import configs from '@config';
 import { PolicyModule } from '@modules/policy/policy.module';
 import { FileModule } from '@common/file/file.module';
@@ -51,6 +52,7 @@ import { NotificationModule } from '@modules/notification/notification.module';
         CacheMainModule.forRoot(),
         DatabaseModule.forRoot(),
         RequestModule.forRoot(),
+        ResponseModule.forRoot(),
 
         HelperModule,
         PaginationModule,

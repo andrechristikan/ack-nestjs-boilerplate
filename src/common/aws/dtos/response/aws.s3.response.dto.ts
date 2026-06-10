@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 /**
  * Response DTO for AWS S3 object information.
@@ -12,6 +13,7 @@ export class AwsS3ResponseDto {
         example: faker.string.alpha({ length: 10, casing: 'upper' }),
         description: 'S3 bucket name',
     })
+    @Expose()
     bucket: string;
 
     @ApiProperty({
@@ -19,6 +21,7 @@ export class AwsS3ResponseDto {
         example: faker.system.filePath(),
         description: 'S3 object key/path',
     })
+    @Expose()
     key: string;
 
     @ApiProperty({
@@ -26,6 +29,7 @@ export class AwsS3ResponseDto {
         example: `${faker.internet.url()}/${faker.system.filePath()}`,
         description: 'CDN URL for the object',
     })
+    @Expose()
     cdnUrl: string | null;
 
     @ApiProperty({
@@ -33,6 +37,7 @@ export class AwsS3ResponseDto {
         example: `${faker.internet.url()}/${faker.system.filePath()}`,
         description: 'Complete URL to access the object',
     })
+    @Expose()
     completedUrl: string;
 
     @ApiProperty({
@@ -40,6 +45,7 @@ export class AwsS3ResponseDto {
         example: 'image/jpeg',
         description: 'MIME type of the object',
     })
+    @Expose()
     mime: string;
 
     @ApiProperty({
@@ -47,6 +53,7 @@ export class AwsS3ResponseDto {
         example: 'jpg',
         description: 'File extension',
     })
+    @Expose()
     extension: string;
 
     @ApiProperty({
@@ -56,6 +63,7 @@ export class AwsS3ResponseDto {
         description: 'Access level for the S3 object',
         type: 'string',
     })
+    @Expose()
     access: EnumAwsS3Accessibility;
 
     @ApiProperty({
@@ -63,5 +71,6 @@ export class AwsS3ResponseDto {
         example: 1024,
         description: 'Size of the object in bytes',
     })
+    @Expose()
     size: number;
 }

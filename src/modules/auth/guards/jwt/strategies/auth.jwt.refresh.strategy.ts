@@ -33,8 +33,8 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
      * @note We don't validate JTI (JWT ID) claims in this strategy
      */
     constructor(
-        private readonly configService: ConfigService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        configService: ConfigService
     ) {
         // @note: we don't validate jti here
         super({
@@ -52,12 +52,15 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
                 cache: true,
                 rateLimit: true,
                 jwksRequestsPerMinute: 5,
-                jwksUri: configService.get<string>(
-                    'auth.jwt.refreshToken.jwksUri'
-                ) ?? '',
+                jwksUri:
+                    configService.get<string>(
+                        'auth.jwt.refreshToken.jwksUri'
+                    ) ?? '',
             }),
             algorithms: [
-                configService.get<Algorithm>('auth.jwt.refreshToken.algorithm') ?? 'ES512',
+                configService.get<Algorithm>(
+                    'auth.jwt.refreshToken.algorithm'
+                ) ?? 'ES512',
             ],
         });
     }

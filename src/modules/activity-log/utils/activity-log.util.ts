@@ -1,15 +1,18 @@
 import { MessageService } from '@common/message/services/message.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import {
     IActivityLog,
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ActivityLogUtil {
-    constructor(private readonly messageService: MessageService) {}
+    constructor(
+        private readonly messageService: MessageService,
+        private readonly responseUtil: ResponseUtil
+    ) {}
 
     getDescription(action: string, metadata?: IActivityLogMetadata): string {
         return this.messageService.setMessage(
@@ -19,6 +22,9 @@ export class ActivityLogUtil {
     }
 
     mapList(activityLogs: IActivityLog[]): ActivityLogResponseDto[] {
-        return plainToInstance(ActivityLogResponseDto, activityLogs);
+        return this.responseUtil.serialize(
+            ActivityLogResponseDto,
+            activityLogs
+        );
     }
 }

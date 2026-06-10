@@ -1,6 +1,7 @@
 import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class CountryResponseDto extends DatabaseResponseDto {
     @ApiProperty({
@@ -10,6 +11,7 @@ export class CountryResponseDto extends DatabaseResponseDto {
         maxLength: 100,
         minLength: 1,
     })
+    @Expose()
     name: string;
 
     @ApiProperty({
@@ -19,6 +21,7 @@ export class CountryResponseDto extends DatabaseResponseDto {
         maxLength: 2,
         minLength: 2,
     })
+    @Expose()
     alpha2Code: string;
 
     @ApiProperty({
@@ -28,6 +31,7 @@ export class CountryResponseDto extends DatabaseResponseDto {
         maxLength: 3,
         minLength: 3,
     })
+    @Expose()
     alpha3Code: string;
 
     @ApiProperty({
@@ -38,17 +42,20 @@ export class CountryResponseDto extends DatabaseResponseDto {
         minLength: 4,
         isArray: true,
     })
+    @Expose()
     phoneCode: string[];
 
     @ApiProperty({
         required: true,
         example: faker.location.country(),
     })
+    @Expose()
     continent: string;
 
     @ApiProperty({
         required: true,
         example: faker.location.timeZone(),
     })
+    @Expose()
     timezone: string;
 }

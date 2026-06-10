@@ -1,6 +1,6 @@
 import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 export class NotificationUserSettingResponseDto {
     @ApiProperty({
@@ -9,6 +9,7 @@ export class NotificationUserSettingResponseDto {
         isArray: true,
         description: 'List of user notification settings',
     })
+    @Expose()
     @Type(() => NotificationUserSettingDto)
     settings: NotificationUserSettingDto[];
 }

@@ -49,7 +49,7 @@ export class RequestModule {
                             skipMissingProperties: false,
                             skipNullProperties: false,
                             skipUndefinedProperties: false,
-                            forbidUnknownValues: false,
+                            forbidUnknownValues: true,
                             whitelist: true,
                             forbidNonWhitelisted: true,
                             transformOptions: {

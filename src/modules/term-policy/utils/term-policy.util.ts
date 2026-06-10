@@ -3,6 +3,7 @@ import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interfa
 import { FileService } from '@common/file/services/file.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
@@ -16,7 +17,6 @@ import {
     Prisma,
     TermPolicy,
 } from '@generated/prisma-client';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -26,7 +26,8 @@ export class TermPolicyUtil {
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService,
-        private readonly fileService: FileService
+        private readonly fileService: FileService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.uploadContentPath = this.configService.get<string>(
             'termPolicy.uploadContentPath'
@@ -37,17 +38,20 @@ export class TermPolicyUtil {
     }
 
     mapList(termPolicies: TermPolicy[]): TermPolicyResponseDto[] {
-        return plainToInstance(TermPolicyResponseDto, termPolicies);
+        return this.responseUtil.serialize(
+            TermPolicyResponseDto,
+            termPolicies
+        );
     }
 
     mapOne(termPolicy: TermPolicy): TermPolicyResponseDto {
-        return plainToInstance(TermPolicyResponseDto, termPolicy);
+        return this.responseUtil.serialize(TermPolicyResponseDto, termPolicy);
     }
 
     mapListUserAccepted(
         termPolicyUserAcceptances: ITermPolicyUserAcceptance[]
     ): TermPolicyUserAcceptanceResponseDto[] {
-        return plainToInstance(
+        return this.responseUtil.serialize(
             TermPolicyUserAcceptanceResponseDto,
             termPolicyUserAcceptances
         );

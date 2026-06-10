@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 /**
  * Base response DTO carrying standard audit fields present on every database document.
@@ -13,6 +14,7 @@ export class DatabaseResponseDto {
         example: faker.database.mongodbObjectId(),
         required: true,
     })
+    @Expose()
     id: string;
 
     @ApiProperty({
@@ -20,6 +22,7 @@ export class DatabaseResponseDto {
         example: faker.date.recent(),
         required: true,
     })
+    @Expose()
     createdAt: Date;
 
     @ApiProperty({
@@ -27,6 +30,7 @@ export class DatabaseResponseDto {
         required: false,
         nullable: true,
     })
+    @Expose()
     createdBy: string | null;
 
     @ApiProperty({
@@ -34,6 +38,7 @@ export class DatabaseResponseDto {
         example: faker.date.recent(),
         required: true,
     })
+    @Expose()
     updatedAt: Date;
 
     @ApiProperty({
@@ -41,6 +46,7 @@ export class DatabaseResponseDto {
         required: false,
         nullable: true,
     })
+    @Expose()
     updatedBy: string | null;
 
     @ApiProperty({
@@ -48,6 +54,7 @@ export class DatabaseResponseDto {
         required: false,
         nullable: true,
     })
+    @Expose()
     deletedAt: Date | null;
 
     @ApiProperty({
@@ -55,5 +62,6 @@ export class DatabaseResponseDto {
         required: false,
         nullable: true,
     })
+    @Expose()
     deletedBy: string | null;
 }

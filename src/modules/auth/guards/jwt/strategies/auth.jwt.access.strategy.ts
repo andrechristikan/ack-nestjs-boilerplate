@@ -30,8 +30,8 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
      * @note We don't validate JTI (JWT ID) claims in this strategy
      */
     constructor(
-        private readonly configService: ConfigService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        configService: ConfigService
     ) {
         // @note: we don't validate jti here
         super({
@@ -49,12 +49,14 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
                 cache: true,
                 rateLimit: true,
                 jwksRequestsPerMinute: 5,
-                jwksUri: configService.get<string>(
-                    'auth.jwt.accessToken.jwksUri'
-                ) ?? '',
+                jwksUri:
+                    configService.get<string>('auth.jwt.accessToken.jwksUri') ??
+                    '',
             }),
             algorithms: [
-                configService.get<Algorithm>('auth.jwt.accessToken.algorithm') ?? 'ES256',
+                configService.get<Algorithm>(
+                    'auth.jwt.accessToken.algorithm'
+                ) ?? 'ES256',
             ],
         });
     }

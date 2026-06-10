@@ -2,7 +2,7 @@ import { DatabaseResponseDto } from '@common/database/dtos/response/database.res
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumTermPolicyStatus, EnumTermPolicyType } from '@generated/prisma-client';
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 export class TermPolicyResponseDto extends DatabaseResponseDto {
     @ApiProperty({
@@ -11,6 +11,7 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         example: EnumTermPolicyType.termsOfService,
         required: true,
     })
+    @Expose()
     readonly type: EnumTermPolicyType;
 
     @ApiProperty({
@@ -19,6 +20,7 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         example: EnumTermPolicyStatus.draft,
         required: true,
     })
+    @Expose()
     readonly status: EnumTermPolicyStatus;
 
     @ApiProperty({
@@ -26,6 +28,7 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         type: [TermContentDto],
         isArray: true,
     })
+    @Expose()
     @Type(() => TermContentDto)
     readonly contents: TermContentDto[];
 
@@ -34,6 +37,7 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         example: 1,
         required: true,
     })
+    @Expose()
     readonly version: number;
 
     @ApiProperty({
@@ -41,5 +45,6 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         description: 'Published date of the terms or policy',
         example: '2023-01-01T00:00:00.000Z',
     })
+    @Expose()
     readonly publishedAt?: Date;
 }

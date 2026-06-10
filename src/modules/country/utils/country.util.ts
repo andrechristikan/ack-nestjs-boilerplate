@@ -1,15 +1,17 @@
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { Injectable } from '@nestjs/common';
 import { Country } from '@generated/prisma-client';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class CountryUtil {
+    constructor(private readonly responseUtil: ResponseUtil) {}
+
     mapList(countries: Country[]): CountryResponseDto[] {
-        return plainToInstance(CountryResponseDto, countries);
+        return this.responseUtil.serialize(CountryResponseDto, countries);
     }
 
     mapOne(country: Country): CountryResponseDto {
-        return plainToInstance(CountryResponseDto, country);
+        return this.responseUtil.serialize(CountryResponseDto, country);
     }
 }

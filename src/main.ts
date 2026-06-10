@@ -80,6 +80,8 @@ async function bootstrap(): Promise<void> {
 
     await swaggerInit(app);
 
+    app.enableShutdownHooks();
+
     await app.listen(port, host);
 
     logger.log('=='.repeat(20), 'NestApplication');

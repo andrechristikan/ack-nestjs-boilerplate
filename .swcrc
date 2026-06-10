@@ -1,7 +1,7 @@
 {
     "$schema": "https://swc.rs/schema.json",
     "sourceMaps": true,
-    "minify": true,
+    "minify": false,
     "module": {
         "type": "commonjs"
     },
@@ -27,7 +27,6 @@
             "@modules/*": ["src/modules/*"],
             "@routes/*": ["src/router/routes/*"],
             "@router": ["src/router/router.module.ts"],
-            "@workers/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
             "@test/*": ["test/*"],
             "@generated/*": ["generated/*"],

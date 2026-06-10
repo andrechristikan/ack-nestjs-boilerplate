@@ -20,7 +20,7 @@ import {
     TwoFactor,
     User,
 } from '@generated/prisma-client';
-import { plainToInstance } from 'class-transformer';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { Duration } from 'luxon';
 import { Profanity } from '@2toad/profanity';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
@@ -54,7 +54,8 @@ export class UserUtil {
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService,
-        private readonly fileService: FileService
+        private readonly fileService: FileService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.usernamePrefix =
             this.configService.get<string>('user.usernamePrefix') ?? '';
@@ -135,25 +136,28 @@ export class UserUtil {
     }
 
     mapList(users: IUser[]): UserListResponseDto[] {
-        return plainToInstance(UserListResponseDto, users);
+        return this.responseUtil.serialize(UserListResponseDto, users);
     }
 
     mapExport(users: IUser[]): UserExportResponseDto[] {
-        return plainToInstance(UserExportResponseDto, users);
+        return this.responseUtil.serialize(UserExportResponseDto, users);
     }
 
     mapOne(user: User): UserDto {
-        return plainToInstance(UserDto, user);
+        return this.responseUtil.serialize(UserDto, user);
     }
 
     mapProfile(user: IUserProfile): UserProfileResponseDto {
-        return plainToInstance(UserProfileResponseDto, user);
+        return this.responseUtil.serialize(UserProfileResponseDto, user);
     }
 
     mapMobileNumber(
         mobileNumber: IUserMobileNumber
     ): UserMobileNumberResponseDto {
-        return plainToInstance(UserMobileNumberResponseDto, mobileNumber);
+        return this.responseUtil.serialize(
+            UserMobileNumberResponseDto,
+            mobileNumber
+        );
     }
 
     mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {

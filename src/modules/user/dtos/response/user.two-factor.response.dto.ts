@@ -1,5 +1,6 @@
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class UserTwoFactorResponseDto extends PartialType(
     UserTwoFactorSetupResponseDto
@@ -10,6 +11,7 @@ export class UserTwoFactorResponseDto extends PartialType(
         example: false,
         required: true,
     })
+    @Expose()
     isRequiredSetup: boolean;
 
     @ApiProperty({
@@ -17,6 +19,7 @@ export class UserTwoFactorResponseDto extends PartialType(
         description: 'Challenge token to be used for completing 2FA login',
         example: '2b5b8933f0a44a94b3e1a96f8d2e2f21',
     })
+    @Expose()
     challengeToken: string;
 
     @ApiProperty({
@@ -24,6 +27,7 @@ export class UserTwoFactorResponseDto extends PartialType(
         description: 'Challenge token TTL in milliseconds',
         example: 300,
     })
+    @Expose()
     challengeExpiresInMs: number;
 
     @ApiProperty({
@@ -31,5 +35,6 @@ export class UserTwoFactorResponseDto extends PartialType(
         description: 'Remaining backup codes count for the account',
         example: 8,
     })
+    @Expose()
     backupCodesRemaining?: number;
 }

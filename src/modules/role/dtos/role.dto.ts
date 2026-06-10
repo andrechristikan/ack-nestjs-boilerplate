@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { EnumRoleType } from '@generated/prisma-client';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
@@ -11,6 +11,7 @@ export class RoleDto extends DatabaseResponseDto {
         example: faker.person.jobTitle(),
         required: true,
     })
+    @Expose()
     name: string;
 
     @ApiProperty({
@@ -19,6 +20,7 @@ export class RoleDto extends DatabaseResponseDto {
         required: false,
         maxLength: 500,
     })
+    @Expose()
     description?: string;
 
     @ApiProperty({
@@ -27,6 +29,7 @@ export class RoleDto extends DatabaseResponseDto {
         required: true,
         enum: EnumRoleType,
     })
+    @Expose()
     type: EnumRoleType;
 
     @ApiProperty({
@@ -35,6 +38,7 @@ export class RoleDto extends DatabaseResponseDto {
         isArray: true,
         default: [],
     })
+    @Expose()
     @Type(() => RoleAbilityDto)
     abilities: RoleAbilityDto[];
 }

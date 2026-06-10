@@ -1,6 +1,6 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { EnumApiKeyType } from '@generated/prisma-client';
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
@@ -9,6 +9,7 @@ export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
         example: true,
         required: true,
     })
+    @Expose()
     secret: string;
 
     @ApiHideProperty()

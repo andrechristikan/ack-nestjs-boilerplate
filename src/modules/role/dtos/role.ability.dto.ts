@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -10,6 +11,7 @@ export class RoleAbilityDto {
         description: 'Ability subject',
         enum: EnumPolicySubject,
     })
+    @Expose()
     subject: EnumPolicySubject;
 
     @ApiProperty({
@@ -19,5 +21,6 @@ export class RoleAbilityDto {
         default: [EnumPolicyAction.manage],
         enum: EnumPolicyAction,
     })
+    @Expose()
     action: EnumPolicyAction[];
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
@@ -10,6 +10,7 @@ export class UserProfileResponseDto extends UserDto {
         required: true,
         type: RoleDto,
     })
+    @Expose()
     @Type(() => RoleDto)
     role: RoleDto;
 
@@ -17,6 +18,7 @@ export class UserProfileResponseDto extends UserDto {
         required: true,
         type: CountryResponseDto,
     })
+    @Expose()
     @Type(() => CountryResponseDto)
     country: CountryResponseDto;
 
@@ -24,6 +26,7 @@ export class UserProfileResponseDto extends UserDto {
         required: false,
         type: [UserMobileNumberResponseDto],
     })
+    @Expose()
     @Type(() => UserMobileNumberResponseDto)
     mobileNumbers?: UserMobileNumberResponseDto[];
 }
