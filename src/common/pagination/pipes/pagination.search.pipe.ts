@@ -6,6 +6,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client';
 
 /**
  * Factory function to create PaginationSearchPipe that can perform search on available fields
@@ -50,15 +51,15 @@ export function PaginationSearchPipe(
          * Builds search object for database query
          * @param {string} search - Search string
          * @param {string[]} availableSearch - Array of searchable fields
-         * @returns {{ or: Record<string, { contains: string }>[] }} Query object for search
+         * @returns {{ OR: Array<Record<string, Prisma.StringFilter>> }} Query object for search
          */
         private buildSearchObject(
             search: string,
             availableSearch: string[]
-        ): { or: Record<string, { contains: string }>[] } {
+        ): { OR: Array<Record<string, Prisma.StringFilter>> } {
             return {
-                or: availableSearch.map(field => ({
-                    [field]: { contains: search },
+                OR: availableSearch.map(field => ({
+                    [field]: { contains: search, mode: Prisma.QueryMode.insensitive },
                 })),
             };
         }
