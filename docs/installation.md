@@ -28,6 +28,7 @@ This document provides step-by-step instructions for setting up the ACK NestJS B
   - [Generate Keys](#generate-keys-1)
   - [Run Containers](#run-containers)
   - [Troubleshooting](#troubleshooting)
+- [Secret Management with Vault (Optional)](#secret-management-with-vault-optional)
 - [Generate Database Client](#generate-database-client)
 - [Database Migration & Seeding](#database-migration--seeding)
 - [Run Project](#run-project)
@@ -276,6 +277,21 @@ The Docker setup includes comprehensive health checks for all services, ensuring
 - **Permission issues**: Ensure Docker has proper permissions to create volumes and networks
 
 
+## Secret Management with Vault (Optional)
+
+Instead of hand-managing your `.env`, you can run an optional [HashiCorp Vault][ref-vault] dev server that holds your secrets and writes them into `.env` with one command. It is gated behind the `vault` Compose profile, so it never starts unless you opt in:
+
+```bash
+# Start the dev Vault + seed it from .env.example
+docker compose --profile vault up -d
+
+# Pull the secret into ./.env
+pnpm vault:pull
+```
+
+The bundled config runs Vault in dev mode (in-memory, auto-unsealed, hardcoded root token). It is the simplest way to wire it locally. For the full architecture, KV layout, usage, and scope, see the [Vault Documentation][ref-doc-vault].
+
+
 ## Generate Database Client
 
 Prisma uses a generated client to provide type-safe database access and query building. You must generate the Prisma Client every time you change your Prisma schema (in `prisma/schema.prisma`).
@@ -404,6 +420,9 @@ To verify everything is working correctly:
 
 <!-- REFERENCES -->
 
+[ref-vault]: https://developer.hashicorp.com/vault
+
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md
 [ref-doc-configuration]: configuration.md
+[ref-doc-vault]: vault.md

@@ -33,25 +33,34 @@ This boilerplate is perfect for:
 
 ## Table of Contents
 
-- [Important](#important)
-- [TODO](#todo)
-- [Prerequisites](#prerequisites)
-- [Build with](#build-with)
-- [Objective](#objective)
-- [Features](#features)
-  - [🎯 Architecture Highlights](#-architecture-highlights)
-  - [🔐 Authentication & Security](#-authentication--security)
-  - [📊 Database & Storage](#-database--storage)
-  - [⚡ Performance & Optimization](#-performance--optimization)
-  - [🛠 Development Experience](#-development-experience)
-  - [📡 Integrations & Monitoring](#-integrations--monitoring)
-  - [📝 Testing & Documentation](#-testing--documentation)
-- [Quick Start](#quick-start)
-- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
-- [Installation](#installation)
-- [License](#license)
-- [Contribute](#contribute)
-- [Contact](#contact)
+- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
+    - [Ideal For](#ideal-for)
+  - [Table of Contents](#table-of-contents)
+  - [Important](#important)
+  - [TODO](#todo)
+    - [Next Features](#next-features)
+    - [Drop Features](#drop-features)
+    - [Test](#test)
+  - [Prerequisites](#prerequisites)
+  - [Build with](#build-with)
+  - [Objective](#objective)
+  - [Features](#features)
+    - [🎯 Architecture Highlights](#-architecture-highlights)
+    - [🔐 Authentication \& Security](#-authentication--security)
+    - [📊 Database \& Storage](#-database--storage)
+    - [⚡ Performance \& Optimization](#-performance--optimization)
+    - [🛠 Development Experience](#-development-experience)
+    - [📡 Integrations \& Monitoring](#-integrations--monitoring)
+    - [🔔 Notifications](#-notifications)
+    - [📝 Testing \& Documentation](#-testing--documentation)
+  - [Quick Start](#quick-start)
+  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
+    - [Supported Databases](#supported-databases)
+  - [Installation](#installation)
+  - [License](#license)
+  - [Contribute](#contribute)
+  - [Contact](#contact)
+    - [Support This Project](#support-this-project)
 
 ## Important
 
@@ -213,6 +222,7 @@ Enterprise-grade integrations for production readiness.
 - **Activity Logging** - Comprehensive audit trail
 - **Health Checks** - System monitoring endpoints
 - **Multi-language Support** - i18n with `x-custom-lang` header
+- **HashiCorp Vault** - Optional secret management, syncs `.env` ([docs][ref-doc-vault])
 
 ### 🔔 Notifications
 Multi-channel notification system for user engagement.
@@ -395,5 +405,6 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
 [ref-doc-analytics]: docs/analytics.md
+[ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
 [ref-doc-doc]: docs/doc.md

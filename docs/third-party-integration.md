@@ -29,6 +29,7 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [Social Authentication](#social-authentication)
   - [Google OAuth](#google-oauth)
   - [Apple Sign In](#apple-sign-in)
+- [HashiCorp Vault](#hashicorp-vault)
 
 ## AWS Services
 
@@ -287,6 +288,26 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=your_app_bundle_id
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
+## HashiCorp Vault
+
+[HashiCorp Vault][ref-vault] is integrated as an **optional** secret store. Rather than connecting to the app at runtime, it acts as the source of truth for local secrets and writes them into `.env` on demand.
+
+**Gated by the `vault` Docker Compose profile**, so it never starts unless you opt in.
+
+```bash
+# Start the dev Vault (seeds the secret from .env.example)
+docker compose --profile vault up -d
+
+# Pull the secret into ./.env
+pnpm vault:pull
+```
+
+**How it differs from the other integrations on this page:**
+- It is **not** consumed by the application at runtime; the app still reads `.env`. Vault only *produces* that file.
+- It runs in dev mode (in-memory, auto-unsealed, hardcoded root token), the simplest way to wire it locally.
+
+> **Note**: For the full architecture, KV layout, usage flow, configuration reference, and scope/limitations, see the [Vault Documentation][ref-doc-vault].
+
 
 
 
@@ -301,6 +322,7 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-prisma]: https://www.prisma.io
 [ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
 [ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/
+[ref-vault]: https://developer.hashicorp.com/vault
 
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
@@ -310,3 +332,4 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-doc-cache]: cache.md
 [ref-doc-database]: database.md
 [ref-doc-notification]: notification.md
+[ref-doc-vault]: vault.md

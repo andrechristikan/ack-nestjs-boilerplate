@@ -47,7 +47,6 @@ jwks.json
 .gitignore
 .gitattributes
 .dockerignore
-dockerfile
 docker-compose*.yml
 ci/
 

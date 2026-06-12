@@ -41,7 +41,8 @@
         "db:migrate": "prisma db push",
         "db:generate": "prisma generate",
         "db:studio": "prisma studio",
-        "db:format": "prisma format"
+        "db:format": "prisma format",
+        "vault:pull": "sh ci/vault/pull.sh"
     },
     "dependencies": {
         "@2toad/profanity": "^3.3.0",

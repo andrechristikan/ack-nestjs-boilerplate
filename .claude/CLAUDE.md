@@ -149,6 +149,7 @@ All four below are mandatory. None optional. Reviewer rejects on violation.
 - **Minimal comments.** Code self-documents. Comment only the non-obvious or the genuinely important (a tricky invariant, a security reason, a deliberate deviation). No narrating obvious code.
 - **Notes** — mark with `// @note <text>`. If the symbol already has a JSDoc block, put the note inside it instead — do not add a separate `// @note`.
 - **JSDoc** — terse and to the point. State what matters, skip filler. Do not restate the signature or types the code already shows.
+- **No em-dash in `docs/*.md` prose.** Never use `—` in documentation prose. Use proper punctuation instead (period, comma, semicolon, colon, or parentheses). Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not overuse them. Exception: an existing structured list whose every entry already uses `—` as a separator — match it for consistency rather than breaking the pattern on one line.
 
 ---
 

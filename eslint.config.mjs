@@ -98,7 +98,7 @@ export default [
     },
     {
         name: 'ts/test',
-        files: ['test/**/*.spec.ts'],
+        files: ['test/**/*.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

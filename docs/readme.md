@@ -89,6 +89,7 @@ Additional features and integrations for production-grade deployments.
 25. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
 26. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
 27. [Analytics][ref-doc-analytics] — Planned analytics design using MongoDB aggregation pipelines
+28. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
 
 
 
@@ -119,6 +120,7 @@ Additional features and integrations for production-grade deployments.
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-doc]: doc.md
 [ref-doc-analytics]: analytics.md
+[ref-doc-vault]: vault.md
 
 [ref-12factor]: https://12factor.net
 [ref-rfc-7518]: https://datatracker.ietf.org/doc/html/rfc7518

@@ -4,13 +4,12 @@ services:
     apis:
         build:
             context: .
+            dockerfile: ci/dockerfile.local
         hostname: apis
         ports:
             - 3000:3000
         volumes:
-            - ./src/:/app/src/
-            - ./prisma/:/app/prisma/
-            - .env/:/app/.env
+            - ./:/app/
         restart: on-failure
         networks:
             - app-network
@@ -72,6 +71,51 @@ services:
             timeout: 10s
             retries: 3
             start_period: 10s
+
+    vault:
+        image: hashicorp/vault:latest
+        hostname: vault
+        profiles: ["vault"]
+        cap_add:
+            - IPC_LOCK
+        ports:
+            - "8200:8200"
+        environment:
+            VAULT_DEV_ROOT_TOKEN_ID: admin123
+            VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+        command: vault server -dev
+        networks:
+            vault-network:
+                aliases:
+                    - vault
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -q -O- 'http://127.0.0.1:8200/v1/sys/health?standbycode=200' >/dev/null 2>&1 || exit 1",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 15
+            start_period: 5s
+
+    vault-bootstrap:
+        image: hashicorp/vault:latest
+        profiles: ["vault"]
+        entrypoint: ["/bin/sh", "/bootstrap.sh"]
+        environment:
+            VAULT_ADDR: http://vault:8200
+            VAULT_TOKEN: admin123
+            KV_MOUNT: ack-nestjs-boilerplate
+            KV_APP: apis
+        volumes:
+            - ./ci/vault/bootstrap.sh:/bootstrap.sh:ro
+            - ./.env.example:/seed/.env.example:ro
+        networks:
+            - vault-network
+        depends_on:
+            vault:
+                condition: service_healthy
 
     redis:
         image: redis:latest
@@ -173,4 +217,6 @@ volumes:
 
 networks:
     app-network:
+        driver: bridge
+    vault-network:
         driver: bridge
