@@ -1,33 +1,39 @@
 #!/bin/sh
 set -eu
-# Dev-only producer: pull the `apis` secret from the running dev Vault and write
-# it to ./.env at the repo root. Mirrors the prod CI "fetch then inject" step.
-# Uses the dev root token via the vault container — NEVER run this in prod.
-OUT="${1:-.env}"
+# Dev-only: log in with the per-ENV AppRole and render that env's secret to a
+# local env file. Mirrors prod CI's auth/fetch/inject. NEVER run in prod.
+# Prod parity: kv read + flatten are identical; only the auth block changes
+# (prod: a single `vault write auth/jwt/login ... jwt=$GITHUB_OIDC`).
+ENV="${1:-development}"
+OUT="${2:-.env}"
 
-# KV path is resolved HERE on the host (the vault container has no KV_MOUNT/KV_APP
-# env — those belong to the bootstrap service) and injected as an arg into the
-# container shell. The dev root token is read from the container's own env.
 KV_MOUNT="${KV_MOUNT:-ack-nestjs-boilerplate}"
-KV_APP="${KV_APP:-apis}"
-KV_PATH="$KV_MOUNT/$KV_APP"
+READ_PATH="$KV_MOUNT/$ENV"
 
-# In-container loopback to the dev listener (exec runs inside the vault
-# container, so 127.0.0.1 hits its own server — not the `vault:8200` alias).
+# In-container loopback: exec runs inside the vault container, so 127.0.0.1
+# hits its own server, not the `vault:8200` alias.
 VAULT_ADDR_INTERNAL="${VAULT_ADDR_INTERNAL:-http://127.0.0.1:8200}"
 
-# Write to a temp file first; only replace ./.env on success so a failed fetch
-# never truncates an existing env. Clean the temp file on any exit.
+# Temp file first, swap in on success: a failed fetch never truncates the
+# existing env file. Temp cleaned on any exit.
 TMP="$OUT.tmp"
 trap 'rm -f "$TMP"' EXIT
 
-# Render key=value lines: vault (in the container) emits JSON; node (on the host)
-# flattens .data.data. No jq needed; node is already a project dependency.
-docker compose --profile vault exec -T vault \
-  sh -c 'VAULT_ADDR="$1" VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID" exec vault kv get -format=json "$2"' _ "$VAULT_ADDR_INTERNAL" "$KV_PATH" \
+# Pure consumer: no root token here. Log in with the env's AppRole creds that
+# bootstrap already minted to /vault/init/<env>.approle (role_id on line 1,
+# secret_id on line 2). The scoped token reads ONLY this env's path by policy.
+# node on the host flattens .data.data, no jq needed.
+docker compose --profile vault exec -T vault sh -c '
+  set -eu
+  export VAULT_ADDR="$1"
+  RID=$(sed -n 1p "/vault/init/$2.approle")
+  SID=$(sed -n 2p "/vault/init/$2.approle")
+  SCOPED=$(vault write -field=token auth/approle/login role_id="$RID" secret_id="$SID")
+  VAULT_TOKEN="$SCOPED" exec vault kv get -format=json "$3"
+' _ "$VAULT_ADDR_INTERNAL" "$ENV" "$READ_PATH" \
   | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s).data.data;process.stdout.write(Object.keys(d).map(k=>`${k}=${d[k]}`).join("\n")+"\n");});' \
   > "$TMP"
 
 mv "$TMP" "$OUT"
 trap - EXIT
-echo "vault:pull: wrote $OUT"
+echo "vault:pull: wrote $OUT (env=$ENV)"

@@ -80,10 +80,12 @@ services:
             - IPC_LOCK
         ports:
             - "8200:8200"
-        environment:
-            VAULT_DEV_ROOT_TOKEN_ID: admin123
-            VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
-        command: vault server -dev
+        entrypoint: ["/bin/sh", "/vault/entrypoint.sh"]
+        volumes:
+            - ./ci/vault/entrypoint.sh:/vault/entrypoint.sh:ro
+            - ./ci/vault/config.hcl:/vault/config.hcl:ro
+            - vault_data:/vault/file
+            - ./generated/vault:/vault/init
         networks:
             vault-network:
                 aliases:
@@ -105,12 +107,12 @@ services:
         entrypoint: ["/bin/sh", "/bootstrap.sh"]
         environment:
             VAULT_ADDR: http://vault:8200
-            VAULT_TOKEN: admin123
             KV_MOUNT: ack-nestjs-boilerplate
-            KV_APP: apis
         volumes:
             - ./ci/vault/bootstrap.sh:/bootstrap.sh:ro
+            - ./ci/vault/policies:/policies:ro
             - ./.env.example:/seed/.env.example:ro
+            - ./generated/vault:/vault/init
         networks:
             - vault-network
         depends_on:
@@ -214,6 +216,7 @@ services:
 volumes:
     mongo_data:
     redis_data:
+    vault_data:
 
 networks:
     app-network:

@@ -279,17 +279,17 @@ The Docker setup includes comprehensive health checks for all services, ensuring
 
 ## Secret Management with Vault (Optional)
 
-Instead of hand-managing your `.env`, you can run an optional [HashiCorp Vault][ref-vault] dev server that holds your secrets and writes them into `.env` with one command. It is gated behind the `vault` Compose profile, so it never starts unless you opt in:
+Instead of hand-managing your `.env`, you can run an optional [HashiCorp Vault][ref-vault] server that holds your secrets and writes them into `.env` with one command. It is gated behind the `vault` Compose profile, so it never starts unless you opt in:
 
 ```bash
-# Start the dev Vault + seed it from .env.example
+# Start Vault + run the one-shot bootstrap (seeds development from .env.example)
 docker compose --profile vault up -d
 
-# Pull the secret into ./.env
+# Pull the development secret into ./.env
 pnpm vault:pull
 ```
 
-The bundled config runs Vault in dev mode (in-memory, auto-unsealed, hardcoded root token). It is the simplest way to wire it locally. For the full architecture, KV layout, usage, and scope, see the [Vault Documentation][ref-doc-vault].
+The bundled config runs Vault with a persistent file backend, auto-initialized and auto-unsealed by the container entrypoint. Secrets are laid out per environment (`production`, `staging`, `development`) and read through a per-environment read-only AppRole. For the full architecture, KV layout, usage, and scope, see the [Vault Documentation][ref-doc-vault].
 
 
 ## Generate Database Client

@@ -98,6 +98,7 @@ This boilerplate is perfect for:
 - [x] Notification System includes silent, inApp, push, and email.
 - [x] Activity Log support bidirectional logging
 - [x] Login with biometrics (fingerprint or face detection)
+- [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 
 ### Next Features
 
