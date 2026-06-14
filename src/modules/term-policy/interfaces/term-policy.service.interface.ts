@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -67,7 +67,7 @@ export interface ITermPolicyService {
         type,
         version,
     }: TermPolicyContentPresignRequestDto): Promise<
-        IResponseReturn<AwsS3PresignDto>
+        IResponseReturn<AwsS3PresignResponseDto>
     >;
     updateContentByAdmin(
         termPolicyId: string,

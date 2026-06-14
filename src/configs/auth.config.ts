@@ -37,14 +37,14 @@ export interface IConfigAuth {
     apple: {
         header: string;
         prefix: string;
-        clientId?: string;
-        signInClientId?: string;
+        clientId: string | null;
+        signInClientId: string | null;
     };
     google: {
         header: string;
         prefix: string;
-        clientId?: string;
-        clientSecret?: string;
+        clientId: string | null;
+        clientSecret: string | null;
     };
     xApiKey: {
         header: string;
@@ -77,33 +77,33 @@ export default registerAs(
     (): IConfigAuth => ({
         jwt: {
             accessToken: {
-                jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI,
-                kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID,
+                jwksUri: process.env.AUTH_JWT_ACCESS_TOKEN_JWKS_URI!,
+                kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID!,
                 algorithm: 'ES256',
-                privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
-                publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
+                privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
+                publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
                 expirationTimeInSeconds:
                     ms(
                         process.env
-                            .AUTH_JWT_ACCESS_TOKEN_EXPIRED as ms.StringValue
+                            .AUTH_JWT_ACCESS_TOKEN_EXPIRED! as ms.StringValue
                     ) / 1000,
             },
 
             refreshToken: {
-                jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI,
-                kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID,
+                jwksUri: process.env.AUTH_JWT_REFRESH_TOKEN_JWKS_URI!,
+                kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID!,
                 algorithm: 'ES512',
-                privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
-                publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
+                privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
+                publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
                 expirationTimeInSeconds:
                     ms(
                         process.env
-                            .AUTH_JWT_REFRESH_TOKEN_EXPIRED as ms.StringValue
+                            .AUTH_JWT_REFRESH_TOKEN_EXPIRED! as ms.StringValue
                     ) / 1000,
             },
 
-            audience: process.env.AUTH_JWT_AUDIENCE,
-            issuer: process.env.AUTH_JWT_ISSUER,
+            audience: process.env.AUTH_JWT_AUDIENCE!,
+            issuer: process.env.AUTH_JWT_ISSUER!,
             header: 'Authorization',
             prefix: 'Bearer',
         },
@@ -111,7 +111,7 @@ export default registerAs(
         password: {
             attempt: true,
             maxAttempt: 5,
-            saltLength: 8,
+            saltLength: 12,
             expiredInSeconds: ms('182d') / 1000,
             expiredTemporaryInSeconds: ms('3d') / 1000,
             periodInSeconds: ms('90d') / 1000,
@@ -120,14 +120,15 @@ export default registerAs(
         apple: {
             header: 'Authorization',
             prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,
-            signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,
+            clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID ?? null,
+            signInClientId:
+                process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID ?? null,
         },
         google: {
             header: 'Authorization',
             prefix: 'Bearer',
-            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID,
-            clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET,
+            clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID ?? null,
+            clientSecret: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_SECRET ?? null,
         },
         xApiKey: {
             header: 'x-api-key',
@@ -136,7 +137,7 @@ export default registerAs(
         twoFactor: {
             strategy: 'totp',
             algorithm: 'sha1',
-            issuer: process.env.AUTH_TWO_FACTOR_ISSUER ?? 'ACKNestJsTwoFactor',
+            issuer: process.env.AUTH_TWO_FACTOR_ISSUER!,
             digits: 6,
             periodInSeconds: 30,
             window: 1,
@@ -150,7 +151,7 @@ export default registerAs(
             maxAttempt: 5,
             lockAttemptDuration: ms('2m'),
             encryption: {
-                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY,
+                key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
             },
         },
     })

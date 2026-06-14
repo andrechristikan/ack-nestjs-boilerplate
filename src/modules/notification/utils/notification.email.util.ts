@@ -15,7 +15,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
+import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
  * Utility for queueing email notification jobs.

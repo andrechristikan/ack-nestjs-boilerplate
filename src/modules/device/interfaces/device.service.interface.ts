@@ -34,12 +34,12 @@ export interface IDeviceService {
         deviceOwnershipId: string,
         { name, notificationToken, platform }: DeviceRefreshRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     remove(
         userId: string,
         deviceOwnershipId: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     removeByAdmin(
         userId: string,
         deviceOwnershipId: string,

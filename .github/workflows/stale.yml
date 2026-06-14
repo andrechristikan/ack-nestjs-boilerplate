@@ -1,0 +1,43 @@
+name: Stale
+
+on:
+    workflow_dispatch:
+    schedule:
+        # Run daily at 01:00 UTC
+        - cron: '0 1 * * *'
+
+permissions:
+    issues: write
+
+jobs:
+    stale:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Mark and close stale issues
+              uses: actions/stale@v9
+              with:
+                # Mark as stale after 14 days of inactivity
+                days-before-stale: 14
+                # Close 7 days after being marked stale (no further activity)
+                days-before-close: 7
+                stale-issue-label: stale
+                stale-issue-message: >
+                    This issue has had no activity for 14 days and is now
+                    marked as stale. Remove the stale label or comment to keep
+                    it open, otherwise it will be closed in 7 days.
+                close-issue-message: >
+                    This issue was closed because it has been stale for 7 days
+                    with no activity. Feel free to reopen if it is still
+                    relevant.
+                # Issues only — disable stale handling for pull requests
+                days-before-pr-stale: -1
+                days-before-pr-close: -1
+                # Never touch issues with these labels
+                exempt-issue-labels: pinned,security,bug
+                # Process oldest issues first; cap API operations per run
+                ascending: true
+                operations-per-run: 100
+                # Trial run — log what would happen without changing any issue.
+                # Remove once the output looks correct.
+                debug-only: true

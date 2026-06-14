@@ -1,0 +1,159 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+        ⚠️ **Do not report security vulnerabilities here.** Use the private security advisory link on the issue chooser.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I read the relevant docs in the `/docs` folder.
+          required: true
+        - label: This is not a security vulnerability (those go through a private advisory).
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened.
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected Module
+      options:
+        - activity-log
+        - api-key
+        - auth
+        - country
+        - device
+        - feature-flag
+        - health
+        - hello
+        - notification
+        - password-history
+        - policy
+        - role
+        - session
+        - term-policy
+        - user
+        - common / shared
+        - other / unknown
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: e.g. Ubuntu 22.04 / macOS 14
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Project requires Node >= 24.11.0
+      placeholder: e.g. v24.11.0
+    validations:
+      required: true
+  - type: input
+    id: pnpm
+    attributes:
+      label: pnpm version
+      description: Project requires pnpm >= 10.25.0
+      placeholder: e.g. 10.33.0
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Project version / commit
+      placeholder: e.g. commit hash or tag
+    validations:
+      required: true
+  - type: dropdown
+    id: mongodb
+    attributes:
+      label: MongoDB setup
+      options:
+        - Replica Set
+        - Standalone
+    validations:
+      required: true
+  - type: dropdown
+    id: running-via
+    attributes:
+      label: Running via
+      options:
+        - Docker Compose
+        - Manual
+    validations:
+      required: true
+  - type: input
+    id: redis
+    attributes:
+      label: Redis version
+      placeholder: e.g. 7.x
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / Error Output
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: api
+    attributes:
+      label: API Request / Response (if applicable)
+      render: shell
+      placeholder: |
+        # Request
+        curl -X POST http://localhost:3000/api/v1/...
+
+        # Response
+        { "statusCode": ..., "message": "..." }
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, related issues, or anything else relevant.
+    validations:
+      required: false

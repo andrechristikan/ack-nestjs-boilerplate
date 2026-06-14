@@ -1,4 +1,5 @@
 import { MessageService } from '@common/message/services/message.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
@@ -26,8 +27,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { plainToInstance } from 'class-transformer';
-import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
+import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
  * Central notification utility for multi-channel notifications.
@@ -39,7 +39,8 @@ export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly responseUtil: ResponseUtil
     ) {}
 
     /**
@@ -511,7 +512,10 @@ export class NotificationUtil {
      * @returns Array of notification response DTOs
      */
     mapList(notifications: Notification[]): NotificationResponseDto[] {
-        return plainToInstance(NotificationResponseDto, notifications);
+        return this.responseUtil.serialize(
+            NotificationResponseDto,
+            notifications
+        );
     }
 
     /**
@@ -523,6 +527,9 @@ export class NotificationUtil {
     mapUserSettingList(
         settings: NotificationUserSetting[]
     ): NotificationUserSettingDto[] {
-        return plainToInstance(NotificationUserSettingDto, settings);
+        return this.responseUtil.serialize(
+            NotificationUserSettingDto,
+            settings
+        );
     }
 }

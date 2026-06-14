@@ -103,7 +103,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                     let nextPage: number | undefined;
                     let previousPage: number | undefined;
                     let page: number | undefined;
-                    let hasPrevious: boolean | undefined;
+                    let hasPrevious: boolean = false;
 
                     if (responseData.type === 'cursor') {
                         nextCursor = responseData.cursor;
@@ -122,7 +122,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         rMetadata?.httpStatus ?? response.statusCode;
                     const statusCode =
                         rMetadata?.statusCode ?? response.statusCode;
-                    const messageProperties: IMessageProperties =
+                    const messageProperties: IMessageProperties | undefined =
                         rMetadata?.messageProperties;
 
                     if (rMetadata) {
@@ -132,6 +132,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
+                    const pagination = request.__pagination ?? {};
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,
@@ -145,11 +146,11 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         previousPage,
                         page,
                         perPage,
-                        search: request.__pagination.search,
-                        filters: request.__pagination.filters,
-                        orderBy: request.__pagination.orderBy,
-                        availableSearch: request.__pagination.availableSearch,
-                        availableOrderBy: request.__pagination.availableOrderBy,
+                        search: pagination.search,
+                        filters: pagination.filters,
+                        orderBy: pagination.orderBy ?? [],
+                        availableSearch: pagination.availableSearch ?? [],
+                        availableOrderBy: pagination.availableOrderBy ?? [],
                     };
 
                     const message: string = this.messageService.setMessage(
@@ -194,10 +195,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
             (request.__language as EnumMessageLanguage) ??
-            this.configService.get<EnumMessageLanguage>('message.language');
+            this.configService.get<EnumMessageLanguage>('message.language')!;
         const xVersion =
             request.__version ??
-            this.configService.get<string>('app.urlVersion.version');
+            this.configService.get<string>('app.urlVersion.version')!;
 
         return {
             language: xLanguage,
@@ -205,7 +206,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             timezone: this.helperService.dateGetZone(today),
             path: request.path,
             version: xVersion,
-            repoVersion: this.configService.get<string>('app.version'),
+            repoVersion: this.configService.get<string>('app.version')!,
             requestId: String(request.id),
             correlationId: String(request.correlationId),
 
@@ -215,9 +216,9 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
             filters: undefined,
             page: 0,
             perPage: 0,
-            orderBy: undefined,
-            availableSearch: undefined,
-            availableOrderBy: undefined,
+            orderBy: [],
+            availableSearch: [],
+            availableOrderBy: [],
             nextPage: undefined,
             previousPage: undefined,
             hasNext: false,

@@ -6,6 +6,12 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { HttpStatus } from '@nestjs/common';
 
+/**
+ * Maps request body type enum values to their corresponding MIME type strings.
+ *
+ * `EnumDocRequestBodyType.none` is intentionally excluded — when body type is `none`,
+ * `DocRequest` skips `ApiConsumes` entirely rather than passing an invalid MIME type.
+ */
 export const DocContentTypeMapping = {
     [EnumDocRequestBodyType.formData]: 'multipart/form-data',
     [EnumDocRequestBodyType.text]: 'text/plain',

@@ -1,5 +1,6 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperService } from '@common/helper/services/helper.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
@@ -7,7 +8,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FeatureFlag } from '@generated/prisma-client';
 import { Cache } from 'cache-manager';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class FeatureFlagUtil {
@@ -18,14 +18,15 @@ export class FeatureFlagUtil {
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.cachePrefixKey = this.configService.get<string>(
             'featureFlag.cachePrefixKey'
-        );
+        )!;
         this.cacheTtlMs = this.configService.get<number>(
             'featureFlag.cacheTtlMs'
-        );
+        )!;
     }
 
     async getCacheByKey(key: string): Promise<FeatureFlag | null> {
@@ -42,23 +43,24 @@ export class FeatureFlagUtil {
     async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.set(cacheKey, featureFlag, this.cacheTtlMs);
-
         return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.del(cacheKey);
-
         return;
     }
 
     mapList(featureFlags: FeatureFlag[]): FeatureFlagResponseDto[] {
-        return plainToInstance(FeatureFlagResponseDto, featureFlags);
+        return this.responseUtil.serialize(
+            FeatureFlagResponseDto,
+            featureFlags
+        );
     }
 
     mapOne(featureFlag: FeatureFlag): FeatureFlagResponseDto {
-        return plainToInstance(FeatureFlagResponseDto, featureFlag);
+        return this.responseUtil.serialize(FeatureFlagResponseDto, featureFlag);
     }
 
     checkMetadataKey(

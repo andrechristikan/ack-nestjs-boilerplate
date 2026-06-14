@@ -18,7 +18,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
     ) {
         this.availableLanguage = this.configService.get<string[]>(
             'message.availableLanguage'
-        );
+        )!;
     }
 
     /**
@@ -34,7 +34,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
         next: NextFunction
     ): Promise<void> {
         let customLang: string =
-            this.configService.get<string>('message.language');
+            this.configService.get<string>('message.language')!;
 
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         if (reqLanguages) {

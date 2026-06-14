@@ -1,7 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
-import { author, repository, version } from 'package.json';
-import { EnumRequestTimezone } from '@common/request/enums/request.enum';
+import { author, repository, version } from '@package';
 
 export interface IConfigApp {
     name: string;
@@ -29,12 +28,13 @@ export interface IConfigApp {
 export default registerAs(
     'app',
     (): IConfigApp => ({
-        name: process.env.APP_NAME ?? 'ACKNestJs',
+        name: process.env.APP_NAME!,
         env:
-            EnumAppEnvironment[process.env.APP_ENV] ?? EnumAppEnvironment.local,
-        timezone: process.env.APP_TIMEZONE ?? EnumRequestTimezone.asiaJakarta,
+            EnumAppEnvironment[process.env.APP_ENV! as EnumAppEnvironment] ??
+            EnumAppEnvironment.local,
+        timezone: process.env.APP_TIMEZONE!,
         version,
-        encryptionSecretKey: process.env.APP_ENCRYPTION_SECRET_KEY,
+        encryptionSecretKey: process.env.APP_ENCRYPTION_SECRET_KEY!,
         author: author as {
             name: string;
             email: string;
@@ -43,13 +43,13 @@ export default registerAs(
         globalPrefix: '/api',
 
         http: {
-            host: process.env.HTTP_HOST ?? 'localhost',
-            port: process.env.HTTP_PORT ? +process.env.HTTP_PORT : 3000,
+            host: process.env.HTTP_HOST!,
+            port: +process.env.HTTP_PORT!,
         },
         urlVersion: {
             enable: process.env.URL_VERSIONING_ENABLE === 'true',
             prefix: 'v',
-            version: process.env.URL_VERSION ?? '1',
+            version: process.env.URL_VERSION!,
         },
     })
 );

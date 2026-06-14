@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { plainToInstance } from 'class-transformer';
 import { HelperService } from '@common/helper/services/helper.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
-import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -21,25 +21,29 @@ export class ApiKeyUtil {
     constructor(
         @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.cachePrefixKey = this.configService.get<string>(
             'auth.xApiKey.cachePrefixKey'
-        );
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
-        this.header = this.configService.get<string>('auth.xApiKey.header');
+        )!;
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
+        this.header = this.configService.get<string>('auth.xApiKey.header')!;
     }
 
-    mapList(apiKeys: ApiKey[]): ApiKeyDto[] {
-        return plainToInstance(ApiKeyDto, apiKeys);
+    mapList(apiKeys: ApiKey[]): ApiKeyResponseDto[] {
+        return this.responseUtil.serialize(ApiKeyResponseDto, apiKeys);
     }
 
-    mapOne(apiKey: ApiKey): ApiKeyDto {
-        return plainToInstance(ApiKeyDto, apiKey);
+    mapOne(apiKey: ApiKey): ApiKeyResponseDto {
+        return this.responseUtil.serialize(ApiKeyResponseDto, apiKey);
     }
 
     mapCreate(apiKey: ApiKey, secret: string): ApiKeyCreateResponseDto {
-        return plainToInstance(ApiKeyCreateResponseDto, { ...apiKey, secret });
+        return this.responseUtil.serialize(ApiKeyCreateResponseDto, {
+            ...apiKey,
+            secret,
+        });
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
@@ -55,14 +59,12 @@ export class ApiKeyUtil {
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.set(cacheKey, apiKey);
-
         return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
         const cacheKey = `${this.cachePrefixKey}:${key}`;
         await this.cacheManager.del(cacheKey);
-
         return;
     }
 
@@ -94,8 +96,8 @@ export class ApiKeyUtil {
 
     isExpired(
         apiKey: {
-            startAt?: Date;
-            endAt?: Date;
+            startAt?: Date | null;
+            endAt?: Date | null;
         },
         currentDate: Date
     ): boolean {
@@ -108,8 +110,8 @@ export class ApiKeyUtil {
 
     isNotYetActive(
         apiKey: {
-            startAt?: Date;
-            endAt?: Date;
+            startAt?: Date | null;
+            endAt?: Date | null;
         },
         currentDate: Date
     ): boolean {
@@ -126,8 +128,8 @@ export class ApiKeyUtil {
 
     isValid(
         apiKey: {
-            startAt?: Date;
-            endAt?: Date;
+            startAt?: Date | null;
+            endAt?: Date | null;
             isActive: boolean;
         },
         currentDate: Date
@@ -140,12 +142,12 @@ export class ApiKeyUtil {
         );
     }
 
-    extractKeyFromRequest(request: IRequestApp): string | undefined {
+    extractKeyFromRequest(request: IRequestApp): string {
         const xApiKey: string = request.headers[
             `${this.header.toLowerCase()}`
         ] as string;
 
-        return xApiKey;
+        return xApiKey ?? '';
     }
 
     validateType(

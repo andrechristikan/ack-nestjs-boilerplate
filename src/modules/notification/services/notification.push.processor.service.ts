@@ -15,7 +15,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationPushProcessorService
@@ -64,13 +64,13 @@ export class NotificationPushProcessorService
         }
 
         const device = this.helperService.resolveDevice(
-            data.requestLog.userAgent
+            data!.requestLog.userAgent
         );
         const city = this.helperService.resolveCity(
-            data.requestLog.geoLocation
+            data!.requestLog.geoLocation ?? undefined
         );
         const loginAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data.loginAt)
+            this.helperService.dateCreateFromIso(data!.loginAt)
         );
         const title = this.messageService.setMessage(notification.title);
         const body = this.messageService.setMessage(notification.body, {
@@ -194,7 +194,7 @@ export class NotificationPushProcessorService
         }
 
         const passwordExpiredAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data.passwordExpiredAt)
+            this.helperService.dateCreateFromIso(data!.passwordExpiredAt)
         );
 
         const title = this.messageService.setMessage(notification.title);

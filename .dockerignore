@@ -1,16 +1,30 @@
-# Build dependencies (keep node_modules for package.json but exclude if exists)
+# ---------------------------------------------------------------------------
+# Build context is intentionally minimal. Only what `pnpm install`, `db:generate`
+# and `nest build` (+ `pnpm typecheck`) need is shipped.
+#
+# KEPT (do NOT ignore): src/, test/, prisma/, package.json, pnpm-lock.yaml,
+#   pnpm-workspace.yaml, .npmrc, tsconfig.json, nest-cli.json, .swcrc
+#   (test/ is required: `build` runs `pnpm typecheck` and tsconfig includes test/**)
+# ---------------------------------------------------------------------------
+
+# Dependencies & build output (reinstalled / regenerated inside the image)
 node_modules/
-coverage/
 dist/
-.husky/
-.github/
-assets/
 generated/
+.pnpm-store/
+.swc/
+.turbo/
+.parcel-cache/
+.warmup/
+*.tsbuildinfo
+
+# Generated artifacts
 swagger.json
 src/metadata.ts
-keys/*
-.warmup/
-/.nyc_output
+
+# Tests & coverage
+coverage/
+.nyc_output/
 
 # Logs
 logs/
@@ -19,51 +33,68 @@ npm-debug.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment (contains sensitive data - but keep .env.example)
+# Environment & secrets
 .env*
-!.env.example
 config.yaml
 config.yml
+keys/
+*.pem
+*.pub
+jwks.json
 
-# OS files
-.DS_Store
-
-# Versioning and metadata
-.git
+# Git & Docker
+.git/
 .gitignore
+.gitattributes
 .dockerignore
+docker-compose*.yml
+ci/
 
-# IDE and editors
-/.idea
+# CI / project meta
+.github/
+.husky/
+
+# Tooling configs not needed for build
+.editorconfig
+.prettierrc
+.prettierignore
+.commitlintrc
+cspell.json
+eslint.config.mjs
+nodemon.json
+
+# Docs
+docs/
+*.md
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE & editors
+.idea/
 .project
 .classpath
 .c9/
 *.launch
 .settings/
 *.sublime-workspace
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 
-# pnpm
-.pnpm-store/
+# Temporary & cache files
+.cache/
+.temp/
+.tmp/
+temp/
+tmp/
 
-# Files not required for Docker build
-.editorconfig
-cspell.json
-README.md
-LICENSE.md
-nodemon.json
-
-# CI configuration (except ci/dockerfile which is used for production build)
-ci/jwks-server/
-
-# Keep these files as they are needed for production build:
-# - ci/dockerfile (used by GitHub Actions)
-# - eslint.config.mjs (might be needed for linting)
-# - nest-cli.json (needed for NestJS CLI commands)  
-# - tsconfig.json (needed for TypeScript compilation)
-# - test/ (keep for testing capabilities)
-# - scripts/ (might contain build scripts)
+# AI Tools
+.claude/
+.cursor/
+.cursorignore
+.cursorindexingignore
+.copilot/
+.windsurfrules
+plan.md

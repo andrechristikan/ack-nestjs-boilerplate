@@ -4,7 +4,6 @@ import {
     DeviceOwnership,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    EnumVerificationType,
     Role,
     TwoFactor,
     User,
@@ -13,7 +12,7 @@ import {
 
 export interface IUser extends User {
     role: Role;
-    twoFactor: TwoFactor;
+    twoFactor: TwoFactor | null;
 }
 
 export interface IUserMobileNumber extends UserMobileNumber {
@@ -52,14 +51,28 @@ export interface IUserForgotPasswordCreate {
     encryptedLink: string;
 }
 
-export interface IUserVerificationCreate {
-    type: EnumVerificationType;
+export interface IUserVerificationEmailCreate {
+    type: 'email';
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
     reference: string;
     token: string;
     hashedToken: string;
-    link?: string;
-    encryptedLink?: string;
+    link: string;
+    encryptedLink: string;
 }
+
+export interface IUserVerificationMobileNumberCreate {
+    type: 'mobileNumber';
+    expiredAt: Date;
+    expiredInMinutes: number;
+    resendInMinutes: number;
+    reference: string;
+    token: string;
+    hashedToken: string;
+}
+
+export type IUserVerificationCreate =
+    | IUserVerificationEmailCreate
+    | IUserVerificationMobileNumberCreate;

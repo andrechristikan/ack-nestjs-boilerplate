@@ -1,16 +1,17 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { Session } from '@generated/prisma-client';
 import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
 
-export class DeviceOwnershipResponseDto extends DatabaseDto {
+export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         description: 'Device ownership ID',
         example: faker.database.mongodbObjectId(),
     })
+    @Expose()
     deviceId: string;
 
     @ApiProperty({
@@ -18,6 +19,7 @@ export class DeviceOwnershipResponseDto extends DatabaseDto {
         description: 'Device information',
         type: DeviceResponseDto,
     })
+    @Expose()
     @Type(() => DeviceResponseDto)
     device: DeviceResponseDto;
 
@@ -26,6 +28,7 @@ export class DeviceOwnershipResponseDto extends DatabaseDto {
         description: 'User ID who owns the device',
         example: faker.database.mongodbObjectId(),
     })
+    @Expose()
     userId: string;
 
     @ApiProperty({
@@ -33,6 +36,7 @@ export class DeviceOwnershipResponseDto extends DatabaseDto {
         description: 'Indicates if the device ownership is revoked',
         example: true,
     })
+    @Expose()
     revokedAt?: Date;
 
     @ApiProperty({
@@ -40,6 +44,7 @@ export class DeviceOwnershipResponseDto extends DatabaseDto {
         description: 'Indicates if the device ownership is revoked',
         example: true,
     })
+    @Expose()
     isRevoked: boolean;
 
     @ApiProperty({
@@ -47,6 +52,7 @@ export class DeviceOwnershipResponseDto extends DatabaseDto {
         description: 'User ID who revoked the device ownership',
         example: faker.database.mongodbObjectId(),
     })
+    @Expose()
     revokedById?: string;
 
     @ApiProperty({

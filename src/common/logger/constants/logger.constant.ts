@@ -22,7 +22,7 @@ export const LoggerExcludedRoutes: string[] = [
     '/docs',
     '/docs/*',
     '/',
-] as const;
+];
 
 /**
  * List of HTTP header names used to extract or identify request IDs for tracing.
@@ -40,10 +40,14 @@ export const LoggerRequestIdHeaders = [
 export const LoggerSensitivePaths = [
     'req.body',
     'req.headers',
+    'req.query',
+    'req.params',
     'res.body',
     'res.headers',
     'request.body',
     'request.headers',
+    'request.query',
+    'request.params',
     'response.body',
     'response.headers',
 ];

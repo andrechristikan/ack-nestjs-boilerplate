@@ -14,6 +14,7 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 - [Installation Documentation][ref-doc-installation] - For initial setup and environment file creation
 - [Database Documentation][ref-doc-database] - For database connection details
 - [Authentication Documentation][ref-doc-authentication] - For JWT and OAuth configuration
+- [Vault Documentation][ref-doc-vault] - For managing environment variables and secrets with HashiCorp Vault
 
 ## Table of Contents
 
@@ -68,13 +69,16 @@ If validation fails, the application will not start and will display detailed er
 
 Below is an example `.env` file based on the current `.env.example`:
 
+> [!WARNING]
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment — never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
+
 ```bash
 # Application Settings
 APP_NAME=ACKNestJs
 APP_ENV=local
 APP_LANGUAGE=en
 APP_TIMEZONE=Asia/Jakarta
-APP_ENCRYPTION_SECRET_KEY=qwerty1234567890abcdefghijklmnop
+APP_ENCRYPTION_SECRET_KEY=<your-random-string>
 
 # Home/Organization
 HOME_URL=https://example.com
@@ -109,20 +113,20 @@ AUTH_JWT_AUDIENCE=ACKNestJs
 # Access Token Configuration
 AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.json
 AUTH_JWT_ACCESS_TOKEN_KID=ack-access-2024-001
-AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY=qwerty1234567890
-AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY=qwerty1234567890
+AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY=<your-random-string>
+AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY=<your-random-string>
 AUTH_JWT_ACCESS_TOKEN_EXPIRED=1h
 
 # Refresh Token Configuration
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 AUTH_JWT_REFRESH_TOKEN_KID=ack-refresh-2024-001
-AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY=qwerty1234567890
-AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=qwerty1234567890
+AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY=<your-random-string>
+AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=<your-random-string>
 AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
 # Two-Factor Authentication
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=qwerty1234567890
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your-random-string>
 
 # Social Authentication (Optional)
 AUTH_SOCIAL_GOOGLE_CLIENT_ID=
@@ -195,9 +199,9 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Secret key used to derive an AES-256 encryption key for encrypting sensitive data (recommended 32+ characters).
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data (recommended 32+ characters). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
-APP_ENCRYPTION_SECRET_KEY=qwerty1234567890abcdefghijklmnop
+APP_ENCRYPTION_SECRET_KEY=<your-random-string>
 ```
 
 ### Home/Organization Settings
@@ -310,6 +314,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Wildcard (`*`)**: Credentials are **disabled** (CORS security restriction)
 - **Specific origins**: Credentials are **enabled**
 
+> [!TIP]
 > **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
 
 ### URL Versioning Settings
@@ -375,13 +380,13 @@ AUTH_JWT_ACCESS_TOKEN_KID=ack-access-2024-001
 **`AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY`** *(required)*  
 Private key content for signing access tokens.
 ```bash
-AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY=qwerty1234567890
+AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY=<your-random-string>
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY`** *(required)*  
 Public key content for verifying access tokens.
 ```bash
-AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY=qwerty1234567890
+AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY=<your-random-string>
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_EXPIRED`** *(required)*  
@@ -407,13 +412,13 @@ AUTH_JWT_REFRESH_TOKEN_KID=ack-refresh-2024-001
 **`AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY`** *(required)*  
 Private key content for signing refresh tokens.
 ```bash
-AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY=qwerty1234567890
+AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY=<your-random-string>
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY`** *(required)*  
 Public key content for verifying refresh tokens.
 ```bash
-AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=qwerty1234567890
+AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=<your-random-string>
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_EXPIRED`** *(required)*  
@@ -424,7 +429,8 @@ AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
 ### Social Authentication Settings
 
-> **Note**: All social authentication settings are optional. Leave empty if not using social login.
+> [!NOTE]
+> All social authentication settings are optional. Leave empty if not using social login.
 
 **`AUTH_SOCIAL_GOOGLE_CLIENT_ID`** *(optional)*  
 Google OAuth client ID.
@@ -459,14 +465,15 @@ AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required for 2FA)*  
-Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars).  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
 ```bash
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=qwerty1234567890
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your-random-string>
 ```
 
 ### AWS Settings
 
-> **Note**: AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
+> [!NOTE]
+> AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
 
 #### S3 Configuration
 
@@ -488,6 +495,7 @@ AWS IAM Role ARN for S3 operations. Used for role-based access control and tempo
 AWS_S3_IAM_ARN=
 ```
 
+> [!TIP]
 > **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
 > - Temporary security credentials
 > - Better security through role assumption
@@ -546,6 +554,7 @@ AWS IAM Role ARN for SES operations. Used for role-based access control and temp
 AWS_SES_IAM_ARN=
 ```
 
+> [!TIP]
 > **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
 > - Temporary security credentials
 > - Better security through role assumption
@@ -560,7 +569,8 @@ AWS_SES_REGION=ap-southeast-3
 
 ### Email Settings
 
-> **Note**: Email settings are optional.
+> [!NOTE]
+> Email settings are optional.
 
 **`EMAIL_NO_REPLY`** *(optional/required for email features)*  
 Sender email address used for no-reply emails (e.g., transactional, notifications).
@@ -582,7 +592,8 @@ EMAIL_ADMIN=admin@mail.com
 
 ### Firebase Settings
 
-> **Note**: Firebase settings are optional. Required only if push notification features are enabled.
+> [!NOTE]
+> Firebase settings are optional. Required only if push notification features are enabled.
 
 **`FIREBASE_PROJECT_ID`** *(optional/required for push notifications)*  
 Firebase project ID from your Firebase console.
@@ -632,3 +643,4 @@ SENTRY_DSN=
 [ref-doc-installation]: installation.md
 [ref-doc-database]: database.md
 [ref-doc-authentication]: authentication.md
+[ref-doc-vault]: vault.md

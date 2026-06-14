@@ -48,7 +48,7 @@ export class IsFeatureFlagMetadataConstraint implements ValidatorConstraintInter
 export function IsFeatureFlagMetadata(validationOptions?: ValidationOptions) {
     return function (object: unknown, propertyName: string): void {
         registerDecorator({
-            target: object.constructor,
+            target: (object as Record<string, unknown>)?.constructor,
             propertyName: propertyName,
             options: validationOptions,
             constraints: [],

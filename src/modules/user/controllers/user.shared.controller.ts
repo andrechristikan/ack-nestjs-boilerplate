@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
@@ -22,6 +22,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
@@ -34,6 +35,7 @@ import {
     UserSharedClaimUsernameDoc,
     UserSharedDeleteMobileNumberDoc,
     UserSharedGeneratePhotoProfilePresignDoc,
+    UserSharedLogoutDoc,
     UserSharedProfileDoc,
     UserSharedRefreshDoc,
     UserSharedTwoFactorDisableDoc,
@@ -140,7 +142,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.updateProfile(userId, body, {
             ipAddress,
             userAgent,
@@ -160,7 +162,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body() body: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         return this.userService.generatePhotoProfilePresign(userId, body);
     }
 
@@ -178,7 +180,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.updatePhotoProfile(userId, body, {
             ipAddress,
             userAgent,
@@ -211,7 +213,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.uploadPhotoProfile(userId, file, {
             ipAddress,
             userAgent,
@@ -233,7 +235,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.changePassword(user, body, {
             ipAddress,
             userAgent,
@@ -337,7 +339,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.claimUsername(userId, body, {
             ipAddress,
             userAgent,
@@ -415,7 +417,7 @@ export class UserSharedController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.disableTwoFactor(user, body, {
             ipAddress,
             userAgent,
@@ -443,7 +445,27 @@ export class UserSharedController {
         });
     }
 
-    // TODO: LAST - Implement logout api
+    @UserSharedLogoutDoc()
+    @Response('user.logout')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/logout')
+    async logout(
+        @AuthJwtPayload()
+        { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload,
+        @RequestIPAddress() ipAddress: string,
+        @RequestUserAgent() userAgent: UserAgent,
+        @RequestGeoLocation() geoLocation: GeoLocation | null
+    ): Promise<void> {
+        return this.userService.logout(userId, sessionId, deviceOwnershipId, {
+            ipAddress,
+            userAgent,
+            geoLocation,
+        });
+    }
 
     // TODO: Verify number implementation, but which provider?
 }

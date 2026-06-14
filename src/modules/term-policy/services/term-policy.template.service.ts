@@ -1,4 +1,4 @@
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -22,7 +22,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    async importTermsOfService(): Promise<AwsS3Dto | null> {
+    async importTermsOfService(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -56,7 +56,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importPrivacy(): Promise<AwsS3Dto | null> {
+    async importPrivacy(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -90,7 +90,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importCookie(): Promise<AwsS3Dto | null> {
+    async importCookie(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
                 this.templatesDir,
@@ -124,7 +124,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         }
     }
 
-    async importMarketing(): Promise<AwsS3Dto | null> {
+    async importMarketing(): Promise<IAwsS3 | null> {
         try {
             const templatePath = join(
                 this.templatesDir,

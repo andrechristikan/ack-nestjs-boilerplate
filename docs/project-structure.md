@@ -263,7 +263,6 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 - **.swcrc**: Configuration for SWC JavaScript/TypeScript compiler.
 - **cspell.json**: Configuration for code spell checking to maintain code quality and consistency.
 - **docker-compose.yml**: Docker Compose configuration for orchestrating multi-container Docker applications, such as local development environments.
-- **dockerfile**: Docker build instructions for containerizing the application.
 - **eslint.config.mjs**: ESLint configuration for code linting and style enforcement.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.

@@ -10,15 +10,15 @@ const rules = tsEslint.configs.recommended
 
 // Enhanced code quality rules
 const codeQualityRules = {
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': [
-        'warn',
+        'error',
         {
             allowExpressions: true,
             allowTypedFunctionExpressions: true,
         },
     ],
-    '@typescript-eslint/explicit-module-boundary-types': 'warn',
+    '@typescript-eslint/explicit-module-boundary-types': 'error',
     '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -98,7 +98,7 @@ export default [
     },
     {
         name: 'ts/test',
-        files: ['test/**/*.spec.ts'],
+        files: ['test/**/*.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

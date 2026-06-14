@@ -1,12 +1,12 @@
 import { registerAs } from '@nestjs/config';
 
-export interface IConfigRequest {
+export interface IConfigResponse {
     cachePrefix: string;
 }
 
 export default registerAs(
     'response',
-    (): IConfigRequest => ({
+    (): IConfigResponse => ({
         cachePrefix: 'Apis',
     })
 );

@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -109,8 +109,8 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyContentPresignRequestDto,
         }),
-        DocResponse<AwsS3PresignDto>('termPolicy.generateContentPresign', {
-            dto: AwsS3PresignDto,
+        DocResponse<AwsS3PresignResponseDto>('termPolicy.generateContentPresign', {
+            dto: AwsS3PresignResponseDto,
         })
     );
 }
@@ -203,7 +203,7 @@ export function TermPolicyAdminGetContentDoc(): MethodDecorator {
             params: TermPolicyDocParamsGetContent,
         }),
         DocResponse('termPolicy.getContent', {
-            dto: AwsS3PresignDto,
+            dto: AwsS3PresignResponseDto,
         })
     );
 }

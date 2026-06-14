@@ -31,7 +31,7 @@ export class MigrationTermPolicySeed
     ) {
         super();
 
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.termPolicies = migrationTermPolicyData[this.env];
     }
 

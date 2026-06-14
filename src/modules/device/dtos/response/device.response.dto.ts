@@ -1,15 +1,13 @@
-import { DatabaseDto } from '@common/database/dtos/database.dto';
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
-export class DeviceResponseDto extends DatabaseDto {
-    @ApiHideProperty()
-    @Exclude()
+export class DeviceResponseDto extends DatabaseResponseDto {
     fingerprint: string;
 
     @ApiProperty({
@@ -17,6 +15,7 @@ export class DeviceResponseDto extends DatabaseDto {
         description: 'Device name',
         example: faker.commerce.productName(),
     })
+    @Expose()
     name?: string;
 
     @ApiProperty({
@@ -25,6 +24,7 @@ export class DeviceResponseDto extends DatabaseDto {
         example: EnumDevicePlatform.android,
         enum: EnumDevicePlatform,
     })
+    @Expose()
     platform: EnumDevicePlatform;
 
     @ApiProperty({
@@ -32,10 +32,9 @@ export class DeviceResponseDto extends DatabaseDto {
         description: 'Last active date',
         example: faker.date.recent().toISOString(),
     })
+    @Expose()
     lastActiveAt: Date;
 
-    @ApiHideProperty()
-    @Exclude()
     notificationToken?: string;
 
     @ApiProperty({
@@ -44,5 +43,6 @@ export class DeviceResponseDto extends DatabaseDto {
         example: EnumDeviceNotificationProvider.fcm,
         enum: EnumDeviceNotificationProvider,
     })
+    @Expose()
     notificationProvider?: EnumDeviceNotificationProvider;
 }

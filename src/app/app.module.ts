@@ -6,7 +6,7 @@ import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { AppHttpFilter } from '@app/filters/app.http.filter';
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
-import { QueueModule } from 'src/queues/queue.module';
+import { QueueModule } from '@queues/queue.module';
 
 /**
  * Root application module that serves as the entry point for the NestJS application.
@@ -49,6 +49,6 @@ import { QueueModule } from 'src/queues/queue.module';
             useClass: AppValidationImportFilter,
         },
     ],
-    imports: [CommonModule, RouterModule, QueueModule],
+    imports: [CommonModule, QueueModule, RouterModule],
 })
 export class AppModule {}

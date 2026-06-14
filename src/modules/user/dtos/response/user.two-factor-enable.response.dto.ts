@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class UserTwoFactorEnableResponseDto {
     @ApiProperty({
@@ -8,5 +9,6 @@ export class UserTwoFactorEnableResponseDto {
         type: [String],
         example: ['ABCD1234EF', 'ZXCV5678GH'],
     })
+    @Expose()
     backupCodes: string[];
 }

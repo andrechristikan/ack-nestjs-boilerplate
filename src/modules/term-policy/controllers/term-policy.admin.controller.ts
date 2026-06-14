@@ -1,4 +1,4 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     PaginationOffsetQuery,
@@ -177,7 +177,7 @@ export class TermPolicyAdminController {
     @Post('/generate/content/presign')
     async generate(
         @Body() body: TermPolicyContentPresignRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         return this.termPolicyService.generateContentPresignByAdmin(body);
     }
 
@@ -279,7 +279,7 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
         @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
-    ): Promise<IResponseReturn<AwsS3PresignDto>> {
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
         return this.termPolicyService.getContentByAdmin(termPolicyId, language);
     }
 

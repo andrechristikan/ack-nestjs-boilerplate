@@ -1,4 +1,26 @@
-**/**/templates/*
+# Dependencies
+node_modules/
+
+# Build output & generated code
+dist/
 generated/
+.warmup/
 swagger.json
 src/metadata.ts
+
+# Lockfile (matched by the root *.yaml glob — never reformat)
+pnpm-lock.yaml
+
+# Templates (handlebars / non-source assets)
+**/templates/**
+
+# Coverage & logs
+coverage/
+logs/
+*.log
+
+# Secrets & keys
+keys/
+*.pem
+*.pub
+jwks.json

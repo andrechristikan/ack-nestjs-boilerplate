@@ -1,6 +1,7 @@
 {
     "$schema": "https://swc.rs/schema.json",
     "sourceMaps": true,
+    "minify": false,
     "module": {
         "type": "commonjs"
     },
@@ -26,11 +27,12 @@
             "@modules/*": ["src/modules/*"],
             "@routes/*": ["src/router/routes/*"],
             "@router": ["src/router/router.module.ts"],
-            "@workers/*": ["src/worker/*"],
             "@migration/*": ["src/migration/*"],
             "@test/*": ["test/*"],
             "@generated/*": ["generated/*"],
-            "@prisma/client": ["generated/prisma-client"]
+            "@prisma/client": ["generated/prisma-client"],
+            "@queues/*": ["src/queues/*"],
+            "@package": ["package.json"]
         },
         "target": "esnext",
         "parser": {
@@ -42,6 +44,5 @@
             "legacyDecorator": true,
             "decoratorMetadata": true
         }
-    },
-    "minify": false
+    }
 }

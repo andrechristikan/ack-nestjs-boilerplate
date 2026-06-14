@@ -1,11 +1,11 @@
 name: Test
 on:
     workflow_dispatch:
-    pull_request:
-        branches:
-          - main
-          - staging
-          - development
+    # pull_request:
+    #     branches:
+    #       - main
+    #       - staging
+    #       - development
 
 env:
     NODE_VERSION: lts/*
@@ -18,13 +18,14 @@ jobs:
             - name: Git checkout
               uses: actions/checkout@v6
 
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+
             - name: Setup node
               uses: actions/setup-node@v6
               with:
                 node-version: ${{ env.NODE_VERSION }}
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
+                cache: pnpm
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile

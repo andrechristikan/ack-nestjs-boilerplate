@@ -52,21 +52,25 @@ export class FeatureFlagService implements IFeatureFlagService {
         const featureFlag = await this.featureFlagUtil.getByKeyAndCache(
             keys[0]
         );
-        if (!featureFlag || !featureFlag.isEnable) {
+        if (!featureFlag?.isEnable) {
             throw new ServiceUnavailableException({
                 statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
                 message: 'featureFlag.error.serviceUnavailable',
             });
         } else if (keys.length > 1) {
-            const metadata: boolean | number | string | null =
-                featureFlag.metadata[keys[1]];
+            const metadata: unknown =
+                (featureFlag?.metadata as Record<string, unknown>)?.[keys[1]] ??
+                null;
+
             if (typeof metadata !== 'boolean') {
                 throw new InternalServerErrorException({
                     statusCode:
                         EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
                     message: 'featureFlag.error.predefinedKeyTypeInvalid',
                 });
-            } else if (!metadata) {
+            }
+
+            if (!metadata) {
                 throw new ServiceUnavailableException({
                     statusCode:
                         EnumFeatureFlagStatusCodeError.serviceUnavailable,

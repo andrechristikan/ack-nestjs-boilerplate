@@ -1,313 +1,204 @@
 # ACK NestJS Boilerplate — Claude Code Instructions
 
-## Project Overview
+> Read this file top to bottom. It is an execution order: §0 before you act → §1 guardrails → §2–8 while you code → §9 before you finish → §10 is the reject list. Rules only — all domain detail lives in `docs/*`.
 
-ACK NestJS Boilerplate (v8.2.0+) is an enterprise-grade authentication and authorization service built with:
-- **NestJS v11** + **TypeScript** (strict)
-- **Prisma ORM** → MongoDB (replica set required for transactions)
-- **Redis** → cache + session store (`db:0`) and BullMQ queues (`db:1`)
-- **PNPM** as the only allowed package manager
-- **ES256** (access token) / **ES512** (refresh token) JWT algorithms
+**Stack:** NestJS v11 · TypeScript strict · Prisma → MongoDB (replica set) · Redis (cache `db:0` / BullMQ `db:1`) · PNPM only · Node ≥ 24.11 · JWT ES256/ES512 · Repository pattern.
 
-## Architecture
+---
 
-### Repository Design Pattern
-- `Repository` → data access only, injects `DatabaseService` directly (no `@Inject`)
-- `Service` → business logic only, injects repository as class (no interface for repo)
-- `Service` always implements an **interface** (`IUserService`)
-- Never inject `DatabaseService` directly into services
+## 0. BEFORE YOU ACT (HARD — every task, no exception)
 
-```typescript
-// ✅ Repository — no interface needed
-@Injectable()
-export class UserRepository {
-    constructor(private readonly databaseService: DatabaseService) {}
-}
+Run these steps in order before writing code, suggesting a change, or answering a design question:
 
-// ✅ Service — always has interface, injects repo as class
-export class UserService implements IUserService {
-    constructor(private readonly userRepository: UserRepository) {}
-}
-```
+1. **Scan `docs/*`.** List `docs/` and READ every doc relevant to the task. Detail is there, not here.
+2. **Read the real source.** Open the actual files. Never assume structure, signatures, or names.
+3. **Scope it.** Do only what is asked (YAGNI). If unsure, ASK — do not guess and build.
+4. **Plan against §2–8.** Confirm the change obeys the principles and rules below before typing.
 
-### Module Structure
+### Docs index (`/docs`)
+`authentication` · `authorization` · `database` · `device` · `two-factor` · `activity-log` · `cache` · `queue` · `notification` · `response` · `request-validation` · `handling-error` · `message` · `pagination` · `file-upload` · `presign` · `feature-flag` · `term-policy` · `security-and-middleware` · `third-party-integration` · `logger` · `configuration` · `environment` · `installation` · `project-structure` · `doc` · `analytics`
 
-Every feature module follows:
-```
-module/
-├── controllers/    dtos/        entities/     enums/
-├── exceptions/     guards/      interfaces/   repositories/
-├── services/       utils/       decorators/   docs/
-└── processors/     templates/   validations/
-```
+When in doubt about a behavior, the matching doc is the source of truth. Read it before touching the code.
 
-### Path Aliases (always use, never relative paths)
-```
-@app/*      → src/app/*
-@common/*   → src/common/*
-@config     → src/configs/index.ts
-@configs/*  → src/configs/*
-@modules/*  → src/modules/*
-@routes/*   → src/router/routes/*
-@generated/* → generated/*
-@prisma/client → generated/prisma-client
-```
+---
 
-## Naming Conventions
+## 1. GUARDRAILS (HARD — never cross without explicit user request)
 
-| Type | Convention | Example |
+### Git — never touch the user's tree
+- Do NOT run `git commit`, `git add`, stage, or unstage commands on your own.
+- Leave the index exactly as the user arranged it. Already-staged files stay staged; unstaged stay unstaged.
+- Stage or commit ONLY when the user explicitly asks, and only the files they name.
+- When asked to commit: READ `.commitlintrc` first, then PROPOSE the commit message(s) and wait for approval. Never commit before the user accepts the message. The message must pass commitlint.
+- Commit message = single-line subject ONLY. No body, no bullet lists, no `Co-Authored-By` footer. Match the repo's convention (`type(scope): summary`). Keep it terse.
+
+### Prisma — schema is off-limits
+- Do NOT edit the Prisma schema.
+- Do NOT run schema/DB-mutating commands (`db:migrate`, `db:push`, `migration:*`, `db:generate`).
+- Need a schema change? Stop and tell the user — do not do it yourself.
+
+---
+
+## 2. PRINCIPLES (HARD — apply on every line)
+
+All four below are mandatory. None optional. Reviewer rejects on violation.
+
+- **SOLID**
+  - **S** — one class, one reason to change. Controller routes, Service business logic, Repository data access. Never blur.
+  - **O** — extend via new class/strategy/decorator, not by editing stable code with `if/switch` type-checks.
+  - **L** — a subclass/implementation must be drop-in for its base/interface. No narrowing behavior, no surprise throws.
+  - **I** — small focused interfaces. No fat interface forcing dead method implementations. Split by consumer need.
+  - **D** — depend on abstractions. Services depend on injected classes/interfaces, never on `DatabaseService` directly.
+- **DRY** — zero copy-paste logic. Extract to base class, util, or shared module. One source of truth for config, connections, constants. Written twice → refactor.
+- **KISS** — simplest solution that works. No clever one-liners, no needless layers, no premature generics. Readable > smart.
+- **YAGNI** — build only what the current task needs. No "future-proof" params, no unused flags, no speculative hooks, no dead branches. Delete unused code.
+
+**When they pull against each other, resolve in this order:**
+
+1. **Correctness & security** — first, always. Never trade security for brevity.
+2. **YAGNI + KISS** — decide whether structure is needed at all.
+3. **SOLID + DRY** — shape that structure well once it is justified.
+
+> Duplication beats the wrong abstraction. Do not abstract to satisfy DRY/SOLID against YAGNI/KISS.
+
+---
+
+## 3. ARCHITECTURE (HARD)
+
+### Repository pattern
+- `Repository` → data access ONLY. Injects `DatabaseService` directly (no `@Inject`). No interface.
+- `Service` → business logic ONLY. Injects repository as a class. MUST implement an interface (`IUserService`).
+- **NEVER** inject `DatabaseService` into a service.
+- Repository owns `null → {}` normalization for filter params before Prisma — never in the caller.
+
+### Path aliases (ALWAYS — relative imports forbidden)
+- `@app/*` · `@common/*` · `@config` · `@configs/*` · `@modules/*` · `@queues/*` · `@routes/*` · `@router` · `@migration/*` · `@test/*` · `@generated/*` · `@package`
+- `@prisma/client` → `generated/prisma-client`
+
+### Module layout
+- Standard folder set per module. Read `docs/project-structure.md` before scaffolding — do not invent structure.
+
+---
+
+## 4. NAMING (HARD)
+
+| Type | Rule | Example |
 |---|---|---|
 | Class | PascalCase | `UserService` |
 | Interface | `I` + PascalCase | `IUserService` |
-| Enum | `Enum` + PascalCase | `EnumUserStatus` |
-| Enum keys/values | camelCase | `active`, `inactive` |
+| Enum name | `Enum` + PascalCase | `EnumUserStatus` |
+| Enum keys/values | camelCase | `active` |
+| Constants | PascalCase | `MaxAttempt` |
 | Files | kebab-case | `user.service.ts` |
-| Methods/Variables | camelCase | `findById`, `userId` |
-| DTO suffix | `RequestDto` / `ResponseDto` | `CreateUserRequestDto` |
+| Methods/vars | camelCase | `findById` |
+| Request DTO | `*RequestDto` suffix | `CreateUserRequestDto` |
+| Response DTO | `*ResponseDto` suffix | `UserResponseDto` |
 
-## Decorator Order (EXACT — never change)
+- Enums: `Enum` prefix, camelCase keys, one enum concern per file.
+- Error-code enums use numeric values.
+
+---
+
+## 5. DECORATOR ORDER (HARD — exact, never reorder)
 
 ```typescript
 @ExampleDoc()                          // 1. Swagger doc
 @TermPolicyAcceptanceProtected(...)    // 2. Term policy
 @PolicyAbilityProtected({...})         // 3. CASL policy
-@RoleProtected(...)                    // 4. Role check
+@RoleProtected(...)                    // 4. Role
 @ActivityLog(...)                      // 5. Activity log
-@UserProtected()                       // 6. User status check
-@AuthJwtAccessProtected()              // 7. JWT validation
+@UserProtected()                       // 6. User status
+@AuthJwtAccessProtected()              // 7. JWT
 @FeatureFlagProtected(...)             // 8. Feature flag
 @ApiKeyProtected()                     // 9. API key
 @HttpCode(HttpStatus.OK)               // 10. HTTP status (only when needed)
 @Get('/endpoint')                      // 11. HTTP method (always last)
-async method() {}
 ```
 
-## Authentication & Session
+- Guard/protection semantics → read `docs/authorization.md`.
+- `@ActivityLog` requires `@AuthJwtAccessProtected`, logs successful requests only, never logs secrets.
 
-- Dual storage: **Redis** (validation, jti matching) + **Database** (audit, listing)
-- `jti` rotated on every token refresh — old tokens immediately invalid
-- Redis key: `User:{userId}:Session:{sessionId}`
-- TTL: fixed at login (30d default), NOT extended on refresh
-- Always invalidate sessions on: password change, password reset, logout, device removal
+---
 
-### Session Lifecycle
-1. Login → create session in Redis + DB, linked to `DeviceOwnership`
-2. Every request → verify signature → check Redis → match `jti`
-3. Refresh → verify → rotate `jti` in Redis + DB → issue new tokens
-4. Revoke → delete from Redis → mark DB as revoked
+## 6. STRICT NULL TYPES (HARD)
 
-## Device Module
+- `undefined` is allowed ONLY at the input boundary (Request DTO body, Query DTO). Every deeper layer uses `null`.
 
-- Device identified by `fingerprint` (use FingerprintJS on frontend)
-- `DeviceOwnership` = relationship between `User` and `Device`
-- **Max 1 active session per device-user pair** (new login replaces old session)
-- Same `fingerprint` + different browsers = different `DeviceOwnership` (by design)
-- Platforms: `ios`, `android`, `web`
-- Notification: `fcm` (android), `apns` (ios), none (web)
+| Layer | Convention |
+|---|---|
+| Request/Query DTO (input boundary) | `field?: Type` |
+| Response DTO — wrapper/structural | `field?: Type` |
+| Response DTO — domain data | `field: Type \| null` |
+| Domain interface — data | `field: Type \| null` |
+| Domain interface — request lifecycle / external spec (JWT, Prisma) | `field?: Type` |
+| Exception / options bag | `field?: Type` |
+| Config interface (`src/configs/`) | `field: Type \| null` |
+| Service/Repository — data param | `param: Type \| null` |
+| Service/Repository — filter param | `param: Type \| null` (additive service filter may use `?`) |
+| Prisma return | `Type \| null` |
 
-### Remove Device Flow
-```
-DELETE /user/device/remove/:deviceId
-→ DeviceOwnership: isRevoked = true (retained for audit)
-→ Device: clear notificationToken + notificationProvider
-→ Session: isRevoked = true in DB
-→ Redis: DELETE session key → immediate 401
-→ ActivityLog: userRemoveDevice
-```
+- **NEVER** `field?: Type \| null` — ambiguous. Pick one.
+- Controller normalizes `undefined → null` before calling a service: `service.update(id, dto.bio ?? null)`.
+- No `any` (`noImplicitAny`). No ignored null checks (`strictNullChecks`).
 
-### Device List API Behavior
-- User endpoint → return `isRevoked = false` only
-- Admin endpoint → default `isRevoked = false`, support `?includeRevoked=true` for audit
+---
 
-## Authorization Layers
+## 7. CODE STYLE (HARD)
 
-```
-@AuthJwtAccessProtected()       JWT signature + jti + Redis session check
-@UserProtected(isVerified?)     User status: active, not deleted, optionally email-verified
-@RoleProtected(role)            RBAC role check
-@PolicyAbilityProtected({})     CASL fine-grained permissions (subject + action)
-@TermPolicyAcceptanceProtected  Require accepted term policies (default: termsOfService + privacy)
-@FeatureFlagProtected(key)      Feature flag + rollout percentage
-@ApiKeyProtected()              Machine-to-machine API key auth
-```
+- **NestJS idiomatic.** Use the framework the Nest way — modules, DI, providers, guards, pipes, interceptors, decorators. No hand-rolled substitutes for what Nest already provides.
+- **No unit tests.** Do not write or scaffold tests unless the user explicitly asks.
+- **Minimal comments.** Code self-documents. Comment only the non-obvious or the genuinely important (a tricky invariant, a security reason, a deliberate deviation). No narrating obvious code.
+- **Notes** — mark with `// @note <text>`. If the symbol already has a JSDoc block, put the note inside it instead — do not add a separate `// @note`.
+- **JSDoc** — terse and to the point. State what matters, skip filler. Do not restate the signature or types the code already shows.
+- **No em-dash in `docs/*.md` prose.** Never use `—` in documentation prose. Use proper punctuation instead (period, comma, semicolon, colon, or parentheses). Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not overuse them. Exception: an existing structured list whose every entry already uses `—` as a separator — match it for consistency rather than breaking the pattern on one line.
 
-## Database & Transactions
+---
 
-- MongoDB must run as **replica set** (required for transactions)
-- Use callback syntax for complex transactions:
+## 8. ERRORS · RESPONSES · CONFIG (rules; detail in docs)
 
-```typescript
-// ✅ Complex logic — callback
-await this.databaseService.$transaction(async (tx) => {
-    const user = await tx.user.create({ data });
-    if (condition) await tx.profile.create({ data: profileData });
-    return user;
-});
+- **Errors** — throw Nest exceptions with `{ statusCode, message: '<i18n.key>', messageProperties?, data? }`. i18n keys are nested JSON, filename = prefix (`user.error.notFound` → `languages/en/user.json`). → `docs/handling-error.md`, `docs/message.md`.
+- **Responses** — use `@Response` / `@ResponsePaging`. Return `{ data, metadata?, metadataActivityLog? }`. → `docs/response.md`.
+- **Validation** — `class-validator` + `@Expose` on DTOs. → `docs/request-validation.md`.
+- **Config** — every `src/configs/*` file exports a TS interface alongside `registerAs`. → `docs/configuration.md`, `docs/environment.md`.
+- **Transactions** — array form for simple sequential, callback form for conditional logic. MongoDB replica set required. → `docs/database.md`.
+- **Logging** — `new Logger(ClassName.name)`, object first then message: `logger.error(error, 'msg')`. Secrets auto-redacted by Pino — never log them anyway.
 
-// ✅ Simple sequential — array
-await this.databaseService.$transaction([
-    this.databaseService.user.create({ data }),
-    this.databaseService.log.create({ data: logData }),
-]);
-```
+---
 
-### Scripts
-```bash
-pnpm db:migrate        # Sync schema to MongoDB
-pnpm db:generate       # Regenerate Prisma client (after schema changes)
-pnpm db:studio         # Open Prisma Studio
-pnpm migration:seed    # Seed all data
-pnpm migration {module} --type seed    # Seed specific module
-```
+## 9. BEFORE YOU FINISH (HARD — verify, do not assume)
 
-## Cache (Redis)
+Run in order and confirm each passes before claiming done:
 
-- `CacheMainProvider` → general app cache (`db:0`)
-- `SessionCacheProvider` → session management only (`db:0`)
-- BullMQ → `db:1` (never mix with cache)
-- Default TTL: 5 minutes; feature flags: 1 hour
-- Single Redis connection shared via `RedisCacheModule` (DRY pattern)
+1. `pnpm typecheck` — must be clean (zero errors).
+2. `pnpm lint` — must be clean (use `pnpm lint:fix` for autofixable).
+3. `pnpm spell` — fix unknown words or add to `cspell.json`.
+4. Re-check the diff against §10. If any item matches, fix it.
 
-## Response Pattern
+- Report failures honestly with the real output. Never claim a step passed without running it.
+- Mention any deliberate deviation (performance / matching existing code) in the reply.
+- Do NOT commit or stage (§1). Leave verification results for the user to commit.
 
-```typescript
-// Standard
-@Response('user.get')
-async get(): Promise<IResponseReturn<UserDto>> {
-    return { data: await this.userService.findById(id) };
-}
+---
 
-// Paginated
-@ResponsePaging('user.list')
-async list(): Promise<IResponsePagingReturn<UserDto[]>> {
-    return { type: 'offset', data, totalPage, page, perPage, count, ... };
-}
+## 10. ANTI-PATTERNS (NEVER — reject list)
 
-// With activity log metadata
-return {
-    data: updated,
-    metadataActivityLog: { userId, oldStatus, newStatus }
-};
-```
-
-## Error Handling
-
-```typescript
-throw new NotFoundException({
-    statusCode: EnumUserStatusCodeError.notFound,
-    message: 'user.error.notFound',          // i18n key
-    messageProperties: { id: userId },       // optional interpolation
-    data: { userId },                        // optional debug context
-});
-```
-
-## i18n Messages
-
-- Files in `src/languages/en/` — **nested JSON**, filename = prefix
-- `user.error.notFound` → `src/languages/en/user.json` → `error.notFound`
-- Never assume flat structure
-
-```json
-// user.json
-{
-  "error": {
-    "notFound": "User not found",
-    "statusInvalid": "User status {status} is invalid"
-  }
-}
-```
-
-## Queue (BullMQ)
-
-- Extend `QueueProcessorBase`, implement `process(job)` with switch
-- Use `QueueException(msg, isFatal)` — `isFatal: true` reports to Sentry
-- Default: 3 attempts, exponential backoff (5s)
-- Available queues: `notification`, `notificationEmail`, `notificationPush`
-
-## Logging
-
-```typescript
-private readonly logger = new Logger(UserService.name);
-
-// ✅ object first, message second
-this.logger.error(error, 'Failed to create user');
-this.logger.log('User created');
-```
-
-Sensitive data (password, token, apiKey, etc.) auto-redacted by Pino.
-
-## Activity Log
-
-- `@ActivityLog(EnumActivityLogAction.xxx)` — admin endpoints only
-- Requires `@AuthJwtAccessProtected()` to be present
-- Only logs **successful** requests
-- Capture metadata via `metadataActivityLog` in service response
-- Never log: passwords, tokens, entire objects
-
-## Notification
-
-- 4 channels: `email` (SES), `push` (FCM), `inApp`, `silent`
-- 3 BullMQ queues: `notification`, `notificationEmail`, `notificationPush`
-- Push tokens managed via Device module
-- `inApp` + `silent` → marked delivered immediately at creation
-- `email` + `push` → async queue processing
-
-## Third-Party Services (No-Op Mode)
-
-All external services operate in **no-op mode** when credentials are missing:
-- AWS S3: check `isInitialized()` before S3 operations
-- AWS SES: check `isInitialized()` before sending email
-- Firebase: leave env vars empty to disable push
-- Sentry: leave `SENTRY_DSN` empty to disable monitoring
-
-## Feature Flags
-
-```typescript
-@FeatureFlagProtected('loginWithGoogle')           // simple check
-@FeatureFlagProtected('changePassword.forgotAllowed') // metadata check (must be boolean)
-```
-
-Rollout uses deterministic MD5 hash of `userId` — same user always gets same result.
-
-## Term Policy
-
-- 4 types: `termsOfService`, `privacy`, `marketing`, `cookies`
-- Publishing invalidates ALL user acceptances for that type
-- Draft → editable, private S3; Published → immutable, public S3
-- `@TermPolicyAcceptanceProtected()` defaults to requiring `termsOfService` + `privacy`
-
-## Key Scripts
-
-```bash
-pnpm start:dev         # Dev server with hot reload
-pnpm build             # Production build
-pnpm lint              # ESLint
-pnpm lint:fix          # Auto-fix lint
-pnpm format            # Prettier
-pnpm test              # Run tests
-pnpm generate:keys     # Generate ES256/ES512 JWT key pairs
-pnpm clean             # Clean node_modules + dist
-docker-compose up -d   # Start MongoDB + Redis + JWKS server
-```
-
-## Anti-Patterns (Never Do)
-
-- Inject `DatabaseService` directly into services → use repository
-- Use relative imports → use path aliases
-- Multiple Redis connections → share via `RedisCacheModule`
-- Wrong decorator order → follow exact order above
-- Flat i18n keys → use nested JSON structure
-- Log sensitive data → auto-redacted, but don't explicitly log it
-- Skip session invalidation on password change/reset
-- Use `UPPER_SNAKE_CASE` for enums → use `PascalCase` name, `camelCase` keys
-- Use array transaction for conditional logic → use callback syntax
-
-## Docs Reference
-
-Full documentation in `/docs`:
-`authentication.md` · `authorization.md` · `database.md` · `device.md`
-`two-factor.md` · `activity-log.md` · `cache.md` · `queue.md`
-`notification.md` · `response.md` · `request-validation.md` · `handling-error.md`
-`message.md` · `pagination.md` · `file-upload.md` · `feature-flag.md`
-`term-policy.md` · `security-and-middleware.md` · `third-party-integration.md`
-`analytics.md` (planned) · `configuration.md` · `environment.md`
+- Commit, stage, or unstage without an explicit user request → leave the tree alone (§1).
+- Commit without proposing a commitlint-valid message and getting approval first → §1.
+- Edit the Prisma schema or run schema/DB commands → stop and tell the user (§1).
+- Inject `DatabaseService` into a service → use repository.
+- Relative imports → use path aliases.
+- Multiple Redis connections → share via `RedisCacheModule`.
+- Reorder protection decorators → follow §5 exactly.
+- Flat i18n keys → nested JSON.
+- Log secrets (password/token/apiKey) explicitly.
+- Skip session invalidation on password change/reset/logout/device removal.
+- `UPPER_SNAKE_CASE` enums → PascalCase name + camelCase keys.
+- Array transaction for conditional logic → callback form.
+- `any` type / ignored null checks.
+- `@Inject` for a repository → direct class injection.
+- `undefined` past the input boundary → `null`.
+- `field?: Type | null` → pick one.
+- Normalize filter params in the caller → repository owns it.
+- Write unit tests unprompted, or over-comment obvious code → see §7.
+- Non-idiomatic NestJS (hand-rolled what Nest provides) → §7.
+- Copy-paste logic / speculative params / premature abstraction → violates DRY, YAGNI, KISS.
+- Skip reading `docs/*` before acting → violates §0.

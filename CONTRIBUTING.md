@@ -56,8 +56,8 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 |------|---------|
-| Node.js | >= 20.x |
-| pnpm | >= 9.x |
+| Node.js | >= 24.11.0 |
+| pnpm | >= 10.25.0 |
 | Docker | Latest stable |
 | MongoDB | Replication set (required for transactions) |
 | Redis | Latest stable |
@@ -95,10 +95,14 @@ This project uses **TypeScript** with strict mode. Please follow these standards
 - Run tests:
   ```bash
   pnpm test
-  pnpm test:e2e
   ```
 - No `any` types unless absolutely unavoidable — justify it in a comment
 - All public methods/functions should have proper TypeScript typings
+- **Strict null convention** — `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppException`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
+- Never use `variable?: string | null` — ambiguous; use `?: string` for input boundary or `string | null` for internal layers
+- Response DTO **domain data fields** must use `field: Type | null`, not `field?: Type`. Only structural/wrapper fields (e.g. `data?`, `errors?` on response wrappers) may use `?:`
+- Repository filter params use `Type | null` — normalization `null → {}` is done inside the repository before Prisma, not at the caller
+- `src/configs/` config interfaces use `field: Type | null` — callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
 
 ---
 
@@ -116,16 +120,19 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 |------|-------------|
 | `feat` | New feature |
 | `fix` | Bug fix |
-| `docs` | Documentation changes |
+| `hotfix` | Urgent production fix |
+| `doc` | Documentation changes |
 | `refactor` | Code refactor (no feature/fix) |
 | `test` | Adding or updating tests |
+| `ci` | CI/CD pipeline changes |
 | `chore` | Build process, dependencies |
+| `revert` | Revert a previous commit |
 
 **Examples:**
 ```
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
-docs(readme): update docker setup instructions
+doc(readme): update docker setup instructions
 ```
 
 ---

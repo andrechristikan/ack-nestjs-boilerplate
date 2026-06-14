@@ -86,7 +86,7 @@ export class NotificationService implements INotificationService {
 
         await this.notificationRepository.markAsRead(userId, notificationId);
 
-        return;
+        return {};
     }
 
     async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
@@ -115,6 +115,6 @@ export class NotificationService implements INotificationService {
             requestLog
         );
 
-        return;
+        return {};
     }
 }

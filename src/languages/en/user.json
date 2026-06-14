@@ -35,10 +35,11 @@
         "disable": "Two-factor authentication has been disabled.",
         "resetByAdmin": "Two-factor authentication has been reset."
     },
+    "updateStatus": "User status updated successfully.",
     "import": "User data imported successfully.",
-    "export": "User data export initiated successfully.",
     "loginSetupTwoFactor": "Two-factor setup initiated successfully.",
     "loginVerifyTwoFactor": "Two-factor verification successful.",
+    "logout": "Logged out successfully.",
     "error": {
         "notFound": "Sorry, we couldn't find the user you requested.",
         "notSelf": "You cannot perform this action on your own account.",

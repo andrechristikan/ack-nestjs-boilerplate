@@ -1,4 +1,5 @@
 import { HelperService } from '@common/helper/services/helper.service';
+import { ResponseUtil } from '@common/response/utils/response.util';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import {
@@ -8,7 +9,6 @@ import {
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { plainToInstance } from 'class-transformer';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 /**
@@ -26,7 +26,8 @@ export class SessionUtil {
     constructor(
         @Inject(SessionCacheProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly responseUtil: ResponseUtil
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
     }
@@ -187,7 +188,7 @@ export class SessionUtil {
      * @see {@link SessionResponseDto} for the response DTO structure
      */
     mapList(sessions: ISession[]): SessionResponseDto[] {
-        return plainToInstance(SessionResponseDto, sessions);
+        return this.responseUtil.serialize(SessionResponseDto, sessions);
     }
 
     /**

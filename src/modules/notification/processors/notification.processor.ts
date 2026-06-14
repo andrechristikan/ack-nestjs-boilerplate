@@ -14,10 +14,10 @@ import {
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { QueueProcessorBase } from 'src/queues/bases/queue.processor.base';
-import { QueueProcessor } from 'src/queues/decorators/queue.decorator';
-import { EnumQueue } from 'src/queues/enums/queue.enum';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { QueueProcessor } from '@queues/decorators/queue.decorator';
+import { EnumQueue } from '@queues/enums/queue.enum';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Central background job processor for multi-channel notifications.

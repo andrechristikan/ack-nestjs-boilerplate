@@ -18,6 +18,7 @@ import {
     EnumDevicePlatform,
     Prisma,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
@@ -29,7 +30,8 @@ export class DeviceOwnershipRepository {
         private readonly databaseService: DatabaseService,
         private readonly helperService: HelperService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -184,6 +186,9 @@ export class DeviceOwnershipRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userDeviceRefresh,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userDeviceRefresh
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -292,6 +297,10 @@ export class DeviceOwnershipRepository {
                                 activityLogs: {
                                     create: {
                                         action: EnumActivityLogAction.userRemoveDevice,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userRemoveDevice
+                                            ),
                                         ipAddress,
                                         userAgent:
                                             this.databaseUtil.toPlainObject(

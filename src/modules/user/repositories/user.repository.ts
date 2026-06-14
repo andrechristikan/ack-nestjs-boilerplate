@@ -1,4 +1,4 @@
-import { AwsS3Dto } from '@common/aws/dtos/aws.s3.dto';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -60,12 +60,14 @@ import {
     UserMobileNumber,
     Verification,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
 export class UserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil,
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService
     ) {}
@@ -446,6 +448,10 @@ export class UserRepository {
                             data: [
                                 {
                                     action: EnumActivityLogAction.userCreated,
+                                    description:
+                                        this.activityLogUtil.getDescription(
+                                            EnumActivityLogAction.userCreated
+                                        ),
                                     ipAddress,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -459,6 +465,10 @@ export class UserRepository {
                                 },
                                 {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
+                                    description:
+                                        this.activityLogUtil.getDescription(
+                                            EnumActivityLogAction.userSendVerificationEmail
+                                        ),
                                     ipAddress,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -517,6 +527,10 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog,
         updatedBy: string
     ): Promise<User> {
+        const action =
+            status === EnumUserStatus.blocked
+                ? EnumActivityLogAction.userBlocked
+                : EnumActivityLogAction.userUpdateStatus;
         return this.databaseService.user.update({
             where: { id, deletedAt: null },
             data: {
@@ -524,10 +538,9 @@ export class UserRepository {
                 updatedBy,
                 activityLogs: {
                     create: {
-                        action:
-                            status === EnumUserStatus.blocked
-                                ? EnumActivityLogAction.userBlocked
-                                : EnumActivityLogAction.userUpdateStatus,
+                        action,
+                        description:
+                            this.activityLogUtil.getDescription(action),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -553,6 +566,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userUpdateProfile,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userUpdateProfile
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -566,7 +582,7 @@ export class UserRepository {
 
     async updatePhotoProfile(
         userId: string,
-        photo: AwsS3Dto,
+        photo: IAwsS3,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         return this.databaseService.user.update({
@@ -577,7 +593,10 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userUpdatePhotoProfile,
-                        ipAddress: ipAddress,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userUpdatePhotoProfile
+                        ),
+                        ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
                             this.databaseUtil.toPlainObject(geoLocation),
@@ -603,6 +622,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userDeleteSelf,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userDeleteSelf
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -621,6 +643,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: deletedAt,
                             revokedById: userId,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -673,6 +696,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userAddMobileNumber,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userAddMobileNumber
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -733,6 +759,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userUpdateMobileNumber,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userUpdateMobileNumber
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -772,6 +801,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userDeleteMobileNumber,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userDeleteMobileNumber
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -809,6 +841,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userClaimUsername,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userClaimUsername
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -851,6 +886,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userUpdatePasswordByAdmin
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -868,6 +906,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: passwordCreated,
                             revokedById: updatedBy,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -925,6 +964,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userChangePassword,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userChangePassword
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -944,6 +986,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: passwordCreated,
                             revokedById: userId,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -975,6 +1018,7 @@ export class UserRepository {
         }
 
         let notificationProvider: EnumDeviceNotificationProvider | null = null;
+        platform = platform ?? EnumDevicePlatform.web;
         switch (platform) {
             case EnumDevicePlatform.android:
                 notificationProvider = EnumDeviceNotificationProvider.fcm;
@@ -1013,7 +1057,7 @@ export class UserRepository {
                 });
 
                 let isNewDevice = false;
-                let sessionShouldBeInactive = [];
+                let sessionShouldBeInactive: { id: string }[] = [];
                 let deviceOwnership = await tx.deviceOwnership.findFirst({
                     where: {
                         deviceId: device.id,
@@ -1060,6 +1104,8 @@ export class UserRepository {
                             data: {
                                 isRevoked: true,
                                 revokedAt: today,
+                                revokedById: userId,
+                                updatedBy: userId,
                             },
                         }),
                     ]);
@@ -1076,6 +1122,8 @@ export class UserRepository {
                         activityLogs: {
                             create: {
                                 action,
+                                description:
+                                    this.activityLogUtil.getDescription(action),
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
@@ -1093,6 +1141,7 @@ export class UserRepository {
                                 expiredAt,
                                 isRevoked: false,
                                 ipAddress,
+                                deviceOwnershipId: deviceOwnership.id,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
                                 geoLocation:
@@ -1179,6 +1228,9 @@ export class UserRepository {
                     activityLogs: {
                         create: {
                             action: EnumActivityLogAction.userCreated,
+                            description: this.activityLogUtil.getDescription(
+                                EnumActivityLogAction.userCreated
+                            ),
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
@@ -1241,6 +1293,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userVerifiedEmail,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userVerifiedEmail
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1329,6 +1384,10 @@ export class UserRepository {
                             data: [
                                 {
                                     action: EnumActivityLogAction.userSignedUp,
+                                    description:
+                                        this.activityLogUtil.getDescription(
+                                            EnumActivityLogAction.userSignedUp
+                                        ),
                                     ipAddress,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -1342,6 +1401,10 @@ export class UserRepository {
                                 },
                                 {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
+                                    description:
+                                        this.activityLogUtil.getDescription(
+                                            EnumActivityLogAction.userSendVerificationEmail
+                                        ),
                                     ipAddress,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -1423,6 +1486,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userForgotPassword,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userForgotPassword
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1483,6 +1549,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userResetPassword,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userResetPassword
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1511,6 +1580,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: passwordCreated,
                             revokedById: userId,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -1539,6 +1609,10 @@ export class UserRepository {
                         activityLogs: {
                             create: {
                                 action: EnumActivityLogAction.userVerifiedEmail,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userVerifiedEmail
+                                    ),
                                 ipAddress,
                                 userAgent:
                                     this.databaseUtil.toPlainObject(userAgent),
@@ -1598,6 +1672,10 @@ export class UserRepository {
                             activityLogs: {
                                 create: {
                                     action: EnumActivityLogAction.userSendVerificationEmail,
+                                    description:
+                                        this.activityLogUtil.getDescription(
+                                            EnumActivityLogAction.userSendVerificationEmail
+                                        ),
                                     ipAddress,
                                     userAgent:
                                         this.databaseUtil.toPlainObject(
@@ -1647,6 +1725,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userRefreshToken,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userRefreshToken
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1669,6 +1750,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userReachMaxPasswordAttempt
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1701,6 +1785,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userVerifyTwoFactor,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userVerifyTwoFactor
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1739,6 +1826,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userSetupTwoFactor,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userSetupTwoFactor
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1776,7 +1866,7 @@ export class UserRepository {
                     twoFactor: {
                         update: {
                             enabled: true,
-                            confirmedAt: twoFactor.confirmedAt ?? now,
+                            confirmedAt: twoFactor?.confirmedAt ?? now,
                             backupCodes: backupCodesHashed,
                             lastUsedAt: now,
                             updatedAt: now,
@@ -1786,6 +1876,9 @@ export class UserRepository {
                     activityLogs: {
                         create: {
                             action: EnumActivityLogAction.userEnableTwoFactor,
+                            description: this.activityLogUtil.getDescription(
+                                EnumActivityLogAction.userEnableTwoFactor
+                            ),
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),
@@ -1828,6 +1921,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userDisableTwoFactor,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userDisableTwoFactor
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1846,6 +1942,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: now,
                             revokedById: userId,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -1877,6 +1974,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userRegenerateTwoFactorBackupCodes
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1916,6 +2016,9 @@ export class UserRepository {
                 activityLogs: {
                     create: {
                         action: EnumActivityLogAction.adminUserResetTwoFactor,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.adminUserResetTwoFactor
+                        ),
                         ipAddress,
                         userAgent: this.databaseUtil.toPlainObject(userAgent),
                         geoLocation:
@@ -1931,6 +2034,7 @@ export class UserRepository {
                             isRevoked: true,
                             revokedAt: now,
                             revokedById: updatedBy,
+                            updatedBy: userId,
                         },
                     },
                 },
@@ -2052,6 +2156,10 @@ export class UserRepository {
                                         data: [
                                             {
                                                 action: EnumActivityLogAction.userCreated,
+                                                description:
+                                                    this.activityLogUtil.getDescription(
+                                                        EnumActivityLogAction.userCreated
+                                                    ),
                                                 ipAddress,
                                                 userAgent:
                                                     this.databaseUtil.toPlainObject(
@@ -2065,6 +2173,10 @@ export class UserRepository {
                                             },
                                             {
                                                 action: EnumActivityLogAction.userSendVerificationEmail,
+                                                description:
+                                                    this.activityLogUtil.getDescription(
+                                                        EnumActivityLogAction.userSendVerificationEmail
+                                                    ),
                                                 ipAddress,
                                                 userAgent:
                                                     this.databaseUtil.toPlainObject(
@@ -2127,5 +2239,66 @@ export class UserRepository {
         );
 
         return users;
+    }
+
+    async logout(
+        userId: string,
+        sessionId: string,
+        deviceOwnershipId: string,
+        { ipAddress, userAgent, geoLocation }: IRequestLog
+    ): Promise<User> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                activityLogs: {
+                    create: {
+                        action: EnumActivityLogAction.userLogout,
+                        description: this.activityLogUtil.getDescription(
+                            EnumActivityLogAction.userLogout
+                        ),
+                        ipAddress,
+                        userAgent: this.databaseUtil.toPlainObject(userAgent),
+                        geoLocation:
+                            this.databaseUtil.toPlainObject(geoLocation),
+                        createdBy: userId,
+                    },
+                },
+                sessions: {
+                    update: {
+                        where: {
+                            id: sessionId,
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: this.helperService.dateCreate(),
+                            revokedBy: {
+                                connect: {
+                                    id: userId,
+                                },
+                            },
+                            updatedBy: userId,
+                            deviceOwnership: {
+                                update: {
+                                    where: {
+                                        id: deviceOwnershipId,
+                                    },
+                                    data: {
+                                        device: {
+                                            update: {
+                                                notificationToken: null,
+                                                notificationProvider: null,
+                                                lastActiveAt: today,
+                                                updatedBy: userId,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
     }
 }

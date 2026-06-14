@@ -10,7 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { EnumQueue, EnumQueuePriority } from 'src/queues/enums/queue.enum';
+import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
  * Utility for queueing push notification jobs to Firebase Cloud Messaging.
@@ -25,7 +25,7 @@ export class NotificationPushUtil {
         private readonly notificationPushQueue: Queue,
         private readonly configService: ConfigService
     ) {
-        this.defTz = this.configService.get<string>('app.timezone');
+        this.defTz = this.configService.get<string>('app.timezone')!;
     }
 
     /**

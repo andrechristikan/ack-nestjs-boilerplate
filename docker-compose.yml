@@ -4,13 +4,12 @@ services:
     apis:
         build:
             context: .
+            dockerfile: ci/dockerfile.local
         hostname: apis
         ports:
             - 3000:3000
         volumes:
-            - ./src/:/app/src/
-            - ./prisma/:/app/prisma/
-            - .env/:/app/.env
+            - ./:/app/
         restart: on-failure
         networks:
             - app-network
@@ -48,9 +47,9 @@ services:
         ports:
             - "3011:80"
         volumes:
-            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json
-            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json
-            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf
+            - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json:ro
+            - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json:ro
+            - ./ci/jwks-server/jwks.conf:/etc/nginx/conf.d/default.conf:ro
         networks:
             - app-network
         deploy:
@@ -72,6 +71,53 @@ services:
             timeout: 10s
             retries: 3
             start_period: 10s
+
+    vault:
+        image: hashicorp/vault:latest
+        hostname: vault
+        profiles: ["vault"]
+        cap_add:
+            - IPC_LOCK
+        ports:
+            - "8200:8200"
+        entrypoint: ["/bin/sh", "/vault/entrypoint.sh"]
+        volumes:
+            - ./ci/vault/entrypoint.sh:/vault/entrypoint.sh:ro
+            - ./ci/vault/config.hcl:/vault/config.hcl:ro
+            - vault_data:/vault/file
+            - ./generated/vault:/vault/init
+        networks:
+            vault-network:
+                aliases:
+                    - vault
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "wget -q -O- 'http://127.0.0.1:8200/v1/sys/health?standbycode=200' >/dev/null 2>&1 || exit 1",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 15
+            start_period: 5s
+
+    vault-bootstrap:
+        image: hashicorp/vault:latest
+        profiles: ["vault"]
+        entrypoint: ["/bin/sh", "/bootstrap.sh"]
+        environment:
+            VAULT_ADDR: http://vault:8200
+            KV_MOUNT: ack-nestjs-boilerplate
+        volumes:
+            - ./ci/vault/bootstrap.sh:/bootstrap.sh:ro
+            - ./ci/vault/policies:/policies:ro
+            - ./.env.example:/seed/.env.example:ro
+            - ./generated/vault:/vault/init
+        networks:
+            - vault-network
+        depends_on:
+            vault:
+                condition: service_healthy
 
     redis:
         image: redis:latest
@@ -141,7 +187,7 @@ services:
             retries: 5
             start_period: 30s
 
-    mongo-init:
+    mongo-bootstrap:
         image: mongo:latest
         restart: "no"
         depends_on:
@@ -170,7 +216,10 @@ services:
 volumes:
     mongo_data:
     redis_data:
+    vault_data:
 
 networks:
     app-network:
+        driver: bridge
+    vault-network:
         driver: bridge

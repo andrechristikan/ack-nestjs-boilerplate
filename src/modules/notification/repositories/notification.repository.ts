@@ -23,6 +23,7 @@ import {
     NotificationUserSetting,
     Prisma,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
 export class NotificationRepository {
@@ -30,7 +31,8 @@ export class NotificationRepository {
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
         private readonly helperService: HelperService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async findWithPaginationCursor(
@@ -743,6 +745,10 @@ export class NotificationRepository {
                     activityLogs: {
                         create: {
                             action: EnumActivityLogAction.userUpdateNotificationSetting,
+                            description: this.activityLogUtil.getDescription(
+                                EnumActivityLogAction.userUpdateNotificationSetting,
+                                { channel, type, isActive }
+                            ),
                             ipAddress,
                             userAgent:
                                 this.databaseUtil.toPlainObject(userAgent),

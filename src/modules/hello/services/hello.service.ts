@@ -15,17 +15,14 @@ export class HelloService implements IHelloService {
     ) {}
 
     async hello(): Promise<IResponseReturn<HelloResponseDto>> {
-        // date
         const date = this.helperService.dateCreate();
         const dateIso = this.helperService.dateFormatToIso(date);
         const dateTimestamp = this.helperService.dateGetTimestamp(date);
 
-        // app
         const appName = this.configService.get<string>('app.name')!;
         const appEnv = this.configService.get<EnumAppEnvironment>('app.env')!;
         const appTimezone = this.configService.get<string>('app.timezone')!;
 
-        // auth
         const authPasswordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
         )!;
@@ -43,7 +40,6 @@ export class HelloService implements IHelloService {
             'auth.password.periodInSeconds'
         )!;
 
-        // message
         const messageAvailableLanguage: EnumMessageLanguage[] =
             this.configService.get<EnumMessageLanguage[]>(
                 'message.availableLanguage'
@@ -51,7 +47,6 @@ export class HelloService implements IHelloService {
         const messageDefaultLanguage: EnumMessageLanguage =
             this.configService.get<EnumMessageLanguage>('message.language')!;
 
-        // request
         const requestTimeoutInMs = this.configService.get<number>(
             'request.timeoutInMs'
         )!;

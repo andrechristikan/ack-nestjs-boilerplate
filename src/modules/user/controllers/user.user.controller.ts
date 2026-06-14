@@ -4,7 +4,6 @@ import {
     RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -40,7 +39,7 @@ export class UserUserController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.deleteSelf(userId, {
             ipAddress,
             userAgent,

@@ -5,6 +5,7 @@ node_modules/
 generated/
 swagger.json
 /src/metadata.ts
+*.tsbuildinfo
 
 # Logs
 logs
@@ -15,10 +16,18 @@ lerna-debug.log*
 
 # OS
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # Tests
 /coverage
 /.nyc_output
+
+# Lint / format cache
+.eslintcache
+.prettiercache
 
 # IDEs and editors
 /.idea
@@ -45,6 +54,7 @@ pnpm-debug.log*
 !.env.example
 config.yaml
 config.yml
+!.github/ISSUE_TEMPLATE/config.yml
 
 # Runtime generated files
 keys/
@@ -64,7 +74,26 @@ tmp/
 .turbo/
 .parcel-cache/
 
-# Claude Code - cache data
+# AI Tools
+## Claude Code
 .claude/agent-memory/
 .claude/*.local.md
 .claude/settings.local.json
+.claude/worktrees/
+.claude/todos.json
+.claude/scheduled-tasks/
+docs/superpowers
+
+## Cursor
+.cursorignore
+.cursorindexingignore
+.cursor/
+
+## GitHub Copilot
+.copilot/
+
+## Windsurf
+.windsurfrules
+
+## AI generated files
+plan.md

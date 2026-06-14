@@ -16,16 +16,16 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
     private readonly urlVersion: string;
 
     constructor(private readonly configService: ConfigService) {
-        this.globalPrefix = this.configService.get<string>('app.globalPrefix');
+        this.globalPrefix = this.configService.get<string>('app.globalPrefix')!;
         this.urlVersionEnable = this.configService.get<boolean>(
             'app.urlVersion.enable'
-        );
+        )!;
         this.urlVersionPrefix = this.configService.get<string>(
             'app.urlVersion.prefix'
-        );
+        )!;
         this.urlVersion = this.configService.get<string>(
             'app.urlVersion.version'
-        );
+        )!;
     }
 
     /**

@@ -44,7 +44,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get change password template');
 
             return null;
         }
@@ -92,7 +92,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get welcome template');
 
             return null;
         }
@@ -140,7 +140,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get welcome social template');
 
             return null;
         }
@@ -191,7 +191,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get welcome by admin template');
 
             return null;
         }
@@ -245,7 +245,10 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(
+                err,
+                'Failed to get temporary password by admin template'
+            );
 
             return null;
         }
@@ -296,7 +299,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get reset password template');
 
             return null;
         }
@@ -344,7 +347,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get forgot password template');
 
             return null;
         }
@@ -395,7 +398,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get verification email template');
 
             return null;
         }
@@ -446,7 +449,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get verified email template');
 
             return null;
         }
@@ -497,7 +500,10 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(
+                err,
+                'Failed to get verified mobile number template'
+            );
 
             return null;
         }
@@ -551,7 +557,10 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(
+                err,
+                'Failed to get reset two factor by admin template'
+            );
 
             return null;
         }
@@ -605,7 +614,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get new device login template');
 
             return null;
         }
@@ -659,7 +668,7 @@ export class NotificationTemplateService implements INotificationTemplateService
             });
             return template;
         } catch (err: unknown) {
-            this.logger.warn(err);
+            this.logger.warn(err, 'Failed to get publish term policy template');
 
             return null;
         }

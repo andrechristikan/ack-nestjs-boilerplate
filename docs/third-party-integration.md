@@ -29,6 +29,7 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [Social Authentication](#social-authentication)
   - [Google OAuth](#google-oauth)
   - [Apple Sign In](#apple-sign-in)
+- [HashiCorp Vault](#hashicorp-vault)
 
 ## AWS Services
 
@@ -59,35 +60,9 @@ AWS_S3_PRIVATE_CDN=https://your-private-cdn.cloudfront.net
 
 **No-Op Mode:**
 
-If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, `AwsS3Service` will not create an S3 client and will operate in **no-op mode**. On startup, it logs:
+If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, the S3 integration runs in no-op mode: it is disabled, logs a warning on startup, and S3 operations return safe defaults instead of failing.
 
-```
-AWS S3 credentials not configured. S3 functionalities will be disabled.
-```
-
-Use `isInitialized()` to check readiness before calling S3 operations:
-
-```typescript
-if (!this.awsS3Service.isInitialized()) {
-    // S3 is disabled — skip upload
-    return;
-}
-```
-
-When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
-
-| Method | Default return |
-|---|---|
-| `checkConnection`, `checkBucket` | `false` |
-| `checkItem`, `getItem`, `putItem`, `createMultiPart` | `null` |
-| `presignGetItem`, `presignPutItem`, `presignPutItemPart`, `moveItem` | `null` |
-| `getItems`, `moveItems` | `[]` |
-| `deleteItem`, `deleteItems`, `deleteDir`, `completeMultipart`, `abortMultipart`, bucket-config methods | `void` (silent no-op) |
-| `putItemMultiPart` | the unmodified `multipart` input |
-
-> **Callers must null-check** methods that return `AwsS3Dto | null`, `AwsS3MultipartDto | null`, or `AwsS3PresignDto | null` before using the result.
-
-For detailed implementation, see [File Upload][ref-doc-file-upload].
+For detailed behavior and implementation, see [File Upload][ref-doc-file-upload].
 
 ### SES Email
 
@@ -112,49 +87,7 @@ AWS_SES_REGION=ap-southeast-3
 
 **No-Op Mode:**
 
-If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, `AwsSESService` will not create an SES client and will operate in **no-op mode**. On startup, it logs:
-
-```
-AWS SES credentials not configured. Email functionalities will be disabled.
-```
-
-Use `isInitialized()` to check readiness before sending emails:
-
-```typescript
-if (!this.awsSesService.isInitialized()) {
-    // SES is disabled — skip email
-    return;
-}
-```
-
-When not initialized, each method returns a safe typed default and emits the same warn log instead of throwing:
-
-| Method | Default return |
-|---|---|
-| `checkConnection` | `false` |
-| `listTemplates` | `{ TemplatesMetadata: [], $metadata: {} }` |
-| `getTemplate` | `{ $metadata: {}, Template: null }` |
-| `createTemplate`, `updateTemplate`, `deleteTemplate` | `{ $metadata: {} }` |
-| `send` | `{ MessageId: null, $metadata: {} }` |
-| `sendBulk` | `{ Status: [], $metadata: {} }` |
-
-**Bulk Email (`AwsSESSendBulkDto<T>`):**
-
-For sending the same template to multiple recipients, use `AwsSESSendBulkDto`. Each recipient can carry its own `templateData`, and the optional `defaultTemplateData` field provides fallback values applied to all recipients that do not supply their own data:
-
-```typescript
-await this.awsSesService.sendBulk({
-    templateName: 'welcome',
-    sender: 'no-reply@mail.com',
-    defaultTemplateData: { appName: 'ACKNestJs' },   // fallback for all recipients
-    recipients: [
-        { to: 'a@mail.com', templateData: { name: 'Alice' } },
-        { to: 'b@mail.com', templateData: { name: 'Bob' } },
-    ],
-});
-```
-
-`defaultTemplateData` is serialized as `DefaultTemplateData` in the SES `SendBulkTemplatedEmail` command. If omitted, it defaults to `{}`.
+If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, the SES integration runs in no-op mode: it is disabled, logs a warning on startup, and email operations return safe defaults instead of failing.
 
 Email processing is handled through the queue system. See [Queue][ref-doc-queue] for details.
 
@@ -287,6 +220,19 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=your_app_bundle_id
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
 
+## HashiCorp Vault
+
+[HashiCorp Vault][ref-vault] is integrated as an **optional** secret store. Rather than connecting to the app at runtime, it acts as the source of truth for local secrets and writes them into `.env` on demand.
+
+**Gated by the `vault` Docker Compose profile**, so it never starts unless you opt in.
+
+**How it differs from the other integrations on this page:**
+- It is **not** consumed by the application at runtime; the app still reads `.env`. Vault only *produces* that file.
+- It runs with a persistent file backend, auto-unsealed by the container entrypoint, with secrets laid out per environment and read through a per-environment read-only AppRole.
+
+> [!NOTE]
+> For the full architecture, KV layout, usage flow, configuration reference, and scope/limitations, see the [Vault Documentation][ref-doc-vault].
+
 
 
 
@@ -301,6 +247,7 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-prisma]: https://www.prisma.io
 [ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
 [ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/
+[ref-vault]: https://developer.hashicorp.com/vault
 
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
@@ -310,3 +257,4 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-doc-cache]: cache.md
 [ref-doc-database]: database.md
 [ref-doc-notification]: notification.md
+[ref-doc-vault]: vault.md

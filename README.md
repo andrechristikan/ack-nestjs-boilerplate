@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate designed for backend services. Production-ready NestJS boilerplate with authentication, authorization, and enterprise features
+[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma, works with any database. Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -33,25 +33,34 @@ This boilerplate is perfect for:
 
 ## Table of Contents
 
-- [Important](#important)
-- [TODO](#todo)
-- [Prerequisites](#prerequisites)
-- [Build with](#build-with)
-- [Objective](#objective)
-- [Features](#features)
-  - [🎯 Architecture Highlights](#-architecture-highlights)
-  - [🔐 Authentication & Security](#-authentication--security)
-  - [📊 Database & Storage](#-database--storage)
-  - [⚡ Performance & Optimization](#-performance--optimization)
-  - [🛠 Development Experience](#-development-experience)
-  - [📡 Integrations & Monitoring](#-integrations--monitoring)
-  - [📝 Testing & Documentation](#-testing--documentation)
-- [Quick Start](#quick-start)
-- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
-- [Installation](#installation)
-- [License](#license)
-- [Contribute](#contribute)
-- [Contact](#contact)
+- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
+    - [Ideal For](#ideal-for)
+  - [Table of Contents](#table-of-contents)
+  - [Important](#important)
+  - [TODO](#todo)
+    - [Next Features](#next-features)
+    - [Drop Features](#drop-features)
+    - [Test](#test)
+  - [Prerequisites](#prerequisites)
+  - [Build with](#build-with)
+  - [Objective](#objective)
+  - [Features](#features)
+    - [🎯 Architecture Highlights](#-architecture-highlights)
+    - [🔐 Authentication \& Security](#-authentication--security)
+    - [📊 Database \& Storage](#-database--storage)
+    - [⚡ Performance \& Optimization](#-performance--optimization)
+    - [🛠 Development Experience](#-development-experience)
+    - [📡 Integrations \& Monitoring](#-integrations--monitoring)
+    - [🔔 Notifications](#-notifications)
+    - [📝 Testing \& Documentation](#-testing--documentation)
+  - [Quick Start](#quick-start)
+  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
+    - [Supported Databases](#supported-databases)
+  - [Installation](#installation)
+  - [License](#license)
+  - [Contribute](#contribute)
+  - [Contact](#contact)
+    - [Support This Project](#support-this-project)
 
 ## Important
 
@@ -61,10 +70,10 @@ This boilerplate is perfect for:
 - When using multiple protection decorators, they must be applied in the correct order:
     ```typescript
     @ExampleDoc()
-    @ActivityLog(...)
     @TermPolicyAcceptanceProtected(...)
     @PolicyAbilityProtected({...})
     @RoleProtected(...)
+    @ActivityLog(...)
     @UserProtected()
     @AuthJwtAccessProtected()
     @FeatureFlagProtected(...)
@@ -75,6 +84,7 @@ This boilerplate is perfect for:
 - Since version `8.0.0`, the project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - Since version `8.0.0`, the project uses prisma `6.19` for handle database.
 - Since version `8.0.0`, the project uses pnpm for package manager.
+- **Strict null convention** — `undefined` is only allowed in Request DTO optional fields; all other layers use `T | null`.
 
 ## TODO
 
@@ -86,10 +96,11 @@ This boilerplate is perfect for:
 - [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
+- [x] Activity Log support bidirectional logging
+- [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 
 ### Next Features
 
-- [ ] Activity Log support bidirectional logging
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
@@ -212,6 +223,7 @@ Enterprise-grade integrations for production readiness.
 - **Activity Logging** - Comprehensive audit trail
 - **Health Checks** - System monitoring endpoints
 - **Multi-language Support** - i18n with `x-custom-lang` header
+- **HashiCorp Vault** - Optional secret management, syncs `.env` ([docs][ref-doc-vault])
 
 ### 🔔 Notifications
 Multi-channel notification system for user engagement.
@@ -394,5 +406,6 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
 [ref-doc-analytics]: docs/analytics.md
+[ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
 [ref-doc-doc]: docs/doc.md

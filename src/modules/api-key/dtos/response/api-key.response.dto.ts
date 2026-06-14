@@ -1,12 +1,10 @@
+import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-import { DatabaseDto } from '@common/database/dtos/database.dto';
 import { EnumApiKeyType } from '@generated/prisma-client';
+import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
-export class ApiKeyDto extends DatabaseDto {
-    @ApiHideProperty()
-    @Exclude()
+export class ApiKeyResponseDto extends DatabaseResponseDto {
     hash: string;
 
     @ApiProperty({
@@ -14,6 +12,7 @@ export class ApiKeyDto extends DatabaseDto {
         example: true,
         required: true,
     })
+    @Expose()
     isActive: boolean;
 
     @ApiProperty({
@@ -21,21 +20,24 @@ export class ApiKeyDto extends DatabaseDto {
         example: faker.date.past(),
         required: false,
     })
-    startDate?: Date;
+    @Expose()
+    startAt?: Date;
 
     @ApiProperty({
         description: 'Api Key end date',
         example: faker.date.future(),
         required: false,
     })
-    endDate?: Date;
+    @Expose()
+    endAt?: Date;
 
     @ApiProperty({
         description: 'Name of api key',
         example: faker.string.alpha(10),
-        required: false,
+        required: true,
     })
-    name?: string;
+    @Expose()
+    name: string;
 
     @ApiProperty({
         description: 'Type of api key',
@@ -43,6 +45,7 @@ export class ApiKeyDto extends DatabaseDto {
         enum: EnumApiKeyType,
         required: true,
     })
+    @Expose()
     type: EnumApiKeyType;
 
     @ApiProperty({
@@ -50,5 +53,6 @@ export class ApiKeyDto extends DatabaseDto {
         example: faker.string.alpha(15),
         required: true,
     })
+    @Expose()
     key: string;
 }

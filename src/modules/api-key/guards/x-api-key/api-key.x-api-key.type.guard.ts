@@ -7,7 +7,8 @@ import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 /**
  * Guard that validates API key type authorization.
- * Checks if the authenticated API key has the required type permissions for the requested resource.
+ * Checks if the authenticated API key's type matches the required types defined via `SetMetadata`.
+ * Must run after `ApiKeyXApiKeyGuard` has attached the API key to the request.
  */
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
@@ -21,7 +22,9 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
      * Extracts required API key types from metadata and validates against the authenticated API key.
      *
      * @param {ExecutionContext} context - The execution context containing request information and metadata
-     * @returns {Promise<boolean>} Promise that resolves to true if API key type is authorized
+     * @returns {boolean} True if the API key type is authorized
+     * @throws {InternalServerErrorException} If no API key types are defined in route metadata
+     * @throws {ForbiddenException} If the API key type does not match the required types
      */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const apiKeyTypes: EnumApiKeyType[] = this.reflector.getAllAndOverride<

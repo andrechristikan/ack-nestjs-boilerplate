@@ -1,5 +1,5 @@
-import { AwsS3PresignDto } from '@common/aws/dtos/aws.s3-presign.dto';
-import { DatabaseIdDto } from '@common/database/dtos/database.id.dto';
+import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { IFile } from '@common/file/interfaces/file.interface';
 import {
     IPaginationEqual,
@@ -85,7 +85,7 @@ export interface IUserService {
         { countryId, email, name, roleId }: UserCreateRequestDto,
         requestLog: IRequestLog,
         createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdDto>>;
+    ): Promise<IResponseReturn<DatabaseIdResponseDto>>;
     updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
@@ -109,20 +109,17 @@ export interface IUserService {
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     generatePhotoProfilePresign(
         userId: string,
         { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignDto>>;
+    ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
     updatePhotoProfile(
         userId: string,
         { photoKey, size }: UserUpdateProfilePhotoRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
-    deleteSelf(
-        userId: string,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
+    deleteSelf(userId: string, requestLog: IRequestLog): Promise<void>;
     addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
@@ -143,12 +140,12 @@ export interface IUserService {
         userId: string,
         { username }: UserClaimUsernameRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     uploadPhotoProfile(
         userId: string,
         file: IFile,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     updatePasswordByAdmin(
         userId: string,
         requestLog: IRequestLog,
@@ -158,7 +155,7 @@ export interface IUserService {
         user: IUser,
         { newPassword, oldPassword }: UserChangePasswordRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     loginCredential(
         { email, password, from }: UserLoginRequestDto,
         requestLog: IRequestLog
@@ -177,23 +174,23 @@ export interface IUserService {
     signUp(
         { countryId, email, password, ...others }: UserSignUpRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     verifyEmail(
         { token }: UserVerifyEmailRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     sendVerificationEmail(
         { email }: UserSendEmailVerificationRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     forgotPassword(
         { email }: UserForgotPasswordRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     resetPassword(
         { newPassword, token }: UserForgotPasswordResetRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     loginVerifyTwoFactor(
         {
             challengeToken,
@@ -223,7 +220,7 @@ export interface IUserService {
         user: IUser,
         { code, backupCode, method }: UserTwoFactorDisableRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     regenerateTwoFactorBackupCodes(
         user: IUser,
         requestLog: IRequestLog
@@ -232,15 +229,21 @@ export interface IUserService {
         userId: string,
         updatedBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     importByAdmin(
         data: UserImportRequestDto[],
         createdBy: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
     exportByAdmin(
         status?: Record<string, IPaginationIn>,
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn>;
+    logout(
+        userId: string,
+        sessionId: string,
+        deviceOwnershipId: string,
+        requestLog: IRequestLog
+    ): Promise<void>;
 }

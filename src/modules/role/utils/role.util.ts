@@ -4,20 +4,22 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { Injectable } from '@nestjs/common';
 import { Role } from '@generated/prisma-client';
-import { plainToInstance } from 'class-transformer';
+import { ResponseUtil } from '@common/response/utils/response.util';
 
 @Injectable()
 export class RoleUtil {
+    constructor(private readonly responseUtil: ResponseUtil) {}
+
     mapList(roles: Role[]): RoleListResponseDto[] {
-        return plainToInstance(RoleListResponseDto, roles);
+        return this.responseUtil.serialize(RoleListResponseDto, roles);
     }
 
     mapOne(role: Role): RoleDto {
-        return plainToInstance(RoleDto, role);
+        return this.responseUtil.serialize(RoleDto, role);
     }
 
     mapAbilities(role: Role): RoleAbilitiesResponseDto {
-        return plainToInstance(RoleAbilitiesResponseDto, {
+        return this.responseUtil.serialize(RoleAbilitiesResponseDto, {
             abilities: role.abilities,
         });
     }

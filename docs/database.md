@@ -187,7 +187,8 @@ When you run `pnpm migration:seed`, the following initial data will be created i
 
 ### API Keys
 
-> ⚠️ These are development keys. Always regenerate API keys for production environments.
+> [!WARNING]
+> These are development keys. Always regenerate API keys for production environments.
 
 Two API keys are created for authentication and service access:
 
@@ -226,7 +227,8 @@ Three user roles are created with different permission levels:
 
 ### Users
 
-> ⚠️ These are test accounts with default passwords. Change or remove these accounts in production environments.
+> [!WARNING]
+> These are test accounts with default passwords. Change or remove these accounts in production environments.
 
 The seeded users differ per environment. This is controlled by `migrationUserData` in `src/migration/data/migration.user.data.ts`:
 

@@ -233,8 +233,8 @@ export class AuthService implements IAuthService {
             );
 
             request.user = {
-                email: payload.email,
-                emailVerified: payload.email_verified,
+                email: payload.email ?? '',
+                emailVerified: payload.email_verified ?? false,
             };
 
             return true;

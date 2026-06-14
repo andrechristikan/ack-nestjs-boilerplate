@@ -26,9 +26,9 @@ import {
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
-import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -40,19 +40,19 @@ export class ApiKeyService implements IApiKeyService {
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
+            Prisma.ApiKeySelect,
+            Prisma.ApiKeyWhereInput
         >,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyDto>> {
+    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
         const { data, ...others } =
             await this.apiKeyRepository.findWithPagination(
                 pagination,
                 isActive,
                 type
             );
-        const apiKeys: ApiKeyDto[] = this.apiKeyUtil.mapList(data);
+        const apiKeys: ApiKeyResponseDto[] = this.apiKeyUtil.mapList(data);
 
         return {
             data: apiKeys,
@@ -76,13 +76,13 @@ export class ApiKeyService implements IApiKeyService {
                         ? this.helperService.dateCreate(startAt, {
                               dayOf: EnumHelperDateDayOf.start,
                           })
-                        : null,
+                        : undefined,
                 endAt:
                     startAt && endAt
                         ? this.helperService.dateCreate(endAt, {
                               dayOf: EnumHelperDateDayOf.end,
                           })
-                        : null,
+                        : undefined,
             },
             key,
             hash
@@ -98,7 +98,7 @@ export class ApiKeyService implements IApiKeyService {
     async updateStatusByAdmin(
         id: string,
         data: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const today = this.helperService.dateCreate();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
@@ -106,7 +106,17 @@ export class ApiKeyService implements IApiKeyService {
                 statusCode: EnumApiKeyStatusCodeError.notFound,
                 message: 'apiKey.error.notFound',
             });
-        } else if (this.apiKeyUtil.isExpired(apiKey, today)) {
+        } else if (
+            apiKey.startAt &&
+            apiKey.endAt &&
+            this.apiKeyUtil.isExpired(
+                {
+                    startAt: apiKey.startAt,
+                    endAt: apiKey.endAt,
+                },
+                today
+            )
+        ) {
             throw new BadRequestException({
                 statusCode: EnumApiKeyStatusCodeError.expired,
                 message: 'apiKey.error.expired',
@@ -128,13 +138,15 @@ export class ApiKeyService implements IApiKeyService {
     async updateByAdmin(
         id: string,
         { name }: ApiKeyUpdateRequestDto
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
         const [updated] = await Promise.all([
-            this.apiKeyRepository.updateName(id, name),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
+            name
+                ? this.apiKeyRepository.updateName(id, name)
+                : Promise.resolve(apiKey!),
+            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
         return {
@@ -147,20 +159,23 @@ export class ApiKeyService implements IApiKeyService {
     async updateDatesByAdmin(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
+        const newStartAt = this.helperService.dateCreate(startAt, {
+            dayOf: EnumHelperDateDayOf.start,
+        });
+        const newEndAt = this.helperService.dateCreate(endAt, {
+            dayOf: EnumHelperDateDayOf.end,
+        });
+
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateDates(id, {
-                startAt: this.helperService.dateCreate(startAt, {
-                    dayOf: EnumHelperDateDayOf.start,
-                }),
-                endAt: this.helperService.dateCreate(endAt, {
-                    dayOf: EnumHelperDateDayOf.end,
-                }),
+                startAt: newStartAt,
+                endAt: newEndAt,
             }),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
+            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
         return {
@@ -177,10 +192,10 @@ export class ApiKeyService implements IApiKeyService {
         this.validateApiKey(apiKey, true);
 
         const secret: string = this.apiKeyUtil.createSecret();
-        const hash: string = this.apiKeyUtil.createHash(apiKey.key, secret);
+        const hash: string = this.apiKeyUtil.createHash(apiKey!.key, secret);
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateHash(id, hash),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
+            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
         return {
@@ -190,7 +205,9 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKeyDto>> {
+    async deleteByAdmin(
+        id: string
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new NotFoundException({
@@ -211,7 +228,10 @@ export class ApiKeyService implements IApiKeyService {
         };
     }
 
-    validateApiKey(apiKey: ApiKey, includeActive: boolean = false): void {
+    private validateApiKey(
+        apiKey?: ApiKey | null,
+        includeActive: boolean = false
+    ): void {
         if (!apiKey) {
             throw new NotFoundException({
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -242,9 +262,9 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey> {
-        const xApiKeyHeader: string = this.apiKeyUtil
+        const xApiKeyHeader = this.apiKeyUtil
             .extractKeyFromRequest(request)
-            ?.trim();
+            .trim();
         if (!xApiKeyHeader) {
             throw new UnauthorizedException({
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
@@ -266,7 +286,7 @@ export class ApiKeyService implements IApiKeyService {
 
         const [key, secret] = xApiKey;
         const today = this.helperService.dateCreate();
-        const apiKey: ApiKey = await this.findOneActiveByKeyAndCache(key);
+        const apiKey = await this.findOneActiveByKeyAndCache(key);
 
         if (!apiKey) {
             throw new ForbiddenException({
@@ -275,7 +295,14 @@ export class ApiKeyService implements IApiKeyService {
             });
         } else if (
             !this.apiKeyUtil.validateCredential(key, secret, apiKey) ||
-            !this.apiKeyUtil.isValid(apiKey, today)
+            !this.apiKeyUtil.isValid(
+                {
+                    isActive: apiKey.isActive,
+                    startAt: apiKey.startAt,
+                    endAt: apiKey.endAt,
+                },
+                today
+            )
         ) {
             throw new UnauthorizedException({
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
@@ -298,7 +325,7 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const { __apiKey } = request;
-        if (!this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
+        if (!__apiKey || !this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
             throw new ForbiddenException({
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
                 message: 'apiKey.error.xApiKey.forbidden',

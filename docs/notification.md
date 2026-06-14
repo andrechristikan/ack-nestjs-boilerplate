@@ -113,6 +113,7 @@ Jobs are dispatched via `NotificationUtil`, which applies deduplication per `use
 | `newDeviceLogin` | Login detected from a new/unknown device |
 | `resetTwoFactorByAdmin` | Admin reset user 2FA |
 | `publishTermPolicy` | New term policy published (bulk, all active users) |
+| `userAcceptTermPolicy` | User accepted a term policy |
 
 ### Email Queue
 

@@ -11,8 +11,8 @@ export default async function (app: NestApplication): Promise<void> {
     const messageService = app.get(MessageService);
 
     const env: string = configService.get<string>('app.env')!;
-    const appName: string = configService.get<string>('app.name');
-    const appVersion: string = configService.get<string>('app.version');
+    const appName: string = configService.get<string>('app.name')!;
+    const appVersion: string = configService.get<string>('app.version')!;
     const appUrl: string = configService.get<string>('app.url')!;
 
     const appAuthorName: string = configService.get<string>('app.author.name')!;
@@ -20,7 +20,6 @@ export default async function (app: NestApplication): Promise<void> {
         configService.get<string>('app.author.email')!;
 
     const docName: string = configService.get<string>('doc.name')!;
-    const docDesc: string = configService.get<string>('doc.description')!;
     const docVersion: string = configService.get<string>('doc.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
 
@@ -29,11 +28,10 @@ export default async function (app: NestApplication): Promise<void> {
     if (env !== EnumAppEnvironment.production) {
         const documentBuild = new DocumentBuilder()
             .setTitle(docName)
-            .setDescription(docDesc)
             .setVersion(appVersion)
             .setOpenAPIVersion(docVersion)
             .setDescription(
-                messageService.setMessage('app.description.swagger', {
+                messageService.setMessage('doc.description', {
                     properties: {
                         appName,
                     },
@@ -69,13 +67,15 @@ export default async function (app: NestApplication): Promise<void> {
 
         try {
             writeFileSync('generated/swagger.json', JSON.stringify(document));
-        } catch {}
+        } catch (err: unknown) {
+            logger.warn(err, 'Failed to write swagger.json');
+        }
 
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: `${docPrefix}/json`,
             explorer: true,
             customSiteTitle: docName,
-            ui: env !== EnumAppEnvironment.production,
+            ui: true,
             raw: ['json'],
             swaggerOptions: {
                 docExpansion: 'none',

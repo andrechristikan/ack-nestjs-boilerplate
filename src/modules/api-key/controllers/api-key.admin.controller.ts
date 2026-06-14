@@ -61,11 +61,11 @@ import {
 } from '@generated/prisma-client';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { ApiKeyDto } from '@modules/api-key/dtos/api-key.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -92,14 +92,14 @@ export class ApiKeyAdminController {
             availableSearch: ApiKeyDefaultAvailableSearch,
         })
         pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
+            Prisma.ApiKeySelect,
+            Prisma.ApiKeyWhereInput
         >,
         @PaginationQueryFilterEqualBoolean('isActive')
         isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyDto>> {
+    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
         return this.apiKeyService.getListByAdmin(pagination, isActive, type);
     }
 
@@ -159,7 +159,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateRequestDto,
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         return this.apiKeyService.updateByAdmin(apiKeyId, body);
     }
 
@@ -180,7 +180,7 @@ export class ApiKeyAdminController {
         @Body() body: ApiKeyUpdateDateRequestDto,
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         return this.apiKeyService.updateDatesByAdmin(apiKeyId, body);
     }
 
@@ -201,7 +201,7 @@ export class ApiKeyAdminController {
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string,
         @Body() body: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         return this.apiKeyService.updateStatusByAdmin(apiKeyId, body);
     }
 
@@ -221,7 +221,7 @@ export class ApiKeyAdminController {
     async delete(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKeyDto>> {
+    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         return this.apiKeyService.deleteByAdmin(apiKeyId);
     }
 }

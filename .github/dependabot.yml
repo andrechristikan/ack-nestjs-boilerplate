@@ -9,9 +9,14 @@ updates:
       open-pull-requests-limit: 3
       target-branch: 'development'
       commit-message:
-          prefix: 'github-action'
+          prefix: 'ci'
+          include: 'scope'
       labels:
           - dependabot
+      groups:
+          github-actions:
+              patterns:
+                  - '*'
 
     - package-ecosystem: 'npm'
       directory: '/'
@@ -21,9 +26,21 @@ updates:
           time: '00:00'
       open-pull-requests-limit: 3
       target-branch: 'development'
+      versioning-strategy: increase
       commit-message:
-          prefix: 'deps'
+          prefix: 'chore'
+          include: 'scope'
       labels:
           - dependabot
           - dependencies
-      versioning-strategy: increase
+      groups:
+          production-dependencies:
+              dependency-type: 'production'
+              update-types:
+                  - 'minor'
+                  - 'patch'
+          development-dependencies:
+              dependency-type: 'development'
+              update-types:
+                  - 'minor'
+                  - 'patch'

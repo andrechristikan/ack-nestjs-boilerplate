@@ -14,6 +14,12 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
   - [@Response](#response)
   - [@ResponsePaging](#responsepaging)
   - [@ResponseFile](#responsefile)
+- [Serialization](#serialization)
+  - [ResponseUtil](#responseutil)
+  - [Opt-In with @Expose](#opt-in-with-expose)
+  - [Nested DTOs](#nested-dtos)
+  - [Hiding Fields](#hiding-fields)
+  - [Serialization Flow](#serialization-flow)
 - [Response Structure](#response-structure)
   - [Standard](#standard)
   - [Paginated](#paginated)
@@ -27,6 +33,7 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
 - [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs
 - [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
+- [Request Validation Documentation][ref-doc-request-validation] - For input-boundary DTO validation and serialization
 
 ## Response Decorators
 
@@ -285,6 +292,103 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
 }
 ```
 
+## Serialization
+
+Response payloads are serialized in per-module mapper utilities (`*/utils/*.util.ts`) **before** they reach the controller. The `@Response` / `@ResponsePaging` interceptors only wrap the already-mapped `data` into the standard envelope — they do **not** strip or transform fields. Serialization is **opt-in**: only fields decorated with `@Expose()` survive; everything else is dropped (**fail-closed**). A newly added entity field never leaks into a response until it is explicitly exposed.
+
+> Input validation (`RequestModule`) uses the opposite mode (`excludeExtraneousValues: false`) — unknown input keys are rejected by `whitelist`, not silently dropped. See [Request Validation Documentation][ref-doc-request-validation]. Input and output serialization are distinct paths.
+
+### ResponseUtil
+
+`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application. Never call `plainToInstance` directly on the response path; inject `ResponseUtil` and call `serialize`.
+
+```typescript
+@Injectable()
+export class ResponseUtil {
+  serialize<T, V>(cls: ClassConstructor<T>, plain: V[]): T[];
+  serialize<T, V>(cls: ClassConstructor<T>, plain: V): T;
+  serialize<T, V>(cls: ClassConstructor<T>, plain: V | V[]): T | T[] {
+    return plainToInstance(cls, plain, {
+      excludeExtraneousValues: true,
+    });
+  }
+}
+```
+
+**Mapper usage** — inject `ResponseUtil`, call `serialize` (overloaded for single object and array):
+
+```typescript
+@Injectable()
+export class DeviceUtil {
+  constructor(private readonly responseUtil: ResponseUtil) {}
+
+  mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
+    return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
+  }
+}
+```
+
+### Opt-In with @Expose
+
+Every field that should appear in the response **must** carry `@Expose()`. A declared field without `@Expose()` is dropped at serialization time.
+
+```typescript
+export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
+  @ApiProperty({ description: 'Device ownership ID' })
+  @Expose()
+  deviceId: string;
+
+  @ApiProperty({ description: 'User ID who owns the device' })
+  @Expose()
+  userId: string;
+}
+```
+
+`@Transform(...)` and `@ApiProperty(...)` are independent — keep them as-is alongside `@Expose()`.
+
+### Nested DTOs
+
+`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. When a parent DTO is serialized, **every nested DTO must already carry `@Expose()` on its own fields** — otherwise the nested object comes back empty. Keep both `@Type` and `@Expose` on the parent property:
+
+```typescript
+@ApiProperty({ type: DeviceResponseDto })
+@Expose()
+@Type(() => DeviceResponseDto)
+device: DeviceResponseDto;
+```
+
+### Hiding Fields
+
+Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` is still required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s.
+
+```typescript
+// Parent exposes name/type/key; create response hides them, shows only `secret`.
+export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
+  @Expose()
+  secret: string;
+
+  @Exclude() name: string;
+  @Exclude() type: EnumApiKeyType;
+  @Exclude() key: string;
+}
+```
+
+### Serialization Flow
+
+```text
+Service returns entity / interface (raw)
+    ↓
+Module mapper util: responseUtil.serialize(SomeResponseDto, data)
+    ↓
+plainToInstance(cls, data, { excludeExtraneousValues: true })
+    ↓
+Only @Expose() fields kept (nested @Type DTOs serialized recursively)
+    ↓
+Controller returns { data } / { data: [] }
+    ↓
+ResponseInterceptor wraps into standard envelope + metadata + headers
+```
+
 ## Response Structure
 
 ### Standard
@@ -426,3 +530,4 @@ All responses automatically include these headers (set by interceptors):
 [ref-doc-pagination]: pagination.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-cache]: cache.md
+[ref-doc-request-validation]: request-validation.md

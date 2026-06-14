@@ -17,11 +17,22 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
  */
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
+    private readonly defaultLanguage: EnumMessageLanguage;
+    private readonly urlVersion: string;
+    private readonly repoVersion: string;
+
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
-    ) {}
+    ) {
+        this.defaultLanguage =
+            this.configService.get<EnumMessageLanguage>('message.language')!;
+        this.urlVersion = this.configService.get<string>(
+            'app.urlVersion.version'
+        )!;
+        this.repoVersion = this.configService.get<string>('app.version')!;
+    }
 
     /**
      * Handles RequestValidationException and formats validation errors into standardized responses.
@@ -40,14 +51,11 @@ export class AppValidationFilter implements ExceptionFilter {
 
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
-            (request.__language as EnumMessageLanguage) ??
-            this.configService.get<EnumMessageLanguage>('message.language');
+            (request.__language as EnumMessageLanguage) ?? this.defaultLanguage;
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
-        const xVersion =
-            request.__version ??
-            this.configService.get<string>('app.urlVersion.version');
-        const xRepoVersion = this.configService.get<string>('app.version');
+        const xVersion = request.__version ?? this.urlVersion;
+        const xRepoVersion = this.repoVersion;
         const xRequestId = String(request.id);
         const xCorrelationId = String(request.correlationId);
         const metadata: ResponseMetadataDto = {

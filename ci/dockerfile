@@ -1,9 +1,10 @@
 # Build stage base
-FROM node:lts-alpine AS base
+FROM node:24-alpine AS base
 LABEL maintainer="andrechristikan@gmail.com"
 ARG NODE_ENV
 ENV NODE_ENV=${NODE_ENV}
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# pnpm version is pinned via the "packageManager" field in package.json
+RUN corepack enable
 WORKDIR /app
 
 # Stage to install all dependencies and build the app
@@ -14,9 +15,7 @@ RUN set -x && pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 
 RUN pnpm db:generate
-RUN ls -la
 RUN pnpm build
-RUN ls -la
 
 # Main Stage
 FROM base AS main

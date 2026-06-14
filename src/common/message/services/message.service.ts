@@ -27,10 +27,10 @@ export class MessageService implements IMessageService {
         private readonly configService: ConfigService
     ) {
         this.defaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language');
+            this.configService.get<EnumMessageLanguage>('message.language')!;
         this.availableLanguage = this.configService.get<EnumMessageLanguage[]>(
             'message.availableLanguage'
-        );
+        )!;
     }
 
     /**
@@ -40,7 +40,7 @@ export class MessageService implements IMessageService {
      * @returns {string} The validated language code or undefined if not supported
      */
     filterLanguage(customLanguage: string): string {
-        return this.availableLanguage.find(e => e === customLanguage);
+        return this.availableLanguage.find(e => e === customLanguage)!;
     }
 
     /**
@@ -58,7 +58,7 @@ export class MessageService implements IMessageService {
         return this.i18n.translate(path, {
             lang: language,
             args: options?.properties,
-        });
+        }) as string;
     }
 
     /**
@@ -77,7 +77,7 @@ export class MessageService implements IMessageService {
 
         for (const error of errors) {
             let property = error.property;
-            let constraints: Record<string, string> = error.constraints;
+            let constraints: Record<string, string> = error.constraints!;
             let constraintKeys = constraints ? Object.keys(constraints) : [];
 
             if (constraintKeys.length === 0) {
@@ -137,7 +137,7 @@ export class MessageService implements IMessageService {
             const child = children[0];
             lastConstraint = child.constraints ?? {};
             property = `${property}.${child.property}`;
-            children = children[0].children;
+            children = children[0].children ?? [];
         }
 
         return {
@@ -167,8 +167,10 @@ export class MessageService implements IMessageService {
         options?: IMessageErrorOptions
     ): IMessageValidationError {
         const messagePath = `request.error.${constraint}`;
+        property = property ?? 'Unknown';
         const lastProperty = property?.split('.')?.pop() ?? 'Unknown';
-        let message = this.setMessage(`request.error.${constraint}`, {
+
+        let message: string = this.setMessage(`request.error.${constraint}`, {
             customLanguage: options?.customLanguage,
             properties: {
                 property: lastProperty,

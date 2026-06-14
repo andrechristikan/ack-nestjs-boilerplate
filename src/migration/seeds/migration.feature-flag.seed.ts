@@ -28,7 +28,7 @@ export class MigrationFeatureFlagSeed
     ) {
         super();
 
-        this.env = this.configService.get<EnumAppEnvironment>('app.env');
+        this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.featureFlags = migrationFeatureFlagData[this.env];
     }
 

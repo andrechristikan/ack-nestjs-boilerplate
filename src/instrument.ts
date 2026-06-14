@@ -5,13 +5,43 @@ import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { LoggerExcludedRoutes } from '@common/logger/constants/logger.constant';
-import { HelperService } from '@common/helper/services/helper.service';
-import { ConfigService } from '@nestjs/config';
 
 const appConfigs = appConfigFunction();
 const loggerConfigs = loggerConfigFunction();
-const configService = new ConfigService();
-const helperService = new HelperService(configService);
+
+function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
+    if (!url || !patterns.length) {
+        return false;
+    }
+
+    let pathname: string;
+    try {
+        pathname = new URL(url).pathname;
+    } catch {
+        pathname = url.split('?')[0].split('#')[0];
+    }
+
+    const normalizedPath = pathname.toLowerCase();
+
+    return patterns.some(pattern => {
+        if (!pattern) {
+            return false;
+        }
+
+        const normalizedPattern = pattern.toLowerCase();
+
+        if (normalizedPath === normalizedPattern) {
+            return true;
+        }
+
+        if (normalizedPattern.endsWith('*')) {
+            const base = normalizedPattern.slice(0, -1);
+            return base ? normalizedPath.startsWith(base) : true;
+        }
+
+        return false;
+    });
+}
 
 if (loggerConfigs.sentry.dsn) {
     Sentry.init({
@@ -47,12 +77,7 @@ if (loggerConfigs.sentry.dsn) {
                 // Filter out excluded routes
                 const url = event.request.url;
 
-                if (
-                    helperService.checkUrlMatchesPatterns(
-                        url,
-                        LoggerExcludedRoutes
-                    )
-                ) {
+                if (isExcludedUrl(url, LoggerExcludedRoutes)) {
                     return null;
                 }
             }
@@ -86,10 +111,7 @@ if (loggerConfigs.sentry.dsn) {
             // Never sample excluded routes
             if (
                 transactionName &&
-                helperService.checkUrlMatchesPatterns(
-                    transactionName,
-                    LoggerExcludedRoutes as string[]
-                )
+                isExcludedUrl(transactionName, LoggerExcludedRoutes)
             ) {
                 return 0;
             }

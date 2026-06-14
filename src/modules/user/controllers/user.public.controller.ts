@@ -145,7 +145,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.signUp(body, {
             ipAddress,
             userAgent,
@@ -162,7 +162,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.verifyEmail(body, {
             ipAddress,
             userAgent,
@@ -180,7 +180,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.sendVerificationEmail(body, {
             ipAddress,
             userAgent,
@@ -199,7 +199,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.forgotPassword(body, {
             ipAddress,
             userAgent,
@@ -218,7 +218,7 @@ export class UserPublicController {
         @RequestIPAddress() ipAddress: string,
         @RequestUserAgent() userAgent: UserAgent,
         @RequestGeoLocation() geoLocation: GeoLocation | null
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         return this.userService.resetPassword(body, {
             ipAddress,
             userAgent,

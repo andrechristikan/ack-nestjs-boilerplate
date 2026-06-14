@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export class UserTwoFactorStatusResponseDto {
     @ApiProperty({
@@ -7,6 +8,7 @@ export class UserTwoFactorStatusResponseDto {
             'Whether two-factor authentication is enabled for the account',
         example: false,
     })
+    @Expose()
     isEnabled: boolean;
 
     @ApiProperty({
@@ -15,6 +17,7 @@ export class UserTwoFactorStatusResponseDto {
             'True when 2FA setup has been started but not yet confirmed',
         example: false,
     })
+    @Expose()
     isPendingConfirmation: boolean;
 
     @ApiProperty({
@@ -23,6 +26,7 @@ export class UserTwoFactorStatusResponseDto {
         example: 8,
         minimum: 0,
     })
+    @Expose()
     backupCodesRemaining: number;
 
     @ApiProperty({
@@ -30,6 +34,7 @@ export class UserTwoFactorStatusResponseDto {
         description: 'When two-factor authentication was confirmed/enabled',
         example: '2025-01-01T00:00:00.000Z',
     })
+    @Expose()
     confirmedAt?: Date;
 
     @ApiProperty({
@@ -37,5 +42,6 @@ export class UserTwoFactorStatusResponseDto {
         description: 'Last time two-factor authentication was used/verified',
         example: '2025-01-01T00:00:00.000Z',
     })
+    @Expose()
     lastUsedAt?: Date;
 }

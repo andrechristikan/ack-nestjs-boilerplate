@@ -85,7 +85,7 @@ export class DeviceService implements IDeviceService {
         deviceOwnershipId: string,
         { name, notificationToken, platform }: DeviceRefreshRequestDto,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
                 userId,
@@ -124,7 +124,7 @@ export class DeviceService implements IDeviceService {
         userId: string,
         deviceOwnershipId: string,
         requestLog: IRequestLog
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
                 userId,

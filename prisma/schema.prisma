@@ -91,8 +91,8 @@ model UserMobileNumber {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  country       Country?       @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
-  user          User?          @relation("UserMobileNumberUser", fields: [userId], references: [id])
+  country       Country        @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
+  user          User           @relation("UserMobileNumberUser", fields: [userId], references: [id])
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [userId, countryId, phoneCode, number])
@@ -137,8 +137,8 @@ model User {
   verifications           Verification[]             @relation("UserVerifications")
   passwordHistories       PasswordHistory[]          @relation("UserPasswordHistories")
   activityLogs            ActivityLog[]              @relation("UserActivityLogs")
-  role                    Role?                      @relation("UserRole", fields: [roleId], references: [id])
-  country                 Country?                   @relation("UserCountry", fields: [countryId], references: [id])
+  role                    Role                       @relation("UserRole", fields: [roleId], references: [id])
+  country                 Country                    @relation("UserCountry", fields: [countryId], references: [id])
   sessions                Session[]                  @relation("UserSessions")
   acceptances             TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
   forgotPasswords         ForgotPassword[]           @relation("UserForgotPassword")
@@ -175,11 +175,12 @@ model Verification {
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
 
-  user         User?             @relation("UserVerifications", fields: [userId], references: [id])
+  user         User              @relation("UserVerifications", fields: [userId], references: [id])
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id])
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed, type])
+  @@index(fields: [userId, type, isUsed])
   @@map("Verifications")
 }
 
@@ -190,7 +191,7 @@ model PasswordHistory {
   type      EnumPasswordHistoryType
   expiredAt DateTime
 
-  user User? @relation("UserPasswordHistories", fields: [userId], references: [id])
+  user User  @relation("UserPasswordHistories", fields: [userId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -204,12 +205,13 @@ model ActivityLog {
   id          String                @id @default(auto()) @map("_id") @db.ObjectId
   userId      String                @db.ObjectId
   action      EnumActivityLogAction
-  ipAddress   String
+  ipAddress   String?
   userAgent   UserAgent
+  description String
   geoLocation GeoLocation?
   metadata    Json?
 
-  user User? @relation("UserActivityLogs", fields: [userId], references: [id])
+  user User  @relation("UserActivityLogs", fields: [userId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -225,7 +227,7 @@ model Session {
   userId            String       @db.ObjectId
   deviceOwnershipId String       @db.ObjectId
   jti               String
-  ipAddress         String
+  ipAddress         String?
   userAgent         UserAgent
   geoLocation       GeoLocation?
   expiredAt         DateTime
@@ -233,9 +235,9 @@ model Session {
   isRevoked         Boolean      @default(false)
   revokedById       String?      @db.ObjectId
 
-  revokedBy       User?            @relation("SessionRevokedByUser", fields: [revokedById], references: [id])
-  user            User?            @relation("UserSessions", fields: [userId], references: [id])
-  deviceOwnership DeviceOwnership? @relation("DeviceOwnershipSessions", fields: [deviceOwnershipId], references: [id])
+  revokedBy       User?           @relation("SessionRevokedByUser", fields: [revokedById], references: [id])
+  user            User            @relation("UserSessions", fields: [userId], references: [id])
+  deviceOwnership DeviceOwnership @relation("DeviceOwnershipSessions", fields: [deviceOwnershipId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -248,8 +250,6 @@ model Session {
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
   @@index(fields: [userId, deviceOwnershipId, isRevoked])
   @@index(fields: [deviceOwnershipId])
-  @@index(fields: [createdAt])
-  @@index(fields: [updatedAt])
   @@map("Sessions")
 }
 
@@ -270,7 +270,6 @@ model Device {
   ownerships DeviceOwnership[] @relation("DeviceOwnershipDevice")
 
   @@unique(fields: [fingerprint])
-  @@unique(fields: [notificationToken])
   @@map("Devices")
 }
 
@@ -283,6 +282,11 @@ model DeviceOwnership {
   revokedById  String?   @db.ObjectId
   lastActiveAt DateTime  @default(now())
 
+  biometricEnabled   Boolean            @default(false)
+  biometricToken     String?
+  biometricType      EnumBiometricType?
+  biometricEnabledAt DateTime?
+
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
@@ -294,6 +298,7 @@ model DeviceOwnership {
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
   @@index(fields: [deviceId, revokedAt])
+  @@index(fields: [userId, isRevoked])
   @@index(fields: [userId, revokedAt])
   @@index(fields: [deviceId, userId, revokedAt])
   @@map("DeviceOwnerships")
@@ -317,7 +322,7 @@ model TwoFactor {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  user User? @relation("UserTwoFactor", fields: [userId], references: [id])
+  user User  @relation("UserTwoFactor", fields: [userId], references: [id])
 
   @@unique(fields: [userId])
   @@map("TwoFactors")
@@ -350,8 +355,8 @@ model TermPolicyUserAcceptance {
   termPolicyId String   @db.ObjectId
   acceptedAt   DateTime @default(now())
 
-  user       User?       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
-  termPolicy TermPolicy? @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+  user       User       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
+  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -395,7 +400,7 @@ model ForgotPassword {
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
 
-  user User? @relation("UserForgotPassword", fields: [userId], references: [id])
+  user User  @relation("UserForgotPassword", fields: [userId], references: [id])
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed])
@@ -413,7 +418,7 @@ model Notification {
   isRead   Boolean                  @default(false)
   readAt   DateTime?
 
-  user       User?                  @relation("UserNotifications", fields: [userId], references: [id])
+  user       User                   @relation("UserNotifications", fields: [userId], references: [id])
   deliveries NotificationDelivery[] @relation("NotificationDeliveries")
 
   // timestamps fields
@@ -454,7 +459,7 @@ model NotificationUserSetting {
   type     EnumNotificationType
   isActive Boolean                 @default(true)
 
-  user User? @relation("UserNotificationSettings", fields: [userId], references: [id])
+  user User  @relation("UserNotificationSettings", fields: [userId], references: [id])
 
   // timestamps fields
   createdAt DateTime @default(now())
@@ -467,6 +472,8 @@ model NotificationUserSetting {
   @@map("NotificationUserSettings")
 }
 
+// NOTE: Fields must stay in sync with EnumTermPolicyType manually.
+// If a new EnumTermPolicyType value is added, add the corresponding field here.
 type UserTermPolicy {
   termsOfService Boolean
   privacy        Boolean
@@ -651,6 +658,7 @@ enum EnumActivityLogAction {
   userVerifyTwoFactor
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh
+  userLogout
 
   adminSessionRevoke
   adminApiKeyCreate
@@ -706,4 +714,9 @@ enum EnumNotificationPriority {
   normal
   high
   critical
+}
+
+enum EnumBiometricType {
+  fingerprint
+  faceId
 }

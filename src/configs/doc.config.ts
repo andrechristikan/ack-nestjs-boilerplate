@@ -2,7 +2,6 @@ import { registerAs } from '@nestjs/config';
 
 export interface IConfigDoc {
     name: string;
-    description: string;
     prefix: string;
     version: string;
 }
@@ -10,8 +9,7 @@ export interface IConfigDoc {
 export default registerAs(
     'doc',
     (): IConfigDoc => ({
-        name: `${process.env.APP_NAME ?? 'ACKNestJs'} APIs Specification`,
-        description: 'Section for describe whole APIs',
+        name: `${process.env.APP_NAME!} APIs Specification`,
         prefix: '/docs',
         version: '3.1.0',
     })

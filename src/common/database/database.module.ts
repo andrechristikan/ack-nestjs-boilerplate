@@ -8,6 +8,15 @@ import { DynamicModule, Global, Module } from '@nestjs/common';
 @Global()
 @Module({})
 export class DatabaseModule {
+    /**
+     * Configures and returns the dynamic database module.
+     *
+     * Registers `DatabaseService` and `DatabaseUtil` as providers and exports
+     * them for use across the application. Marked `@Global()` so importing
+     * this module once at the app level makes both providers available everywhere.
+     *
+     * @returns {DynamicModule} The configured dynamic module definition
+     */
     static forRoot(): DynamicModule {
         return {
             module: DatabaseModule,

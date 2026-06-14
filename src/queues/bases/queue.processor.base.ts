@@ -1,8 +1,8 @@
 import { OnWorkerEvent, WorkerHost } from '@nestjs/bullmq';
 import * as Sentry from '@sentry/nestjs';
 import { Job } from 'bullmq';
-import { QueueException } from 'src/queues/exceptions/queue.exception';
-import { IQueueResponse } from 'src/queues/interfaces/queue.interface';
+import { QueueException } from '@queues/exceptions/queue.exception';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Base class for all queue job processors.
@@ -18,7 +18,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
      * @param error - The error that caused the job to fail
      */
     @OnWorkerEvent('failed')
-    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+    onFailed(job: Job<unknown, null, string>, error: Error): void {
         const maxAttempts = job.opts.attempts ?? 1;
         const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
 
