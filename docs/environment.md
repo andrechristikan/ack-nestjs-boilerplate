@@ -14,6 +14,7 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 - [Installation Documentation][ref-doc-installation] - For initial setup and environment file creation
 - [Database Documentation][ref-doc-database] - For database connection details
 - [Authentication Documentation][ref-doc-authentication] - For JWT and OAuth configuration
+- [Vault Documentation][ref-doc-vault] - For managing environment variables and secrets with HashiCorp Vault
 
 ## Table of Contents
 
@@ -642,3 +643,4 @@ SENTRY_DSN=
 [ref-doc-installation]: installation.md
 [ref-doc-database]: database.md
 [ref-doc-authentication]: authentication.md
+[ref-doc-vault]: vault.md
