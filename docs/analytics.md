@@ -336,7 +336,8 @@ Same pattern as country distribution — join with `Roles` collection, group by 
 
 **Source:** `ActivityLogs` — `action = userLoginCredential | userLoginGoogle | userLoginApple`, `createdAt`
 
-> **Note:** `Users.lastLoginAt` only stores the last login. Use `ActivityLogs` for full historical tracking.
+> [!NOTE]
+> `Users.lastLoginAt` only stores the last login. Use `ActivityLogs` for full historical tracking.
 
 **Formula:**
 $$\text{logins}_{day} = \text{COUNT}(ActivityLogs\ WHERE\ action \in loginActions\ AND\ createdAt \in [start, end])$$

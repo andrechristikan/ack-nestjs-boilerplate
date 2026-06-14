@@ -38,7 +38,8 @@ This document provides step-by-step instructions for setting up the ACK NestJS B
 
 ## Prerequisites
 
-> **Note**: ACK NestJS Boilerplate uses PNPM for package management. All documentation examples will use PNPM commands.
+> [!NOTE]
+> ACK NestJS Boilerplate uses PNPM for package management. All documentation examples will use PNPM commands.
 
 Before starting, install the following tools and packages. We recommend using the LTS (Long Term Support) versions for stability and compatibility.
 
@@ -52,7 +53,8 @@ Before starting, install the following tools and packages. We recommend using th
 | [PNPM](http://pnpm.io) | v10.25.x |
 | [Git](https://git-scm.com) | v2.39.x |
 
-> **Important**: MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
+> [!IMPORTANT]
+> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
 
 ## Clone Repository
 
@@ -99,7 +101,8 @@ ACK NestJS Boilerplate uses **ES256** algorithm for Access Tokens and **ES512** 
 
 #### Generate Key Pairs
 
-> ⚠️ **Security Warning**: Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
+> [!WARNING]
+> Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
 
 ```bash
 # Generate keys and JWKS files
@@ -116,6 +119,7 @@ pnpm generate:keys --direct-insert
 - Prints only the output file paths and the generated key IDs (KIDs) — key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
 - With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
 
+> [!NOTE]
 > **Populating `.env`**: The application reads the `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` variables as base64 (DER), not as raw PEM. Use `--direct-insert` to have the script write the correctly-encoded values into `.env` for you. The `/keys/*.pem` files are kept as PEM artifacts and are not meant to be pasted directly into `.env`.
 
 #### Hosting JWKS Files
@@ -141,7 +145,8 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://your-domain.com/.well-known/refresh-jwk
 
 ## 🐳 Installation with Docker
 
-> **Note:** You can skip this section if all dependencies are already installed and you do not want to use Docker for your setup.
+> [!NOTE]
+> You can skip this section if all dependencies are already installed and you do not want to use Docker for your setup.
 
 Docker provides the fastest and most reliable way to set up the ACK NestJS Boilerplate. This method automatically configures the entire development environment with all dependencies and services pre-configured.
 
@@ -175,7 +180,8 @@ cp .env.example .env
 
 #### Docker-Specific Configuration
 
-> **Note**: The Docker setup automatically handles service networking and JWKS hosting, making configuration simpler than manual setup.
+> [!NOTE]
+> The Docker setup automatically handles service networking and JWKS hosting, making configuration simpler than manual setup.
 
 For Docker installation, ensure these specific values in your `.env` file:
 
@@ -207,7 +213,8 @@ Key generation for Docker installation follows the same process as standard inst
 
 #### Generate Key Pairs
 
-> ⚠️ **Security Warning**: Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
+> [!WARNING]
+> Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
 
 ```bash
 # Generate keys and automatically update .env with key IDs (recommended for Docker)
@@ -234,7 +241,8 @@ The Docker setup includes a JWKS server that automatically hosts the generated k
 
 Now you're ready to start the complete Docker environment with all services.
 
-> **Note**: By default, Docker installation only sets up dependencies (MongoDB, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `apis` profile.
+> [!NOTE]
+> By default, Docker installation only sets up dependencies (MongoDB, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `apis` profile.
 
 **Start only dependencies:**
 ```bash
@@ -388,7 +396,8 @@ pnpm package:upgrade
 pnpm clean && pnpm install
 ```
 
-> **Note**: The `pnpm clean` command is a custom script that removes `node_modules` directory, `dist` build folder, and pnpm cache before reinstalling. This is useful when you encounter dependency conflicts, build issues, or want a fresh installation.
+> [!NOTE]
+> The `pnpm clean` command is a custom script that removes `node_modules` directory, `dist` build folder, and pnpm cache before reinstalling. This is useful when you encounter dependency conflicts, build issues, or want a fresh installation.
 
 
 ## Accessing the Application

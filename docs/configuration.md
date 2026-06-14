@@ -199,6 +199,8 @@ twoFactor: {
     count: number;                // Number of backup codes
     length: number;               // Length of each backup code
   };
+  maxAttempt: number;             // Maximum failed two-factor attempts before lock
+  lockAttemptDuration: number;    // Lock duration after max failed attempts (milliseconds)
   encryption: {
     key: string;                  // Encryption key for backup codes
   };
@@ -269,7 +271,7 @@ This configuration handles AWS service integration including S3 and SES services
 ```typescript
 s3: {
   multipartExpiredInDay: number;  // Multipart upload expiration in days (default: 3)
-  presignExpired: number;         // Presigned URL expiration time in seconds (default: 1800)
+  presignExpiredInSeconds: number; // Presigned URL expiration time in seconds (default: 1800)
   maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
   timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
   region?: string;                // AWS region for S3
@@ -295,6 +297,7 @@ s3: {
 }
 ```
 
+> [!NOTE]
 > **IAM Configuration Notes**:
 > - The `iam.key` and `iam.secret` are used for standard IAM user credentials
 > - The `iam.arn` is used for IAM role assumption (recommended for production)
@@ -314,6 +317,7 @@ ses: {
 }
 ```
 
+> [!NOTE]
 > **SES IAM Configuration**:
 > - Similar to S3, SES supports both standard credentials and IAM role-based access
 > - Using IAM roles (`iam.arn`) is recommended for better security
@@ -414,6 +418,7 @@ cors: {
 }
 ```
 
+> [!NOTE]
 > **CORS Configuration Notes**:
 > - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable or configuration
 > - Multiple origins can be specified using comma separation (converted to array)
@@ -727,7 +732,7 @@ cacheTtlMs: number              // Cache TTL in milliseconds for feature flag da
 ### Response Configuration
 
 **File**: `src/configs/response.config.ts`
-**Interface**: `IConfigRequest` *(Note: Interface name appears to be incorrect in the source file)*
+**Interface**: `IConfigResponse`
 
 This configuration handles API response caching settings.
 
@@ -764,7 +769,8 @@ clientEmail?: string            // Firebase service account client email
 privateKey?: string             // Base64-encoded DER PKCS8 private key (from Firebase Console service account JSON)
 ```
 
-> **Note**: All Firebase config fields are optional. They are required only when push notification features are enabled. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
+> [!NOTE]
+> All Firebase config fields are optional. They are required only when push notification features are enabled. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
 
 
 <!-- REFERENCES -->

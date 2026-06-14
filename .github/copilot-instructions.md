@@ -425,9 +425,9 @@ Sensitive data (password, token, apiKey, etc.) auto-redacted by Pino.
 
 ## Activity Log
 
-- `@ActivityLog(EnumActivityLogAction.xxx)` — admin endpoints only
+- `@ActivityLog(EnumActivityLogAction.xxx)` on authenticated endpoints
 - Requires `@AuthJwtAccessProtected()` to be present
-- Only logs **successful** requests
+- Logs both successful and failed requests; on failure the error is serialized (`errorMessage`, `errorStack` into metadata, and appended to the description)
 - Capture metadata via `metadataActivityLog` in service response
 - Never log: passwords, tokens, entire objects
 
@@ -571,7 +571,7 @@ class ResponseDto<T> {
 
 // ✅ Response DTO — domain data fields use | null
 class UserProfileResponseDto {
-    photo: AwsS3Dto | null        // from database, absence must be explicit
+    photo: AwsS3ResponseDto | null // from database, absence must be explicit
     lastLoginAt: Date | null      // from database
     bio: string | null            // from database
 }

@@ -68,6 +68,7 @@ If validation fails, the application will not start and will display detailed er
 
 Below is an example `.env` file based on the current `.env.example`:
 
+> [!WARNING]
 > **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment — never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
 
 ```bash
@@ -312,6 +313,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Wildcard (`*`)**: Credentials are **disabled** (CORS security restriction)
 - **Specific origins**: Credentials are **enabled**
 
+> [!TIP]
 > **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
 
 ### URL Versioning Settings
@@ -426,7 +428,8 @@ AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
 ### Social Authentication Settings
 
-> **Note**: All social authentication settings are optional. Leave empty if not using social login.
+> [!NOTE]
+> All social authentication settings are optional. Leave empty if not using social login.
 
 **`AUTH_SOCIAL_GOOGLE_CLIENT_ID`** *(optional)*  
 Google OAuth client ID.
@@ -468,7 +471,8 @@ AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your-random-string>
 
 ### AWS Settings
 
-> **Note**: AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
+> [!NOTE]
+> AWS settings are optional by default. However, if you want to test file uploads (S3) or email functionality (SES), these become required for those specific features to work.
 
 #### S3 Configuration
 
@@ -490,6 +494,7 @@ AWS IAM Role ARN for S3 operations. Used for role-based access control and tempo
 AWS_S3_IAM_ARN=
 ```
 
+> [!TIP]
 > **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
 > - Temporary security credentials
 > - Better security through role assumption
@@ -548,6 +553,7 @@ AWS IAM Role ARN for SES operations. Used for role-based access control and temp
 AWS_SES_IAM_ARN=
 ```
 
+> [!TIP]
 > **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
 > - Temporary security credentials
 > - Better security through role assumption
@@ -562,7 +568,8 @@ AWS_SES_REGION=ap-southeast-3
 
 ### Email Settings
 
-> **Note**: Email settings are optional.
+> [!NOTE]
+> Email settings are optional.
 
 **`EMAIL_NO_REPLY`** *(optional/required for email features)*  
 Sender email address used for no-reply emails (e.g., transactional, notifications).
@@ -584,7 +591,8 @@ EMAIL_ADMIN=admin@mail.com
 
 ### Firebase Settings
 
-> **Note**: Firebase settings are optional. Required only if push notification features are enabled.
+> [!NOTE]
+> Firebase settings are optional. Required only if push notification features are enabled.
 
 **`FIREBASE_PROJECT_ID`** *(optional/required for push notifications)*  
 Firebase project ID from your Firebase console.

@@ -4,12 +4,13 @@ This documentation explains the features and usage of **Activity Log Module**: L
 
 ## Overview
 
-> ⚠️ `Future Plan:` Will support decorator-based logging for bidirectional activity and self activity.
+> [!NOTE]
+> `Future Plan:` Will support decorator-based logging for bidirectional activity and self activity.
 
 Activity Log is a system to record successful user activities in the application. It supports self activity recording.
 
 **Notes:**
-- Activity logs are **only recorded for successful requests**. Failed requests are not logged.
+- Activity logs are recorded for **both successful and failed requests**. On failure, the error is serialized: `errorMessage` and `errorStack` are merged into `metadata`, and `" - Error: <message>"` is appended to the `description`.
 - `@ActivityLog` decorator is **only implemented for admin endpoints**.
 - `@ActivityLog` decorator **requires** `@AuthJwtAccessProtected` decorator to be present.
 
@@ -48,8 +49,9 @@ sequenceDiagram
         Database-->>Client: Success Response
     else Request Failed
         Service-->>Controller: Error
-        Controller-->>Client: Error Response
-        Note over Database: No Activity Log ✗
+        Note over Controller: Create Self Activity Log (with error details)
+        Controller->>Database: Log for Actor Only ✓
+        Database-->>Client: Error Response
     end
 ```
 
@@ -58,7 +60,8 @@ sequenceDiagram
 Each activity log contains:
 - **userId** - User who performed or was affected
 - **action** - Type of activity (enum)
-- **ipAddress** - Request IP address
+- **description** - Human-readable activity description; on failure, the error message is appended
+- **ipAddress** - Request IP address (optional, may be null)
 - **userAgent** - Browser/device info (JSON)
 - **geoLocation** - Geographic location derived from IP address (optional, JSON) — contains `latitude`, `longitude`, `country`, `region`, `city`
 - **metadata** - Additional context (optional, JSON)

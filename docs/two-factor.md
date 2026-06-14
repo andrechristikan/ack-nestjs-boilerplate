@@ -51,8 +51,8 @@ Two-Factor Authentication (2FA) adds an additional security layer to user authen
 
 ### Environment Variables
 ```env
-AUTH_TWO_FACTOR_ISSUER=YourAppName
-AUTH_TWO_FACTOR_ENCRYPTION_KEY=your-32-character-encryption-key-here
+AUTH_TWO_FACTOR_ISSUER=
+AUTH_TWO_FACTOR_ENCRYPTION_KEY=
 ```
 
 ### Configuration Details

@@ -59,7 +59,7 @@ export class UserController {
   async getPhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserGetPhotoProfilePresignRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
     return this.userService.getPhotoProfilePresign(userId, body);
   }
 }
@@ -77,18 +77,18 @@ export class UserService {
   async getPhotoProfilePresign(
     userId: string,
     { key }: UserGetPhotoProfilePresignRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
     // Verify user owns the file
     const user = await this.userRepository.findOneById(userId);
     if (user.photo?.key !== key) {
       throw new ForbiddenException('Access denied to this resource');
     }
 
-    const presign: AwsS3PresignDto = await this.awsS3Service.presignGetItem(
+    const presign: IAwsS3Presign = await this.awsS3Service.presignGetItem(
       key,
       { 
         access: EnumAwsS3Accessibility.private,
-        expired: 3600 // 1 hour
+        expiredInSeconds: 3600 // 1 hour
       }
     );
 
@@ -150,18 +150,18 @@ async function downloadPhotoWithPresign(key: string) {
 ```typescript
 interface IAwsS3PresignGetItemOptions {
   access?: EnumAwsS3Accessibility; // public or private
-  expired?: number; // Expiration time in seconds (default from config)
+  expiredInSeconds?: number; // Expiration time in seconds (default from config)
 }
 ```
 
 ### Response Structure
 ```typescript
-interface AwsS3PresignDto {
+interface AwsS3PresignResponseDto {
   presignUrl: string;    // The presigned URL for download
   key: string;           // S3 object key
   extension: string;     // File extension
   mime: string;          // MIME type
-  expiredIn: number;     // URL expiration time in seconds
+  expiredIn: number;     // URL expiration time in milliseconds
 }
 ```
 
@@ -172,7 +172,7 @@ const presign = await awsS3Service.presignGetItem(
   'user/123/documents/report.pdf',
   { 
     access: EnumAwsS3Accessibility.private,
-    expired: 300 // 5 minutes
+    expiredInSeconds: 300 // 5 minutes
   }
 );
 
@@ -211,7 +211,7 @@ sequenceDiagram
         Backend->>AwsS3Service: presignGetItem(key, options)
         AwsS3Service->>S3: Request presigned URL
         S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
-        AwsS3Service-->>Backend: AwsS3PresignDto
+        AwsS3Service-->>Backend: IAwsS3Presign
         Backend-->>Client: {presignUrl, key, mime, expiredIn}
         
         Note over Client,S3: Direct Download (Bypass Backend)
@@ -241,7 +241,8 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 4. Client notifies the backend of successful upload with the S3 key
 5. Backend saves file reference to database with audit trail
 
-> **Default expiration:** 30 minutes (`presignExpired: 30 * 60` seconds, hardcoded in `aws.config.ts`). Override per-call via the `expired` option.
+> [!NOTE]
+> **Default expiration:** 30 minutes (`presignExpiredInSeconds: 30 * 60` seconds, hardcoded in `aws.config.ts`). Override per-call via the `expiredInSeconds` option.
 
 ### Implementation
 
@@ -311,7 +312,7 @@ export class UserController {
   async generatePhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
     return this.userService.generatePhotoProfilePresign(userId, body);
   }
 
@@ -346,7 +347,7 @@ export class UserService {
   async generatePhotoProfilePresign(
     userId: string,
     { extension, size }: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignDto>> {
+  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
     // Generate unique S3 key
     const key: string = this.fileService.createRandomFilename({
       path: `user/${userId}/profile`,
@@ -355,12 +356,12 @@ export class UserService {
     });
 
     // Generate presigned URL (explicit 1 hour expiration, auto-encrypted)
-    const presign: AwsS3PresignDto = await this.awsS3Service.presignPutItem(
+    const presign: IAwsS3Presign = await this.awsS3Service.presignPutItem(
       { key, size },
       { 
         forceUpdate: true,
         access: EnumAwsS3Accessibility.private,
-        expired: 3600 // 1 hour (default is 30 min from config)
+        expiredInSeconds: 3600 // 1 hour (default is 30 min from config)
       }
     );
 
@@ -373,7 +374,7 @@ export class UserService {
     requestLog: IRequestLog
   ): Promise<IResponseReturn<void>> {
     // Map presign data to AWS S3 DTO
-    const aws: AwsS3Dto = this.awsS3Service.mapPresign({ key: photo, size });
+    const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photo, size });
     
     // Save to database with audit trail
     await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
@@ -440,19 +441,19 @@ async function uploadPhotoSimple(file: File) {
 ```typescript
 interface IAwsS3PresignPutItemOptions {
   access?: EnumAwsS3Accessibility; // public or private
-  expired?: number; // Expiration time in seconds (default from config)
+  expiredInSeconds?: number; // Expiration time in seconds (default from config)
   forceUpdate?: boolean; // Allow overwriting existing files
 }
 ```
 
 ### Response Structure
 ```typescript
-interface AwsS3PresignDto {
+interface AwsS3PresignResponseDto {
   presignUrl: string;    // The presigned URL for upload
   key: string;           // S3 object key (save this for later reference)
   extension: string;     // File extension
   mime: string;          // MIME type (use this as Content-Type header)
-  expiredIn: number;     // URL expiration time in seconds
+  expiredIn: number;     // URL expiration time in milliseconds
 }
 ```
 
@@ -474,7 +475,7 @@ sequenceDiagram
     Note over AwsS3Service: Add ServerSideEncryption: AES256
     AwsS3Service->>S3: Request presigned URL
     S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
-    AwsS3Service-->>Backend: AwsS3PresignDto
+    AwsS3Service-->>Backend: IAwsS3Presign
     Backend-->>Client: {presignUrl, key, mime, expiredIn}
     
     Note over Client,S3: Direct Upload (Bypass Backend)
@@ -486,7 +487,7 @@ sequenceDiagram
         
         Client->>Backend: PUT /update/photo<br/>{photo: key, size}
         Backend->>AwsS3Service: mapPresign(key, size)
-        AwsS3Service-->>Backend: AwsS3Dto
+        AwsS3Service-->>Backend: IAwsS3
         
         Backend->>Repository: updatePhotoProfile(userId, aws, log)
         Repository->>Repository: Save S3 reference + audit trail
@@ -520,7 +521,7 @@ sequenceDiagram
 
 3. **Database Update Stage:**
    - Client notifies backend with S3 key and file size
-   - Backend maps presign data to `AwsS3Dto`
+   - Backend maps presign data to `IAwsS3`
    - Repository updates user profile with S3 file reference
    - Transaction logged with IP address and user agent for audit trail
 

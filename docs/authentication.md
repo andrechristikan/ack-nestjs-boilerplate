@@ -37,6 +37,7 @@ Configuration for tokens, sessions, password, social providers, and API keys is 
     - [JWT Flow](#jwt-flow)
         - [JWT Access Token Flow](#jwt-access-token-flow)
         - [JWT Refresh Token Flow](#jwt-refresh-token-flow)
+        - [JWT Logout Flow](#jwt-logout-flow)
     - [JWT Tokens](#jwt-tokens)
         - [JWT Access Token](#jwt-access-token)
         - [JWT Refresh Token](#jwt-refresh-token)
@@ -150,7 +151,8 @@ JWTs can be signed using a secret (with the HMAC algorithm) or a public/private 
 
 For more detailed information about JWT, please visit the official [JWT website][ref-jwt].
 
-> **Note**: Before using JWT authentication, you must generate cryptographic key pairs. See the [Installation Documentation - Generate Keys][ref-doc-installation] section for detailed instructions on key generation.
+> [!NOTE]
+> Before using JWT authentication, you must generate cryptographic key pairs. See the [Installation Documentation - Generate Keys][ref-doc-installation] section for detailed instructions on key generation.
 
 ### JWT Configuration
 
@@ -337,6 +339,39 @@ sequenceDiagram
     Note over Database: Database session jti updated<br/>Only used for session listing and management
 ```
 
+#### JWT Logout Flow
+
+Endpoint: `POST /user/logout` (shared). Protected by `@AuthJwtAccessProtected`, `@UserProtected`, `@TermPolicyAcceptanceProtected`, and `@ApiKeyProtected`. Returns `200 OK` with message `user.logout` and records the `userLogout` activity-log action.
+
+The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
+
+1. Verifies the session is still active (`404 session.error.notFound` otherwise).
+2. Revokes the database session and deletes the Redis session login, in parallel.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+    participant Database
+
+    Client->>API: POST /user/logout (Bearer access token)
+    API->>API: Extract userId, sessionId, deviceOwnershipId from payload
+    API->>Database: Find active session by userId:sessionId
+    alt Session active
+        par Revoke
+            API->>Database: Revoke session record
+        and
+            API->>Redis: Delete session login key
+        end
+        API-->>Client: 200 OK (user.logout)
+    else Session not found
+        API-->>Client: 404 Not Found (session.error.notFound)
+    end
+```
+
+Logout revokes only the current session; other active sessions remain valid.
+
 ### JWT Tokens
 
 #### JWT Access Token
@@ -370,11 +405,12 @@ Interface `IAuthJwtAccessTokenPayload`
 {
     loginAt: Date;
     loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserSignUpWith;
+    loginWith: EnumUserLoginWith;
     email: string;
     username: string;
     userId: string;
     sessionId: string;
+    deviceOwnershipId: string;
     roleId: string;
     
     // Standard JWT claims

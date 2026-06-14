@@ -206,6 +206,11 @@ Decorator for offset-based pagination with search and ordering.
 - Multiple fields can be sent as repeated params: `?orderBy=name:asc&orderBy=createdAt:desc`
 - `PaginationOrderPipe` parses this into an array of order objects (`[{ field: direction }]`)
 
+**Search Behavior:**
+- `PaginationSearchPipe` builds a Prisma `OR` condition across `availableSearch` fields.
+- Each field uses `Prisma.StringFilter` with `mode: 'insensitive'`, so search is case-insensitive.
+- Shape: `{ OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] }`.
+
 **Usage:**
 ```typescript
 @PaginationOffsetQuery({
@@ -246,6 +251,11 @@ Decorator for cursor-based pagination.
 - `orderBy` uses `field:direction` format (e.g., `name:asc`, `createdAt:desc`) in a single query parameter
 - Multiple fields can be sent as repeated params: `?orderBy=name:asc&orderBy=createdAt:desc`
 - `PaginationOrderPipe` parses this into an array of order objects (`[{ field: direction }]`)
+
+**Search Behavior:**
+- `PaginationSearchPipe` builds a Prisma `OR` condition across `availableSearch` fields.
+- Each field uses `Prisma.StringFilter` with `mode: 'insensitive'`, so search is case-insensitive.
+- Shape: `{ OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] }`.
 
 **Usage:**
 ```typescript

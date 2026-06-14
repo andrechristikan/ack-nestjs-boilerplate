@@ -97,11 +97,11 @@ This boilerplate is perfect for:
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
 - [x] Activity Log support bidirectional logging
-- [x] Login with biometrics (fingerprint or face detection)
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 
 ### Next Features
 
+- [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
 - [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])
