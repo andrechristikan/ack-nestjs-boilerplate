@@ -23,7 +23,6 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Response Structure](#response-structure)
   - [Standard](#standard)
   - [Paginated](#paginated)
-  - [Activity Log Metadata](#activity-log-metadata-optional)
 - [Caching](#caching)
 - [Custom Headers](#custom-headers)
 
@@ -455,21 +454,6 @@ ResponseInterceptor wraps into standard envelope + metadata + headers
 }
 ```
 
-### Activity Log Metadata (Optional)
-
-All response types (`IResponseReturn`, `IResponsePagingReturn`, `IResponseFileReturn`) support optional activity log metadata for request tracking and auditing:
-
-```typescript
-return {
-  data: user,
-  metadataActivityLog: {
-    // Activity log tracking data
-  }
-};
-```
-
-See [Activity Log Documentation][ref-doc-activity-log] for complete implementation details.
-
 ## Caching
 
 `@Response` and `@ResponsePaging` support optional caching via `ResponseCacheInterceptor` (extends NestJS CacheInterceptor with custom prefixes).
@@ -528,6 +512,5 @@ All responses automatically include these headers (set by interceptors):
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md
 [ref-doc-pagination]: pagination.md
-[ref-doc-activity-log]: activity-log.md
 [ref-doc-cache]: cache.md
 [ref-doc-request-validation]: request-validation.md

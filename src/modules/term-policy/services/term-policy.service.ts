@@ -34,6 +34,7 @@ import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
+import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
 import {
     BadRequestException,
     ConflictException,
@@ -55,7 +56,8 @@ export class TermPolicyService implements ITermPolicyService {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationUtil: NotificationUtil,
+        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
     ) {}
 
     async validateTermPolicyGuard(
@@ -251,10 +253,12 @@ export class TermPolicyService implements ITermPolicyService {
             );
             const termPolicy = this.termPolicyUtil.mapOne(created);
 
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(created)
+            );
+
             return {
                 data: termPolicy,
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(created),
             };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -293,10 +297,12 @@ export class TermPolicyService implements ITermPolicyService {
 
             const mapped = this.termPolicyUtil.mapOne(deleted);
 
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(deleted)
+            );
+
             return {
                 data: mapped,
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(deleted),
             };
         } catch (err: unknown) {
             throw new InternalServerErrorException({
@@ -398,10 +404,11 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            return {
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(updated),
-            };
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(updated)
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -457,10 +464,11 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            return {
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(updated),
-            };
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(updated)
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -508,10 +516,11 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            return {
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(updated),
-            };
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(updated)
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,
@@ -623,10 +632,11 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            return {
-                metadataActivityLog:
-                    this.termPolicyUtil.mapActivityLogMetadata(updated),
-            };
+            this.activityLogMetadataStore.setMetadata(
+                this.termPolicyUtil.mapActivityLogMetadata(updated)
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,

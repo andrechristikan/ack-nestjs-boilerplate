@@ -115,16 +115,37 @@ import { UserModule } from '@modules/user/user.module';
 
 ## Naming Conventions
 
-| Type | Convention | Example |
+### Files
+
+Pattern: `<module>.<noun-or-action>[.<sub>].<role>.ts`
+
+- Every file starts with the `<module>.` prefix. No exception.
+- Dot `.` separates segments; dash `-` ONLY inside a compound-noun segment (`user.mobile-number.dto.ts`, `notification.email.processor.ts`).
+- Folders: lowercase kebab-case.
+- Role suffix matches the artifact: `.service` `.repository` `.controller` `.guard` `.decorator` `.interceptor` `.dto` `.enum` `.constant` `.interface` `.doc` `.util` `.module` `.processor` `.filter`.
+- DTO files always end `.dto.ts` (request/response under `dtos/request/` and `dtos/response/`): `user.create.request.dto.ts`, `user.profile.response.dto.ts`.
+
+### Identifiers
+
+| Type | Convention | Example (this project) |
 |---|---|---|
-| Class | PascalCase | `UserService` |
-| Interface | `I` + PascalCase | `IUserService` |
-| Enum | `Enum` + PascalCase | `EnumUserStatus` |
-| Enum keys/values | camelCase | `active`, `inactive` |
-| Constants | PascalCase | `MaxAttempt`, `DefaultPageSize` |
-| Files | kebab-case | `user.service.ts` |
-| Methods/Variables | camelCase | `findById`, `userId` |
-| DTO suffix | `RequestDto` / `ResponseDto` | `CreateUserRequestDto` |
+| Class | PascalCase, module-prefixed | `UserService` |
+| Interface | `I` + PascalCase | `IUser`, `IUserService` |
+| Enum | `Enum` + PascalCase | `EnumQueue`, `EnumRoleStatusCodeError` |
+| Enum keys/values | camelCase | `notFound`, `notificationEmail` |
+| Constants | PascalCase (objects AND primitives) | `AuthJwtAccessGuardKey` |
+| Methods/Variables/Fields | camelCase | `findById`, `userId` |
+| Payload interface | `I` + `<Module>` + `<Action>` + `Payload` | `INotificationSendPushPayload` |
+| Request DTO | `<Module>...RequestDto` suffix | `UserCreateRequestDto` |
+| Response DTO | `<Module>...ResponseDto` suffix | `UserProfileResponseDto` |
+
+### Rules
+
+- **All types start with `I`.** Interfaces, payload shapes, service contracts: `IUser`, `IUserService`, `INotificationVerificationEmailPayload`. No bare type name.
+- **Enums** — `Enum` prefix + PascalCase name; keys AND values camelCase (NOT UPPER_CASE). One enum concern per file. Error-code enums use numeric values.
+- **Constants** — PascalCase for everything: typed objects/arrays and single primitives alike. No UPPER_SNAKE_CASE.
+- **DI tokens** — rare; prefer direct class injection (repository as class). When a token IS needed, name it PascalCase and wrap the value in `Symbol()`.
+- **DTOs** — every DTO carries the `Dto` suffix on BOTH class name and file name. There is no usecase layer.
 
 ### Enum Usage
 
@@ -234,8 +255,8 @@ DELETE /user/device/remove/:deviceId
 ### DTOs (Data Transfer Objects)
 
 **Naming Convention:**
-- Request DTOs **must** use the `RequestDto` suffix (e.g., `CreateUserRequestDto`, `LoginRequestDto`).
-- Response DTOs **must** use the `ResponseDto` suffix (e.g., `UserResponseDto`, `LoginResponseDto`).
+- Request DTOs **must** use the `RequestDto` suffix, module-prefixed (e.g., `UserCreateRequestDto`, `UserLoginRequestDto`).
+- Response DTOs **must** use the `ResponseDto` suffix, module-prefixed (e.g., `UserProfileResponseDto`, `AuthTokenResponseDto`).
 
 Use `class-validator` decorators for validation:
 

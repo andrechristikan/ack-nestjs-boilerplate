@@ -19,6 +19,7 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
+import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
 import {
     ConflictException,
     ForbiddenException,
@@ -32,7 +33,8 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client';
 export class RoleService implements IRoleService {
     constructor(
         private readonly roleRepository: RoleRepository,
-        private readonly roleUtil: RoleUtil
+        private readonly roleUtil: RoleUtil,
+        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -116,9 +118,13 @@ export class RoleService implements IRoleService {
         }
 
         const created = await this.roleRepository.create({ name, ...others });
+
+        this.activityLogMetadataStore.setMetadata(
+            this.roleUtil.mapActivityLogMetadata(created)
+        );
+
         return {
             data: this.roleUtil.mapOne(created),
-            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(created),
         };
     }
 
@@ -135,9 +141,13 @@ export class RoleService implements IRoleService {
         }
 
         const updated = await this.roleRepository.update(id, data);
+
+        this.activityLogMetadataStore.setMetadata(
+            this.roleUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.roleUtil.mapOne(updated),
-            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -161,9 +171,11 @@ export class RoleService implements IRoleService {
 
         const deleted = await this.roleRepository.delete(id);
 
-        return {
-            metadataActivityLog: this.roleUtil.mapActivityLogMetadata(deleted),
-        };
+        this.activityLogMetadataStore.setMetadata(
+            this.roleUtil.mapActivityLogMetadata(deleted)
+        );
+
+        return {};
     }
 
     async validateRoleGuard(

@@ -18,6 +18,7 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
 import {
     Injectable,
     InternalServerErrorException,
@@ -30,7 +31,8 @@ export class DeviceService implements IDeviceService {
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
-        private readonly deviceUtil: DeviceUtil
+        private readonly deviceUtil: DeviceUtil,
+        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -199,10 +201,11 @@ export class DeviceService implements IDeviceService {
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
-            return {
-                metadataActivityLog:
-                    this.deviceUtil.mapActivityLogMetadata(removed),
-            };
+            this.activityLogMetadataStore.setMetadata(
+                this.deviceUtil.mapActivityLogMetadata(removed)
+            );
+
+            return {};
         } catch (err: unknown) {
             throw new InternalServerErrorException({
                 statusCode: EnumAppStatusCodeError.unknown,

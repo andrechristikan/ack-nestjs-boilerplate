@@ -29,13 +29,15 @@ import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     constructor(
         private readonly helperService: HelperService,
         private readonly apiKeyUtil: ApiKeyUtil,
-        private readonly apiKeyRepository: ApiKeyRepository
+        private readonly apiKeyRepository: ApiKeyRepository,
+        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
     ) {}
 
     async getListByAdmin(
@@ -88,10 +90,12 @@ export class ApiKeyService implements IApiKeyService {
             hash
         );
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(created)
+        );
+
         return {
             data: this.apiKeyUtil.mapCreate(created, secret),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(created),
         };
     }
 
@@ -128,10 +132,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -149,10 +155,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -178,10 +186,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -198,10 +208,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapCreate(updated, secret),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -221,10 +233,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
+        this.activityLogMetadataStore.setMetadata(
+            this.apiKeyUtil.mapActivityLogMetadata(deleted)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(deleted),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(deleted),
         };
     }
 

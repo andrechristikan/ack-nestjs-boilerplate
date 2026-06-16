@@ -15,6 +15,7 @@ import { ISessionService } from '@modules/session/interfaces/session.service.int
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
 
 /**
  * Session Management Service
@@ -27,7 +28,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil
+        private readonly sessionUtil: SessionUtil,
+        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
     ) {}
 
     /**
@@ -127,7 +129,7 @@ export class SessionService implements ISessionService {
      * @param sessionId - The unique identifier of the session to revoke
      * @param requestLog - Request log information for audit trail
      * @param revokedBy - The identifier of admin/user who initiated the revocation
-     * @returns Response with activity log metadata for audit trail
+     * @returns Empty response; audit metadata is set on the activity-log context
      * @throws {NotFoundException} If session does not exist or is not active
      */
     async revokeByAdmin(
@@ -156,9 +158,10 @@ export class SessionService implements ISessionService {
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);
 
-        return {
-            metadataActivityLog:
-                this.sessionUtil.mapActivityLogMetadata(removed),
-        };
+        this.activityLogMetadataStore.setMetadata(
+            this.sessionUtil.mapActivityLogMetadata(removed)
+        );
+
+        return {};
     }
 }

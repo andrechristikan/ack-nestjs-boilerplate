@@ -4,7 +4,6 @@ import {
     IPaginationCursorReturn,
     IPaginationOffsetReturn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 /**
@@ -30,14 +29,6 @@ export interface IResponseCacheOptions {
     key?: string;
     /** Cache TTL in milliseconds. Uses the global default when omitted. */
     ttl?: number;
-}
-
-/**
- * Mixin shape for controller return values that include activity log metadata.
- * When present, `ResponseInterceptor` forwards this to the `@ActivityLog` handler.
- */
-export interface IResponseActivityLogReturn {
-    metadataActivityLog?: IActivityLogMetadata;
 }
 
 /**
@@ -67,9 +58,7 @@ export interface IResponseOptions {
  * }
  * ```
  */
-export interface IResponseReturn<
-    T = unknown,
-> extends IResponseActivityLogReturn {
+export interface IResponseReturn<T = unknown> {
     /** Optional overrides applied by `ResponseInterceptor` before sending the response. */
     metadata?: IResponseMetadata;
     /** The response payload serialized into the `data` field. */
@@ -96,13 +85,13 @@ export type IResponsePagingReturn<T> = (
 ) & {
     /** Optional overrides applied by `ResponsePagingInterceptor` before sending the response. */
     metadata?: IResponseMetadata;
-} & IResponseActivityLogReturn;
+};
 
 /**
  * Shape of the value a controller method must return when serving a CSV file download
  * via `@ResponseFile`.
  */
-export interface IResponseCsvReturn extends IResponseActivityLogReturn {
+export interface IResponseCsvReturn {
     /** CSV content as a UTF-8 string. */
     data: string;
     extension: EnumFileExtensionDocument.csv;
@@ -114,7 +103,7 @@ export interface IResponseCsvReturn extends IResponseActivityLogReturn {
  * Shape of the value a controller method must return when serving a PDF file download
  * via `@ResponseFile`.
  */
-export interface IResponsePdfReturn extends IResponseActivityLogReturn {
+export interface IResponsePdfReturn {
     /** PDF content as a binary Buffer. */
     data: Buffer;
     extension: EnumFileExtensionDocument.pdf;

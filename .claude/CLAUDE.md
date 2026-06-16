@@ -10,7 +10,7 @@
 
 Run these steps in order before writing code, suggesting a change, or answering a design question:
 
-1. **Scan `docs/*`.** List `docs/` and READ every doc relevant to the task. Detail is there, not here.
+1. **Scan `docs/*`.** List `docs/` and READ every doc relevant to the task. Detail is there, not here. **Always ignore `docs/superpowers/*`** when the task concerns this project's documentation. It is local-only planning (specs/plans), not project docs. Never read, update, or cite it as source of truth.
 2. **Read the real source.** Open the actual files. Never assume structure, signatures, or names.
 3. **Scope it.** Do only what is asked (YAGNI). If unsure, ASK — do not guess and build.
 4. **Plan against §2–8.** Confirm the change obeys the principles and rules below before typing.
@@ -18,7 +18,7 @@ Run these steps in order before writing code, suggesting a change, or answering 
 ### Docs index (`/docs`)
 `authentication` · `authorization` · `database` · `device` · `two-factor` · `activity-log` · `cache` · `queue` · `notification` · `response` · `request-validation` · `handling-error` · `message` · `pagination` · `file-upload` · `presign` · `feature-flag` · `term-policy` · `security-and-middleware` · `third-party-integration` · `logger` · `configuration` · `environment` · `installation` · `project-structure` · `doc` · `analytics`
 
-When in doubt about a behavior, the matching doc is the source of truth. Read it before touching the code.
+When in doubt about a behavior, the matching doc is the source of truth. Read it before touching the code. (`docs/superpowers/*` is excluded: local planning only, never project documentation.)
 
 ---
 
@@ -81,20 +81,37 @@ All four below are mandatory. None optional. Reviewer rejects on violation.
 
 ## 4. NAMING (HARD)
 
-| Type | Rule | Example |
-|---|---|---|
-| Class | PascalCase | `UserService` |
-| Interface | `I` + PascalCase | `IUserService` |
-| Enum name | `Enum` + PascalCase | `EnumUserStatus` |
-| Enum keys/values | camelCase | `active` |
-| Constants | PascalCase | `MaxAttempt` |
-| Files | kebab-case | `user.service.ts` |
-| Methods/vars | camelCase | `findById` |
-| Request DTO | `*RequestDto` suffix | `CreateUserRequestDto` |
-| Response DTO | `*ResponseDto` suffix | `UserResponseDto` |
+### 4.1 Files
 
-- Enums: `Enum` prefix, camelCase keys, one enum concern per file.
-- Error-code enums use numeric values.
+Pattern: `<module>.<noun-or-action>[.<sub>].<role>.ts`
+
+- Every file starts with the `<module>.` prefix. No exception.
+- Dot `.` separates segments; dash `-` ONLY inside a compound-noun segment (`user.mobile-number.dto.ts`, `notification.email.processor.ts`).
+- Folders: lowercase kebab-case.
+- Role suffix matches the artifact: `.service` `.repository` `.controller` `.guard` `.decorator` `.interceptor` `.dto` `.enum` `.constant` `.interface` `.doc` `.util` `.module` `.processor` `.filter`.
+- DTO files always end `.dto.ts` (request/response under `dtos/request/` and `dtos/response/`): `user.create.request.dto.ts`, `user.profile.response.dto.ts`.
+
+### 4.2 Identifiers
+
+| Type | Rule | Example (this project) |
+|---|---|---|
+| Class | PascalCase, module-prefixed | `UserService` |
+| Interface | `I` + PascalCase | `IUser`, `IUserService` |
+| Enum name | `Enum` + PascalCase | `EnumQueue`, `EnumRoleStatusCodeError` |
+| Enum keys/values | camelCase | `notFound`, `notificationEmail` |
+| Constants | PascalCase (objects AND primitives) | `AuthJwtAccessGuardKey` |
+| Methods / vars / fields | camelCase | `findById` |
+| Payload interface | `I` + `<Module>` + `<Action>` + `Payload` | `INotificationSendPushPayload` |
+| Request DTO | `<Module>...RequestDto` suffix | `UserCreateRequestDto` |
+| Response DTO | `<Module>...ResponseDto` suffix | `UserProfileResponseDto` |
+
+### 4.3 Rules
+
+- **All types start with `I`.** Interfaces, payload shapes, service contracts: `IUser`, `IUserService`, `INotificationVerificationEmailPayload`. No bare type name.
+- **Enums** — `Enum` prefix + PascalCase name; keys AND values camelCase (NOT UPPER_CASE). One enum concern per file. Error-code enums use numeric values.
+- **Constants** — PascalCase for everything: typed objects/arrays and single primitives alike. No UPPER_SNAKE_CASE.
+- **DI tokens** — rare; prefer direct class injection (repository as class). When a token IS needed, name it PascalCase and wrap the value in `Symbol()`.
+- **DTOs** — every DTO carries the `Dto` suffix on BOTH class name and file name (`*RequestDto`/`user.*.request.dto.ts`, `*ResponseDto`/`user.*.response.dto.ts`). There is no usecase layer.
 
 ---
 
@@ -115,7 +132,7 @@ All four below are mandatory. None optional. Reviewer rejects on violation.
 ```
 
 - Guard/protection semantics → read `docs/authorization.md`.
-- `@ActivityLog` requires `@AuthJwtAccessProtected`, logs successful requests only, never logs secrets.
+- `@ActivityLog` requires `@AuthJwtAccessProtected`. Logs both success and failure. Metadata is set via `ActivityLogMetadataStoreService.setMetadata()`, never returned in the response shape. Never logs secrets. → `docs/activity-log.md`.
 
 ---
 
@@ -156,7 +173,7 @@ All four below are mandatory. None optional. Reviewer rejects on violation.
 ## 8. ERRORS · RESPONSES · CONFIG (rules; detail in docs)
 
 - **Errors** — throw Nest exceptions with `{ statusCode, message: '<i18n.key>', messageProperties?, data? }`. i18n keys are nested JSON, filename = prefix (`user.error.notFound` → `languages/en/user.json`). → `docs/handling-error.md`, `docs/message.md`.
-- **Responses** — use `@Response` / `@ResponsePaging`. Return `{ data, metadata?, metadataActivityLog? }`. → `docs/response.md`.
+- **Responses** — use `@Response` / `@ResponsePaging`. Return `{ data, metadata? }`. → `docs/response.md`.
 - **Validation** — `class-validator` + `@Expose` on DTOs. → `docs/request-validation.md`.
 - **Config** — every `src/configs/*` file exports a TS interface alongside `registerAs`. → `docs/configuration.md`, `docs/environment.md`.
 - **Transactions** — array form for simple sequential, callback form for conditional logic. MongoDB replica set required. → `docs/database.md`.
