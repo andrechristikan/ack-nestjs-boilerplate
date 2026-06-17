@@ -140,38 +140,35 @@ The migration file is the entry point for the migration CLI tool using **nest-co
 
 The modules folder contains all feature modules, each representing a distinct domain or functionality in the application. Every module is self-contained and follows the repository design pattern, ensuring clear separation of concerns and scalability.
 
+No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:
+
 ```
 module
-  ├── bases
+  # Core (present in almost every module)
   ├── constants
   ├── controllers
-  ├── decorators
-  ├── docs
   ├── dtos
-  ├── entities
   ├── enums
-  ├── exceptions
-  ├── factories
-  ├── filters
-  ├── guards
-  ├── interceptors
   ├── interfaces
-  ├── middlewares
-  ├── pipes
-  ├── processors
   ├── repositories
   ├── services
-  ├── templates
   ├── utils
+  # Common (present when the feature needs them)
+  ├── decorators
+  ├── docs
+  ├── guards
+  # Specialized (a few modules only)
+  ├── factories
+  ├── indicators
+  ├── interceptors
+  ├── processors
+  ├── templates
   └── validations
 ```
 
 This structure ensures each feature is isolated, testable, and easy to maintain.
 
-Below are explanations for each section in a typical module:
-
-### Bases
-Base classes or abstract classes that provide shared functionality for other components in the module.
+Below are explanations for each section:
 
 ### Constants
 Defines static values and configuration constants used throughout the module to ensure consistency and avoid magic numbers or strings.
@@ -191,14 +188,11 @@ Classes that define the shape of data sent and received via API endpoints, ensur
 ### Enums
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
 
-### Exceptions
-Custom error classes for handling domain-specific exceptions and providing meaningful error messages.
-
 ### Factories
 Factory classes or functions for creating instances of complex objects or aggregating dependencies.
 
-### Filters
-Exception and validation filters to handle errors and transform responses for specific scenarios within the module.
+### Indicators
+Health-check indicators that report the status of a dependency or subsystem (used by the health module).
 
 ### Guards
 Authorization and access control logic, protecting routes and resources based on user roles or permissions.
@@ -208,12 +202,6 @@ TypeScript interfaces for contracts between services, repositories, and other co
 
 ### Interceptors
 Logic to intercept and modify requests or responses, such as logging, caching, or response transformation.
-
-### Middlewares
-Functions that process requests before they reach controllers, such as logging, authentication, or request transformation.
-
-### Pipes
-Transform and validate incoming request data before it reaches controllers, ensuring data integrity and type safety.
 
 ### Processors
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.

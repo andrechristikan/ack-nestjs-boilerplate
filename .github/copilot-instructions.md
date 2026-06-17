@@ -16,7 +16,7 @@ This document provides instructions for GitHub Copilot to generate code that fol
 
 ACK NestJS Boilerplate is an enterprise-grade authentication and authorization service built with:
 - **NestJS v11** + **TypeScript** with strict mode (`strictNullChecks: true`, `noImplicitAny: true`) and path aliases
-- **Prisma ORM** → MongoDB (replica set required for transactions; regenerate client with `pnpm db:generate` after schema changes)
+- **Prisma ORM** → MongoDB (replica set required for transactions). Never edit the schema or run `db:generate`/`db:migrate`/`db:push` yourself; if a schema change is needed, stop and tell the user
 - **Redis** → cache + session store (`db:0`) and BullMQ queues (`db:1`)
 - **PNPM** as the only allowed package manager (npm/yarn blocked; enforced by preinstall script)
 - **Node.js** >= 24.11.0
@@ -33,31 +33,29 @@ ACK NestJS Boilerplate is an enterprise-grade authentication and authorization s
 
 ### Module Structure
 
-Every feature module follows:
+No module contains every folder. Each module includes only the folders its feature needs, drawn from these tiers:
 ```
 module/
-├── bases/              # Abstract base classes for shared functionality
+# Core (present in almost every module)
 ├── constants/          # Static values and configuration
 ├── controllers/        # API endpoint handlers
+├── dtos/               # Data Transfer Objects with validation
+├── enums/              # Type-safe enumerations
+├── interfaces/         # TypeScript contracts
+├── repositories/       # Data access layer (Prisma)
+├── services/           # Business logic
+├── utils/              # Helper utilities
+# Common (present when the feature needs them)
 ├── decorators/         # Custom metadata decorators
-├── docs/              # Swagger/OpenAPI documentation decorators
-├── dtos/              # Data Transfer Objects with validation
-├── entities/          # Database entity types
-├── enums/             # Type-safe enumerations
-├── exceptions/        # Custom error classes
-├── factories/         # Object creation patterns
-├── filters/           # Exception/validation filters
-├── guards/            # Authorization and access control
-├── interceptors/      # Request/response transformation
-├── interfaces/        # TypeScript contracts
-├── middlewares/       # Request preprocessing
-├── pipes/             # Data transformation and validation
-├── processors/        # Background job handlers (BullMQ)
-├── repositories/      # Data access layer (Prisma)
-├── services/          # Business logic
-├── templates/         # Email/document templates
-├── utils/             # Helper utilities
-└── validations/       # Custom validators
+├── docs/               # Swagger/OpenAPI documentation decorators
+├── guards/             # Authorization and access control
+# Specialized (a few modules only)
+├── factories/          # Object creation patterns (policy)
+├── indicators/         # Health-check indicators (health)
+├── interceptors/       # Request/response transformation (activity-log)
+├── processors/         # Background job handlers / BullMQ (notification)
+├── templates/          # Email/document templates (notification, term-policy)
+└── validations/        # Custom validators (auth, feature-flag)
 ```
 
 ### Repository Design Pattern
@@ -226,7 +224,7 @@ async method() {}
 
 ### Remove Device Flow
 ```
-DELETE /user/device/remove/:deviceId
+DELETE /user/device/remove/:deviceOwnershipId
 → DeviceOwnership: isRevoked = true (retained for audit)
 → Device: clear notificationToken + notificationProvider
 → Session: isRevoked = true in DB
@@ -278,10 +276,11 @@ export class CreateUserRequestDto {
 
 ### Response Decorators
 
-Use standardized response decorators. The return object supports two optional fields:
+Use standardized response decorators. The return object supports one optional field:
 
 - **`metadata?: IResponseMetadata`** — override response behavior: `statusCode`, `httpStatus`, `messagePath`, `messageProperties`
-- **`metadataActivityLog?: IActivityLogMetadata`** — pass activity log context (captured automatically by `@ActivityLog` decorator)
+
+Activity-log metadata is NOT returned in the response shape. Set it in the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)` (see Activity Log + Request Store below).
 
 ```typescript
 // Standard response
@@ -334,6 +333,26 @@ async login(
 }
 ```
 
+### Request Store (CLS)
+
+Ambient per-request state lives in a single global `RequestStoreService` (`@common/request`, backed by `nestjs-cls`), NOT on `request.__*` properties.
+
+- Generic API: `set<T>(key, value)`, `get<T>(key): T | null`, `merge<T>(key, value)`
+- Identity is written by guards and read by param decorators / downstream guards:
+    - `UserStoreKey` — set by `@UserProtected` guard, read via `@UserCurrent()`
+    - `RoleAbilityStoreKey` — set by `@RoleProtected` guard, read by the policy guard
+    - `ApiKeyStoreKey` — set by the api-key guard, read via `@ApiKeyPayload()`
+- Activity-log metadata: `RequestStoreService.merge(ActivityLogMetadataStoreKey, { ... })` from the service layer
+- Do NOT add `__user`/`__apiKey`/`__abilities` to `IRequestApp` — that per-request transport was removed in favor of the store
+
+```typescript
+async create(dto: UserCreateRequestDto): Promise<IUser> {
+    const user = await this.userRepository.create(dto);
+    this.requestStoreService.merge(ActivityLogMetadataStoreKey, { userId: user.id });
+    return user;
+}
+```
+
 ### Error Handling
 
 ```typescript
@@ -374,7 +393,7 @@ await this.databaseService.$transaction([
 
 - Extend `QueueProcessorBase`, implement `process(job)` with switch
 - Use `QueueException(msg, isFatal)` — `isFatal: true` reports to Sentry
-- Default: 3 attempts, exponential backoff (5s)
+- Defaults: 3 attempts, exponential backoff (per-queue: 10s/5s/3s), `removeOnComplete: 50`, `removeOnFail: 100`
 - Available queues: `notification`, `notificationEmail`, `notificationPush`
 
 ```typescript
@@ -448,8 +467,8 @@ Sensitive data (password, token, apiKey, etc.) auto-redacted by Pino.
 
 - `@ActivityLog(EnumActivityLogAction.xxx)` on authenticated endpoints
 - Requires `@AuthJwtAccessProtected()` to be present
-- Logs both successful and failed requests; on failure the error is serialized (`errorMessage`, `errorStack` into metadata, and appended to the description)
-- Capture metadata via `metadataActivityLog` in service response
+- Logs both successful and failed requests; on failure the error is serialized into metadata and appended to the description
+- The decorator takes ONLY the action (`@ActivityLog(action)`); metadata is dynamic, set in the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never passed at decoration time or returned in the response shape
 - Never log: passwords, tokens, entire objects
 
 ## Notification
@@ -499,7 +518,7 @@ Rollout uses deterministic MD5 hash of `userId` — same user always gets same r
 
 ## Password Security
 
-- Bcrypt salt rounds: **10** minimum, **11** recommended for sensitive apps
+- Bcrypt salt length: **12** (`auth.password.saltLength`)
 - Password expiration: 182 days
 - Password rotation period: 90 days
 - Max login attempts: 5 (then lockout)
@@ -603,9 +622,9 @@ interface IUser {
 }
 
 // ✅ Domain Interface — request lifecycle (progressive, set by middleware/guard)
-interface IRequestApp {
-    __user?: IUser       // not yet set before UserProtected guard runs
-    __apiKey?: ApiKey    // not present on non-api-key requests
+interface IRequestApp<T = IAuthJwtAccessTokenPayload> {
+    user?: T                              // set after the JWT guard runs
+    pagination?: Partial<IPaginationQuery> // set by pagination pipes
 }
 
 // ✅ Exception / Options Interface — optional fields, no forced null
@@ -695,7 +714,7 @@ async updateProfile(userId: string, dto: UpdateUserRequestDto) {
 6. **Dual Storage Strategy** — Redis for performance, Database for persistence (e.g., sessions)
 7. **Nested JSON for i18n** — File name as prefix, navigate nested objects
 8. **Type-Safe Enums** — `Enum` prefix PascalCase, camelCase keys, dedicated files
-9. **Metadata Pattern** — `metadataActivityLog` in service responses, auto-captured by decorators
+9. **Request Store Pattern** — ambient per-request state (identity, activity-log metadata) in a single CLS-backed `RequestStoreService`, not on `request.__*`
 10. **Feature Flag Pattern** — Dynamic control, deterministic rollout, metadata for granular control
 
 ### Global Modules Reference

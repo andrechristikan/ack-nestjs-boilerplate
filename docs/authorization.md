@@ -147,7 +147,7 @@ flowchart TD
     CheckPassword -->|No| CheckVerified{isVerified required<br/>AND user not verified?}
     
     CheckVerified -->|Yes| ErrorVerified[Throw ForbiddenException<br/>EMAIL_NOT_VERIFIED]
-    CheckVerified -->|No| SetUser[Set request.__user = user]
+    CheckVerified -->|No| SetUser[Store user via<br/>RequestStoreService.set UserStoreKey, user]
     
     SetUser --> Success([Access Granted])
     
@@ -162,7 +162,7 @@ flowchart TD
 
 - `@UserProtected()` **requires** `@AuthJwtAccessProtected()` to be applied first (above in code)
 - `@AuthJwtAccessProtected()` populates `request.user` from JWT token. See [Authentication Documentation][ref-doc-authentication] for details
-- This decorator populates `request.__user` which is required by downstream guards
+- This decorator stores the validated user via `RequestStoreService.set(UserStoreKey, user)` (read back with `RequestStoreService.get(UserStoreKey)`, e.g. by `@UserCurrent()`), which is required by downstream guards
 
 ## Role Protected
 
@@ -230,11 +230,11 @@ The guard implementation that validates user roles and populates role abilities.
 
 The `RoleProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with empty abilities array
 3. **Required Roles Check**: Validates that required roles are defined
 4. **Role Match**: Confirms user's role type matches one of the required roles
-5. **Abilities Population**: Attaches role abilities to `request.__abilities` for downstream use
+5. **Abilities Population**: Stores role abilities via `RequestStoreService.set(RoleAbilityStoreKey, abilities)` for downstream use
 
 **Flow Diagram:**
 
@@ -242,7 +242,7 @@ The `RoleProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
     CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
@@ -254,7 +254,7 @@ flowchart TD
     CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
     
     CheckRoleMatch -->|No| ErrorForbidden[Throw ForbiddenException<br/>ROLE_FORBIDDEN]
-    CheckRoleMatch -->|Yes| SetAbilities[Set request.__abilities<br/>from user role]
+    CheckRoleMatch -->|Yes| SetAbilities[Store abilities via<br/>RequestStoreService.set RoleAbilityStoreKey, abilities]
     
     GrantSuperAdmin --> Success([Access Granted])
     SetAbilities --> Success
@@ -268,7 +268,7 @@ flowchart TD
 
 - `@RoleProtected()` **requires** `@AuthJwtAccessProtected()` and `@UserProtected()` to be applied
 - `@AuthJwtAccessProtected()` must be placed at the bottom, followed by `@RoleProtected()`, then `@UserProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
-- This decorator populates `request.__abilities` which is required by policy guards
+- This decorator stores role abilities via `RequestStoreService.set(RoleAbilityStoreKey, abilities)` (read back with `RequestStoreService.get(RoleAbilityStoreKey)`), which is required by policy guards
 - Incorrect ordering will result in runtime errors
 - Users with `superAdmin` role type have unrestricted access to all `@RoleProtected` routes, regardless of the specified required roles. The guard returns an empty abilities array for super admins, as they bypass ability checks.
 
@@ -362,10 +362,10 @@ The guard implementation that validates user abilities using CASL library.
 
 The `PolicyAbilityProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
 3. **Required Abilities Check**: Validates that required abilities are defined
-4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`request.__abilities`)
+4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`RequestStoreService.get(RoleAbilityStoreKey)`)
 5. **Permission Validation**: Checks if user abilities match all required abilities
 6. **Access Decision**: Grants or denies access based on permission match
 
@@ -376,7 +376,7 @@ flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
-    RoleGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    RoleGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
     CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
@@ -385,7 +385,7 @@ flowchart TD
     CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
     
     CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
-    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from request.__abilities]
+    CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get RoleAbilityStoreKey]
     
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
     
@@ -485,9 +485,9 @@ The guard implementation that validates user term policy acceptance.
 
 The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that `request.__user` and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
 2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
-3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from `__user.termPolicy`
+3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from the stored user's `termPolicy`
 4. **Acceptance Validation**: Checks if all required term policies are accepted
 5. **Access Decision**: Grants access only if all required policies are accepted
 
@@ -497,7 +497,7 @@ The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
     CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}

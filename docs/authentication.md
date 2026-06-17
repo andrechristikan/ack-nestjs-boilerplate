@@ -102,7 +102,7 @@ export default registerAs(
             maxAttempt: 5,
             
             // Length of salt used in bcrypt password hashing
-            saltLength: 8,
+            saltLength: 12,
             
             // Password expiration time in seconds (182 days = 15724800 seconds)
             expiredInSeconds: 15724800,
@@ -1032,7 +1032,7 @@ sequenceDiagram
             alt Invalid Credentials or Inactive
                 Guard-->>Client: 401 Unauthorized (Invalid)
             else Valid
-                Guard->>API: Attach apiKey to request.__apiKey
+                Guard->>API: Store apiKey via RequestStoreService.set(ApiKeyStoreKey, apiKey)
                 API->>Guard: ApiKeyXApiKeyTypeGuard
                 Guard->>Guard: Check API key type matches decorator
 

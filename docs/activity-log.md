@@ -35,7 +35,7 @@ Activity Log records audited user actions. Recording is decorator-driven: `@Acti
   - [Flow](#flow)
   - [Recording an Activity](#recording-an-activity)
     - [@ActivityLog Decorator](#activitylog-decorator)
-    - [Static vs Dynamic Metadata](#static-vs-dynamic-metadata)
+    - [Metadata](#metadata-dynamic-only)
     - [Request store (metadata)](#request-store-metadata)
   - [Data](#data)
     - [Metadata](#metadata)
@@ -45,8 +45,8 @@ Activity Log records audited user actions. Recording is decorator-driven: `@Acti
 
 | Component | Responsibility |
 |---|---|
-| `@ActivityLog(action, metadata?)` | Method decorator: attaches the interceptor, stores the action and optional static metadata |
-| `ActivityLogInterceptor` | Reads action and metadata, collects request context (IP, user agent, geo), persists the log on success and failure |
+| `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
+| `ActivityLogInterceptor` | Reads the action, reads dynamic metadata from the request store, collects request context (IP, user agent, geo), persists the log on success and failure |
 | `RequestStoreService` | Generic per-request carrier for dynamic metadata, backed by `nestjs-cls` (AsyncLocalStorage); shared by all modules |
 | `ActivityLogService` | Read side: paginated listing for admin and self |
 | `ActivityLogRepository` | Data access (Prisma) |
@@ -87,11 +87,12 @@ sequenceDiagram
 ### @ActivityLog Decorator
 
 ```typescript
-ActivityLog(action: EnumActivityLogAction, metadata?: IActivityLogMetadata): MethodDecorator
+ActivityLog(action: EnumActivityLogAction): MethodDecorator
 ```
 
 - `action` - the recorded action enum, also the i18n key for the description (`activityLog.<action>`).
-- `metadata` - optional **static** metadata fixed at decoration time.
+
+The decorator takes only `action`. There is no static metadata at decoration time; all metadata is set dynamically from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`.
 
 Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It must sit above `@AuthJwtAccessProtected`.
 
@@ -104,12 +105,9 @@ async create(@Body() dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto
 }
 ```
 
-### Static vs Dynamic Metadata
+### Metadata (dynamic only)
 
-The interceptor merges both sources before writing (`{ ...static, ...dynamic }`). Dynamic wins on key conflict.
-
-- **Static** - passed to the decorator. Use for values known at compile time.
-- **Dynamic** - set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use for entity values resolved during the request.
+All metadata is dynamic: set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use it for entity values resolved during the request. The interceptor reads it from the request store and, on failure, merges in the serialized error (`{ ...metadata, ...error }`) before writing.
 
 ### Request store (metadata)
 
@@ -157,7 +155,7 @@ Each log contains:
 - **ipAddress** - resolved via `@supercharge/request-ip` (may be null)
 - **userAgent** - parsed via `ua-parser-js` (JSON)
 - **geoLocation** - derived from IP via `geoip-lite` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`
-- **metadata** - merged static + dynamic context (JSON, null when empty)
+- **metadata** - dynamic context from the request store (JSON, null when empty)
 - **createdAt** - timestamp
 
 ### Metadata

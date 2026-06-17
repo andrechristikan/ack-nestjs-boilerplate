@@ -96,11 +96,12 @@ This boilerplate is perfect for:
 - [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
-- [x] Activity Log support bidirectional logging
+- [x] Activity Log records successful user activities with `@ActivityLog`
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 
 ### Next Features
 
+- [ ] Activity Log bidirectional and self-activity logging
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
@@ -144,7 +145,7 @@ The project is built using the following technologies and versions. We always st
 | -------------- | -------- |
 | NestJs         | v11.x    |
 | NodeJs         | v24.11.x |
-| TypeScript     | v5.9.x   |
+| TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
 | MongoDB        | v8.0.x   |
 | Redis          | v8.0.x   |

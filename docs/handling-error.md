@@ -103,11 +103,11 @@ All errors are formatted into `ResponseErrorDto`:
 
 | Field | Source | Fallback |
 |-------|--------|----------|
-| `language` | `request.__language` | Config `message.language` |
+| `language` | `request.language` | Config `message.language` |
 | `timestamp` | `HelperService.dateGetTimestamp()` | - |
 | `timezone` | `HelperService.dateGetZone()` | - |
 | `path` | `request.path` | - |
-| `version` | `request.__version` | Config `app.urlVersion.version` |
+| `version` | `request.version` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
 | `requestId` | `request.id` | - |
 | `correlationId` | `request.correlationId` | - |
@@ -210,8 +210,8 @@ interface IAppException<T = unknown> {
 **Response example**:
 ```json
 {
-  "statusCode": 422,
-  "message": "Validation error",
+  "statusCode": 5030,
+  "message": "There are validation errors.",
   "errors": [
     {
       "key": "isEmail",
@@ -241,8 +241,8 @@ See [Request Validation][ref-doc-request-validation] for details.
 **Response example**:
 ```json
 {
-  "statusCode": 422,
-  "message": "File import validation failed",
+  "statusCode": 5030,
+  "message": "The imported data failed validation.",
   "errors": [
     {
       "row": 2,

@@ -45,7 +45,7 @@ new ValidationPipe({
   skipMissingProperties: false,
   skipNullProperties: false,
   skipUndefinedProperties: false,
-  forbidUnknownValues: false,
+  forbidUnknownValues: true,
   whitelist: true,
   forbidNonWhitelisted: true,
   transformOptions: {
