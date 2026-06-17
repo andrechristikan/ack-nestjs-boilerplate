@@ -6,7 +6,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client';
 /**
  * Method decorator that enables activity logging for a controller method.
  * Attaches `ActivityLogInterceptor` and stores the action and optional static metadata via `SetMetadata`.
- * Dynamic metadata is captured from the per-request activity-log context (set via `ActivityLogMetadataStoreService.setMetadata`), not from the response object.
+ * Dynamic metadata is captured from the per-request activity-log context (set via `RequestStoreService.merge` under `ActivityLogMetadataStoreKey`), not from the response object.
  * Requires `@AuthJwtAccessProtected()` to be present so that `request.user` is populated before the interceptor runs.
  *
  * @param {EnumActivityLogAction} action - The activity action enum value to be recorded

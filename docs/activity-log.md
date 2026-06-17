@@ -36,7 +36,7 @@ Activity Log records audited user actions. Recording is decorator-driven: `@Acti
   - [Recording an Activity](#recording-an-activity)
     - [@ActivityLog Decorator](#activitylog-decorator)
     - [Static vs Dynamic Metadata](#static-vs-dynamic-metadata)
-    - [ActivityLogMetadataStoreService](#activitylogmetadatastoreservice)
+    - [Request store (metadata)](#request-store-metadata)
   - [Data](#data)
     - [Metadata](#metadata)
     - [Description](#description)
@@ -47,7 +47,7 @@ Activity Log records audited user actions. Recording is decorator-driven: `@Acti
 |---|---|
 | `@ActivityLog(action, metadata?)` | Method decorator: attaches the interceptor, stores the action and optional static metadata |
 | `ActivityLogInterceptor` | Reads action and metadata, collects request context (IP, user agent, geo), persists the log on success and failure |
-| `ActivityLogMetadataStoreService` | Per-request carrier for dynamic metadata, backed by `nestjs-cls` (AsyncLocalStorage) |
+| `RequestStoreService` | Generic per-request carrier for dynamic metadata, backed by `nestjs-cls` (AsyncLocalStorage); shared by all modules |
 | `ActivityLogService` | Read side: paginated listing for admin and self |
 | `ActivityLogRepository` | Data access (Prisma) |
 | `ActivityLogUtil` | Builds the i18n description, serializes list responses |
@@ -59,7 +59,7 @@ sequenceDiagram
     participant Client
     participant Controller
     participant Service
-    participant Storage as ActivityLogMetadataStoreService
+    participant Storage as RequestStoreService
     participant Interceptor as ActivityLogInterceptor
     participant DB
 
@@ -67,15 +67,15 @@ sequenceDiagram
     Note over Controller: @AuthJwtAccessProtected (required)
     Note over Controller: @ActivityLog(action)
     Controller->>Service: Execute business logic
-    Service->>Storage: setMetadata({ ... })
+    Service->>Storage: merge(ActivityLogMetadataStoreKey, { ... })
     alt Success
         Service-->>Interceptor: result
-        Interceptor->>Storage: getMetadata()
+        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
         Interceptor->>DB: create log (non-blocking)
         DB-->>Client: Success Response
     else Failure
         Service-->>Interceptor: throws error
-        Interceptor->>Storage: getMetadata()
+        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
         Note over Interceptor: serialize error into metadata + description
         Interceptor->>DB: create log (non-blocking)
         DB-->>Client: Error Response
@@ -109,25 +109,26 @@ async create(@Body() dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto
 The interceptor merges both sources before writing (`{ ...static, ...dynamic }`). Dynamic wins on key conflict.
 
 - **Static** - passed to the decorator. Use for values known at compile time.
-- **Dynamic** - set at runtime from the service via `ActivityLogMetadataStoreService.setMetadata(...)`. Use for entity values resolved during the request.
+- **Dynamic** - set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use for entity values resolved during the request.
 
-### ActivityLogMetadataStoreService
+### Request store (metadata)
 
-Per-request carrier backed by `nestjs-cls`. `setMetadata` merges into the current request's context; the interceptor reads it via `getMetadata`. It is the only place that touches the CLS key.
+Dynamic metadata lives in the generic `RequestStoreService` (`@common/request`), backed by `nestjs-cls`. Services call `merge(ActivityLogMetadataStoreKey, metadata)` to shallow-merge into the current request's metadata; the interceptor reads it via `get(ActivityLogMetadataStoreKey)`. The `ActivityLogMetadataStoreKey` constant is the only key used for activity-log metadata.
 
 ```typescript
-setMetadata(metadata: IActivityLogMetadata): void; // merge into the request context
-getMetadata(): IActivityLogMetadata;               // empty object when none set
+merge<T extends object>(key: string, value: Partial<T>): void; // shallow-merge into the request store
+get<T>(key: string): T | null;                                 // null when none set
 ```
 
-Build the metadata shape in the module's util, then set it in the service:
+Build the metadata shape in the module's util, then merge it in the service:
 
 ```typescript
-// Service - inject ActivityLogMetadataStoreService, set metadata after the mutation
+// Service - inject RequestStoreService, merge metadata after the mutation
 async create(dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
     const created = await this.roleRepository.create(dto);
 
-    this.activityLogMetadataStore.setMetadata(
+    this.requestStoreService.merge<IActivityLogMetadata>(
+        ActivityLogMetadataStoreKey,
         this.roleUtil.mapActivityLogMetadata(created)
     );
 
@@ -190,7 +191,7 @@ Stored as `null` when empty. On failure the interceptor adds `errorMessage` and 
 **Never** include sensitive or oversized values:
 
 ```typescript
-this.activityLogMetadataStore.setMetadata({
+this.requestStoreService.merge<IActivityLogMetadata>(ActivityLogMetadataStoreKey, {
     password: 'secret123',     // never
     accessToken: 'jwt_token',  // never
     entireUserObject: { ... }, // too large

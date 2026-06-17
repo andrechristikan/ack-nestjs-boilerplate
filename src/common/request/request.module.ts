@@ -20,6 +20,7 @@ import {
     LessThanOtherPropertyConstraint,
 } from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
  * Core request module providing validation, interceptors, and middleware configuration.
@@ -35,8 +36,11 @@ export class RequestModule {
     static forRoot(): DynamicModule {
         return {
             module: RequestModule,
+            global: true,
             controllers: [],
+            exports: [RequestStoreService],
             providers: [
+                RequestStoreService,
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,

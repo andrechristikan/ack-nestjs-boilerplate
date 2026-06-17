@@ -5,22 +5,22 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ApiKeyXTypeMetaKey } from '@modules/api-key/constants/api-key.constant';
+import { ApiKeyStoreKey, ApiKeyXTypeMetaKey } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
+import { ClsServiceManager } from 'nestjs-cls';
 
 /**
- * Parameter decorator that extracts the authenticated API key from the request context.
+ * Parameter decorator that extracts the authenticated API key from the CLS request context.
  * Must be used on a controller method parameter after `@ApiKeyProtected()` or `@ApiKeySystemProtected()` has been applied.
  *
  * @returns {ApiKey | T} The full API key object, or the value of a specific property if a property name is passed
  */
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
-    <T = ApiKey>(data: string, ctx: ExecutionContext): T => {
-        const { __apiKey } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return data ? (__apiKey?.[data as keyof ApiKey] as T) : (__apiKey as T);
+    <T = ApiKey>(data: string, _ctx: ExecutionContext): T => {
+        const apiKey = ClsServiceManager.getClsService().get<ApiKey>(ApiKeyStoreKey);
+        return data ? (apiKey?.[data as keyof ApiKey] as T) : (apiKey as T);
     }
 );
 

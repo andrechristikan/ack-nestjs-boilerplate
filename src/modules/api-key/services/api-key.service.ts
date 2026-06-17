@@ -29,7 +29,9 @@ import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -37,7 +39,7 @@ export class ApiKeyService implements IApiKeyService {
         private readonly helperService: HelperService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListByAdmin(
@@ -90,7 +92,8 @@ export class ApiKeyService implements IApiKeyService {
             hash
         );
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(created)
         );
 
@@ -132,7 +135,8 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(updated)
         );
 
@@ -155,7 +159,8 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(updated)
         );
 
@@ -186,7 +191,8 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(updated)
         );
 
@@ -208,7 +214,8 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(updated)
         );
 
@@ -233,7 +240,8 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.apiKeyUtil.mapActivityLogMetadata(deleted)
         );
 
@@ -328,7 +336,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     validateXApiKeyTypeGuard(
-        request: IRequestApp,
+        apiKey: ApiKey | null,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
         if (apiKeyTypes.length === 0) {
@@ -338,8 +346,7 @@ export class ApiKeyService implements IApiKeyService {
             });
         }
 
-        const { __apiKey } = request;
-        if (!__apiKey || !this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
+        if (!apiKey || !this.apiKeyUtil.validateType(apiKey, apiKeyTypes)) {
             throw new ForbiddenException({
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
                 message: 'apiKey.error.xApiKey.forbidden',

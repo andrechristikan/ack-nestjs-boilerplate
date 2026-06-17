@@ -107,12 +107,15 @@ export function PaginationQueryFilterInEnumPipe<T>(
          * @param {(string | number)[]} value - The filter values
          * @returns {void}
          */
-        private addToRequestInstance(field: string, value: (string | number)[]): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                filters: this.request.__pagination?.filters
+        private addToRequestInstance(
+            field: string,
+            value: (string | number)[]
+        ): void {
+            this.request.pagination = {
+                ...this.request.pagination,
+                filters: this.request.pagination?.filters
                     ? {
-                          ...this.request.__pagination?.filters,
+                          ...this.request.pagination?.filters,
                           [field]: value,
                       }
                     : { [field]: value },
@@ -204,12 +207,15 @@ export function PaginationQueryFilterNinEnumPipe<T>(
          * @param {(string | number)[]} value - The filter values
          * @returns {void}
          */
-        private addToRequestInstance(field: string, value: (string | number)[]): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                filters: this.request.__pagination?.filters
+        private addToRequestInstance(
+            field: string,
+            value: (string | number)[]
+        ): void {
+            this.request.pagination = {
+                ...this.request.pagination,
+                filters: this.request.pagination?.filters
                     ? {
-                          ...this.request.__pagination?.filters,
+                          ...this.request.pagination?.filters,
                           [field]: value,
                       }
                     : { [field]: value },
@@ -305,11 +311,11 @@ export function PaginationQueryFilterEqualPipe<T>(
             field: string,
             value: string | number | boolean
         ): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                filters: this.request.__pagination?.filters
+            this.request.pagination = {
+                ...this.request.pagination,
+                filters: this.request.pagination?.filters
                     ? {
-                          ...this.request.__pagination?.filters,
+                          ...this.request.pagination?.filters,
                           [field]: value,
                       }
                     : { [field]: value },
@@ -405,11 +411,11 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             field: string,
             value: string | number | boolean
         ): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                filters: this.request.__pagination?.filters
+            this.request.pagination = {
+                ...this.request.pagination,
+                filters: this.request.pagination?.filters
                     ? {
-                          ...this.request.__pagination?.filters,
+                          ...this.request.pagination?.filters,
                           [field]: value,
                       }
                     : { [field]: value },
@@ -489,11 +495,11 @@ export function PaginationQueryFilterDatePipe(
          * @returns {void}
          */
         private addToRequestInstance(field: string, value: Date): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                filters: this.request.__pagination?.filters
+            this.request.pagination = {
+                ...this.request.pagination,
+                filters: this.request.pagination?.filters
                     ? {
-                          ...this.request.__pagination?.filters,
+                          ...this.request.pagination?.filters,
                           [field]: value,
                       }
                     : {

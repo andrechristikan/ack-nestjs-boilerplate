@@ -3,7 +3,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -19,7 +18,10 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import {
     ConflictException,
     ForbiddenException,
@@ -34,7 +36,7 @@ export class RoleService implements IRoleService {
     constructor(
         private readonly roleRepository: RoleRepository,
         private readonly roleUtil: RoleUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -119,7 +121,8 @@ export class RoleService implements IRoleService {
 
         const created = await this.roleRepository.create({ name, ...others });
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.roleUtil.mapActivityLogMetadata(created)
         );
 
@@ -142,7 +145,8 @@ export class RoleService implements IRoleService {
 
         const updated = await this.roleRepository.update(id, data);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.roleUtil.mapActivityLogMetadata(updated)
         );
 
@@ -171,7 +175,8 @@ export class RoleService implements IRoleService {
 
         const deleted = await this.roleRepository.delete(id);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.roleUtil.mapActivityLogMetadata(deleted)
         );
 
@@ -179,18 +184,17 @@ export class RoleService implements IRoleService {
     }
 
     async validateRoleGuard(
-        request: IRequestApp,
+        user: IUser | null,
         requiredRoles: EnumRoleType[]
     ): Promise<RoleAbilityDto[]> {
-        const { __user, user } = request;
-        if (!__user || !user) {
+        if (!user) {
             throw new ForbiddenException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
 
-        const { role } = __user;
+        const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
             return [];
@@ -206,6 +210,8 @@ export class RoleService implements IRoleService {
             });
         }
 
-        return this.roleUtil.mapOne(__user.role).abilities;
+        const abilities = this.roleUtil.mapOne(role).abilities;
+
+        return abilities;
     }
 }

@@ -202,8 +202,8 @@ export function PaginationOrderPipe(
             orderBy: IPaginationOrderBy[],
             availableOrderBy: string[]
         ): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
+            this.request.pagination = {
+                ...this.request.pagination,
                 orderBy,
                 availableOrderBy,
             };

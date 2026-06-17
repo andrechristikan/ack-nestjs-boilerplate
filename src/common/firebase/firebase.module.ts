@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 
 /**
@@ -8,9 +8,16 @@ import { FirebaseService } from '@common/firebase/services/firebase.service';
  * Declared as `@Global()` so it is available across all feature modules without
  * being re-imported.
  */
-@Global()
-@Module({
-    providers: [FirebaseService],
-    exports: [FirebaseService],
-})
-export class FirebaseModule {}
+@Module({})
+export class FirebaseModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: FirebaseModule,
+            global: true,
+            providers: [FirebaseService],
+            exports: [FirebaseService],
+            imports: [],
+            controllers: [],
+        };
+    }
+}

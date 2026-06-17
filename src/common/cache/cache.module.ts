@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import {
     CACHE_MANAGER,
     CacheModule as CacheManagerModule,
@@ -13,7 +13,6 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
  * Global cache module that provides Redis-based caching functionality throughout the application.
  * Configures cache manager with Redis backend and manages cache providers.
  */
-@Global()
 @Module({})
 export class CacheMainModule {
     /**
@@ -30,6 +29,7 @@ export class CacheMainModule {
 
         return {
             module: CacheMainModule,
+            global: true,
             providers: [provider],
             exports: [provider],
             imports: [

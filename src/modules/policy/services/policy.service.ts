@@ -1,34 +1,34 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
 import { EnumRoleType } from '@generated/prisma-client';
+import { IUser } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class PolicyService implements IPolicyService {
     constructor(private readonly policyAbilityFactory: PolicyAbilityFactory) {}
 
-    async validatePolicyGuard(
-        request: IRequestApp,
+    validatePolicyGuard(
+        user: IUser | null,
+        abilities: RoleAbilityDto[] | null,
         requiredAbilities: RoleAbilityRequestDto[]
-    ): Promise<boolean> {
-        const { __user, user, __abilities } = request;
-
-        if (!__user || !user) {
+    ): boolean {
+        if (!user) {
             throw new ForbiddenException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
 
-        const { role } = __user;
+        const { role } = user;
 
         if (role.type === EnumRoleType.superAdmin) {
             return true;
@@ -39,8 +39,9 @@ export class PolicyService implements IPolicyService {
             });
         }
 
-        const userAbilities =
-            this.policyAbilityFactory.createForUser(__abilities ?? []);
+        const userAbilities = this.policyAbilityFactory.createForUser(
+            abilities ?? []
+        );
         const policyHandler = this.policyAbilityFactory.handlerAbilities(
             userAbilities,
             requiredAbilities

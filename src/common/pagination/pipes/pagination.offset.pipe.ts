@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnprocessableEntityException, mixin } from '@nestjs/common';
+import {
+    Inject,
+    Injectable,
+    UnprocessableEntityException,
+    mixin,
+} from '@nestjs/common';
 import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import {
@@ -189,8 +194,8 @@ export function PaginationOffsetPipe(
          * @returns {void}
          */
         private addToRequestInstance(page: number, perPage: number): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
+            this.request.pagination = {
+                ...this.request.pagination,
                 page,
                 perPage,
             };

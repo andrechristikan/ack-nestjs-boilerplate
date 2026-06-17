@@ -1,9 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Reflector } from '@nestjs/core';
 import { EnumTermPolicyType } from '@generated/prisma-client';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { UserStoreKey } from '@modules/user/constants/user.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
  * Guard that validates user acceptance of required term policies.
@@ -13,7 +15,8 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 export class TermPolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly termPolicyService: TermPolicyService
+        private readonly termPolicyService: TermPolicyService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
@@ -29,9 +32,9 @@ export class TermPolicyGuard implements CanActivate {
             context.getHandler()
         );
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const user = this.requestStoreService.get<IUser>(UserStoreKey);
         await this.termPolicyService.validateTermPolicyGuard(
-            request,
+            user,
             requiredTermPolicies
         );
 

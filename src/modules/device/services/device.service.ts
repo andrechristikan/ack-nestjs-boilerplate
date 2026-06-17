@@ -18,7 +18,9 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
     Injectable,
     InternalServerErrorException,
@@ -32,7 +34,7 @@ export class DeviceService implements IDeviceService {
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
         private readonly deviceUtil: DeviceUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -201,7 +203,8 @@ export class DeviceService implements IDeviceService {
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.deviceUtil.mapActivityLogMetadata(removed)
             );
 

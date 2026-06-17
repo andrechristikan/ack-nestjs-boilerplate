@@ -116,7 +116,9 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -142,7 +144,7 @@ export class UserService implements IUserService {
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {
         this.userRoleName =
             this.configService.get<string>('user.default.role')!;
@@ -329,7 +331,8 @@ export class UserService implements IUserService {
                 createdBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.userUtil.mapActivityLogMetadata(created)
             );
 
@@ -379,7 +382,8 @@ export class UserService implements IUserService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.userUtil.mapActivityLogMetadata(updated)
             );
 
@@ -879,7 +883,8 @@ export class UserService implements IUserService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.userUtil.mapActivityLogMetadata(updated)
             );
 

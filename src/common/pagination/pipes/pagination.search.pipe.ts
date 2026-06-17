@@ -59,7 +59,10 @@ export function PaginationSearchPipe(
         ): { OR: Array<Record<string, Prisma.StringFilter>> } {
             return {
                 OR: availableSearch.map(field => ({
-                    [field]: { contains: search, mode: Prisma.QueryMode.insensitive },
+                    [field]: {
+                        contains: search,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
                 })),
             };
         }
@@ -74,8 +77,8 @@ export function PaginationSearchPipe(
             search: string,
             availableSearch: string[]
         ): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
+            this.request.pagination = {
+                ...this.request.pagination,
                 search,
                 availableSearch,
             };

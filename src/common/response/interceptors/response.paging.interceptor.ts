@@ -132,7 +132,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const pagination = request.__pagination ?? {};
+                    const pagination = request.pagination ?? {};
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,
@@ -194,10 +194,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     ): ResponsePagingMetadataDto {
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
-            (request.__language as EnumMessageLanguage) ??
+            (request.language as EnumMessageLanguage) ??
             this.configService.get<EnumMessageLanguage>('message.language')!;
         const xVersion =
-            request.__version ??
+            request.version ??
             this.configService.get<string>('app.urlVersion.version')!;
 
         return {

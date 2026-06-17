@@ -213,12 +213,12 @@ export class ResponseFileInterceptor implements NestInterceptor {
     private setStandardHeaders(response: Response, request: IRequestApp): void {
         const today = this.helperService.dateCreate();
         const xLanguage: string =
-            request.__language ??
+            request.language ??
             this.configService.get<EnumMessageLanguage>('message.language')!;
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
         const xVersion =
-            request.__version ??
+            request.version ??
             this.configService.get<string>('app.urlVersion.version')!;
         const xRepoVersion = this.configService.get<string>('app.version')!;
 

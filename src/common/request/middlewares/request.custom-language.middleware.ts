@@ -45,7 +45,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             }
         }
 
-        req.__language = customLang;
+        req.language = customLang;
         req.headers['x-custom-lang'] = customLang;
 
         next();

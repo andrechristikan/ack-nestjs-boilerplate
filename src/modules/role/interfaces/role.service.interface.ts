@@ -3,7 +3,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -15,6 +14,7 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { EnumRoleType, Prisma } from '@generated/prisma-client';
+import { IUser } from '@modules/user/interfaces/user.interface';
 
 export interface IRoleService {
     getListOffsetByAdmin(
@@ -47,7 +47,7 @@ export interface IRoleService {
     ): Promise<IResponseReturn<RoleDto>>;
     deleteByAdmin(id: string): Promise<IResponseReturn<void>>;
     validateRoleGuard(
-        request: IRequestApp,
+        user: IUser | null,
         requiredRoles: EnumRoleType[]
     ): Promise<RoleAbilityDto[]>;
 }

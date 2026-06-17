@@ -132,7 +132,7 @@ Pattern: `<module>.<noun-or-action>[.<sub>].<role>.ts`
 ```
 
 - Guard/protection semantics → read `docs/authorization.md`.
-- `@ActivityLog` requires `@AuthJwtAccessProtected`. Logs both success and failure. Metadata is set via `ActivityLogMetadataStoreService.setMetadata()`, never returned in the response shape. Never logs secrets. → `docs/activity-log.md`.
+- `@ActivityLog` requires `@AuthJwtAccessProtected`. Logs both success and failure. Metadata is set via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape. Never logs secrets. → `docs/activity-log.md`.
 
 ---
 
@@ -163,7 +163,7 @@ Pattern: `<module>.<noun-or-action>[.<sub>].<role>.ts`
 
 - **NestJS idiomatic.** Use the framework the Nest way — modules, DI, providers, guards, pipes, interceptors, decorators. No hand-rolled substitutes for what Nest already provides.
 - **No unit tests.** Do not write or scaffold tests unless the user explicitly asks.
-- **Minimal comments.** Code self-documents. Comment only the non-obvious or the genuinely important (a tricky invariant, a security reason, a deliberate deviation). No narrating obvious code.
+- **Minimal comments (strict).** The user dislikes comment noise. Default to ZERO comments. Add one ONLY when it is genuinely critical and the code cannot convey it: a tricky invariant, a security reason, a deliberate deviation. Never explain a cast, a type subset, an obvious call, or what the next line does. When in doubt, leave it out. Reviewer rejects on excess.
 - **Notes** — mark with `// @note <text>`. If the symbol already has a JSDoc block, put the note inside it instead — do not add a separate `// @note`.
 - **JSDoc** — terse and to the point. State what matters, skip filler. Do not restate the signature or types the code already shows.
 - **No em-dash in `docs/*.md` prose.** Never use `—` in documentation prose. Use proper punctuation instead (period, comma, semicolon, colon, or parentheses). Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not overuse them. Exception: an existing structured list whose every entry already uses `—` as a separator — match it for consistency rather than breaking the pattern on one line.

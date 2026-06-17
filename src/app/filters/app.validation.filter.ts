@@ -51,10 +51,10 @@ export class AppValidationFilter implements ExceptionFilter {
 
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
-            (request.__language as EnumMessageLanguage) ?? this.defaultLanguage;
+            (request.language as EnumMessageLanguage) ?? this.defaultLanguage;
         const xTimestamp = this.helperService.dateGetTimestamp(today);
         const xTimezone = this.helperService.dateGetZone(today);
-        const xVersion = request.__version ?? this.urlVersion;
+        const xVersion = request.version ?? this.urlVersion;
         const xRepoVersion = this.repoVersion;
         const xRequestId = String(request.id);
         const xCorrelationId = String(request.correlationId);

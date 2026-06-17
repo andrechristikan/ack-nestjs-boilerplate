@@ -2,7 +2,8 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
-import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
+import { UserGuardIsVerifiedMetaKey, UserStoreKey } from '@modules/user/constants/user.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
  * Guard that validates user authentication and verification status.
@@ -12,7 +13,8 @@ import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constan
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
@@ -36,7 +38,7 @@ export class UserGuard implements CanActivate {
             isVerified
         );
 
-        request.__user = user;
+        this.requestStoreService.set(UserStoreKey, user);
 
         return true;
     }

@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ApiKeyXTypeMetaKey } from '@modules/api-key/constants/api-key.constant';
-import { EnumApiKeyType } from '@generated/prisma-client';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ApiKeyStoreKey, ApiKeyXTypeMetaKey } from '@modules/api-key/constants/api-key.constant';
+import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 /**
@@ -14,7 +14,8 @@ import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly apiKeyService: ApiKeyService
+        private readonly apiKeyService: ApiKeyService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
@@ -31,10 +32,7 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
             EnumApiKeyType[]
         >(ApiKeyXTypeMetaKey, [context.getHandler(), context.getClass()]);
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
-        return this.apiKeyService.validateXApiKeyTypeGuard(
-            request,
-            apiKeyTypes
-        );
+        const apiKey = this.requestStoreService.get<ApiKey>(ApiKeyStoreKey);
+        return this.apiKeyService.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
     }
 }

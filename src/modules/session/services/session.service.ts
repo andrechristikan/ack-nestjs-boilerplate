@@ -15,7 +15,9 @@ import { ISessionService } from '@modules/session/interfaces/session.service.int
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 /**
  * Session Management Service
@@ -29,7 +31,7 @@ export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
@@ -158,7 +160,8 @@ export class SessionService implements ISessionService {
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);
 
-        this.activityLogMetadataStore.setMetadata(
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
             this.sessionUtil.mapActivityLogMetadata(removed)
         );
 

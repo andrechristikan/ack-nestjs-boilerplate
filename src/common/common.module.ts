@@ -59,10 +59,10 @@ import { ClsModule } from 'nestjs-cls';
         RequestModule.forRoot(),
         ResponseModule.forRoot(),
 
-        HelperModule,
-        PaginationModule,
-        FileModule,
-        FirebaseModule,
+        HelperModule.forRoot(),
+        PaginationModule.forRoot(),
+        FileModule.forRoot(),
+        FirebaseModule.forRoot(),
 
         ActivityLogModule,
         ApiKeyModule,

@@ -1,13 +1,12 @@
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { createKeyv } from '@keyv/redis';
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
  * Global Redis cache module that provides Redis client for caching operations.
  * Configures Redis connection with namespace and timeout settings for cache functionality.
  */
-@Global()
 @Module({})
 export class RedisCacheModule {
     /**
@@ -39,6 +38,7 @@ export class RedisCacheModule {
 
         return {
             module: RedisCacheModule,
+            global: true,
             imports: [],
             providers: [redisCacheProvider],
             exports: [redisCacheProvider],

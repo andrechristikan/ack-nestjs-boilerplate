@@ -74,16 +74,16 @@ export class AuthService implements IAuthService {
      * @param err - Any error that occurred during token verification
      * @param user - The authenticated user object from the decoded token
      * @param info - Additional information from the verification process
-     * @returns Promise resolving to the authenticated user if validation succeeds
+     * @returns The authenticated payload if validation succeeds
      * @throws {UnauthorizedException} When error exists, user is not present, or verification fails
      *
      * @see {@link AuthJwtAccessStrategy} for the Passport strategy that calls this guard
      */
-    async validateJwtAccessGuard(
+    validateJwtAccessGuard(
         err: Error,
         user: IAuthJwtAccessTokenPayload,
         info: Error
-    ): Promise<IAuthJwtAccessTokenPayload> {
+    ): IAuthJwtAccessTokenPayload {
         if (err || !user) {
             throw new UnauthorizedException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
@@ -144,15 +144,15 @@ export class AuthService implements IAuthService {
      * @param err - Any error that occurred during token verification
      * @param user - The authenticated user object from the decoded token
      * @param info - Additional information from the verification process
-     * @returns Promise resolving to the authenticated user if validation succeeds
+     * @returns The authenticated payload if validation succeeds
      * @throws {UnauthorizedException} When error exists, user is not present, or verification fails
      *
      */
-    async validateJwtRefreshGuard(
+    validateJwtRefreshGuard(
         err: Error,
         user: IAuthJwtRefreshTokenPayload,
         info: Error
-    ): Promise<IAuthJwtRefreshTokenPayload> {
+    ): IAuthJwtRefreshTokenPayload {
         if (err || !user) {
             throw new UnauthorizedException({
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,

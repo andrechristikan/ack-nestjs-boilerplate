@@ -11,10 +11,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IRequestApp,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -34,7 +31,9 @@ import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
     BadRequestException,
     ConflictException,
@@ -57,23 +56,21 @@ export class TermPolicyService implements ITermPolicyService {
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly notificationUtil: NotificationUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async validateTermPolicyGuard(
-        request: IRequestApp,
+        user: IUser | null,
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
-        const { __user, user } = request;
-
-        if (!__user || !user) {
+        if (!user) {
             throw new ForbiddenException({
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
                 message: 'auth.error.accessTokenUnauthorized',
             });
         }
 
-        const { termPolicy } = __user;
+        const { termPolicy } = user;
 
         const defaultTermPolicies = [
             EnumTermPolicyType.termsOfService,
@@ -253,7 +250,8 @@ export class TermPolicyService implements ITermPolicyService {
             );
             const termPolicy = this.termPolicyUtil.mapOne(created);
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(created)
             );
 
@@ -297,7 +295,8 @@ export class TermPolicyService implements ITermPolicyService {
 
             const mapped = this.termPolicyUtil.mapOne(deleted);
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(deleted)
             );
 
@@ -404,7 +403,8 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(updated)
             );
 
@@ -464,7 +464,8 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(updated)
             );
 
@@ -516,7 +517,8 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(updated)
             );
 
@@ -632,7 +634,8 @@ export class TermPolicyService implements ITermPolicyService {
                 updatedBy
             );
 
-            this.activityLogMetadataStore.setMetadata(
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
                 this.termPolicyUtil.mapActivityLogMetadata(updated)
             );
 

@@ -4,10 +4,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IRequestApp,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -24,7 +21,7 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
 
 export interface ITermPolicyService {
     validateTermPolicyGuard(
-        request: IRequestApp,
+        user: IUser | null,
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
     getListByAdmin(

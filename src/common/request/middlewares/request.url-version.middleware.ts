@@ -52,7 +52,7 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
             version = url[2].replace(this.urlVersionPrefix, '');
         }
 
-        req.__version = version;
+        req.version = version;
 
         next();
     }

@@ -19,7 +19,8 @@ import { EnumActivityLogAction, UserAgent } from '@generated/prisma-client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import geoIp from 'geoip-lite';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { ActivityLogMetadataStoreService } from '@modules/activity-log/services/activity-log.metadata-store.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
@@ -29,7 +30,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         private readonly reflector: Reflector,
         private readonly activityRepository: ActivityLogRepository,
         private readonly activityLogUtil: ActivityLogUtil,
-        private readonly activityLogMetadataStore: ActivityLogMetadataStoreService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private async saveActivityLog(
@@ -37,11 +38,11 @@ export class ActivityLogInterceptor implements NestInterceptor {
         request: IRequestApp,
         payload: {
             rawError: unknown;
-            metadataActivityLog: IActivityLogMetadata;
+            metadataActivityLogStore: IActivityLogMetadata;
         }
     ): Promise<void> {
         const { headers, user } = request;
-        const { metadataActivityLog, rawError } = payload;
+        const { metadataActivityLogStore, rawError } = payload;
 
         const { userId } = user!;
         const userAgent = UAParser(headers['user-agent']) as UserAgent;
@@ -71,7 +72,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         try {
             let description = this.activityLogUtil.getDescription(
                 action,
-                metadataActivityLog
+                metadataActivityLogStore
             );
             let error: {
                 errorMessage?: string;
@@ -92,7 +93,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                     geoLocation,
                 },
                 {
-                    ...metadataActivityLog,
+                    ...metadataActivityLogStore,
                     ...error,
                 }
             );
@@ -145,12 +146,15 @@ export class ActivityLogInterceptor implements NestInterceptor {
             return;
         }
 
-        const metadataActivityLog = this.activityLogMetadataStore.getMetadata();
+        const metadataActivityLogStore =
+            this.requestStoreService.get<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey
+            ) ?? {};
 
         // non blocking log saving
         this.saveActivityLog(context, request, {
             rawError,
-            metadataActivityLog,
+            metadataActivityLogStore,
         }).catch(() => {});
     }
 
