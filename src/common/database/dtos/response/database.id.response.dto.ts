@@ -2,10 +2,7 @@ import { DatabaseResponseDto } from '@common/database/dtos/response/database.res
 import { PickType } from '@nestjs/swagger';
 
 /**
- * Minimal response DTO that exposes only the document `id`.
- *
- * Used for create or mutation responses where only the newly assigned identifier
- * needs to be returned to the caller.
+ * Response DTO exposing only the document `id`, for create/mutation results.
  */
 export class DatabaseIdResponseDto extends PickType(DatabaseResponseDto, [
     'id',

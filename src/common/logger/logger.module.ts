@@ -3,17 +3,10 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
 
 /**
- * Module providing logger configuration options service.
- * Exports LoggerService for use in other modules requiring logger configuration.
+ * Wires the Pino logger via `LoggerOptionService` for app-wide structured logging.
  */
 @Module({})
 export class LoggerModule {
-    /**
-     * Creates and configures the logger module with Pino logger integration.
-     * Sets up async configuration using LoggerOptionService.
-     *
-     * @returns {DynamicModule} Configured dynamic module with Pino logger
-     */
     static forRoot(): DynamicModule {
         return {
             module: LoggerModule,

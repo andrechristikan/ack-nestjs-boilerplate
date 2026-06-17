@@ -1,7 +1,5 @@
 /**
- * Metadata key used to store and retrieve the i18n message path on a route handler.
- * Set by the `@Response` and `@ResponsePaging` decorators via `SetMetadata`,
- * and read by `ResponseInterceptor` and `ResponsePagingInterceptor` to resolve
- * the localized response message.
+ * Metadata key carrying the i18n message path from the `@Response`/`@ResponsePaging`
+ * decorators to their interceptors.
  */
 export const ResponseMessagePathMetaKey = 'ResponseMessagePathMetaKey';

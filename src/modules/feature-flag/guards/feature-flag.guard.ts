@@ -4,8 +4,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 /**
- * Guard that validates feature flag activation status.
- * Checks if the required feature flag is active before allowing access to protected routes.
+ * Denies the request unless the route's feature flag is active for the caller.
  */
 @Injectable()
 export class FeatureFlagGuard implements CanActivate {
@@ -14,13 +13,6 @@ export class FeatureFlagGuard implements CanActivate {
         private readonly reflector: Reflector
     ) {}
 
-    /**
-     * Validates if the feature flag is active for the requested resource.
-     * Extracts the feature flag key from metadata and validates its status.
-     *
-     * @param {ExecutionContext} context - The execution context containing request information
-     * @returns {Promise<boolean>} Promise that resolves to true if feature flag is active
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const featureFlagKeyPath = this.reflector.get<string>(
             FeatureFlagKeyPathMetaKey,

@@ -8,6 +8,9 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
+/**
+ * Seeds country reference data for the current environment.
+ */
 @Command({
     name: 'country',
     description: 'Seed/Remove Countries',

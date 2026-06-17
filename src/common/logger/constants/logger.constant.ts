@@ -1,15 +1,10 @@
 /**
- * Default context string used for logger entries when no explicit context is provided.
- * Used to tag log messages with a generic context for easier filtering and searching.
+ * Default context tag for log entries with no explicit context.
  */
 export const LoggerAutoContext = 'LoggerAutoContext';
 
 /**
- * List of routes to be excluded from logging and monitoring.
- * These routes are typically health checks, documentation, or metrics endpoints
- * that do not require detailed logging or error tracking.
- *
- * Supports wildcard patterns for flexible matching.
+ * Routes excluded from auto-logging (health, docs, metrics). Supports wildcards.
  */
 export const LoggerExcludedRoutes: string[] = [
     '/api/hello',
@@ -25,8 +20,7 @@ export const LoggerExcludedRoutes: string[] = [
 ];
 
 /**
- * List of HTTP header names used to extract or identify request IDs for tracing.
- * Checked in order to maintain request correlation across distributed systems.
+ * Request-ID headers checked in order for cross-service correlation.
  */
 export const LoggerRequestIdHeaders = [
     'x-correlation-id',
@@ -34,8 +28,7 @@ export const LoggerRequestIdHeaders = [
 ] as const;
 
 /**
- * List of object paths in request/response objects that may contain sensitive data.
- * Used by the logger redaction system to identify where sensitive fields might be located.
+ * Object paths scanned for sensitive fields during log redaction.
  */
 export const LoggerSensitivePaths = [
     'req.body',
@@ -53,8 +46,7 @@ export const LoggerSensitivePaths = [
 ];
 
 /**
- * List of field names considered sensitive and subject to redaction in logs.
- * Includes authentication, credential, and personal data fields.
+ * Field names redacted from logs (credentials, tokens, PII).
  */
 export const LoggerSensitiveFields: string[] = [
     'password',

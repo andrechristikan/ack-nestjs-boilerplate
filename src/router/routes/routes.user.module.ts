@@ -3,8 +3,7 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 /**
- * User routes module that provides user-specific endpoints.
- * Contains controllers for user operations that require user-level authentication and authorization.
+ * Mounts controllers for the authenticated end-user scope.
  */
 @Module({
     controllers: [UserUserController],

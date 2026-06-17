@@ -17,18 +17,7 @@ import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagi
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
 /**
- * Factory function to create a request-scoped NestJS pipe for cursor-based pagination.
- *
- * @param {number} [defaultPerPage=PaginationDefaultPerPage] - Default number of items per page if not provided by the client.
- * @param {string} [defaultCursorField=PaginationDefaultCursorField] - Default field to use as the cursor for pagination.
- * @returns {Type<PipeTransform>} A NestJS pipe class that parses and validates cursor pagination query parameters.
- *
- * @constraint
- * - PerPage: minimum 1, maximum PaginationDefaultMaxPerPage
- * - Cursor: optional, maximum PaginationMaxCursorLength characters, URL-safe base64 format (A-Za-z0-9_-)
- * - Default perPage: PaginationDefaultPerPage or custom defaultPerPage parameter
- * - Default cursor: undefined
- * - Default cursorField: PaginationDefaultCursorField or custom defaultCursorField parameter
+ * Request-scoped pipe parsing and validating cursor pagination query params.
  */
 export function PaginationCursorPipe(
     defaultPerPage: number = PaginationDefaultPerPage,
@@ -38,15 +27,6 @@ export function PaginationCursorPipe(
     class MixinPaginationCursorPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
-        /**
-         * Transforms and validates the incoming pagination query parameters for cursor-based pagination.
-         *
-         * @param {Object} value - The input object containing pagination parameters.
-         * @param {string} [value.cursor] - The cursor value for pagination (optional).
-         * @param {number|string} [value.perPage] - The number of items per page (optional).
-         * @returns {Promise<IPaginationQueryCursorParams>} The validated and normalized cursor pagination parameters.
-         * @throws {UnprocessableEntityException} If any parameter is invalid.
-         */
         async transform(
             value: {
                 cursor?: string;
@@ -80,20 +60,6 @@ export function PaginationCursorPipe(
             }
         }
 
-        /**
-         * Validates and normalizes the perPage parameter.
-         * Ensures it is a positive integer and does not exceed the maximum allowed.
-         * Throws explicit error for invalid values (consistent with OffsetPipe).
-         *
-         * @param {number|string} [perPage] - The requested number of items per page.
-         * @returns {number} The validated perPage value.
-         * @throws {UnprocessableEntityException} If perPage is not a valid integer or out of range.
-         *
-         * @constraint
-         * - Must be a valid integer
-         * - Must be >= 1
-         * - Must be <= PaginationDefaultMaxPerPage
-         */
         private validatePerPage(perPage?: number | string): number {
             let finalPerPage = perPage ?? defaultPerPage;
 
@@ -142,21 +108,7 @@ export function PaginationCursorPipe(
         }
 
         /**
-         * Validates and sanitizes the cursor parameter.
-         * Trims whitespace, checks length, and ensures URL-safe base64 format (A-Za-z0-9_-).
-         *
-         * Cursor encoding uses: Buffer.from(data).toString('base64').replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
-         * Which produces URL-safe base64 without padding.
-         *
-         * @param {string} [cursor] - The cursor value to validate.
-         * @returns {string|undefined} The sanitized cursor or undefined if not provided.
-         * @throws {UnprocessableEntityException} If the cursor is too long or has an invalid format.
-         *
-         * @constraint
-         * - Optional parameter
-         * - Maximum length: PaginationMaxCursorLength
-         * - Format: URL-safe base64 (A-Za-z0-9_-) without padding
-         * - Returns undefined if cursor is empty string after trimming
+         * Trims and validates the cursor: max length and URL-safe base64 format (no padding).
          */
         private validateAndSanitizeCursor(cursor?: string): string | undefined {
             if (typeof cursor !== 'string') {
@@ -179,8 +131,6 @@ export function PaginationCursorPipe(
                 });
             }
 
-            // URL-safe base64 format: A-Za-z0-9_- (no padding = removed)
-            // Using + instead of * to require at least 1 character
             const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
             if (!urlSafeBase64Regex.test(trimmed)) {
                 throw new UnprocessableEntityException({
@@ -196,13 +146,6 @@ export function PaginationCursorPipe(
             return trimmed;
         }
 
-        /**
-         * Adds cursor pagination information to the request instance for downstream access.
-         *
-         * @param {number} perPage - The number of items per page.
-         * @param {string} [cursor] - The cursor value for pagination.
-         * @private
-         */
         private addToRequestInstance(perPage: number, cursor?: string): void {
             this.request.pagination = {
                 ...this.request.pagination,

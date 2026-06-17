@@ -8,27 +8,12 @@ import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interf
 import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
 import { AuthService } from '@modules/auth/services/auth.service';
 
-/**
- * JWT Access Token Strategy for Passport
- *
- * This strategy is responsible for validating JWT access tokens in incoming requests.
- * It extracts the JWT token from the Authorization header, verifies its signature
- * using JWKS (JSON Web Key Set), and validates the token payload.
- *
- */
+/** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
     Strategy,
     AuthJwtAccessGuardKey
 ) {
-    /**
-     * Creates an instance of AuthJwtAccessStrategy.
-     *
-     * @param {ConfigService} configService - Service for accessing configuration values
-     * @param {AuthService} authService - Service for authentication operations
-     *
-     * @note We don't validate JTI (JWT ID) claims in this strategy
-     */
     constructor(
         private readonly authService: AuthService,
         configService: ConfigService
@@ -61,17 +46,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /**
-     * Validates the JWT access token payload
-     *
-     * This method is called after the JWT token has been successfully verified.
-     * It delegates further validation to the AuthService to ensure the user
-     * and token are still valid in the application context.
-     *
-     * @param {IAuthJwtAccessTokenPayload} data - The decoded JWT token payload
-     * @returns {Promise<IAuthJwtAccessTokenPayload>} The validated token payload
-     *
-     */
+    /** Runs after signature verification; delegates session/payload checks to AuthService. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {

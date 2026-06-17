@@ -10,6 +10,9 @@ import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
+/**
+ * Seeds published term policy records (without document contents) for the current environment.
+ */
 @Command({
     name: 'termPolicy',
     description: 'Seed/Remove Term Policies',

@@ -17,9 +17,7 @@ import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Global exception filter that handles all unhandled exceptions in the application.
- * Implements NestJS ExceptionFilter interface to catch and process unhandled errors,
- * format them as standardized error responses, and send them to Sentry for monitoring.
+ * Catches all unhandled exceptions, returns the standard error envelope, and reports to Sentry.
  */
 @Catch()
 export class AppGeneralFilter implements ExceptionFilter {
@@ -42,13 +40,6 @@ export class AppGeneralFilter implements ExceptionFilter {
         this.repoVersion = this.configService.get<string>('app.version')!;
     }
 
-    /**
-     * Handles all unhandled exceptions and formats them as standardized error responses.
-     * Sets response headers and sends exceptions to Sentry for monitoring.
-     * @param {unknown} exception - The unhandled exception that was thrown
-     * @param {ArgumentsHost} host - Arguments host containing request/response context
-     * @returns {Promise<void>}
-     */
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
@@ -104,12 +95,6 @@ export class AppGeneralFilter implements ExceptionFilter {
         return;
     }
 
-    /**
-     * Sends exception to Sentry for error monitoring and logging.
-     * Includes error handling for Sentry failures to prevent cascade errors.
-     * @param {unknown} exception - The exception to send to Sentry
-     * @returns {void}
-     */
     sendToSentry(exception: unknown): void {
         try {
             this.logger.error(exception, 'An unhandled exception occurred');

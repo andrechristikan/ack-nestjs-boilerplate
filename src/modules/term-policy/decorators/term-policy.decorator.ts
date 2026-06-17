@@ -4,11 +4,8 @@ import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
 import { EnumTermPolicyType } from '@generated/prisma-client';
 
 /**
- * Method decorator that applies term policy acceptance protection to routes.
- * Validates if the user has accepted the required term policies before allowing access.
- *
- * @param {...EnumTermPolicyType[]} requiredTermPolicies - List of term policy types that must be accepted
- * @returns {MethodDecorator} Method decorator function
+ * Guards a route until the user has accepted the given term policy types.
+ * No types defaults to terms-of-service and privacy in the guard.
  */
 export function TermPolicyAcceptanceProtected(
     ...requiredTermPolicies: EnumTermPolicyType[]

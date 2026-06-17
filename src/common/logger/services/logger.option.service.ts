@@ -17,18 +17,6 @@ import stripAnsi from 'strip-ansi';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import { Options } from 'pino-http';
 
-/**
- * Service responsible for configuring logger options for the application.
- *
- * Provides Pino logger configuration with file rotation, sensitive data redaction,
- * custom serializers, and auto-logging controls. All logger options are derived from
- * application configuration and environment variables.
- *
- * @remarks
- * - Follows project conventions for sensitive data redaction and request/response serialization.
- * - Uses rotating-file-stream for file logging if enabled.
- * - All configuration values are injected via ConfigService.
- */
 @Injectable()
 export class LoggerOptionService {
     private readonly env: EnumAppEnvironment;
@@ -46,12 +34,6 @@ export class LoggerOptionService {
     private readonly sensitiveFields: Set<string>;
     private readonly sensitivePaths: string[];
 
-    /**
-     * Constructs LoggerOptionService with injected configuration and helper services.
-     *
-     * @param {ConfigService} configService - Service for accessing application configuration
-     * @param {HelperService} helperService - Helper utilities for date, hostname, etc.
-     */
     constructor(
         private readonly configService: ConfigService,
         private readonly helperService: HelperService
@@ -78,11 +60,6 @@ export class LoggerOptionService {
         ).flat();
     }
 
-    /**
-     * Assembles and returns the full Pino logger configuration for the application.
-     *
-     * @returns {Promise<Params>} Promise resolving to Pino logger configuration parameters
-     */
     async createOptions(): Promise<Params> {
         return {
             pinoHttp: {
@@ -104,12 +81,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Extracts or generates a unique request ID from the HTTP request headers or object.
-     *
-     * @param {IRequestApp} request - The HTTP request object
-     * @returns {string} Unique request identifier
-     */
     private getReqId(request: IRequestApp): string {
         const headers = request.headers;
         if (!headers) {
@@ -126,11 +97,6 @@ export class LoggerOptionService {
         return request.id as string;
     }
 
-    /**
-     * Builds the array of transport targets for Pino logger (console/file).
-     *
-     * @returns {Options['transport']} Array of transport configurations or undefined
-     */
     private buildTransports(): Options['transport'] {
         const transport: {
             targets: {
@@ -175,12 +141,6 @@ export class LoggerOptionService {
             : undefined;
     }
 
-    /**
-     * Removes ANSI escape codes and normalizes whitespace in log messages.
-     *
-     * @param {unknown} message - The message to sanitize
-     * @returns {string | unknown} Sanitized string or original value if not a string
-     */
     private sanitizeMessage(message: unknown): string | unknown {
         if (typeof message === 'string') {
             return stripAnsi(message)
@@ -193,11 +153,6 @@ export class LoggerOptionService {
         return message;
     }
 
-    /**
-     * Returns a log formatter function that adds timestamp, service info, and debug info to log entries.
-     *
-     * @returns {(obj: Record<string, unknown>) => Record<string, unknown>} Log formatter function for Pino
-     */
     private createLogFormatter(): (
         obj: Record<string, unknown>
     ) => Record<string, unknown> {
@@ -207,8 +162,8 @@ export class LoggerOptionService {
             const today = this.helperService.dateCreate();
 
             const {
-                time: _time, // ignored
-                responseTime: _responseTime, // ignored
+                time: _time,
+                responseTime: _responseTime,
                 level,
                 req,
                 res,
@@ -257,11 +212,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns the redaction configuration for Pino to hide sensitive fields in logs.
-     *
-     * @returns {{paths: string[]; censor: string; remove: boolean}} Redaction configuration object
-     */
     private createRedactionConfig(): {
         paths: string[];
         censor: string;
@@ -274,11 +224,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns custom serializer functions for request, response, and error objects for Pino.
-     *
-     * @returns {{req: (request: IRequestApp) => Record<string, unknown>; res: (response: Response) => Record<string, unknown>; err: (error: Error) => Record<string, unknown>;}} Object containing serializer functions
-     */
     private createSerializers(): {
         req: (request: IRequestApp) => Record<string, unknown>;
         res: (response: Response) => Record<string, unknown>;
@@ -291,14 +236,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Recursively sanitizes an object by redacting sensitive fields and truncating large arrays.
-     *
-     * @param {unknown} obj - The object to sanitize
-     * @param {number} [maxDepth=5] - Maximum recursion depth
-     * @param {number} [currentDepth=0] - Current recursion depth
-     * @returns {unknown} Sanitized object with sensitive fields redacted
-     */
     private sanitizeObject(
         obj: unknown,
         maxDepth: number = 5,
@@ -358,12 +295,6 @@ export class LoggerOptionService {
         return result;
     }
 
-    /**
-     * Extracts the client's IP address from the HTTP request, considering headers and socket info.
-     *
-     * @param {IRequestApp} request - The HTTP request object
-     * @returns {string} Client IP address, or 'unknown' if not found
-     */
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
             return request.ip as string;
@@ -392,22 +323,10 @@ export class LoggerOptionService {
         return 'unknown';
     }
 
-    /**
-     * Extracts the user ID from the request object if available.
-     *
-     * @param {IRequestApp} request - The HTTP request object
-     * @returns {string | null} User ID if authenticated, otherwise null
-     */
     private serializeUser(request: IRequestApp): string | null {
         return (request.user as unknown as { userId: string })?.userId ?? null;
     }
 
-    /**
-     * Adds debug information (memory usage, uptime, etc.) to log entries in non-production environments.
-     *
-     * @param {Record<string, unknown>} additionalParams - Additional debug parameters to include
-     * @returns {LoggerDebugInfo | undefined} Debug information object, or undefined in production
-     */
     private addDebugInfo(
         additionalParams: Record<string, unknown>
     ): LoggerDebugInfo | undefined {
@@ -426,11 +345,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns a serializer function for HTTP request objects for logging.
-     *
-     * @returns {(request: IRequestApp) => Record<string, unknown>} Serializer function for HTTP requests
-     */
     private createRequestSerializer(): (
         request: IRequestApp
     ) => Record<string, unknown> {
@@ -457,11 +371,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns a serializer function for HTTP response objects for logging.
-     *
-     * @returns {(response: Response) => Record<string, unknown>} Serializer function for HTTP responses
-     */
     private createResponseSerializer(): (
         response: Response
     ) => Record<string, unknown> {
@@ -477,11 +386,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns a serializer function for error objects for logging, including stack and status info.
-     *
-     * @returns {(error: Error) => Record<string, unknown>} Serializer function for errors
-     */
     private createErrorSerializer(): (error: Error) => Record<string, unknown> {
         return (error: Error) => {
             const defaultError = {
@@ -508,11 +412,6 @@ export class LoggerOptionService {
         };
     }
 
-    /**
-     * Returns the auto-logging configuration for Pino, optionally ignoring excluded routes.
-     *
-     * @returns {{ignore: (req: IRequestApp) => boolean} | boolean} Auto-logging configuration object or boolean flag
-     */
     private createAutoLoggingConfig():
         | { ignore: (req: IRequestApp) => boolean }
         | boolean {
@@ -527,12 +426,6 @@ export class LoggerOptionService {
             : false;
     }
 
-    /**
-     * Maps a numeric log level to a string severity for log output.
-     *
-     * @param {number} level - Numeric log level
-     * @returns {string} Severity string (e.g., 'INFO', 'ERROR')
-     */
     private mapLevelToSeverity(level: number): string {
         if (level >= 60) {
             return EnumLoggerSeverity.critical.toUpperCase();
@@ -549,13 +442,6 @@ export class LoggerOptionService {
         return EnumLoggerSeverity.trace.toUpperCase();
     }
 
-    /**
-     * Returns a mixin function for Pino that adds the log level to each log entry.
-     *
-     * @param {Record<string, unknown>} _ - Unused log object
-     * @param {number} level - Log level
-     * @returns {Record<string, unknown>} Object containing the log level
-     */
     private createMixin(): (
         _: Record<string, unknown>,
         level: number

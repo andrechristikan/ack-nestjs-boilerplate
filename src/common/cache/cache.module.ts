@@ -10,17 +10,10 @@ import KeyvRedis from '@keyv/redis';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 
 /**
- * Global cache module that provides Redis-based caching functionality throughout the application.
- * Configures cache manager with Redis backend and manages cache providers.
+ * Global cache module backed by Redis, exposing the cache manager app-wide with TTL from config.
  */
 @Module({})
 export class CacheMainModule {
-    /**
-     * Creates and configures the cache module with Redis backend.
-     * Sets up cache provider, imports required modules, and configures cache options.
-     *
-     * @returns {DynamicModule} Configured dynamic module with cache providers and imports
-     */
     static forRoot(): DynamicModule {
         const provider = {
             provide: CacheMainProvider,

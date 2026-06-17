@@ -9,9 +9,7 @@ import {
 import { Prisma } from '@generated/prisma-client';
 
 /**
- * Factory function to create PaginationSearchPipe that can perform search on available fields
- * @param {string[]} availableSearch - Array of searchable fields
- * @returns {Type<PipeTransform>} Configured pipe class for searching
+ * Request-scoped pipe building a case-insensitive `OR contains` search over the given fields.
  */
 export function PaginationSearchPipe(
     availableSearch: string[] = []
@@ -20,12 +18,6 @@ export function PaginationSearchPipe(
     class MixinPaginationSearchPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
-        /**
-         * Transforms input value to add search functionality
-         * @param {Object} value - Input object containing search string and pagination params
-         * @param {string} value.search - Search string
-         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params
-         */
         async transform(
             value: { search: string } & (
                 | IPaginationQueryOffsetParams
@@ -47,12 +39,6 @@ export function PaginationSearchPipe(
             };
         }
 
-        /**
-         * Builds search object for database query
-         * @param {string} search - Search string
-         * @param {string[]} availableSearch - Array of searchable fields
-         * @returns {{ OR: Array<Record<string, Prisma.StringFilter>> }} Query object for search
-         */
         private buildSearchObject(
             search: string,
             availableSearch: string[]
@@ -67,12 +53,6 @@ export function PaginationSearchPipe(
             };
         }
 
-        /**
-         * Adds search information to request instance
-         * @param {string} search - Search string
-         * @param {string[]} availableSearch - Array of searchable fields
-         * @returns {void}
-         */
         private addToRequestInstance(
             search: string,
             availableSearch: string[]

@@ -11,12 +11,7 @@ import {
 import { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Pagination metadata DTO extending base response metadata with pagination information.
- * Provides comprehensive pagination details including search, filtering, sorting, and page statistics.
- *
- * **Pagination Types:**
- * - `OFFSET`: Traditional page-based pagination with page numbers
- * - `CURSOR`: Cursor-based pagination for efficient traversal of large datasets
+ * Response metadata extended with pagination state (search, filters, order, page/cursor stats).
  */
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
@@ -149,10 +144,7 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
 }
 
 /**
- * Paginated response DTO for API responses with data arrays.
- * Extends standard response structure to include pagination metadata and array of data items.
- *
- * @template T - Type of the individual data items in the array
+ * Paginated response envelope: statusCode, message, paging metadata, and a `data` array.
  */
 export class ResponsePagingDto<T> extends PickType(ResponseDto, [
     'statusCode',

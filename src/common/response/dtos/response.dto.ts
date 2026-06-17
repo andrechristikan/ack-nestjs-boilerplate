@@ -3,8 +3,7 @@ import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 /**
- * Response metadata DTO containing API request information.
- * Provides contextual data about the API response including language, timing, and versioning.
+ * Per-response context: language, timing, versioning, and request/correlation IDs.
  */
 export class ResponseMetadataDto {
     @ApiProperty({
@@ -71,15 +70,14 @@ export class ResponseMetadataDto {
     })
     correlationId: string;
 
-    /* Allow additional properties for extensibility in metadata */
+    /**
+     * Extensible: allows additional metadata fields.
+     */
     [key: string]: unknown;
 }
 
 /**
- * Generic response DTO wrapper for API responses.
- * Provides standardized structure for all API responses with metadata and status information.
- *
- * @template T - Type of the response data
+ * Standard API response envelope: statusCode, localized message, metadata, and optional data.
  */
 export class ResponseDto<T> {
     @ApiProperty({

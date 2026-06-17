@@ -28,11 +28,7 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
-/**
- * Authentication Utility Service.
- * Handles JWT tokens, password operations, and social authentication (Google, Apple).
- * See documentation: docs/authentication.md
- */
+/** Auth utility: JWT signing/verification, password hashing, and social token verification. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
     // jwt
@@ -195,13 +191,7 @@ export class AuthUtil {
         );
     }
 
-    /**
-     * Creates a JWT access token with the given subject and payload.
-     * @param subject - The subject identifier (user ID)
-     * @param jti - The unique token identifier
-     * @param payload - The token payload data
-     * @returns The signed JWT access token
-     */
+    /** Signs an access token with the access private key and configured algorithm. */
     createAccessToken(
         subject: string,
         jti: string,
@@ -219,14 +209,7 @@ export class AuthUtil {
         } as JwtSignOptions);
     }
 
-    /**
-     * Creates a JWT refresh token with the given subject and payload.
-     * @param subject - The subject identifier (user ID)
-     * @param jti - The unique token identifier
-     * @param payload - The refresh token payload
-     * @param expiresIn - Optional custom expiration time in seconds
-     * @returns The signed JWT refresh token
-     */
+    /** Signs a refresh token with the refresh private key; expiresIn overrides the configured default. */
     createRefreshToken(
         subject: string,
         jti: string,
@@ -245,13 +228,7 @@ export class AuthUtil {
         } as JwtSignOptions);
     }
 
-    /**
-     * Validates an access token signature and claims for the given subject.
-     * @param subject - The subject identifier to validate
-     * @param jti - The unique token identifier
-     * @param token - The JWT access token
-     * @returns True if token is valid
-     */
+    /** Verifies an access token's signature and claims against the access public key. */
     validateAccessToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
@@ -269,13 +246,7 @@ export class AuthUtil {
         }
     }
 
-    /**
-     * Validates a refresh token signature and claims for the given subject.
-     * @param subject - The subject identifier to validate
-     * @param jti - The unique token identifier
-     * @param token - The JWT refresh token
-     * @returns True if token is valid
-     */
+    /** Verifies a refresh token's signature and claims against the refresh public key. */
     validateRefreshToken(subject: string, jti: string, token: string): boolean {
         try {
             this.jwtService.verify(token, {
@@ -293,24 +264,12 @@ export class AuthUtil {
         }
     }
 
-    /**
-     * Decodes JWT payload without signature verification. WARNING: Use only on verified tokens.
-     * @param token - The JWT token
-     * @returns The decoded payload
-     */
+    /** Decodes a JWT payload WITHOUT signature verification; use only on already-verified tokens. */
     payloadToken<T>(token: string): T {
         return this.jwtService.decode<T>(token);
     }
 
-    /**
-     * Creates access token payload from user and login data.
-     * @param data - User entity
-     * @param sessionId - Session identifier
-     * @param loginAt - Login timestamp
-     * @param loginFrom - Login source/platform
-     * @param loginWith - Authentication method
-     * @returns Formatted access token payload
-     */
+    /** Assembles the access token payload from the user and login context. */
     createPayloadAccessToken(
         data: User,
         sessionId: string,
@@ -332,11 +291,7 @@ export class AuthUtil {
         };
     }
 
-    /**
-     * Creates refresh token payload from access token payload.
-     * @param payload - Access token payload with sessionId, userId, loginFrom, loginAt, loginWith
-     * @returns Minimal refresh token payload
-     */
+    /** Derives the minimal refresh token payload from an access token payload. */
     createPayloadRefreshToken({
         sessionId,
         userId,
@@ -355,34 +310,19 @@ export class AuthUtil {
         };
     }
 
-    /**
-     * Validates password against bcrypt hash.
-     * @param passwordString - Plain text password
-     * @param passwordHash - Bcrypt hash to compare
-     * @returns True if password matches
-     */
+    /** Compares a plain password against its bcrypt hash. */
     validatePassword(passwordString: string, passwordHash: string): boolean {
         return this.helperService.bcryptCompare(passwordString, passwordHash);
     }
 
-    /**
-     * Checks if user exceeded maximum password attempt limit.
-     * @param user - User entity
-     * @returns True if attempts exceeded limit
-     */
+    /** True when the user exceeded the max password attempts; always false if attempt tracking is off. */
     checkPasswordAttempt(user: User): boolean {
         return this.passwordAttempt
             ? (user.passwordAttempt ?? 0) >= this.passwordMaxAttempt
             : false;
     }
 
-    /**
-     * Creates password hash with salt and expiration tracking.
-     * @param userId - User identifier
-     * @param password - Plain text password
-     * @param options - Optional settings (temporary flag)
-     * @returns Password object with hash, expiration, and encrypted password
-     */
+    /** Builds the bcrypt hash plus expiry, period, and reversibly encrypted copy; temporary uses a shorter expiry. */
     createPassword(
         userId: string,
         password: string,
@@ -421,40 +361,21 @@ export class AuthUtil {
         };
     }
 
-    /**
-     * Encrypts password using AES-256 encryption with user ID as key.
-     * Used for emergency password storage/recovery purposes.
-     * @param userId - User identifier used as encryption key
-     * @param password - Plain text password to encrypt
-     * @returns AES-256 encrypted password
-     */
+    /** Reversibly encrypts the password (AES-256, keyed by user ID) for recovery purposes. */
     encryptPassword(userId: string, password: string): string {
         return this.helperService.aes256EncryptSimple(password, userId);
     }
 
-    /**
-     * Decrypts password using AES-256 decryption with user ID as key.
-     * @param userId - User identifier used as decryption key
-     * @param encrypted - AES-256 encrypted password
-     * @returns Decrypted plain text password
-     */
+    /** Decrypts the AES-256 encrypted password keyed by user ID. */
     decryptPassword(userId: string, encrypted: string): string {
         return this.helperService.aes256DecryptSimple(encrypted, userId);
     }
 
-    /**
-     * Generates a random 10-character alphanumeric password string.
-     * @returns Random password
-     */
     createPasswordRandom(): string {
         return this.helperService.randomString(10);
     }
 
-    /**
-     * Checks if password has expired.
-     * @param passwordExpired - Optional password expiration date
-     * @returns True if password expired
-     */
+    /** True when the expiry date has passed; false when no expiry is set. */
     checkPasswordExpired(passwordExpired?: Date | null): boolean {
         if (!passwordExpired) {
             return false;
@@ -464,11 +385,7 @@ export class AuthUtil {
         return today > passwordExpired;
     }
 
-    /**
-     * Extracts Google OAuth token from request headers.
-     * @param request - HTTP request with Google OAuth headers
-     * @returns Header split by prefix or empty array
-     */
+    /** Splits the configured Google header by its prefix; returns an empty array when absent. */
     extractHeaderGoogle(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
             (
@@ -477,11 +394,7 @@ export class AuthUtil {
         );
     }
 
-    /**
-     * Verifies Google OAuth ID token.
-     * @param token - Google OAuth ID token
-     * @returns Promise resolving to verified token payload
-     */
+    /** Verifies a Google ID token via the OAuth2 client and returns its payload. */
     async verifyGoogle(token: string): Promise<TokenPayload> {
         const login: LoginTicket = await this.googleClient.verifyIdToken({
             idToken: token,
@@ -492,11 +405,7 @@ export class AuthUtil {
         return payload as TokenPayload;
     }
 
-    /**
-     * Extracts Apple Sign-In token from request headers.
-     * @param request - HTTP request with Apple Sign-In headers
-     * @returns Header split by prefix or empty array
-     */
+    /** Splits the configured Apple header by its prefix; returns an empty array when absent. */
     extractHeaderApple(request: IRequestApp<IAuthSocialPayload>): string[] {
         return (
             (
@@ -505,11 +414,7 @@ export class AuthUtil {
         );
     }
 
-    /**
-     * Verifies Apple Sign-In ID token.
-     * @param token - Apple ID token
-     * @returns Promise resolving to verified token response
-     */
+    /** Verifies an Apple ID token against both the app and sign-in client IDs. */
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
         return verifyAppleToken({
             idToken: token,
@@ -517,19 +422,12 @@ export class AuthUtil {
         });
     }
 
-    /**
-     * Generates a unique 32-character token identifier for session tracking.
-     * @returns Random token identifier
-     */
+    /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
         return this.helperService.randomString(32);
     }
 
-    /**
-     * Extracts JWT token from request headers.
-     * @param request - HTTP request with JWT headers
-     * @returns Header split by prefix or empty array
-     */
+    /** Splits the configured JWT header by its prefix; returns an empty array when absent. */
     extractHeaderJwt(request: IRequestApp): string[] {
         return (
             (
@@ -538,13 +436,7 @@ export class AuthUtil {
         );
     }
 
-    /**
-     * Creates access and refresh tokens for user session.
-     * @param user - User entity
-     * @param loginFrom - Login source/platform
-     * @param loginWith - Authentication method
-     * @returns Token response with access/refresh tokens, jti, and sessionId
-     */
+    /** Issues a fresh access/refresh token pair sharing one jti and a new session id. */
     createTokens(
         user: IUser,
         loginFrom: EnumUserLoginFrom,
@@ -593,14 +485,7 @@ export class AuthUtil {
         };
     }
 
-    /**
-     * Refreshes access token using valid refresh token.
-     * Validates refresh token, extracts session context, and generates new access token.
-     * Maintains session continuity while issuing new access token with remaining refresh token validity.
-     * @param user - User entity
-     * @param refreshTokenFromRequest - Valid refresh token from client
-     * @returns New tokens with new JTI, adjusted expiry time, and session metadata
-     */
+    /** Rotates the token pair with a new jti, reusing the session and capping the refresh expiry at the old token's remaining lifetime. */
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
@@ -671,13 +556,7 @@ export class AuthUtil {
         };
     }
 
-    /**
-     * Checks if provided password matches any password in user's history.
-     * Used to prevent reusing recent passwords during password change.
-     * @param histories - Array of password history records (bcrypt hashed)
-     * @param password - Plain text password to check against history
-     * @returns Password history record if found, null if password is not in history
-     */
+    /** Returns the matching history record if the password was used before, blocking recent reuse. */
     checkPasswordPeriod(
         histories: PasswordHistory[],
         password: string
@@ -691,11 +570,7 @@ export class AuthUtil {
         return null;
     }
 
-    /**
-     * Converts password period setting from seconds to days.
-     * Used for display/UI purposes (e.g., "Password must not repeat for X days").
-     * @returns Password period in days
-     */
+    /** Converts the configured password reuse period from seconds to whole days. */
     getPasswordPeriodInDays(): number {
         return Math.floor(this.passwordPeriodInSeconds / (60 * 60 * 24));
     }

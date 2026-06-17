@@ -4,8 +4,7 @@ import { NotificationPushProcessor } from '@modules/notification/processors/noti
 import { Module } from '@nestjs/common';
 
 /**
- * Module for managing queue processors.
- * Imports queue-related modules and provides processors for background jobs.
+ * Wires the notification queue processors as providers.
  */
 @Module({
     imports: [],

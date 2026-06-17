@@ -4,8 +4,7 @@ import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 
 /**
- * URL-based API versioning middleware for managing multiple API versions.
- * Extracts and validates API version information from request URLs.
+ * Extracts the API version from the URL prefix into `req.version`, defaulting when disabled.
  */
 @Injectable()
 export class RequestUrlVersionMiddleware implements NestMiddleware {
@@ -28,13 +27,6 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
         )!;
     }
 
-    /**
-     * Processes incoming requests to extract and validate API version information.
-     *
-     * @param req - The Express request object extended with custom properties
-     * @param _res - The Express response object
-     * @param next - The next middleware function
-     */
     async use(
         req: IRequestApp,
         _res: Response,

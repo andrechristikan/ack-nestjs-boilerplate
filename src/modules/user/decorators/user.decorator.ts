@@ -10,13 +10,7 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 
-/**
- * Method decorator that applies user protection with optional verification requirement.
- * Validates user authentication and optionally checks if the user is verified.
- *
- * @param {boolean} isVerified - Whether the user must be verified (default: true)
- * @returns {MethodDecorator} Method decorator function
- */
+/** Applies the user guard; pass `false` to skip the email-verified requirement. */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
@@ -24,13 +18,7 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
     );
 }
 
-/**
- * Parameter decorator that extracts the current user from the CLS request context.
- *
- * @param {unknown} _ - Unused parameter
- * @param {ExecutionContext} _ctx - The execution context (unused; CLS is accessed statically)
- * @returns {IUser | undefined} The current user object or undefined if not found
- */
+/** Extracts the current user that `UserGuard` stored in the request context. */
 export const UserCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): IUser | undefined => {
         return ClsServiceManager.getClsService().get<IUser>(UserStoreKey) ?? undefined;

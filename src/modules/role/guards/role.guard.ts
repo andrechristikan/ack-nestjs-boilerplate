@@ -11,7 +11,8 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 /**
- * Guard that validates user access based on role types
+ * Validates the request user's role against the route's required roles
+ * and stashes the resolved abilities in the request store.
  */
 @Injectable()
 export class RoleGuard implements CanActivate {
@@ -21,11 +22,6 @@ export class RoleGuard implements CanActivate {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Validates if the current user has the required role to access the resource
-     * @param {ExecutionContext} context - NestJS execution context containing request information
-     * @returns {Promise<boolean>} Promise that resolves to true if user has required role access
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredRoles =
             this.reflector.get<EnumRoleType[]>(

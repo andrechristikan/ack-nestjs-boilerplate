@@ -11,8 +11,7 @@ import { RequestEnvMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
- * Environment-based access control guard for route protection.
- * Enforces environment restrictions by comparing current environment against allowed environments.
+ * Allows a route only when the current app environment is in its allowed list; else 403.
  */
 @Injectable()
 export class RequestEnvGuard implements CanActivate {
@@ -25,12 +24,6 @@ export class RequestEnvGuard implements CanActivate {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
     }
 
-    /**
-     * Validates if current environment is allowed to access the route.
-     * @param {ExecutionContext} context - Execution context containing route metadata
-     * @returns {Promise<boolean>} Promise resolving to true if access is allowed
-     * @throws {ForbiddenException} When environment access is not permitted
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const required: EnumAppEnvironment[] = this.reflector.getAllAndOverride<
             EnumAppEnvironment[]

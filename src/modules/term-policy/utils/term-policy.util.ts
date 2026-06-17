@@ -69,6 +69,7 @@ export class TermPolicyUtil {
             .replace('{version}', termPolicy.version.toString());
     }
 
+    /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */
     createRandomFilenameContentWithPath(
         type: EnumTermPolicyType,
         version: number,
@@ -102,6 +103,7 @@ export class TermPolicyUtil {
             .replace('{version}', termPolicy.version.toString());
     }
 
+    /** Re-attaches each content language to its moved S3 item by matching filenames. */
     mapPublicContent(
         newItems: IAwsS3[],
         contents: TermContentDto[]

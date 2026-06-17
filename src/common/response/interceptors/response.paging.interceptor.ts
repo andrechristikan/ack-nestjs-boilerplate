@@ -24,15 +24,8 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 /**
- * Global pagination response interceptor that standardizes paginated HTTP response format
- * across the entire application.
- *
- * This interceptor transforms all paginated HTTP responses into a consistent format
- * with metadata, pagination information, status codes, messages, and standardized headers.
- * It handles pagination data validation, response data transformation, message localization,
- * and adds custom headers for client-side processing.
- *
- * @template T - The type of the paginated response data items
+ * Wraps paginated handler results into the standard envelope, merging request pagination state
+ * into the metadata and localizing the message.
  */
 @Injectable()
 export class ResponsePagingInterceptor<T> implements NestInterceptor {
@@ -44,23 +37,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     ) {}
 
     /**
-     * Intercepts HTTP requests and transforms paginated responses into standardized format.
-     *
-     * This method only processes HTTP contexts, ignoring other types like WebSocket
-     * or RPC contexts. It validates pagination data, extracts response metadata,
-     * applies localization, sets custom headers, and returns a consistent paginated
-     * response structure with pagination information.
-     *
-     * **Pagination Type Handling:**
-     * - For **CURSOR** type: Extracts `cursor` field for next page navigation
-     * - For **OFFSET** type: Extracts `page`, `totalPage`, `nextPage`, `previousPage`, and `hasPrevious` fields
-     *
-     * @param context - The execution context containing request/response information
-     * @param next - The next handler in the chain
-     * @returns Observable of the transformed paginated response promise
-     * @throws Error when response data is not properly formatted for pagination
-     * @throws Error when type is not 'offset' or 'cursor'
-     * @throws Error when data field is not an array
+     * Cursor type contributes `nextCursor`; offset type contributes page fields.
      */
     intercept(
         context: ExecutionContext,
@@ -177,18 +154,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         return next.handle();
     }
 
-    /**
-     * Creates standardized pagination response metadata from request information.
-     *
-     * Initializes pagination metadata with default values including:
-     * - Request tracking information (language, timestamp, timezone, path, version, IDs)
-     * - Pagination defaults (type: OFFSET, page: 0, perPage: 0, count: 0)
-     * - Search and filter defaults (undefined)
-     * - Navigation flags (hasNext: false, hasPrevious: false)
-     *
-     * @param request - The incoming HTTP request
-     * @returns ResponsePagingMetadataDto containing base metadata for the response with default OFFSET type
-     */
     private createPagingResponseMetadata(
         request: IRequestApp
     ): ResponsePagingMetadataDto {
@@ -230,17 +195,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     }
 
     /**
-     * Validates the pagination response data structure.
-     *
-     * **Validations:**
-     * - Response data must be an instance of IResponsePaging
-     * - Type field must be either 'offset' or 'cursor'
-     * - Data field must be an array and cannot be empty
-     *
-     * @param responseData - The response data to validate
-     * @throws Error when response data is not properly formatted for pagination
-     * @throws Error when type is not 'offset' or 'cursor'
-     * @throws Error when data field is not an array
+     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
      */
     private validatePaginationResponse(
         responseData: IResponsePagingReturn<T>
@@ -261,16 +216,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
     }
 
-    /**
-     * Sets custom headers on the HTTP response.
-     *
-     * Adds standardized headers including language, timestamp, timezone,
-     * version information, and request ID for client-side processing
-     * and request correlation.
-     *
-     * @param response - The HTTP response object
-     * @param metadata - Response metadata containing header values
-     */
     private setResponseHeaders(
         response: Response,
         metadata: ResponsePagingMetadataDto

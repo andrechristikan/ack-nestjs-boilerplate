@@ -5,6 +5,9 @@ import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
+/**
+ * Applies access/CORS/lifecycle policies to the public and private S3 buckets; removal is a no-op.
+ */
 @Command({
     name: 'aws-s3-config',
     description: 'Setting AWS S3 Configurations',

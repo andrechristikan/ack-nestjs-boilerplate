@@ -27,12 +27,7 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
 
 /**
- * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'in' operator.
- * Converts query parameters to database filter format for enum inclusion filtering.
- * @template T - The enum type to validate against
- * @param {T[]} defaultEnum - Array of valid enum values to validate against
- * @param {IPaginationQueryFilterEnumOptions} [options] - Optional configuration for custom field mapping
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for enum validation with 'in' operator
+ * Pipe validating a comma-separated value against an enum and emitting an `in` filter.
  */
 export function PaginationQueryFilterInEnumPipe<T>(
     defaultEnum: T[],
@@ -45,12 +40,6 @@ export function PaginationQueryFilterInEnumPipe<T>(
             private readonly helperService: HelperService
         ) {}
 
-        /**
-         * Transforms comma-separated string into pagination filter object with 'in' operator.
-         * @param {string} value - Comma-separated string values to validate
-         * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
-         * @returns {Promise<Record<string, IPaginationIn> | undefined>} Pagination filter object or undefined
-         */
         async transform(
             value: string,
             metadata: ArgumentMetadata
@@ -101,12 +90,6 @@ export function PaginationQueryFilterInEnumPipe<T>(
             };
         }
 
-        /**
-         * Adds filter information to request instance for downstream access.
-         * @param {string} field - The field name being filtered
-         * @param {(string | number)[]} value - The filter values
-         * @returns {void}
-         */
         private addToRequestInstance(
             field: string,
             value: (string | number)[]
@@ -127,12 +110,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms comma-separated string values against an enum array using 'not in' operator.
- * Converts query parameters to database filter format for enum exclusion filtering.
- * @template T - The enum type to validate against
- * @param {T[]} defaultEnum - Array of valid enum values to validate against
- * @param {IPaginationQueryFilterEnumOptions} [options] - Optional configuration for custom field mapping
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for enum validation with 'not in' operator
+ * Pipe validating a comma-separated value against an enum and emitting a `notIn` filter.
  */
 export function PaginationQueryFilterNinEnumPipe<T>(
     defaultEnum: T[],
@@ -145,12 +123,6 @@ export function PaginationQueryFilterNinEnumPipe<T>(
             private readonly helperService: HelperService
         ) {}
 
-        /**
-         * Transforms comma-separated string into pagination filter object with 'not in' operator.
-         * @param {string} value - Comma-separated string values to validate
-         * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
-         * @returns {Promise<Record<string, IPaginationNin> | undefined>} Pagination filter object or undefined
-         */
         async transform(
             value: string,
             metadata: ArgumentMetadata
@@ -201,12 +173,6 @@ export function PaginationQueryFilterNinEnumPipe<T>(
             };
         }
 
-        /**
-         * Adds filter information to request instance for downstream access.
-         * @param {string} field - The field name being filtered
-         * @param {(string | number)[]} value - The filter values
-         * @returns {void}
-         */
         private addToRequestInstance(
             field: string,
             value: (string | number)[]
@@ -227,11 +193,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms string values for equality filtering.
- * Converts query parameters to database filter format for equality comparison.
- * @template T - The type of value to validate and transform
- * @param {IPaginationQueryFilterEqualOptions} [options] - Configuration options for type conversion and custom field mapping
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for equality filtering
+ * Pipe coercing a value (string/number/boolean per options) and emitting an `equals` filter.
  */
 export function PaginationQueryFilterEqualPipe<T>(
     options?: IPaginationQueryFilterEqualOptions
@@ -240,12 +202,6 @@ export function PaginationQueryFilterEqualPipe<T>(
     class MixinPaginationFilterEqualPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
-        /**
-         * Transforms string value into pagination filter object with equality operator.
-         * @param {string} value - String value to validate and transform
-         * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
-         * @returns {Promise<Record<string, IPaginationEqual> | undefined>} Pagination filter object or undefined
-         */
         async transform(
             value: string,
             metadata: ArgumentMetadata
@@ -301,12 +257,6 @@ export function PaginationQueryFilterEqualPipe<T>(
             };
         }
 
-        /**
-         * Adds filter information to request instance for downstream access.
-         * @param {string} field - The field name being filtered
-         * @param {string | number | boolean} value - The filter value
-         * @returns {void}
-         */
         private addToRequestInstance(
             field: string,
             value: string | number | boolean
@@ -327,11 +277,7 @@ export function PaginationQueryFilterEqualPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms string values for not equal filtering.
- * Converts query parameters to database filter format for inequality comparison.
- * @template T - The type of value to validate and transform
- * @param {IPaginationQueryFilterEqualOptions} [options] - Configuration options for type conversion and custom field mapping
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for not equal filtering
+ * Pipe coercing a value (string/number/boolean per options) and emitting a `not` filter.
  */
 export function PaginationQueryFilterNotEqualPipe<T>(
     options?: IPaginationQueryFilterEqualOptions
@@ -340,12 +286,6 @@ export function PaginationQueryFilterNotEqualPipe<T>(
     class MixinPaginationFilterNotEqualPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
-        /**
-         * Transforms string value into pagination filter object with not equal operator.
-         * @param {string} value - String value to validate and transform
-         * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
-         * @returns {Promise<Record<string, IPaginationNotEqual> | undefined>} Pagination filter object or undefined
-         */
         async transform(
             value: string,
             metadata: ArgumentMetadata
@@ -401,12 +341,6 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             };
         }
 
-        /**
-         * Adds filter information to request instance for downstream access.
-         * @param {string} field - The field name being filtered
-         * @param {string | number | boolean} value - The filter value
-         * @returns {void}
-         */
         private addToRequestInstance(
             field: string,
             value: string | number | boolean
@@ -427,10 +361,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
 }
 
 /**
- * Creates a pipe that validates and transforms ISO date strings for date filtering.
- * Converts query parameters to database filter format for date range operations.
- * @param {IPaginationQueryFilterDateOptions} [options] - Configuration options for date operations and custom field mapping
- * @returns {Type<PipeTransform>} A NestJS pipe transform class for date filtering
+ * Pipe validating an ISO date and emitting a `gte`/`lte`/`equal` filter per the range type.
  */
 export function PaginationQueryFilterDatePipe(
     options?: IPaginationQueryFilterDateOptions
@@ -442,12 +373,6 @@ export function PaginationQueryFilterDatePipe(
             private readonly helperService: HelperService
         ) {}
 
-        /**
-         * Transforms ISO date string into pagination filter object with date operations.
-         * @param {string} value - ISO date string to validate and transform
-         * @param {ArgumentMetadata} metadata - NestJS argument metadata containing field information
-         * @returns {Promise<Record<string, IPaginationDate> | undefined>} Pagination filter object or undefined
-         */
         async transform(
             value: string,
             metadata: ArgumentMetadata
@@ -488,12 +413,6 @@ export function PaginationQueryFilterDatePipe(
             };
         }
 
-        /**
-         * Adds date filter information to request instance for downstream access.
-         * @param {string} field - The field name being filtered
-         * @param {Date} value - The parsed date value
-         * @returns {void}
-         */
         private addToRequestInstance(field: string, value: Date): void {
             this.request.pagination = {
                 ...this.request.pagination,

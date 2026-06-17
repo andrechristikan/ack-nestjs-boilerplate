@@ -2,8 +2,7 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { HelperService } from '@common/helper/services/helper.service';
 
 /**
- * Global module providing helper utility services.
- * Exports HelperService globally for use throughout the application.
+ * Global module exposing `HelperService` (array, crypto, hashing, date, string utils) app-wide.
  */
 @Module({})
 export class HelperModule {

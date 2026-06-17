@@ -9,16 +9,11 @@ import {
 import { EnumQueue } from '@queues/enums/queue.enum';
 
 /**
- * Global module for registering Bull queues with default configurations.
- * Provides dynamic module registration for background job processing.
+ * Registers BullMQ queues and their Redis connections (queue + processor) with default job options.
  */
 @Global()
 @Module({})
 export class QueueRegisterModule {
-    /**
-     * Creates and configures queues with default job options.
-     * @returns {DynamicModule} Dynamic module with queue configurations.
-     */
     static forRoot(): DynamicModule {
         const queues = [
             BullModule.registerQueue({

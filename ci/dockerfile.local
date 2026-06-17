@@ -3,7 +3,7 @@ LABEL maintainer="andrechristikan@gmail.com"
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN set -x && pnpm install --frozen-lockfile

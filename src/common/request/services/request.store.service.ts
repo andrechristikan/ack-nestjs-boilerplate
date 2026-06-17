@@ -2,10 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { IRequestStoreService } from '@common/request/interfaces/request.store.service.interface';
 
-/**
- * Generic per-request store backed by nestjs-cls (AsyncLocalStorage).
- * Single source for ambient request state; keyed by module-owned constants.
- */
 @Injectable()
 export class RequestStoreService implements IRequestStoreService {
     constructor(private readonly clsService: ClsService) {}

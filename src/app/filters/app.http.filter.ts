@@ -20,8 +20,8 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import * as Sentry from '@sentry/nestjs';
 
 /**
- * HTTP exception filter that handles HttpException instances.
- * Validates request paths, redirects invalid requests, and formats error responses with metadata.
+ * Handles `HttpException`: redirects off-prefix paths, builds the standard error envelope,
+ * and reports 5xx to Sentry.
  */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
@@ -52,13 +52,6 @@ export class AppHttpFilter implements ExceptionFilter {
         this.directPermanentTo = `${this.globalPrefix}${this.directPermanentToPath}`;
     }
 
-    /**
-     * Handles HTTP exceptions with path validation and response formatting.
-     * Redirects invalid paths and creates standardized error responses.
-     * @param {HttpException} exception - The HTTP exception to handle
-     * @param {ArgumentsHost} host - Arguments host containing request/response context
-     * @returns {Promise<void>}
-     */
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
@@ -146,23 +139,12 @@ export class AppHttpFilter implements ExceptionFilter {
         return;
     }
 
-    /**
-     * Type guard to check if exception response implements IAppException interface.
-     * Validates object has required statusCode and message properties.
-     * @param {unknown} obj - The object to check
-     * @returns {boolean} True if object has statusCode and message properties
-     */
     isErrorException(obj: unknown): obj is IAppException<unknown> {
         return obj && typeof obj === 'object'
             ? 'statusCode' in obj && 'message' in obj
             : false;
     }
 
-    /**
-     * Sends exceptions with status >= 500 to Sentry for monitoring
-     * @param {HttpException} exception - The HTTP exception to send to Sentry
-     * @returns {void}
-     */
     sendToSentry(exception: HttpException): void {
         if (exception.getStatus() < 500) {
             return;

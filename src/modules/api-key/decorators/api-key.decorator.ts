@@ -12,10 +12,8 @@ import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
 import { ClsServiceManager } from 'nestjs-cls';
 
 /**
- * Parameter decorator that extracts the authenticated API key from the CLS request context.
- * Must be used on a controller method parameter after `@ApiKeyProtected()` or `@ApiKeySystemProtected()` has been applied.
- *
- * @returns {ApiKey | T} The full API key object, or the value of a specific property if a property name is passed
+ * Extracts the authenticated API key (or one of its properties) from the request store.
+ * Requires `@ApiKeyProtected()` or `@ApiKeySystemProtected()` on the route.
  */
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     <T = ApiKey>(data: string, _ctx: ExecutionContext): T => {
@@ -25,10 +23,7 @@ export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
 );
 
 /**
- * Method decorator that applies API key authentication and restricts access to system-type API keys only.
- * Combines `ApiKeyXApiKeyGuard` and `ApiKeyXApiKeyTypeGuard` with type set to `EnumApiKeyType.system`.
- *
- * @returns {MethodDecorator} Combined decorators for system API key authentication and type validation
+ * Requires a valid X-API-Key and restricts the route to system-type API keys.
  */
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
@@ -38,10 +33,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
 }
 
 /**
- * Method decorator that applies API key authentication and restricts access to default-type API keys only.
- * Combines `ApiKeyXApiKeyGuard` and `ApiKeyXApiKeyTypeGuard` with type set to `EnumApiKeyType.default`.
- *
- * @returns {MethodDecorator} Combined decorators for default API key authentication and type validation
+ * Requires a valid X-API-Key and restricts the route to default-type API keys.
  */
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(

@@ -3,8 +3,7 @@ import { IMessageValidationImportErrorParam } from '@common/message/interfaces/m
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
- * Custom exception for file import validation errors.
- * Extends Error to provide structured validation error information for file import operations.
+ * Carries per-row class-validator errors from a file import for the import filter to format.
  */
 export class FileImportException extends Error {
     readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;

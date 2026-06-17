@@ -10,7 +10,7 @@ import { RoleAbilityStoreKey } from '@modules/role/constants/role.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
- * Guard that validates user access based on policy abilities and permissions
+ * Enforces the abilities declared by `@PolicyAbilityProtected` against the request user.
  */
 @Injectable()
 export class PolicyAbilityGuard implements CanActivate {
@@ -20,11 +20,6 @@ export class PolicyAbilityGuard implements CanActivate {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Validates if the current user has the required abilities to access the resource
-     * @param {ExecutionContext} context - NestJS execution context containing request information
-     * @returns {Promise<boolean>} Promise that resolves to true if user has required abilities
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredAbilities =
             this.reflector.get<RoleAbilityRequestDto[]>(

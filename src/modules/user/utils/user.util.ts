@@ -26,6 +26,7 @@ import { Profanity } from '@2toad/profanity';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
+/** Username/verification/forgot-password token generation, response mapping, and profanity checks. */
 @Injectable()
 export class UserUtil {
     private readonly usernamePrefix: string;
@@ -127,6 +128,7 @@ export class UserUtil {
         return `${this.usernamePrefix}-${suffix}`.toLowerCase();
     }
 
+    /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
     checkUsernamePattern(username: string): boolean {
         return !!username.search(this.usernamePattern);
     }
@@ -160,6 +162,7 @@ export class UserUtil {
         );
     }
 
+    /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
     mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {
         return {
             isEnabled: twoFactor.enabled,
@@ -250,6 +253,7 @@ export class UserUtil {
         );
     }
 
+    /** Builds an OTP verification for mobile numbers or a tokenized link verification for email. */
     verificationCreateVerification(
         userId: string,
         type: EnumVerificationType
@@ -291,10 +295,12 @@ export class UserUtil {
         return this.helperService.sha256Hash(token);
     }
 
+    /** Encrypts a verification link using the userId as the key. */
     encryptedLink(userId: string, token: string): string {
         return this.helperService.aes256EncryptSimple(token, userId);
     }
 
+    /** Decrypts a verification link encrypted with the userId as the key. */
     decryptedLink(userId: string, encoded: string): string {
         return this.helperService.aes256DecryptSimple(encoded, userId);
     }

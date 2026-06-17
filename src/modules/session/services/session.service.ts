@@ -19,13 +19,6 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
-/**
- * Session Management Service
- *
- * Provides session operations including retrieving active sessions with pagination,
- * revoking user sessions, and revoking sessions via admin action.
- * Manages both cache and database persistence for session data.
- */
 @Injectable()
 export class SessionService implements ISessionService {
     constructor(
@@ -34,13 +27,6 @@ export class SessionService implements ISessionService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Retrieves a paginated list of active sessions for a user using offset-based pagination.
-     *
-     * @param userId - The unique identifier of the user
-     * @param pagination - Offset pagination parameters (limit, offset, orderBy, where)
-     * @returns Paginated session data with pagination metadata (count, page, totalPage, hasNext, hasPrevious)
-     */
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
@@ -63,13 +49,6 @@ export class SessionService implements ISessionService {
         };
     }
 
-    /**
-     * Retrieves a paginated list of active sessions for a user using cursor-based pagination.
-     *
-     * @param userId - The unique identifier of the user
-     * @param pagination - Cursor pagination parameters (cursor, first/last, orderBy, where)
-     * @returns Paginated session data with pagination metadata and cursor for next page
-     */
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<
@@ -91,15 +70,6 @@ export class SessionService implements ISessionService {
         };
     }
 
-    /**
-     * Revokes a specific user session from both database and cache.
-     *
-     * @param userId - The unique identifier of the user
-     * @param sessionId - The unique identifier of the session to revoke
-     * @param requestLog - Request log information for audit trail
-     * @returns Empty response indicating successful revocation
-     * @throws {NotFoundException} If session does not exist or is not active
-     */
     async revoke(
         userId: string,
         sessionId: string,
@@ -124,16 +94,6 @@ export class SessionService implements ISessionService {
         return;
     }
 
-    /**
-     * Revokes a user session via admin action with audit tracking.
-     *
-     * @param userId - The unique identifier of the user
-     * @param sessionId - The unique identifier of the session to revoke
-     * @param requestLog - Request log information for audit trail
-     * @param revokedBy - The identifier of admin/user who initiated the revocation
-     * @returns Empty response; audit metadata is set on the activity-log context
-     * @throws {NotFoundException} If session does not exist or is not active
-     */
     async revokeByAdmin(
         userId: string,
         sessionId: string,

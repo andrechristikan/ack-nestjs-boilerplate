@@ -21,9 +21,8 @@ import {
 } from '@common/pagination/constants/pagination.constant';
 
 /**
- * Factory function to create PaginationOrderPipe that handles ordering functionality for pagination
- * @param {string[]} defaultAvailableOrder - Array of fields that can be used for ordering
- * @returns {Type<PipeTransform>} Configured pipe class for ordering
+ * Request-scoped pipe parsing `field:direction` order params against an allowed-field list,
+ * falling back to the default order.
  */
 export function PaginationOrderPipe(
     defaultAvailableOrder?: string[]
@@ -32,14 +31,6 @@ export function PaginationOrderPipe(
     class MixinPaginationOrderPipe implements PipeTransform {
         constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
 
-        /**
-         * Transforms input value to add ordering functionality with validation.
-         * Falls back to PaginationDefaultOrderBy if no orderBy is provided or no available order fields are configured.
-         * @param {Object} value - Input object containing order parameters and pagination params
-         * @param {string} [value.orderBy] - Order instruction in `field:direction` format (e.g. `createdAt:desc`). Supports a single entry only.
-         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params with orderBy as array
-         * @throws {UnprocessableEntityException} When the orderBy field is not in the allowed list or the direction is not asc or desc
-         */
         async transform(
             value: {
                 orderBy?: string;
@@ -82,12 +73,6 @@ export function PaginationOrderPipe(
             };
         }
 
-        /**
-         * Parses an orderBy string or array into an array of field-direction map objects.
-         * Each entry is split by ':' to separate the field name and direction.
-         * @param {string | string[]} [orderBy] - Single or multiple `field:direction` strings
-         * @returns {Record<string, string>[]} Array of `{ field: direction }` objects
-         */
         private extractOrderByToArray(
             orderBy?: string | string[]
         ): Record<string, string>[] {
@@ -115,11 +100,6 @@ export function PaginationOrderPipe(
                 : [];
         }
 
-        /**
-         * Converts raw field-direction map objects into typed IPaginationOrderBy array.
-         * @param {Record<string, string>[]} orderByExtractFromRequest - Array of raw `{ field: direction }` objects
-         * @returns {IPaginationOrderBy[]} Typed orderBy array for Prisma queries
-         */
         private parseOrderBy(
             orderByExtractFromRequest: Record<string, string>[]
         ): IPaginationOrderBy[] {
@@ -140,14 +120,6 @@ export function PaginationOrderPipe(
             return parsedOrderBy;
         }
 
-        /**
-         * Validates that all fields and directions in the order request are allowed, then returns the parsed array.
-         * @param {Record<string, string>[]} orderByExtractFromRequest - Parsed order entries to validate
-         * @param {string[]} availableOrderBy - List of permitted order fields
-         * @returns {IPaginationOrderBy[]} Parsed and validated orderBy array
-         * @throws {UnprocessableEntityException} When a field is not in the allowed list
-         * @throws {UnprocessableEntityException} When a direction is not asc or desc
-         */
         private validateOrderBy(
             orderByExtractFromRequest: Record<string, string>[],
             availableOrderBy: string[]
@@ -192,12 +164,6 @@ export function PaginationOrderPipe(
             return this.parseOrderBy(orderByExtractFromRequest);
         }
 
-        /**
-         * Adds order information to request instance
-         * @param {IPaginationOrderBy[]} orderBy - Parsed orderBy array
-         * @param {string[]} availableOrderBy - Array of allowed order fields
-         * @returns {void}
-         */
         private addToRequestInstance(
             orderBy: IPaginationOrderBy[],
             availableOrderBy: string[]

@@ -3,10 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 /**
- * Base response DTO carrying standard audit fields present on every database document.
- *
- * Extended by domain-specific response DTOs to include common metadata such as
- * `id`, timestamps, and soft-delete tracking fields.
+ * Base response DTO with the audit fields (id, timestamps, soft-delete) on every document.
  */
 export class DatabaseResponseDto {
     @ApiProperty({

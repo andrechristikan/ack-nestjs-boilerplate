@@ -5,6 +5,42 @@
     "updateUserSetting": "Notification settings updated.",
     "listUserSetting": "Successfully retrieved notification settings.",
     "notify": {
+        "welcome": {
+            "title": "Welcome",
+            "body": "Hi {username}, welcome aboard. We are glad to have you."
+        },
+        "welcomeByAdmin": {
+            "title": "Welcome",
+            "body": "Hi {username}, your account has been created by admin. Welcome aboard."
+        },
+        "welcomeSocial": {
+            "title": "Welcome",
+            "body": "Hi {username}, welcome aboard. Your account is ready to use."
+        },
+        "verificationEmail": {
+            "title": "Email Verification",
+            "body": "Hi {username}, please verify your email address to activate your account."
+        },
+        "verifiedEmail": {
+            "title": "Email Verified",
+            "body": "Hi {username}, your email address has been verified successfully."
+        },
+        "mobileNumberVerified": {
+            "title": "Mobile Number Verified",
+            "body": "Hi {username}, your mobile number {mobileNumber} has been verified successfully."
+        },
+        "changePassword": {
+            "title": "Password Changed",
+            "body": "Hi {username}, your password has been changed successfully."
+        },
+        "forgotPassword": {
+            "title": "Forgot Password",
+            "body": "Hi {username}, we received a request to reset your password."
+        },
+        "publishTermPolicy": {
+            "title": "Term Policy Update",
+            "body": "A new {type} term policy version {version} has been published. Please review it."
+        },
         "newDeviceLogin": {
             "title": "New Device Login",
             "body": "Hi {username}, there is a new device login from {device} in {city} at {loginAt}."

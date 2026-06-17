@@ -12,8 +12,7 @@ import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Exception filter specifically for handling request validation errors.
- * Formats RequestValidationException into standardized error responses with detailed validation messages.
+ * Formats `RequestValidationException` into the standard error envelope with localized field errors.
  */
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
@@ -34,13 +33,6 @@ export class AppValidationFilter implements ExceptionFilter {
         this.repoVersion = this.configService.get<string>('app.version')!;
     }
 
-    /**
-     * Handles RequestValidationException and formats validation errors into standardized responses.
-     * Processes field-specific validation messages with metadata and localization support.
-     * @param {RequestValidationException} exception - The request validation exception to handle
-     * @param {ArgumentsHost} host - Arguments host containing request/response context
-     * @returns {Promise<void>}
-     */
     async catch(
         exception: RequestValidationException,
         host: ArgumentsHost

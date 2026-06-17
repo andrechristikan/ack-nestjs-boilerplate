@@ -3,8 +3,7 @@ import { ValidationError } from 'class-validator';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
- * Custom exception class for request validation errors.
- * Thrown when request data fails validation rules.
+ * Carries class-validator errors to the global filter as a 422.
  */
 export class RequestValidationException extends Error {
     readonly httpStatus: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;

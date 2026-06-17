@@ -53,7 +53,7 @@ export function DeviceSharedRefreshDoc(): MethodDecorator {
 export function DeviceSharedRemoveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'get detail an user',
+            summary: 'remove a user device',
         }),
         DocRequest({
             params: DeviceOwnershipDocParamsId,

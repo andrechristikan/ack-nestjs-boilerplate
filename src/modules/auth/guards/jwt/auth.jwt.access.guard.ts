@@ -8,10 +8,7 @@ import {
 import { AuthService } from '@modules/auth/services/auth.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * JWT Access Token Guard for protecting routes with access token authentication.
- * Extends NestJS AuthGuard and validates JWT access tokens.
- */
+/** Guard for JWT access token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     constructor(
@@ -21,17 +18,7 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         super();
     }
 
-    /**
-     * Handles the request validation after JWT strategy processing.
-     * Validates that the user exists, has a valid subject (sub) claim,
-     * and that the subject is a string format.
-     *
-     * @param {Error} err - Any error that occurred during authentication
-     * @param {IAuthJwtAccessTokenPayload} user - The authenticated user payload from JWT token
-     * @param {Error} info - Additional information about the authentication process
-     * @returns {T} The validated user payload
-     * @throws {UnauthorizedException} When authentication fails or user data is invalid
-     */
+    /** Validates the Passport result, then persists the payload to the request store. */
     handleRequest<T = IAuthJwtAccessTokenPayload>(
         err: Error,
         user: IAuthJwtAccessTokenPayload,

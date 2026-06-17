@@ -17,8 +17,7 @@ import { RequestCompressionMiddleware } from '@common/request/middlewares/reques
 import { SentryModule } from '@sentry/nestjs/setup';
 
 /**
- * Central middleware configuration module for HTTP request/response processing.
- * Configures security, performance optimization, and monitoring.
+ * Registers the throttler guard and applies the security/perf/monitoring middleware chain to all routes.
  */
 @Module({
     controllers: [],
@@ -46,11 +45,6 @@ import { SentryModule } from '@sentry/nestjs/setup';
     ],
 })
 export class RequestMiddlewareModule implements NestModule {
-    /**
-     * Configures the middleware processing pipeline for all HTTP requests.
-     *
-     * @param consumer - NestJS middleware consumer for applying middleware to routes
-     */
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(

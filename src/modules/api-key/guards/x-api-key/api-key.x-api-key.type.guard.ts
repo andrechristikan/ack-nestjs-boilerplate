@@ -6,9 +6,8 @@ import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 
 /**
- * Guard that validates API key type authorization.
- * Checks if the authenticated API key's type matches the required types defined via `SetMetadata`.
- * Must run after `ApiKeyXApiKeyGuard` has attached the API key to the request.
+ * Authorizes the request by matching the resolved API key type against the types required via `ApiKeyXTypeMetaKey`.
+ * Must run after `ApiKeyXApiKeyGuard`.
  */
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
@@ -18,15 +17,6 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Validates that the API key type matches the required permissions.
-     * Extracts required API key types from metadata and validates against the authenticated API key.
-     *
-     * @param {ExecutionContext} context - The execution context containing request information and metadata
-     * @returns {boolean} True if the API key type is authorized
-     * @throws {InternalServerErrorException} If no API key types are defined in route metadata
-     * @throws {ForbiddenException} If the API key type does not match the required types
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const apiKeyTypes: EnumApiKeyType[] = this.reflector.getAllAndOverride<
             EnumApiKeyType[]

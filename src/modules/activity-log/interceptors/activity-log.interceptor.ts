@@ -22,6 +22,9 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 
+/**
+ * Persists an activity log on both success and failure paths, non-blocking. Metadata comes from `RequestStoreService` under `ActivityLogMetadataStoreKey`; never logs secrets.
+ */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
     private readonly logger: Logger = new Logger(ActivityLogInterceptor.name);

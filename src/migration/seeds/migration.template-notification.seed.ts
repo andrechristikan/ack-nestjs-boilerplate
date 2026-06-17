@@ -5,6 +5,9 @@ import { NotificationTemplateService } from '@modules/notification/services/noti
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
+/**
+ * Imports email notification templates into AWS SES, skipping any already present. Throws if SES is uninitialized.
+ */
 @Command({
     name: 'template-email-notification',
     description: 'Seed/Remove Emails',

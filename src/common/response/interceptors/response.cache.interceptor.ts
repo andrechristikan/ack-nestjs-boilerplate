@@ -6,8 +6,7 @@ import { Reflector } from '@nestjs/core';
 import { Cache } from 'cache-manager';
 
 /**
- * Response cache interceptor that extends the base CacheInterceptor functionality.
- * Adds configurable cache key prefixes to distinguish response caching from other cache operations.
+ * Cache interceptor that namespaces response cache keys with a configured prefix.
  */
 @Injectable()
 export class ResponseCacheInterceptor extends CacheBaseInterceptor {
@@ -25,13 +24,6 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
         )!;
     }
 
-    /**
-     * Generates cache key with configured prefix for response caching.
-     * Overrides the base trackBy method to add response-specific cache prefixes.
-     *
-     * @param {ExecutionContext} context - The execution context containing request information
-     * @returns {string | undefined} Prefixed cache key or undefined if no key generated
-     */
     protected trackBy(context: ExecutionContext): string | undefined {
         const key = super.trackBy(context);
 

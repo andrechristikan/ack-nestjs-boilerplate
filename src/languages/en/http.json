@@ -28,6 +28,7 @@
     },
     "serverError": {
         "internalServerError": "Internal Server Error",
+        "requestTimeout": "Request Timeout",
         "notImplemented": "Not Implemented",
         "badGateway": "Bad Gateway",
         "serviceUnavailable": "Service Unavailable",

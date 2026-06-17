@@ -6,6 +6,7 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { CountryModule } from '@modules/country/country.module';
 
+/** Exports user service, repository, and util; controllers are wired through the router. */
 @Module({
     imports: [PasswordHistoryModule, AwsModule, CountryModule],
     exports: [UserService, UserRepository, UserUtil],

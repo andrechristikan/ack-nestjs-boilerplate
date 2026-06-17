@@ -9,25 +9,7 @@ import { AppValidationImportFilter } from '@app/filters/app.validation-import.fi
 import { QueueModule } from '@queues/queue.module';
 
 /**
- * Root application module that serves as the entry point for the NestJS application.
- *
- * This module acts as the main orchestrator for the entire application, configuring
- * global exception filters and importing essential modules required for the application
- * to function properly.
- *
- * The module sets up four global exception filters that handle different types of errors:
- * - AppGeneralFilter: Handles general application exceptions
- * - AppHttpFilter: Manages HTTP-specific errors and responses
- * - AppValidationFilter: Processes validation errors from DTOs and input validation
- * - AppValidationImportFilter: Handles validation errors during data import operations
- *
- * Core modules imported:
- * - CommonModule: Provides shared services, utilities, and common functionality
- * - RouterModule: Configures application routing and API endpoints
- * - RouterQueueModule: Manages background job processing and queue operations
- *
- * This module follows NestJS best practices for application architecture and
- * provides a clean separation of concerns through modular design.
+ * Root module: registers the global exception filters and imports Common, Queue, and Router.
  */
 @Module({
     controllers: [],

@@ -6,16 +6,10 @@ import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Global dynamic module providing internationalization services.
- * Configures I18n module with JSON loader, header resolver, and exports MessageService globally.
+ * Global i18n module: JSON loader plus `x-custom-lang` header resolver, exposing `MessageService`.
  */
 @Module({})
 export class MessageModule {
-    /**
-     * Creates and configures the message module with I18n JSON loader and header-based language resolver.
-     *
-     * @returns {DynamicModule} Configured dynamic module with I18n and MessageService
-     */
     static forRoot(): DynamicModule {
         return {
             module: MessageModule,

@@ -8,8 +8,7 @@ import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
- * Guard that validates user acceptance of required term policies.
- * Checks if the user has accepted all required term policies before allowing access to protected routes.
+ * Blocks the route unless the current user has accepted the required term policies.
  */
 @Injectable()
 export class TermPolicyGuard implements CanActivate {
@@ -19,13 +18,6 @@ export class TermPolicyGuard implements CanActivate {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Validates if the user has accepted all required term policies.
-     * Extracts required term policies from metadata and validates user acceptance.
-     *
-     * @param {ExecutionContext} context - The execution context containing request information
-     * @returns {Promise<boolean>} Promise that resolves to true if all required term policies are accepted
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredTermPolicies = this.reflector.get<EnumTermPolicyType[]>(
             TermPolicyRequiredGuardMetaKey,

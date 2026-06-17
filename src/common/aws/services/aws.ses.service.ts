@@ -33,16 +33,6 @@ import {
     IAwsSESTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
 
-/**
- * Service for AWS SES (Simple Email Service) operations.
- *
- * Handles email template management (create, update, delete, list, get)
- * and email delivery (single and bulk) using AWS SES templated email.
- *
- * The service is initialized lazily on module init. If IAM credentials or
- * region are not configured, the SES client will not be created and all
- * methods will return default empty responses instead of throwing errors.
- */
 @Injectable()
 export class AwsSESService implements IAwsSESService, OnModuleInit {
     private readonly logger = new Logger(AwsSESService.name);
@@ -61,11 +51,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         this.region = this.configService.get<string | null>('aws.ses.region')!;
     }
 
-    /**
-     * Initializes the SES client using configured IAM credentials and region.
-     * If any required credential is missing, the client will not be created
-     * and the service will operate in a no-op mode.
-     */
     onModuleInit(): void {
         if (!this.iamKey || !this.iamSecret || !this.region) {
             this.logger.warn(
@@ -84,19 +69,10 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         });
     }
 
-    /**
-     * Returns whether the SES client has been successfully initialized.
-     * @returns {boolean} `true` if the SES client is ready to use, `false` otherwise
-     */
     isInitialized(): boolean {
         return !!this.sesClient;
     }
 
-    /**
-     * Verifies connectivity to AWS SES by sending a `GetSendQuota` request.
-     * Returns `false` immediately if the service is not initialized or if the request throws.
-     * @returns {Promise<boolean>} `true` if connected successfully, `false` otherwise
-     */
     async checkConnection(): Promise<boolean> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -118,13 +94,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         }
     }
 
-    /**
-     * Retrieves a paginated list of email templates from AWS SES.
-     * Each page returns at most 20 templates. Pass `nextToken` from the previous response to fetch the next page.
-     * Returns an empty `TemplatesMetadata` array if the service is not initialized.
-     * @param {string} [nextToken] - Optional pagination token from the previous `listTemplates` response
-     * @returns {Promise<ListTemplatesCommandOutput>} List of template metadata with an optional `NextToken` for the next page
-     */
     async listTemplates(
         nextToken?: string
     ): Promise<ListTemplatesCommandOutput> {
@@ -152,12 +121,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return listTemplate;
     }
 
-    /**
-     * Retrieves a specific email template from AWS SES by name.
-     * Returns an empty output if the service is not initialized.
-     * @param {IAwsSESGetTemplate} dto - DTO containing the template name to look up
-     * @returns {Promise<GetTemplateCommandOutput>} Template detail including subject, HTML body, and plain text body
-     */
     async getTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<GetTemplateCommandOutput> {
@@ -184,14 +147,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return getTemplate;
     }
 
-    /**
-     * Creates a new email template in AWS SES.
-     * Returns an empty output if the service is not initialized.
-     * Throws an error if neither `htmlBody` nor `plainTextBody` is provided.
-     * @param {IAwsSESTemplate} dto - DTO containing the template name, subject, HTML body, and/or plain text body
-     * @returns {Promise<CreateTemplateCommandOutput>} Result of the create operation
-     * @throws {Error} If both `htmlBody` and `plainTextBody` are missing
-     */
     async createTemplate({
         name,
         subject,
@@ -227,14 +182,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return create;
     }
 
-    /**
-     * Updates an existing email template in AWS SES.
-     * Returns an empty output if the service is not initialized.
-     * Throws an error if neither `htmlBody` nor `plainTextBody` is provided.
-     * @param {IAwsSESTemplate} dto - DTO containing the template name, subject, HTML body, and/or plain text body
-     * @returns {Promise<UpdateTemplateCommandOutput>} Result of the update operation
-     * @throws {Error} If both `htmlBody` and `plainTextBody` are missing
-     */
     async updateTemplate({
         name,
         subject,
@@ -270,12 +217,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return update;
     }
 
-    /**
-     * Deletes an email template from AWS SES.
-     * Returns an empty output if the service is not initialized.
-     * @param {IAwsSESGetTemplate} dto - DTO containing the name of the template to delete
-     * @returns {Promise<DeleteTemplateCommandOutput>} Result of the delete operation
-     */
     async deleteTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<DeleteTemplateCommandOutput> {
@@ -299,13 +240,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return del;
     }
 
-    /**
-     * Sends a templated email to one or more recipients using AWS SES.
-     * If `replyTo` is not provided, it falls back to `sender`.
-     * Returns an empty output with `MessageId: undefined` if the service is not initialized.
-     * @param {IAwsSESSend} dto - DTO containing recipients, sender, reply-to, CC, BCC, template name, and template data
-     * @returns {Promise<SendTemplatedEmailCommandOutput>} Send result including the SES `MessageId`
-     */
     async send({
         recipients,
         sender,
@@ -348,15 +282,6 @@ export class AwsSESService implements IAwsSESService, OnModuleInit {
         return sendWithTemplate;
     }
 
-    /**
-     * Sends a templated email to multiple recipients in bulk using AWS SES.
-     * Each recipient is sent individually and can override template variables via their own `templateData`.
-     * `defaultTemplateData` is used as the fallback template data when a recipient's `templateData` is absent; defaults to `{}` if not provided.
-     * If `replyTo` is not provided, it falls back to `sender`.
-     * Returns an empty `Status` array if the service is not initialized.
-     * @param {IAwsSESSendBulk} dto - DTO containing per-recipient entries, sender, reply-to, CC, BCC, template name, and default template data
-     * @returns {Promise<SendBulkTemplatedEmailCommandOutput>} Bulk send result with per-destination status and message IDs
-     */
     async sendBulk({
         recipients,
         sender,

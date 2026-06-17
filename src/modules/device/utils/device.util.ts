@@ -12,6 +12,7 @@ export class DeviceUtil {
         return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
     }
 
+    /** Projects an ownership into the activity-log metadata shape the interceptor expects. */
     mapActivityLogMetadata(
         deviceOwnership: IDeviceOwnership
     ): IActivityLogMetadata {

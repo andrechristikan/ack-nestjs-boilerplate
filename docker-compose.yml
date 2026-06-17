@@ -139,7 +139,6 @@ services:
             timeout: 30s
             retries: 5
 
-    # Bull dashboard for queue monitoring
     redis-bullboard:
         image: venatum/bull-board:latest
         hostname: redis-bullboard

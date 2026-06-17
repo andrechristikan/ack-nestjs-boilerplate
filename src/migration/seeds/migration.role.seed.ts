@@ -9,6 +9,9 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
+/**
+ * Seeds the superadmin, admin, and user roles with their CASL abilities.
+ */
 @Command({
     name: 'role',
     description: 'Seed/Remove Roles',

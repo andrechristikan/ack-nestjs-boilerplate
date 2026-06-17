@@ -97,6 +97,32 @@ export default [
         },
     },
     {
+        name: 'ts/scripts',
+        files: ['scripts/**/*.ts'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            parser: tsParser,
+            parserOptions: {
+                project: 'tsconfig.json',
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        linterOptions: {
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: true,
+        },
+        plugins: {
+            '@typescript-eslint': tsEsLintPlugin,
+        },
+        rules: {
+            ...rules,
+            ...codeQualityRules,
+            ...importOrderRules,
+            'no-console': 'off',
+        },
+    },
+    {
         name: 'ts/test',
         files: ['test/**/*.ts'],
         languageOptions: {

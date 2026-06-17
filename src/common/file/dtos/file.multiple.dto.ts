@@ -2,8 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IFile } from '@common/file/interfaces/file.interface';
 
 /**
- * DTO class for handling multiple file uploads.
- * This class defines the structure for API endpoints that accept multiple files.
+ * Multipart body shape for endpoints accepting multiple file uploads.
  */
 export class FileUploadMultipleRequestDto {
     @ApiProperty({

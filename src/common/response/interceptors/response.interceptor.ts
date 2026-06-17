@@ -24,15 +24,8 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Global response interceptor that standardizes HTTP response format
- * across the entire application.
- *
- * This interceptor transforms all HTTP responses into a consistent format
- * with metadata, status codes, messages, and standardized headers.
- * It handles response data transformation, message localization,
- * and adds custom headers for client-side processing.
- *
- * @template T - The type of the response data
+ * Wraps handler results into the standard `{ statusCode, message, metadata, data }` envelope,
+ * localizing the message and setting custom headers.
  */
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor {
@@ -43,17 +36,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         private readonly helperService: HelperService
     ) {}
 
-    /**
-     * Intercepts HTTP requests and transforms responses into standardized format.
-     *
-     * This method only processes HTTP contexts, ignoring other types like WebSocket
-     * or RPC contexts. It extracts response metadata, applies localization,
-     * sets custom headers, and returns a consistent response structure.
-     *
-     * @param context - The execution context containing request/response information
-     * @param next - The next handler in the chain
-     * @returns Observable of the transformed response promise
-     */
     intercept(
         context: ExecutionContext,
         next: CallHandler
@@ -114,12 +96,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         return next.handle();
     }
 
-    /**
-     * Creates standardized response metadata from request information.
-     *
-     * @param request - The incoming HTTP request
-     * @returns ResponseMetadataDto containing metadata for the response
-     */
     private createResponseMetadata(request: IRequestApp): ResponseMetadataDto {
         const today = this.helperService.dateCreate();
         const xLanguage: EnumMessageLanguage =
@@ -141,16 +117,6 @@ export class ResponseInterceptor<T> implements NestInterceptor {
         };
     }
 
-    /**
-     * Sets custom headers on the HTTP response.
-     *
-     * Adds standardized headers including language, timestamp, timezone,
-     * version information, and request ID for client-side processing
-     * and request correlation.
-     *
-     * @param response - The HTTP response object
-     * @param metadata - Response metadata containing header values
-     */
     private setResponseHeaders(
         response: Response,
         metadata: ResponseMetadataDto

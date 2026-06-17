@@ -12,15 +12,10 @@ import {
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
 /**
- * Factory class for creating and handling policy abilities using CASL library
+ * Builds and evaluates CASL ability rules for policy checks.
  */
 @Injectable()
 export class PolicyAbilityFactory {
-    /**
-     * Creates policy ability rules for a specific user based on their permissions
-     * @param {IPolicyAbility[]} abilities - Array of policy abilities assigned to the user
-     * @returns {IPolicyAbilityRule} CASL ability rule object for the user
-     */
     createForUser(abilities: RoleAbilityRequestDto[]): IPolicyAbilityRule {
         const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
             createMongoAbility
@@ -39,10 +34,7 @@ export class PolicyAbilityFactory {
     }
 
     /**
-     * Validates if user abilities match the required abilities for access control
-     * @param {IPolicyAbilityRule} userAbilities - User's current ability rules
-     * @param {RoleAbilityRequestDto[]} abilities - Required abilities to check against
-     * @returns {boolean} True if user has all required abilities, false otherwise
+     * Returns true only when the user holds every required action on each subject.
      */
     handlerAbilities(
         userAbilities: IPolicyAbilityRule,

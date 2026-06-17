@@ -3,6 +3,9 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { Global, Module } from '@nestjs/common';
 
+/**
+ * Global so the interceptor and util are injectable wherever `@ActivityLog` is used.
+ */
 @Global()
 @Module({
     controllers: [],

@@ -12,6 +12,9 @@ import { TermPolicyTemplateService } from '@modules/term-policy/services/term-po
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
+/**
+ * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Throws if S3 is uninitialized.
+ */
 @Command({
     name: 'template-termPolicy',
     description: 'Seed/Remove Term Policies',

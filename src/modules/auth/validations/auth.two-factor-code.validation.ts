@@ -7,18 +7,12 @@ import {
 } from 'class-validator';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 
-/**
- * Custom validator for 2FA TOTP code format and value.
- * Uses AuthTwoFactorUtil for format validation.
- */
+/** Validates the 2FA TOTP code format via AuthTwoFactorUtil. */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsTwoFactorCodeConstraint implements ValidatorConstraintInterface {
     constructor(private readonly authTwoFactorUtil: AuthTwoFactorUtil) {}
 
-    /**
-     * Validate the TOTP code format using AuthTwoFactorUtil
-     */
     validate(value: string): boolean {
         if (this.isEmptyValue(value)) {
             return false;
@@ -27,24 +21,16 @@ export class IsTwoFactorCodeConstraint implements ValidatorConstraintInterface {
         return this.authTwoFactorUtil.validateCode(value);
     }
 
-    /**
-     * Default error message for invalid code
-     */
     defaultMessage(): string {
         return 'auth.error.twoFactorCodeRequired';
     }
 
-    /**
-     * Check if value is empty
-     */
     private isEmptyValue(value: unknown): boolean {
         return value === null || value === undefined || value === '';
     }
 }
 
-/**
- * Decorator for validating 2FA TOTP code on DTO property
- */
+/** Property decorator asserting a valid 2FA TOTP code. */
 export function IsTwoFactorCode(validationOptions?: ValidationOptions) {
     return function (object: unknown, propertyName: string): void {
         registerDecorator({

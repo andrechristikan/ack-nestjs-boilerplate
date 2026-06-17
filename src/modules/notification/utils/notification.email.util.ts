@@ -18,9 +18,7 @@ import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
- * Utility for queueing email notification jobs.
- * Enqueues various email notification types (welcome, password reset, verification) to the email queue
- * with appropriate priority levels and deduplication settings.
+ * Enqueues email notification jobs onto the email queue, deduplicated per user.
  */
 @Injectable()
 export class NotificationEmailUtil {
@@ -29,13 +27,7 @@ export class NotificationEmailUtil {
         private readonly emailQueue: Queue
     ) {}
 
-    /**
-     * Enqueues a welcome email with temporary password sent by admin.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param passwordData - Password data (plaintext password, created/expiry dates)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the admin-created welcome email carrying the temporary password. */
     async sendWelcomeByAdmin(
         {
             email,
@@ -78,13 +70,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a temporary password email sent by admin.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param passwordData - Temporary password data (password, created/expiry dates)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the admin-issued temporary password email. */
     async sendTemporaryPasswordByAdmin(
         {
             email,
@@ -126,12 +112,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a password reset confirmation email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the password reset confirmation email. */
     async sendResetPassword({
         email,
         username,
@@ -160,12 +141,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a password change confirmation email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the password change confirmation email. */
     async sendChangePassword({
         email,
         username,
@@ -194,13 +170,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues an email verification link email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param verificationData - Verification link data (link, expiry dates, reference)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the email verification link; the deduplication TTL matches the link lifetime so a resend is suppressed until expiry. */
     async sendVerificationEmail(
         {
             email,
@@ -244,12 +214,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a welcome email (post-signup notification).
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the post-signup welcome email. */
     async sendWelcome({
         email,
         username,
@@ -275,12 +240,7 @@ export class NotificationEmailUtil {
         });
     }
 
-    /**
-     * Enqueues a welcome email for social login users.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the welcome email for new social-login users. */
     async sendWelcomeSocial({
         email,
         username,
@@ -310,13 +270,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues an email verification confirmation email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param verifiedData - Reference of the verified email
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the email-verified confirmation email. */
     async sendVerifiedEmail(
         {
             email,
@@ -353,13 +307,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a forgot password reset link email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param forgotPasswordData - Reset link data (link, expiry dates, reference, resend time)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the forgot-password reset link; the deduplication TTL matches the resend window. */
     async sendForgotPassword(
         {
             email,
@@ -405,13 +353,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a mobile number verification confirmation email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param mobileData - Verified mobile number and reference
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the mobile-number-verified confirmation email. */
     async sendVerifiedMobileNumber(
         {
             email,
@@ -454,12 +396,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a 2FA reset notification email sent by admin.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the admin-triggered two-factor reset email. */
     async sendResetTwoFactorByAdmin({
         email,
         username,
@@ -488,13 +425,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues a new device login alert email.
-     *
-     * @param sendPayload - Recipient info (userId, email, username, notificationId)
-     * @param loginData - Login details (device, IP, location, time)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the new-device login alert email. */
     async sendNewDeviceLogin(
         {
             email,
@@ -538,13 +469,7 @@ export class NotificationEmailUtil {
         );
     }
 
-    /**
-     * Enqueues term policy publication notification emails to multiple recipients.
-     *
-     * @param sendPayload - Array of recipient info (userId, email, username, notificationId)
-     * @param publishTermPolicy - Term policy publication data
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues a bulk term-policy publication email for the given recipients. */
     async sendPublishTermPolicy(
         sendPayload: INotificationEmailSendPayload[],
         publishTermPolicy: INotificationPublishTermPolicyPayload

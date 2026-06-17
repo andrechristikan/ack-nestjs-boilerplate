@@ -54,16 +54,10 @@ export interface IDocResponseOptions<T = unknown> {
     dto?: ClassConstructor<T>;
 }
 
-/**
- * Options for documenting a paginated list endpoint.
- *
- * `dto` is required here and overrides the optional `dto?` inherited from `IDocResponseOptions`,
- * because paginated responses always need a concrete item schema to render the `data` array in Swagger.
- */
 export interface IDocResponsePagingOptions<
     T = unknown,
 > extends IDocResponseOptions<T> {
-    /** DTO class used to describe each item in the paginated `data` array. Required. */
+    // @note required, overrides optional `dto?` from base: paginated data array needs a concrete item schema
     dto: ClassConstructor<T>;
     availableSearch?: string[];
     availableOrder?: string[];

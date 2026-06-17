@@ -165,7 +165,18 @@ Pattern: `<module>.<noun-or-action>[.<sub>].<role>.ts`
 - **No unit tests.** Do not write or scaffold tests unless the user explicitly asks.
 - **Minimal comments (strict).** The user dislikes comment noise. Default to ZERO comments. Add one ONLY when it is genuinely critical and the code cannot convey it: a tricky invariant, a security reason, a deliberate deviation. Never explain a cast, a type subset, an obvious call, or what the next line does. When in doubt, leave it out. Reviewer rejects on excess.
 - **Notes** — mark with `// @note <text>`. If the symbol already has a JSDoc block, put the note inside it instead — do not add a separate `// @note`.
-- **JSDoc** — terse and to the point. State what matters, skip filler. Do not restate the signature or types the code already shows.
+- **No trailing comments.** Never place a `//` comment to the right of or at the end of a line of code. Put the comment on its own line ABOVE the code; when it documents a declaration, make it a JSDoc block instead.
+- **JSDoc** — terse and to the point. State what matters, skip filler. Do not restate the signature or types the code already shows. Specific rules:
+  - Always place JSDoc directly ABOVE the symbol (class, method, function, const, property). Never below.
+  - When the symbol is decorated, JSDoc goes ABOVE the first decorator, never between a decorator and the declaration.
+  - One or two lines max. Describe WHAT, plus any non-obvious WHY (a security reason, a tricky invariant, a deliberate deviation, a notable throw condition).
+  - NO `@example`, `@param`, `@returns`, `@template`, `@throws`, `@private`, `@export`, `@class`, `@implements`, `@constraint`, `@remarks`. They restate the signature. Fold anything worth keeping into the prose sentence.
+  - Module classes with `forRoot()`/`forRootAsync()`: document the module ONCE at the class level; do NOT document the `forRoot` method separately.
+  - Interfaces get NO JSDoc, including per-field comments (the doc lives on the implementing service). Applies to data-shape, payload, options, AND service-contract interfaces. If a field carries a genuinely critical invariant or deliberate type override, convert it to a single terse `// @note` line instead.
+  - Not everything needs JSDoc. Symbols self-evident from name + signature (thin wrappers, trivial getters, lifecycle hooks with no surprising behavior, private helpers that just delegate) get NONE. Keep JSDoc only where it adds real value.
+  - Constants: at most a 1-line JSDoc, only when the value's rationale is non-obvious (e.g. a limit tied to an external cap). Self-evident constants (DI tokens, obvious names) get none. Enums: only when a value's meaning is non-obvious.
+  - DTOs: a 1-line class JSDoc if it helps; fields already covered by `@ApiProperty` need none.
+  - NO JSDoc at all in the `controllers/`, `docs/` (Swagger `*.doc.ts`), `repositories/`, and `services/` layers — their role is fixed by the pattern (route delegation, Swagger doc, data access, business logic) and is self-evident. Do not add it; remove any that exists. (`// @note` and `// TODO` line comments may stay.)
 - **No em-dash in `docs/*.md` prose.** Never use `—` in documentation prose. Use proper punctuation instead (period, comma, semicolon, colon, or parentheses). Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not overuse them. Exception: an existing structured list whose every entry already uses `—` as a separator — match it for consistency rather than breaking the pattern on one line.
 
 ---

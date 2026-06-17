@@ -24,9 +24,7 @@ import {
 } from '@common/aws/constants/aws.constant';
 
 /**
- * Background job processor for email notifications.
- * Processes various email notification types including welcome, password reset, verification emails.
- * Respects AWS SES rate limits to avoid throttling (max 14 emails per second).
+ * Consumes the email queue; rate-limited to stay under the AWS SES send quota.
  */
 @QueueProcessor(EnumQueue.notificationEmail, {
     limiter: {
@@ -43,13 +41,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         super();
     }
 
-    /**
-     * Processes email notification jobs from the queue.
-     * Routes job to appropriate handler method based on job name (enum).
-     *
-     * @param job - The BullMQ job containing notification type and payload
-     * @returns Queue response with success/failure status and optional message
-     */
+    /** Dispatches each job to its handler by job name. */
     async process(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {

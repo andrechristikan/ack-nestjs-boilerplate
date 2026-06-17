@@ -12,8 +12,7 @@ import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Exception filter specifically for handling file import validation errors.
- * Formats FileImportException into standardized error responses with validation error details.
+ * Formats `FileImportException` into the standard error envelope with localized per-row errors.
  */
 @Catch(FileImportException)
 export class AppValidationImportFilter implements ExceptionFilter {
@@ -34,13 +33,6 @@ export class AppValidationImportFilter implements ExceptionFilter {
         this.repoVersion = this.configService.get<string>('app.version')!;
     }
 
-    /**
-     * Handles FileImportException and formats file import validation errors into standardized responses.
-     * Processes import-specific validation messages with metadata and localization support.
-     * @param {FileImportException} exception - The file import exception to handle
-     * @param {ArgumentsHost} host - Arguments host containing request/response context
-     * @returns {Promise<void>}
-     */
     async catch(
         exception: FileImportException,
         host: ArgumentsHost

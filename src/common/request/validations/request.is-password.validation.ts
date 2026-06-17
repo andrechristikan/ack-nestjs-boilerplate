@@ -9,21 +9,13 @@ import {
 } from 'class-validator';
 
 /**
- * Custom password validation constraint that validates password strength.
- * Enforces minimum length, uppercase, lowercase, and digit requirements.
+ * Validates password strength (length, uppercase, lowercase, digit) via `HelperService`.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsPasswordConstraint implements ValidatorConstraintInterface {
     constructor(protected readonly helperService: HelperService) {}
 
-    /**
-     * Validates the password value against strength requirements.
-     *
-     * @param value - The password string to validate
-     * @param validationArguments - Optional validation arguments containing constraints
-     * @returns True if password meets strength requirements
-     */
     validate(
         value: string,
         validationArguments?: ValidationArguments
@@ -38,12 +30,6 @@ export class IsPasswordConstraint implements ValidatorConstraintInterface {
         return this.helperService.checkPasswordStrength(value, options);
     }
 
-    /**
-     * Generates appropriate error message for invalid passwords.
-     *
-     * @param validationArguments - Validation arguments containing the invalid value
-     * @returns Localized error message key
-     */
     defaultMessage(validationArguments?: ValidationArguments): string {
         if (!validationArguments?.value) {
             return 'request.error.isPassword.required';
@@ -53,13 +39,6 @@ export class IsPasswordConstraint implements ValidatorConstraintInterface {
     }
 }
 
-/**
- * Password validation decorator that validates password strength requirements.
- *
- * @param minLength - Optional minimum password length (defaults to 8 characters)
- * @param validationOptions - Optional class-validator validation options
- * @returns Property decorator function
- */
 export function IsPassword(
     minLength?: number,
     validationOptions?: ValidationOptions

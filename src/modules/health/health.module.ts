@@ -7,6 +7,9 @@ import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 
+/**
+ * Wires Terminus and the custom indicators for system health checks.
+ */
 @Module({
     providers: [
         HealthAwsS3BucketIndicator,
