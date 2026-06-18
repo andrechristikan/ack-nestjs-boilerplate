@@ -734,13 +734,18 @@ cacheTtlMs: number              // Cache TTL in milliseconds for feature flag da
 **File**: `src/configs/response.config.ts`
 **Interface**: `IConfigResponse`
 
-This configuration handles API response caching settings.
+This configuration handles API response caching and file-export settings.
 
 #### Configuration Keys:
 
 **`cachePrefix`** - Cache prefix for API responses
 ```typescript
 cachePrefix: string             // Cache prefix for API response data
+```
+
+**`filenameExportPattern`** - Default filename pattern for file exports (`ResponseFileInterceptor`); `{timestamp}` / `{extension}` placeholders are replaced at runtime
+```typescript
+filenameExportPattern: string   // e.g. 'export-{timestamp}.{extension}'
 ```
 
 ### Firebase Configuration

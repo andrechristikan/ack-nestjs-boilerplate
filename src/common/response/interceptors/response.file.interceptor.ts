@@ -8,25 +8,31 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { HelperService } from '@common/helper/services/helper.service';
 import { FileService } from '@common/file/services/file.service';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ConfigService } from '@nestjs/config';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
 /**
  * Streams CSV/PDF return values as a `StreamableFile`, setting download and standard headers.
  */
 @Injectable()
 export class ResponseFileInterceptor implements NestInterceptor {
+    private readonly filenameExportPattern: string;
+
     constructor(
         private readonly fileService: FileService,
         private readonly helperService: HelperService,
+        private readonly responseMetadataService: ResponseMetadataService,
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.filenameExportPattern = this.configService.get<string>(
+            'response.filenameExportPattern'
+        )!;
+    }
 
     intercept(
         context: ExecutionContext,
@@ -37,7 +43,6 @@ export class ResponseFileInterceptor implements NestInterceptor {
                 map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
-                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     const responseData =
                         (await res) as unknown as IResponseFileReturn;
@@ -53,7 +58,10 @@ export class ResponseFileInterceptor implements NestInterceptor {
                         timestamp,
                         responseData.filename
                     );
-                    this.setStandardHeaders(response, request);
+                    this.responseMetadataService.setHeaders(
+                        response,
+                        this.responseMetadataService.create()
+                    );
 
                     return new StreamableFile(fileBuffer);
                 })
@@ -116,7 +124,10 @@ export class ResponseFileInterceptor implements NestInterceptor {
         filename?: string
     ): void {
         filename =
-            filename ?? `export-${timestamp}.${EnumFileExtensionDocument.csv}`;
+            filename ??
+            this.filenameExportPattern
+                .replace('{timestamp}', String(timestamp))
+                .replace('{extension}', EnumFileExtensionDocument.csv);
         const mime =
             this.fileService.extractMimeFromFilename(filename) ??
             'application/octet-stream';
@@ -129,24 +140,4 @@ export class ResponseFileInterceptor implements NestInterceptor {
             .setHeader('Content-Length', file.length);
     }
 
-    private setStandardHeaders(response: Response, request: IRequestApp): void {
-        const today = this.helperService.dateCreate();
-        const xLanguage: string =
-            request.language ??
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        const xTimestamp = this.helperService.dateGetTimestamp(today);
-        const xTimezone = this.helperService.dateGetZone(today);
-        const xVersion =
-            request.version ??
-            this.configService.get<string>('app.urlVersion.version')!;
-        const xRepoVersion = this.configService.get<string>('app.version')!;
-
-        response.setHeader('x-custom-lang', xLanguage);
-        response.setHeader('x-timestamp', xTimestamp);
-        response.setHeader('x-timezone', xTimezone);
-        response.setHeader('x-version', xVersion);
-        response.setHeader('x-repo-version', xRepoVersion);
-        response.setHeader('x-request-id', String(request.id));
-        response.setHeader('x-correlation-id', String(request.correlationId));
-    }
 }

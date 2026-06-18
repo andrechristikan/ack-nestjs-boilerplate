@@ -3,7 +3,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -29,13 +28,11 @@ export interface ISessionService {
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
     revoke(
         userId: string,
-        sessionId: string,
-        requestLog: IRequestLog
+        sessionId: string
     ): Promise<void>;
     revokeByAdmin(
         userId: string,
         sessionId: string,
-        requestLog: IRequestLog,
         revokedBy: string
     ): Promise<IResponseReturn<void>>;
 }

@@ -322,14 +322,9 @@ export class UserController {
   @Put('/profile/update/photo')
   async updatePhotoProfile(
     @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserUpdateProfilePhotoRequestDto,
-    @RequestIPAddress() ipAddress: string,
-    @RequestUserAgent() userAgent: UserAgent
+    @Body() body: UserUpdateProfilePhotoRequestDto
   ): Promise<IResponseReturn<void>> {
-    return this.userService.updatePhotoProfile(userId, body, {
-      ipAddress,
-      userAgent,
-    });
+    return this.userService.updatePhotoProfile(userId, body);
   }
 }
 ```
@@ -370,15 +365,16 @@ export class UserService {
 
   async updatePhotoProfile(
     userId: string,
-    { photo, size }: UserUpdateProfilePhotoRequestDto,
-    requestLog: IRequestLog
+    { photo, size }: UserUpdateProfilePhotoRequestDto
   ): Promise<IResponseReturn<void>> {
     // Map presign data to AWS S3 DTO
     const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photo, size });
-    
-    // Save to database with audit trail
+
+    // Read the request log from the store and thread it to the repository for the audit trail
+    const requestLog: IRequestLog =
+      this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
     await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
-    
+
     return;
   }
 }
@@ -489,8 +485,8 @@ sequenceDiagram
         Backend->>AwsS3Service: mapPresign(key, size)
         AwsS3Service-->>Backend: IAwsS3
         
-        Backend->>Repository: updatePhotoProfile(userId, aws, log)
-        Repository->>Repository: Save S3 reference + audit trail
+        Backend->>Repository: updatePhotoProfile(userId, aws)
+        Repository->>Repository: Save S3 reference + audit trail (request log read from store)
         Repository-->>Backend: Success
         Backend-->>Client: 200 OK
         
@@ -523,7 +519,7 @@ sequenceDiagram
    - Client notifies backend with S3 key and file size
    - Backend maps presign data to `IAwsS3`
    - Repository updates user profile with S3 file reference
-   - Transaction logged with IP address and user agent for audit trail
+   - Transaction logged with IP address and user agent for audit trail; the service reads the request log from the request store (`RequestLogStoreKey`) and threads the `IRequestLog` to the repository as the last parameter
 
 
 <!-- REFERENCES -->

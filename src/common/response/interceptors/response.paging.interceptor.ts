@@ -16,12 +16,10 @@ import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
 } from '@common/response/dtos/response.paging.dto';
-import { ConfigService } from '@nestjs/config';
-import { HelperService } from '@common/helper/services/helper.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
 /**
  * Wraps paginated handler results into the standard envelope, merging request pagination state
@@ -32,8 +30,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly responseMetadataService: ResponseMetadataService
     ) {}
 
     /**
@@ -57,8 +54,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     let data: T[] = [];
 
-                    const metadata: ResponsePagingMetadataDto =
-                        this.createPagingResponseMetadata(request);
+                    const metadata = this.responseMetadataService.create();
 
                     const responseData =
                         (await res) as unknown as IResponsePagingReturn<T>;
@@ -138,7 +134,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         }
                     );
 
-                    this.setResponseHeaders(response, metadata);
+                    this.responseMetadataService.setHeaders(response, metadata);
                     response.status(httpStatus);
 
                     return {
@@ -152,46 +148,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         return next.handle();
-    }
-
-    private createPagingResponseMetadata(
-        request: IRequestApp
-    ): ResponsePagingMetadataDto {
-        const today = this.helperService.dateCreate();
-        const xLanguage: EnumMessageLanguage =
-            (request.language as EnumMessageLanguage) ??
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        const xVersion =
-            request.version ??
-            this.configService.get<string>('app.urlVersion.version')!;
-
-        return {
-            language: xLanguage,
-            timestamp: this.helperService.dateGetTimestamp(today),
-            timezone: this.helperService.dateGetZone(today),
-            path: request.path,
-            version: xVersion,
-            repoVersion: this.configService.get<string>('app.version')!,
-            requestId: String(request.id),
-            correlationId: String(request.correlationId),
-
-            totalPage: 0,
-            count: 0,
-            search: undefined,
-            filters: undefined,
-            page: 0,
-            perPage: 0,
-            orderBy: [],
-            availableSearch: [],
-            availableOrderBy: [],
-            nextPage: undefined,
-            previousPage: undefined,
-            hasNext: false,
-            hasPrevious: false,
-            nextCursor: undefined,
-            previousCursor: undefined,
-            type: EnumPaginationType.offset,
-        };
     }
 
     /**
@@ -214,18 +170,5 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         if (!responseData.data || !Array.isArray(responseData.data)) {
             throw new Error('Field data must in array and can not be empty');
         }
-    }
-
-    private setResponseHeaders(
-        response: Response,
-        metadata: ResponsePagingMetadataDto
-    ): void {
-        response.setHeader('x-custom-lang', metadata.language);
-        response.setHeader('x-timestamp', metadata.timestamp);
-        response.setHeader('x-timezone', metadata.timezone);
-        response.setHeader('x-version', metadata.version);
-        response.setHeader('x-repo-version', metadata.repoVersion);
-        response.setHeader('x-request-id', String(metadata.requestId));
-        response.setHeader('x-correlation-id', String(metadata.correlationId));
     }
 }

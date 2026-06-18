@@ -51,7 +51,7 @@ Standardized error response + Sentry (if applicable)
 ```
 
 **Common behavior**:
-- Extract metadata from request (language, version, requestId, correlationId)
+- Build metadata and headers via the shared `ResponseMetadataService` (`create()` / `setHeaders()`), sourced from the request store (`RequestLanguageStoreKey` / `RequestVersionStoreKey` / `RequestIdStoreKey` / `RequestCorrelationIdStoreKey`)
 - Generate timestamp and timezone information
 - Resolve localized error message using [Message System][ref-doc-message]
 - Set response headers
@@ -91,7 +91,6 @@ All errors are formatted into `ResponseErrorDto`:
   "language": "en",
   "timestamp": 1660190937231,
   "timezone": "Asia/Jakarta",
-  "path": "/api/v1/users",
   "version": "1",
   "repoVersion": "1.0.0",
   "requestId": "550e8400-e29b-41d4-a716-446655440000",
@@ -103,14 +102,13 @@ All errors are formatted into `ResponseErrorDto`:
 
 | Field | Source | Fallback |
 |-------|--------|----------|
-| `language` | `request.language` | Config `message.language` |
+| `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
 | `timestamp` | `HelperService.dateGetTimestamp()` | - |
 | `timezone` | `HelperService.dateGetZone()` | - |
-| `path` | `request.path` | - |
-| `version` | `request.version` | Config `app.urlVersion.version` |
+| `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
-| `requestId` | `request.id` | - |
-| `correlationId` | `request.correlationId` | - |
+| `requestId` | Request store `RequestIdStoreKey` | - |
+| `correlationId` | Request store `RequestCorrelationIdStoreKey` | - |
 
 ## Response Headers
 

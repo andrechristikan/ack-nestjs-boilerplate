@@ -46,8 +46,8 @@ Activity Log records audited user actions. Recording is decorator-driven: `@Acti
 | Component | Responsibility |
 |---|---|
 | `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
-| `ActivityLogInterceptor` | Reads the action, reads dynamic metadata from the request store, collects request context (IP, user agent, geo), persists the log on success and failure |
-| `RequestStoreService` | Generic per-request carrier for dynamic metadata, backed by `nestjs-cls` (AsyncLocalStorage); shared by all modules |
+| `ActivityLogInterceptor` | Reads the action, reads dynamic metadata and request context (`IRequestLog`: IP, user agent, geo) from the request store, persists the log on success and failure |
+| `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
 | `ActivityLogService` | Read side: paginated listing for admin and self |
 | `ActivityLogRepository` | Data access (Prisma) |
 | `ActivityLogUtil` | Builds the i18n description, serializes list responses |
@@ -113,6 +113,8 @@ All metadata is dynamic: set at runtime from the service via `RequestStoreServic
 
 Dynamic metadata lives in the generic `RequestStoreService` (`@common/request`), backed by `nestjs-cls`. Services call `merge(ActivityLogMetadataStoreKey, metadata)` to shallow-merge into the current request's metadata; the interceptor reads it via `get(ActivityLogMetadataStoreKey)`. The `ActivityLogMetadataStoreKey` constant is the only key used for activity-log metadata.
 
+Request context (IP, user agent, geo) is read from the same store under `RequestLogStoreKey`. It is computed once per request by `RequestUtil.buildRequestLog(req)` in `RequestRequestLogMiddleware`, not recomputed by the interceptor. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+
 ```typescript
 merge<T extends object>(key: string, value: Partial<T>): void; // shallow-merge into the request store
 get<T>(key: string): T | null;                                 // null when none set
@@ -152,9 +154,9 @@ Each log contains:
 - **user** - related user record (included on read)
 - **action** - `EnumActivityLogAction`
 - **description** - localized text; on failure the error message is appended
-- **ipAddress** - resolved via `@supercharge/request-ip` (may be null)
-- **userAgent** - parsed via `ua-parser-js` (JSON)
-- **geoLocation** - derived from IP via `geoip-lite` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`
+- **ipAddress** - read from the request store `IRequestLog` (may be null); resolved once per request via `@supercharge/request-ip`
+- **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
+- **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
 - **metadata** - dynamic context from the request store (JSON, null when empty)
 - **createdAt** - timestamp
 
@@ -208,3 +210,4 @@ Built by `ActivityLogUtil.getDescription`, which resolves the i18n key `activity
 [ref-doc-response]: response.md
 [ref-doc-message]: message.md
 [ref-doc-pagination]: pagination.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

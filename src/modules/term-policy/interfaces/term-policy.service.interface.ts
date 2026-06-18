@@ -4,7 +4,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -48,8 +47,7 @@ export interface ITermPolicyService {
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>>;
     userAccept(
         user: IUser,
-        { type }: TermPolicyAcceptRequestDto,
-        requestLog: IRequestLog
+        { type }: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>>;
     createByAdmin(
         { contents, type, version }: TermPolicyCreateRequestDto,

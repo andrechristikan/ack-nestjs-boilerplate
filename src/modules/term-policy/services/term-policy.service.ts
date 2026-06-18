@@ -11,7 +11,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -31,6 +30,8 @@ import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { IUser } from '@modules/user/interfaces/user.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -155,9 +156,11 @@ export class TermPolicyService implements ITermPolicyService {
 
     async userAccept(
         user: IUser,
-        { type }: TermPolicyAcceptRequestDto,
-        requestLog: IRequestLog
+        { type }: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const policy =
             await this.termPolicyRepository.existLatestPublishedByType(type);
         if (!policy) {

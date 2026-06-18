@@ -44,12 +44,10 @@ consumer
 - [Response Compression](#response-compression)
 - [Response Time](#response-time)
 - [Request Timeout](#request-timeout)
+- [Request Store](#request-store)
 - [Decorators](#decorators)
   - [@RequestTimeout](#requesttimeout)
   - [@RequestEnvProtected](#requestenvprotected)
-  - [@RequestIPAddress](#requestipaddress)
-  - [@RequestGeoLocation](#requestgeolocation)
-  - [@RequestUserAgent](#requestuseragent)
 
 
 ## Authentication & Authorization
@@ -169,10 +167,10 @@ Generates unique identifiers for request tracking.
 interface IRequestApp extends Request {
   id: string;            // UUID v7 request ID
   correlationId: string; // Correlation ID for distributed tracing
-  __version: string;     // API version
-  __language: string;    // Language preference
 }
 ```
+
+`id` and `correlationId` are dual-written: they stay on `req` (read by filters, interceptors, and pino `genReqId`) and are also written to the request store under `RequestIdStoreKey` / `RequestCorrelationIdStoreKey` for ambient deep access. See [Request Store](#request-store).
 
 ## Body Parser
 
@@ -201,10 +199,7 @@ Extracts API version from URLs.
 Example: /api/v1/users
 ```
 
-**Request Property:**
-```typescript
-req.__version  // Extracted version number
-```
+**Storage:** the resolved version is written to the request store under `RequestVersionStoreKey` (not on `req`). Response interceptors and exception filters read it from the store, falling back to config `app.urlVersion.version`. See [Request Store](#request-store).
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -220,10 +215,7 @@ Processes `x-custom-lang` header for internationalization.
 x-custom-lang: id
 ```
 
-**Request Property:**
-```typescript
-req.__language  // Validated language code
-```
+**Storage:** the validated language is written to the request store under `RequestLanguageStoreKey` (not on `req`); the `x-custom-lang` request header is also synced to the resolved value. Response interceptors and exception filters read it from the store, falling back to config `message.language`. See [Request Store](#request-store).
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -268,6 +260,26 @@ async operation() {}
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
+## Request Store
+
+Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, and filters read it via `get<T>(key)`. Repositories never read the store; a service reads the request log and threads it to its repository as the last method parameter (`requestLog: IRequestLog`).
+
+**Keys (`request.constant.ts`):**
+
+| Key | Written by | Holds |
+|---|---|---|
+| `RequestLogStoreKey` | `RequestRequestLogMiddleware` (`RequestUtil.buildRequestLog(req)`) | `IRequestLog` (`userAgent` / `ipAddress` / `geoLocation`), computed once per request |
+| `RequestLanguageStoreKey` | `RequestCustomLanguageMiddleware` | resolved language code |
+| `RequestVersionStoreKey` | `RequestUrlVersionMiddleware` | resolved API version |
+| `RequestIdStoreKey` | `RequestRequestIdMiddleware` | `req.id` (dual-write) |
+| `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
+
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators still exist, but are now thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`.
+
+`ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
+
+**Queue boundary exception:** the new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time. Workers run in a separate process with no CLS store, so the value must cross the boundary as data.
+
 ## Decorators
 
 ### @RequestTimeout
@@ -302,76 +314,7 @@ RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 async clearCache() {}
 ```
 
-### @RequestIPAddress
-
-Extracts real client IP address from request using [nestjs-real-ip][ref-nestjs-real-ip].
-
-**Signature:**
-```typescript
-RequestIPAddress(): ParameterDecorator
-```
-
-**Example:**
-```typescript
-@Get('/check-ip')
-async checkIP(@RequestIPAddress() ip: string) {
-  return { ip };
-}
-```
-
-### @RequestGeoLocation
-
-Extracts geolocation information from the client's IP address using `geoip-lite`.
-
-**Signature:**
-```typescript
-RequestGeoLocation(): ParameterDecorator
-```
-
-**Example:**
-```typescript
-@Get('/geo-info')
-async getGeoInfo(@RequestGeoLocation() geoLocation: GeoLocation | null) {
-  return { geoLocation };
-}
-```
-
-**Return Type:** `GeoLocation | null` — returns `null` when IP cannot be resolved or geolocation data is unavailable.
-
-### @RequestUserAgent
-
-Parses User-Agent information using [ua-parser-js][ref-ua-parser-js].
-
-**Signature:**
-```typescript
-RequestUserAgent(): ParameterDecorator
-```
-
-**Example:**
-```typescript
-@Get('/device-info')
-async getDeviceInfo(@RequestUserAgent() userAgent: UAParser.IResult) {
-  return {
-    browser: userAgent.browser,
-    os: userAgent.os,
-    device: userAgent.device
-  };
-}
-```
-
-**Response Structure:**
-```typescript
-interface IResult {
-  browser: { name?: string; version?: string };
-  os: { name?: string; version?: string };
-  device: { model?: string; type?: string; vendor?: string };
-  engine: { name?: string; version?: string };
-  cpu: { architecture?: string };
-}
-```
-
-
-
+> Client IP, geolocation, and user-agent are exposed via the `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators, which now just read the value resolved once per request into the request store under `RequestLogStoreKey`. See [Request Store](#request-store).
 
 
 <!-- REFERENCES -->
@@ -381,8 +324,6 @@ interface IResult {
 [ref-compression]: https://www.npmjs.com/package/compression
 [ref-response-time]: https://www.npmjs.com/package/response-time
 [ref-ms]: https://github.com/vercel/ms
-[ref-nestjs-real-ip]: https://github.com/p0vidl0/nestjs-real-ip
-[ref-ua-parser-js]: https://github.com/faisalman/ua-parser-js
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md

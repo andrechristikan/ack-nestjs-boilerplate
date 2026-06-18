@@ -3,7 +3,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -32,18 +31,15 @@ export interface IDeviceService {
     refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto,
-        requestLog: IRequestLog
+        { name, notificationToken, platform }: DeviceRefreshRequestDto
     ): Promise<void>;
     remove(
         userId: string,
-        deviceOwnershipId: string,
-        requestLog: IRequestLog
+        deviceOwnershipId: string
     ): Promise<void>;
     removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
-        requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>>;
 }

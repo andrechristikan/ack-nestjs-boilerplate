@@ -7,6 +7,7 @@ import {
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
+import { RequestRequestLogMiddleware } from '@common/request/middlewares/request.request-log.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
 import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
@@ -49,6 +50,7 @@ export class RequestMiddlewareModule implements NestModule {
         consumer
             .apply(
                 RequestRequestIdMiddleware,
+                RequestRequestLogMiddleware,
                 RequestHelmetMiddleware,
                 RequestBodyParserMiddleware,
                 RequestCorsMiddleware,

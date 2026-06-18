@@ -4,7 +4,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -19,6 +18,8 @@ import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
@@ -87,8 +88,7 @@ export class DeviceService implements IDeviceService {
     async refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto,
-        requestLog: IRequestLog
+        { name, notificationToken, platform }: DeviceRefreshRequestDto
     ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
@@ -101,6 +101,9 @@ export class DeviceService implements IDeviceService {
                 message: 'device.error.notFound',
             });
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             await this.deviceOwnershipRepository.refresh(
@@ -124,11 +127,7 @@ export class DeviceService implements IDeviceService {
         }
     }
 
-    async remove(
-        userId: string,
-        deviceOwnershipId: string,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async remove(userId: string, deviceOwnershipId: string): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
                 userId,
@@ -140,6 +139,9 @@ export class DeviceService implements IDeviceService {
                 message: 'device.error.notFound',
             });
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             const sessions =
@@ -171,7 +173,6 @@ export class DeviceService implements IDeviceService {
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
-        requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
         const existDeviceOwnership =
@@ -185,6 +186,9 @@ export class DeviceService implements IDeviceService {
                 message: 'device.error.notFound',
             });
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             const sessions =

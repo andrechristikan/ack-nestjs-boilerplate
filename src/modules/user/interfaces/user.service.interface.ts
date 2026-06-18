@@ -7,10 +7,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IRequestApp,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IResponseFileReturn,
     IResponsePagingReturn,
@@ -83,13 +80,11 @@ export interface IUserService {
     getOne(id: string): Promise<IResponseReturn<UserProfileResponseDto>>;
     createByAdmin(
         { countryId, email, name, roleId }: UserCreateRequestDto,
-        requestLog: IRequestLog,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>>;
     updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
-        requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
     checkUsername({
@@ -107,8 +102,7 @@ export interface IUserService {
     ): Promise<IResponseReturn<UserProfileResponseDto>>;
     updateProfile(
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto,
-        requestLog: IRequestLog
+        { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<void>;
     generatePhotoProfilePresign(
         userId: string,
@@ -116,80 +110,64 @@ export interface IUserService {
     ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
     updatePhotoProfile(
         userId: string,
-        { photoKey, size }: UserUpdateProfilePhotoRequestDto,
-        requestLog: IRequestLog
+        { photoKey, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<void>;
-    deleteSelf(userId: string, requestLog: IRequestLog): Promise<void>;
+    deleteSelf(userId: string): Promise<void>;
     addMobileNumber(
         userId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        requestLog: IRequestLog
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     updateMobileNumber(
         userId: string,
         mobileNumberId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        requestLog: IRequestLog
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     deleteMobileNumber(
         userId: string,
-        mobileNumberId: string,
-        requestLog: IRequestLog
+        mobileNumberId: string
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>>;
     claimUsername(
         userId: string,
-        { username }: UserClaimUsernameRequestDto,
-        requestLog: IRequestLog
+        { username }: UserClaimUsernameRequestDto
     ): Promise<void>;
     uploadPhotoProfile(
         userId: string,
-        file: IFile,
-        requestLog: IRequestLog
+        file: IFile
     ): Promise<void>;
     updatePasswordByAdmin(
         userId: string,
-        requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>>;
     changePassword(
         user: IUser,
-        { newPassword, oldPassword }: UserChangePasswordRequestDto,
-        requestLog: IRequestLog
+        { newPassword, oldPassword }: UserChangePasswordRequestDto
     ): Promise<void>;
     loginCredential(
-        { email, password, from }: UserLoginRequestDto,
-        requestLog: IRequestLog
+        { email, password, from }: UserLoginRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, device, ...others }: UserCreateSocialRequestDto,
-        requestLog: IRequestLog
+        { from, device, ...others }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>>;
     refresh(
         user: IUser,
-        refreshToken: string,
-        requestLog: IRequestLog
+        refreshToken: string
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     signUp(
-        { countryId, email, password, ...others }: UserSignUpRequestDto,
-        requestLog: IRequestLog
+        { countryId, email, password, ...others }: UserSignUpRequestDto
     ): Promise<void>;
     verifyEmail(
-        { token }: UserVerifyEmailRequestDto,
-        requestLog: IRequestLog
+        { token }: UserVerifyEmailRequestDto
     ): Promise<void>;
     sendVerificationEmail(
-        { email }: UserSendEmailVerificationRequestDto,
-        requestLog: IRequestLog
+        { email }: UserSendEmailVerificationRequestDto
     ): Promise<void>;
     forgotPassword(
-        { email }: UserForgotPasswordRequestDto,
-        requestLog: IRequestLog
+        { email }: UserForgotPasswordRequestDto
     ): Promise<void>;
     resetPassword(
-        { newPassword, token }: UserForgotPasswordResetRequestDto,
-        requestLog: IRequestLog
+        { newPassword, token }: UserForgotPasswordResetRequestDto
     ): Promise<void>;
     loginVerifyTwoFactor(
         {
@@ -197,43 +175,35 @@ export interface IUserService {
             code,
             backupCode,
             method,
-        }: UserLoginVerifyTwoFactorRequestDto,
-        requestLog: IRequestLog
+        }: UserLoginVerifyTwoFactorRequestDto
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
     loginSetupTwoFactor(
-        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
-        requestLog: IRequestLog
+        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
     setupTwoFactor(
-        user: IUser,
-        requestLog: IRequestLog
+        user: IUser
     ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>>;
     enableTwoFactor(
         user: IUser,
-        { code }: UserTwoFactorEnableRequestDto,
-        requestLog: IRequestLog
+        { code }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     disableTwoFactor(
         user: IUser,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
-        requestLog: IRequestLog
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<void>;
     regenerateTwoFactorBackupCodes(
-        user: IUser,
-        requestLog: IRequestLog
+        user: IUser
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     resetTwoFactorByAdmin(
         userId: string,
-        updatedBy: string,
-        requestLog: IRequestLog
+        updatedBy: string
     ): Promise<void>;
     importByAdmin(
         data: UserImportRequestDto[],
-        createdBy: string,
-        requestLog: IRequestLog
+        createdBy: string
     ): Promise<void>;
     exportByAdmin(
         status?: Record<string, IPaginationIn>,
@@ -243,7 +213,6 @@ export interface IUserService {
     logout(
         userId: string,
         sessionId: string,
-        deviceOwnershipId: string,
-        requestLog: IRequestLog
+        deviceOwnershipId: string
     ): Promise<void>;
 }

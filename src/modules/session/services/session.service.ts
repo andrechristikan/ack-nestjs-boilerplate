@@ -3,7 +3,6 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -16,6 +15,8 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
@@ -72,9 +73,11 @@ export class SessionService implements ISessionService {
 
     async revoke(
         userId: string,
-        sessionId: string,
-        requestLog: IRequestLog
+        sessionId: string
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
@@ -97,9 +100,11 @@ export class SessionService implements ISessionService {
     async revokeByAdmin(
         userId: string,
         sessionId: string,
-        requestLog: IRequestLog,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
@@ -114,8 +119,8 @@ export class SessionService implements ISessionService {
         const [removed] = await Promise.all([
             this.sessionRepository.revokeByAdmin(
                 sessionId,
-                requestLog,
-                revokedBy
+                revokedBy,
+                requestLog
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);

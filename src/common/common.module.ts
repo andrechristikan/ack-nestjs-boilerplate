@@ -22,7 +22,6 @@ import { SessionModule } from '@modules/session/session.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationModule } from '@modules/notification/notification.module';
-import { ClsModule } from 'nestjs-cls';
 
 /**
  * Root shared module that composes all global infrastructure and feature modules.
@@ -45,10 +44,6 @@ import { ClsModule } from 'nestjs-cls';
             cache: true,
             envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
             expandVariables: false,
-        }),
-        ClsModule.forRoot({
-            global: true,
-            middleware: { mount: true },
         }),
         MessageModule.forRoot(),
         LoggerModule.forRoot(),

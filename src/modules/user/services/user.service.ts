@@ -117,6 +117,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
@@ -264,9 +265,11 @@ export class UserService implements IUserService {
 
     async createByAdmin(
         { countryId, email, name, roleId }: UserCreateRequestDto,
-        requestLog: IRequestLog,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const [checkRole, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existById(roleId),
             this.userRepository.existByEmail(email),
@@ -351,9 +354,11 @@ export class UserService implements IUserService {
     async updateStatusByAdmin(
         userId: string,
         { status }: UserUpdateStatusRequestDto,
-        requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (userId === updatedBy) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.notSelf,
@@ -455,9 +460,11 @@ export class UserService implements IUserService {
 
     async updateProfile(
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto,
-        requestLog: IRequestLog
+        { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkCountry = await this.countryRepository.existById(countryId);
         if (!checkCountry) {
             throw new NotFoundException({
@@ -495,7 +502,8 @@ export class UserService implements IUserService {
                 extension,
             });
 
-        const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
+        const aws: IAwsS3Presign | null =
+            await this.awsS3Service.presignPutItem(
                 {
                     key,
                     size,
@@ -517,9 +525,11 @@ export class UserService implements IUserService {
 
     async updatePhotoProfile(
         userId: string,
-        { photoKey, size }: UserUpdateProfilePhotoRequestDto,
-        requestLog: IRequestLog
+        { photoKey, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign({
                 key: photoKey,
@@ -542,7 +552,10 @@ export class UserService implements IUserService {
         }
     }
 
-    async deleteSelf(userId: string, requestLog: IRequestLog): Promise<void> {
+    async deleteSelf(userId: string): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         try {
             const sessions = await this.sessionRepository.findActive(userId);
             await Promise.all([
@@ -563,9 +576,11 @@ export class UserService implements IUserService {
 
     async addMobileNumber(
         userId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        requestLog: IRequestLog
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkCountry =
             await this.countryRepository.findOneById(countryId);
         if (!checkCountry) {
@@ -623,9 +638,11 @@ export class UserService implements IUserService {
     async updateMobileNumber(
         userId: string,
         mobileNumberId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        requestLog: IRequestLog
+        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const [checkMobileNumberExist, checkCountry] = await Promise.all([
             this.userRepository.findOneMobileNumber(userId, mobileNumberId),
             this.countryRepository.findOneById(countryId),
@@ -693,9 +710,11 @@ export class UserService implements IUserService {
 
     async deleteMobileNumber(
         userId: string,
-        mobileNumberId: string,
-        requestLog: IRequestLog
+        mobileNumberId: string
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkExist = await this.userRepository.findOneMobileNumber(
             userId,
             mobileNumberId
@@ -730,9 +749,11 @@ export class UserService implements IUserService {
 
     async claimUsername(
         userId: string,
-        { username }: UserClaimUsernameRequestDto,
-        requestLog: IRequestLog
+        { username }: UserClaimUsernameRequestDto
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
@@ -772,11 +793,10 @@ export class UserService implements IUserService {
         }
     }
 
-    async uploadPhotoProfile(
-        userId: string,
-        file: IFile,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         try {
             const extension: EnumFileExtensionImage =
                 this.fileService.extractExtensionFromFilename(
@@ -824,9 +844,11 @@ export class UserService implements IUserService {
 
     async updatePasswordByAdmin(
         userId: string,
-        requestLog: IRequestLog,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (userId === updatedBy) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.notSelf,
@@ -906,9 +928,11 @@ export class UserService implements IUserService {
             backupCode,
             code,
             method,
-        }: UserChangePasswordRequestDto,
-        requestLog: IRequestLog
+        }: UserChangePasswordRequestDto
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (user.password) {
             if (this.authUtil.checkPasswordAttempt(user)) {
                 throw new ForbiddenException({
@@ -989,10 +1013,15 @@ export class UserService implements IUserService {
         }
     }
 
-    async loginCredential(
-        { email, password, from, device }: UserLoginRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
+    async loginCredential({
+        email,
+        password,
+        from,
+        device,
+    }: UserLoginRequestDto): Promise<IResponseReturn<UserLoginResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user) {
             throw new NotFoundException({
@@ -1046,17 +1075,18 @@ export class UserService implements IUserService {
             device,
             from,
             EnumUserLoginWith.credential,
-            this.helperService.dateCreate(),
-            requestLog
+            this.helperService.dateCreate()
         );
     }
 
     async loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, device, ...others }: UserCreateSocialRequestDto,
-        requestLog: IRequestLog
+        { from, device, ...others }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const featureFlag =
             await this.featureFlagUtil.getMetadataByKeyAndCache<{
                 signUpAllowed: boolean;
@@ -1112,16 +1142,17 @@ export class UserService implements IUserService {
             device,
             from,
             loginWith,
-            this.helperService.dateCreate(),
-            requestLog
+            this.helperService.dateCreate()
         );
     }
 
     async refresh(
         user: IUser,
-        refreshToken: string,
-        requestLog: IRequestLog
+        refreshToken: string
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const {
             sessionId,
             userId,
@@ -1180,15 +1211,15 @@ export class UserService implements IUserService {
         }
     }
 
-    async signUp(
-        {
-            countryId,
-            email,
-            password: passwordString,
-            ...others
-        }: UserSignUpRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async signUp({
+        countryId,
+        email,
+        password: passwordString,
+        ...others
+    }: UserSignUpRequestDto): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const [role, emailExist, checkCountry] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.userRepository.existByEmail(email),
@@ -1259,10 +1290,10 @@ export class UserService implements IUserService {
         }
     }
 
-    async verifyEmail(
-        { token }: UserVerifyEmailRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async verifyEmail({ token }: UserVerifyEmailRequestDto): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const hashedToken = this.userUtil.hashedToken(token);
         const verification =
             await this.userRepository.findOneActiveByVerificationEmailToken(
@@ -1297,10 +1328,12 @@ export class UserService implements IUserService {
         }
     }
 
-    async sendVerificationEmail(
-        { email }: UserSendEmailVerificationRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async sendVerificationEmail({
+        email,
+    }: UserSendEmailVerificationRequestDto): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new NotFoundException({
@@ -1373,10 +1406,12 @@ export class UserService implements IUserService {
         }
     }
 
-    async forgotPassword(
-        { email }: UserForgotPasswordRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async forgotPassword({
+        email,
+    }: UserForgotPasswordRequestDto): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new NotFoundException({
@@ -1441,16 +1476,16 @@ export class UserService implements IUserService {
         }
     }
 
-    async resetPassword(
-        {
-            newPassword,
-            token,
-            backupCode,
-            code,
-            method,
-        }: UserForgotPasswordResetRequestDto,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async resetPassword({
+        newPassword,
+        token,
+        backupCode,
+        code,
+        method,
+    }: UserForgotPasswordResetRequestDto): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const hashedToken = this.userUtil.hashedToken(token);
         const resetPassword =
             await this.userRepository.findOneActiveByForgotPasswordToken(
@@ -1540,9 +1575,11 @@ export class UserService implements IUserService {
         device: DeviceRequestDto,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        requestLog: IRequestLog
+        loginAt: Date
     ): Promise<AuthTokenResponseDto> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const { tokens, sessionId, jti } = this.authUtil.createTokens(
             user,
             loginFrom,
@@ -1603,9 +1640,11 @@ export class UserService implements IUserService {
         device: DeviceRequestDto,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date,
-        requestLog: IRequestLog
+        loginAt: Date
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (!user.isVerified) {
             const emailVerification =
                 this.userUtil.verificationCreateVerification(
@@ -1642,8 +1681,7 @@ export class UserService implements IUserService {
                 device,
                 loginFrom,
                 loginWith,
-                loginAt,
-                requestLog
+                loginAt
             );
 
             return {
@@ -1749,15 +1787,17 @@ export class UserService implements IUserService {
         return verified;
     }
 
-    async loginVerifyTwoFactor(
-        {
-            challengeToken,
-            code,
-            backupCode,
-            method,
-        }: UserLoginVerifyTwoFactorRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+    async loginVerifyTwoFactor({
+        challengeToken,
+        code,
+        backupCode,
+        method,
+    }: UserLoginVerifyTwoFactorRequestDto): Promise<
+        IResponseReturn<AuthTokenResponseDto>
+    > {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const challenge =
             await this.authTwoFactorUtil.getChallenge(challengeToken);
         if (!challenge) {
@@ -1811,8 +1851,7 @@ export class UserService implements IUserService {
                     challenge.device,
                     challenge.loginFrom,
                     challenge.loginWith,
-                    loginAt,
-                    requestLog
+                    loginAt
                 ),
                 this.authTwoFactorUtil.clearChallenge(challengeToken),
                 this.userRepository.verifyTwoFactor(
@@ -1834,10 +1873,15 @@ export class UserService implements IUserService {
         }
     }
 
-    async loginSetupTwoFactor(
-        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto,
-        requestLog: IRequestLog
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+    async loginSetupTwoFactor({
+        code,
+        challengeToken,
+    }: UserLoginSetupTwoFactorRequestDto): Promise<
+        IResponseReturn<UserTwoFactorEnableResponseDto>
+    > {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const challenge =
             await this.authTwoFactorUtil.getChallenge(challengeToken);
         if (!challenge) {
@@ -1913,9 +1957,11 @@ export class UserService implements IUserService {
     }
 
     async setupTwoFactor(
-        user: IUser,
-        requestLog: IRequestLog
+        user: IUser
     ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (user.twoFactor?.enabled) {
             throw new BadRequestException({
                 statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
@@ -1950,9 +1996,11 @@ export class UserService implements IUserService {
 
     async enableTwoFactor(
         user: IUser,
-        { code }: UserTwoFactorEnableRequestDto,
-        requestLog: IRequestLog
+        { code }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (user.twoFactor?.enabled) {
             throw new BadRequestException({
                 statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
@@ -2001,9 +2049,11 @@ export class UserService implements IUserService {
 
     async disableTwoFactor(
         user: IUser,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto,
-        requestLog: IRequestLog
+        { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (!user.twoFactor?.enabled) {
             throw new BadRequestException({
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -2047,9 +2097,11 @@ export class UserService implements IUserService {
     }
 
     async regenerateTwoFactorBackupCodes(
-        user: IUser,
-        requestLog: IRequestLog
+        user: IUser
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (!user.twoFactor?.enabled) {
             throw new BadRequestException({
                 statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
@@ -2081,9 +2133,11 @@ export class UserService implements IUserService {
 
     async resetTwoFactorByAdmin(
         userId: string,
-        updatedBy: string,
-        requestLog: IRequestLog
+        updatedBy: string
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         if (userId === updatedBy) {
             throw new BadRequestException({
                 statusCode: EnumUserStatusCodeError.notSelf,
@@ -2139,14 +2193,16 @@ export class UserService implements IUserService {
 
     async importByAdmin(
         data: UserImportRequestDto[],
-        createdBy: string,
-        requestLog: IRequestLog
+        createdBy: string
     ): Promise<void> {
         // TODO: Optimize by doing
         // - in background job with bullmq, also before create check username uniqueness
         // - when upload file, upload using presign
         // - load data from s3, and not process all in one time
         // - think about how to show progress status to user with bullmq
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const emails = data.map(item => item.email);
         const [checkRole, checkCountry, existingUsers] = await Promise.all([
@@ -2263,9 +2319,11 @@ export class UserService implements IUserService {
     async logout(
         userId: string,
         sessionId: string,
-        deviceOwnershipId: string,
-        requestLog: IRequestLog
+        deviceOwnershipId: string
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId

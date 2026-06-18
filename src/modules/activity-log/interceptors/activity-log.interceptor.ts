@@ -10,17 +10,20 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Reflector } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { UAParser } from 'ua-parser-js';
-import { getClientIp } from '@supercharge/request-ip';
+import {
+    IRequestApp,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
-import { ActivityLogActionMetaKey } from '@modules/activity-log/constants/activity-log.constant';
-import { EnumActivityLogAction, UserAgent } from '@generated/prisma-client';
+import {
+    ActivityLogActionMetaKey,
+    ActivityLogMetadataStoreKey,
+} from '@modules/activity-log/constants/activity-log.constant';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import geoIp from 'geoip-lite';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 
 /**
  * Persists an activity log on both success and failure paths, non-blocking. Metadata comes from `RequestStoreService` under `ActivityLogMetadataStoreKey`; never logs secrets.
@@ -44,23 +47,15 @@ export class ActivityLogInterceptor implements NestInterceptor {
             metadataActivityLogStore: IActivityLogMetadata;
         }
     ): Promise<void> {
-        const { headers, user } = request;
+        const { user } = request;
         const { metadataActivityLogStore, rawError } = payload;
 
         const { userId } = user!;
-        const userAgent = UAParser(headers['user-agent']) as UserAgent;
-        const ipAddress = getClientIp(request);
-        const geo = ipAddress ? geoIp.lookup(ipAddress) : null;
-        const geoLocation =
-            geo && ipAddress
-                ? {
-                      latitude: geo.ll[0],
-                      longitude: geo.ll[1],
-                      country: geo.country,
-                      region: geo.region,
-                      city: geo.city,
-                  }
-                : null;
+        const {
+            ipAddress,
+            userAgent,
+            geoLocation,
+        } = this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const action: EnumActivityLogAction =
             this.reflector.get<EnumActivityLogAction>(

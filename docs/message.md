@@ -193,6 +193,8 @@ await axios.get('http://localhost:3000/api/users', {
 });
 ```
 
+`RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+
 ## Integration
 
 ### Exception Filters

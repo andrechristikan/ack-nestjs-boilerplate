@@ -21,6 +21,8 @@ import {
 } from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestUtil } from '@common/request/utils/request.util';
+import { ClsModule } from 'nestjs-cls';
 
 /**
  * Global module wiring the validation pipe, timeout interceptor, custom validators,
@@ -33,9 +35,10 @@ export class RequestModule {
             module: RequestModule,
             global: true,
             controllers: [],
-            exports: [RequestStoreService],
+            exports: [RequestStoreService, RequestUtil],
             providers: [
                 RequestStoreService,
+                RequestUtil,
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,
@@ -73,7 +76,13 @@ export class RequestModule {
                 LessThanEqualOtherPropertyConstraint,
                 LessThanOtherPropertyConstraint,
             ],
-            imports: [RequestMiddlewareModule],
+            imports: [
+                ClsModule.forRoot({
+                    global: true,
+                    middleware: { mount: true },
+                }),
+                RequestMiddlewareModule,
+            ],
         };
     }
 }

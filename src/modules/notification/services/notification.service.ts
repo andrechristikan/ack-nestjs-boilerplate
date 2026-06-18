@@ -1,5 +1,7 @@
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -23,7 +25,8 @@ import {
 export class NotificationService implements INotificationService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly notificationUtil: NotificationUtil
+        private readonly notificationUtil: NotificationUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListCursor(
@@ -104,10 +107,12 @@ export class NotificationService implements INotificationService {
 
     async updateUserSetting(
         userId: string,
-        data: NotificationUserSettingRequestDto,
-        requestLog: IRequestLog
+        data: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
         this.notificationUtil.validateUserSetting(data.type, data.channel);
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         await this.notificationRepository.updateUserSetting(
             userId,

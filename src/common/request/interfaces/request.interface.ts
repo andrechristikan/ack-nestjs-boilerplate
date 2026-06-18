@@ -10,8 +10,6 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
     correlationId: string;
     user?: T;
     pagination?: Partial<IPaginationQuery>;
-    language: string;
-    version: string;
 }
 
 export interface IRequestLog {
