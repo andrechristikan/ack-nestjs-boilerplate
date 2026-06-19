@@ -18,7 +18,6 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
-- [Configuration Principles](#configuration-principles)
 - [Configuration Structure](#configuration-structure)
 - [App Configuration](#app-configuration)
 - [Auth Configuration](#auth-configuration)
@@ -39,7 +38,6 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [Feature Flag Configuration](#feature-flag-configuration)
 - [Response Configuration](#response-configuration)
 - [Firebase Configuration](#firebase-configuration)
-- [Conclusion](#conclusion)
 
 ## Configuration Structure
 
@@ -139,7 +137,7 @@ encryptionSecretKey: string     // Secret key used to derive AES-256 encryption 
 **File**: `src/configs/auth.config.ts`
 **Interface**: `IConfigAuth`
 
-This configuration manages JWT authentication settings including token configuration, password policies, social authentication, dan two-factor authentication.
+This configuration manages JWT authentication settings including token configuration, password policies, social authentication, and two-factor authentication.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -341,7 +339,7 @@ enable: boolean                 // Turn logging on/off
 
 **`level`** - Log level configuration
 ```typescript
-level: string                   // Log levels: silent, trace, debug, info, warn, error, fatal
+level: string                   // Log level: error, warn, info, verbose, debug, silly
 ```
 
 **`intoFile`** - File logging option
@@ -409,11 +407,8 @@ timeoutInMs: number             // Request timeout in milliseconds (default: 300
 **`cors`** - CORS configuration
 ```typescript
 cors: {
-  allowedMethod: string[];        // Allowed HTTP methods (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
-  allowedOrigin: string[] | string | boolean;  // Allowed origins (from CORS_ALLOWED_ORIGIN env variable)
-                                               // - string[]: Array of origins (e.g., ["*.example.com", "api.myapp.com"])
-                                               // - string: Single origin or wildcard (e.g., "*.example.com" or "*")
-                                               // - boolean: true=allow all, false=deny all
+  allowedMethod: string[];        // Allowed HTTP methods (GET, DELETE, PUT, PATCH, POST, HEAD, OPTIONS)
+  allowedOrigin: string[];        // Allowed origins, parsed from CORS_ALLOWED_ORIGIN (comma-separated into an array)
   allowedHeader: string[];        // Allowed headers for CORS requests
 }
 ```
@@ -431,8 +426,8 @@ cors: {
 **`throttle`** - Rate limiting configuration
 ```typescript
 throttle: {
-  ttlInMs: number;                // Time window in milliseconds (default: 500ms)
-  limit: number;                  // Maximum requests per time window (default: 10)
+  ttlInMs: number;                // Time window in milliseconds (default: 60000ms / 60s)
+  limit: number;                  // Maximum requests per time window (default: 100)
 }
 ```
 
@@ -488,6 +483,14 @@ usernamePattern: RegExp         // Regex pattern for valid usernames
 uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 ```
 
+**`default`** - Default role and country assigned to new users
+```typescript
+default: {
+  role: string;                 // Default role name (default: 'user')
+  country: string;              // Default country code (default: 'ID')
+}
+```
+
 ### Documentation Configuration
 
 
@@ -503,11 +506,6 @@ This configuration manages API documentation settings for Swagger/OpenAPI.
 **`name`** - Documentation title
 ```typescript
 name: string                    // API documentation title
-```
-
-**`description`** - Documentation description
-```typescript
-description: string             // API documentation description
 ```
 
 **`prefix`** - Documentation URL prefix
@@ -546,7 +544,7 @@ language: string                // Default application language
 **File**: `src/configs/email.config.ts`
 **Interface**: `IConfigEmail`
 
-This configuration manages default email addresses for system communications. Email addresses (`noreply`, `support`, `admin`) can be overridden via environment variables. If not set, they fall back to hardcoded default values.
+This configuration manages default email addresses for system communications. Email addresses (`noreply`, `support`, `admin`) come from environment variables and fall back to `null` when unset.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -705,11 +703,6 @@ uploadContentPath: string       // Path pattern for uploading policy content fil
 contentPublicPath: string       // Public path for accessing policy content
 ```
 
-**`filenamePattern`** - Filename pattern for policy files
-```typescript
-filenamePattern: string         // Pattern for policy file names
-```
-
 ### Feature Flag Configuration
 
 **File**: `src/configs/feature-flag.config.ts`
@@ -771,7 +764,7 @@ clientEmail?: string            // Firebase service account client email
 
 **`privateKey`** - Firebase service account private key
 ```typescript
-privateKey?: string             // Base64-encoded DER PKCS8 private key (from Firebase Console service account JSON)
+privateKey?: string             // Service account private key (PEM); escaped `\n` sequences are converted to real newlines at load
 ```
 
 > [!NOTE]

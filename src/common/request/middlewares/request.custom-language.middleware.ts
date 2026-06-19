@@ -12,6 +12,7 @@ import { RequestLanguageStoreKey } from '@common/request/constants/request.const
 @Injectable()
 export class RequestCustomLanguageMiddleware implements NestMiddleware {
     private readonly availableLanguage: string[];
+    private readonly defaultLanguage: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -21,6 +22,8 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
         this.availableLanguage = this.configService.get<string[]>(
             'message.availableLanguage'
         )!;
+        this.defaultLanguage =
+            this.configService.get<string>('message.language')!;
     }
 
     async use(
@@ -28,8 +31,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
         _res: Response,
         next: NextFunction
     ): Promise<void> {
-        let customLang: string =
-            this.configService.get<string>('message.language')!;
+        let customLang: string = this.defaultLanguage;
 
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         if (reqLanguages) {

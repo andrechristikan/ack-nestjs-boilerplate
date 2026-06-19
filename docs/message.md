@@ -42,12 +42,12 @@ APP_LANGUAGE=en
 Configuration structure:
 
 ```typescript
-// src/config/message.config.ts
+// src/configs/message.config.ts
 export default registerAs(
     'message',
     (): IConfigMessage => ({
         availableLanguage: Object.values(EnumMessageLanguage),
-        language: process.env.APP_LANGUAGE ?? EnumMessageLanguage.EN,
+        language: process.env.APP_LANGUAGE!,
     })
 );
 ```
@@ -68,10 +68,11 @@ Message files use JSON format with nested structure. Key paths follow the patter
 |------|-------------|
 | `activityLog.json` | Activity log messages |
 | `apiKey.json` | API key messages |
-| `app.json` | General application messages |
 | `auth.json` | Authentication messages |
+| `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
 | `device.json` | Device management messages |
+| `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
 | `file.json` | File upload messages |
 | `health.json` | Health check messages |
@@ -301,8 +302,8 @@ class UserDto {
 ```typescript
 // Automatic transformation
 {
-    "statusCode": 400,
-    "message": "Validation error",
+    "statusCode": 5030,
+    "message": "There are validation errors.",
     "errors": [
         {
             "key": "isNotEmpty",

@@ -428,13 +428,16 @@ Interface `IAuthJwtAccessTokenPayload`
 
 Interface `IAuthJwtRefreshTokenPayload`
 
+Derived as `Omit<IAuthJwtAccessTokenPayload, 'roleId' | 'username' | 'email'>` — the refresh payload drops `roleId`, `username`, and `email`, keeping the rest:
+
 ```typescript
 {
     loginAt: Date;
     loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserSignUpWith;
+    loginWith: EnumUserLoginWith;
     userId: string;
     sessionId: string;
+    deviceOwnershipId: string;
     
     // Standard JWT claims
     jti?: string;  // JWT ID - unique token identifier

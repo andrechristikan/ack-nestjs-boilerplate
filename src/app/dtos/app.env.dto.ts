@@ -3,7 +3,6 @@ import {
     IsBoolean,
     IsEmail,
     IsEnum,
-    IsIP,
     IsInt,
     IsNotEmpty,
     IsNumber,
@@ -77,7 +76,7 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
-    @IsIP('4')
+    @MinLength(1)
     HTTP_HOST: string;
 
     @IsNumber({

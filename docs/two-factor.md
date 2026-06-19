@@ -163,7 +163,7 @@ After 7th failed attempt (attempt=7):
 - `POST /public/user/login/credential` - Login with email/password
 - `POST /public/user/login/social/google` - Login with Google OAuth
 - `POST /public/user/login/social/apple` - Login with Apple Sign In
-- `POST /public/user/login/2fa/verify` - Verify TOTP code or backup code
+- `PATCH /public/user/login/2fa/verify` - Verify TOTP code or backup code
 - `POST /public/user/login/2fa/enable` - Complete forced 2FA setup during login
 
 **Password Recovery (require 2FA if enabled):**

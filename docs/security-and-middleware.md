@@ -10,13 +10,14 @@ ACK NestJS Boilerplate implements a comprehensive security and middleware layer 
 consumer
   .apply(
     RequestRequestIdMiddleware,      // 1. Request & Correlation IDs
-    RequestHelmetMiddleware,         // 2. Security headers
-    RequestBodyParserMiddleware,     // 3. Body parsing
-    RequestCorsMiddleware,           // 4. CORS handling
-    RequestUrlVersionMiddleware,     // 5. API version extraction
-    RequestResponseTimeMiddleware,   // 6. Response time tracking
-    RequestCustomLanguageMiddleware, // 7. Language detection
-    RequestCompressionMiddleware     // 8. Response compression
+    RequestRequestLogMiddleware,     // 2. Request log (userAgent / ipAddress / geoLocation)
+    RequestHelmetMiddleware,         // 3. Security headers
+    RequestBodyParserMiddleware,     // 4. Body parsing
+    RequestCorsMiddleware,           // 5. CORS handling
+    RequestUrlVersionMiddleware,     // 6. API version extraction
+    RequestResponseTimeMiddleware,   // 7. Response time tracking
+    RequestCustomLanguageMiddleware, // 8. Language detection
+    RequestCompressionMiddleware     // 9. Response compression
   )
   .forRoutes('{*wildcard}');
 ```
@@ -149,7 +150,7 @@ Restricts endpoint access based on environment.
 
 **Usage:**
 ```typescript
-@RequestEnvProtected(EnumAppEnvironment.DEVELOPMENT)
+@RequestEnvProtected(EnumAppEnvironment.development)
 @Get('/debug')
 async debugEndpoint() {}
 ```
@@ -309,7 +310,7 @@ RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 
 **Example:**
 ```typescript
-@RequestEnvProtected(EnumAppEnvironment.DEVELOPMENT)
+@RequestEnvProtected(EnumAppEnvironment.development)
 @Get('/admin/clear-cache')
 async clearCache() {}
 ```

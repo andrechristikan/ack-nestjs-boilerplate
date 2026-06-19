@@ -77,7 +77,7 @@ LOGGER_PRETTIER=true
 LOGGER_AUTO=false
 
 # Sentry Configuration (Optional)
-SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+SENTRY_DSN=<your_sentry_dsn>
 ```
 
 | Variable | Description | Type | Default | Required |
@@ -617,7 +617,7 @@ Configure Sentry by setting the `SENTRY_DSN` environment variable:
 
 ```env
 # .env.production
-SENTRY_DSN=https://your-public-key@o123456.ingest.sentry.io/7654321
+SENTRY_DSN=<your_sentry_dsn>
 ```
 
 ### Configuration Details

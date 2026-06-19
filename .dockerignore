@@ -1,12 +1,3 @@
-# ---------------------------------------------------------------------------
-# Build context is intentionally minimal. Only what `pnpm install`, `db:generate`
-# and `nest build` (+ `pnpm typecheck`) need is shipped.
-#
-# KEPT (do NOT ignore): src/, test/, prisma/, package.json, pnpm-lock.yaml,
-#   pnpm-workspace.yaml, .npmrc, tsconfig.json, nest-cli.json, .swcrc
-#   (test/ is required: `build` runs `pnpm typecheck` and tsconfig includes test/**)
-# ---------------------------------------------------------------------------
-
 # Dependencies & build output (reinstalled / regenerated inside the image)
 node_modules/
 dist/

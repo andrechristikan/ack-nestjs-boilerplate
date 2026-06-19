@@ -16,7 +16,7 @@ ACK NestJS Boilerplate is a comprehensive NestJS application designed for scalab
 - [Queues](#queues)
 - [Router](#router)
 - [Instrument](#instrument)
-- [Migration](#migration-file)
+- [Migration Entrypoint](#migration-entrypoint)
 - [Modules](#modules)
 - [Other Modules](#other-modules)
     - [Folders](#folders)
@@ -123,7 +123,7 @@ The instrument file configures observability and monitoring for the application 
 - Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
 - Ensuring sensitive data (PII) is not sent to Sentry
 
-## Migration
+## Migration Entrypoint
 
 **Location:** `src/migration.ts`
 

@@ -444,7 +444,6 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     totalPage?: number;
     nextPage?: number;
     previousPage?: number;
-    hasPrevious?: boolean;
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
