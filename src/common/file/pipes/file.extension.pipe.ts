@@ -2,13 +2,12 @@ import {
     Injectable,
     PipeTransform,
     Type,
-    UnsupportedMediaTypeException,
     mixin,
 } from '@nestjs/common';
-import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
+import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
 /**
  * Builds a pipe that rejects uploaded files whose extension is outside `allowedExtensions`.
@@ -55,10 +54,7 @@ export function FileExtensionPipe(
 
         private validate(file: IFile): void {
             if (!file?.originalname) {
-                throw new UnsupportedMediaTypeException({
-                    statusCode: EnumFileStatusCodeError.extensionInvalid,
-                    message: 'file.error.extensionInvalid',
-                });
+                throw new FileExtensionInvalidException();
             }
             this.validateExtension(file.originalname);
         }
@@ -67,10 +63,7 @@ export function FileExtensionPipe(
             const extension =
                 this.fileService.extractExtensionFromFilename(originalname);
             if (!this.extensions.has(extension)) {
-                throw new UnsupportedMediaTypeException({
-                    statusCode: EnumFileStatusCodeError.extensionInvalid,
-                    message: 'file.error.extensionInvalid',
-                });
+                throw new FileExtensionInvalidException();
             }
         }
     }

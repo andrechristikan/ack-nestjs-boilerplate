@@ -1,14 +1,11 @@
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { IPolicyService } from '@modules/policy/interfaces/policy.service.interface';
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
-import {
-    ForbiddenException,
-    Injectable,
-    InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EnumRoleType } from '@generated/prisma-client';
 import { IUser } from '@modules/user/interfaces/user.interface';
 
@@ -22,10 +19,7 @@ export class PolicyService implements IPolicyService {
         requiredAbilities: RoleAbilityRequestDto[]
     ): boolean {
         if (!user) {
-            throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
+            throw new AuthJwtAccessTokenInvalidException();
         }
 
         const { role } = user;
@@ -33,10 +27,7 @@ export class PolicyService implements IPolicyService {
         if (role.type === EnumRoleType.superAdmin) {
             return true;
         } else if (requiredAbilities.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumPolicyStatusCodeError.predefinedNotFound,
-                message: 'policy.error.predefinedNotFound',
-            });
+            throw new PolicyPredefinedNotFoundException();
         }
 
         const userAbilities = this.policyAbilityFactory.createForUser(
@@ -47,10 +38,7 @@ export class PolicyService implements IPolicyService {
             requiredAbilities
         );
         if (!policyHandler) {
-            throw new ForbiddenException({
-                statusCode: EnumPolicyStatusCodeError.forbidden,
-                message: 'policy.error.forbidden',
-            });
+            throw new PolicyForbiddenException();
         }
 
         return true;

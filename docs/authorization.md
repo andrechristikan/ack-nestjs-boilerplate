@@ -133,20 +133,20 @@ The `UserProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
     JwtGuard --> CheckAuth{request.user exists?}
-    CheckAuth -->|No| ErrorAuth[Throw UnauthorizedException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckAuth -->|No| ErrorAuth[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
     
     LookupUser --> UserExists{User exists<br/>in database?}
-    UserExists -->|No| ErrorNotFound[Throw ForbiddenException<br/>USER_NOT_FOUND]
+    UserExists -->|No| ErrorNotFound[Throw UserNotFoundForbiddenException<br/>403 Forbidden]
     UserExists -->|Yes| CheckStatus{User status<br/>is active?}
     
-    CheckStatus -->|No| ErrorInactive[Throw ForbiddenException<br/>INACTIVE_FORBIDDEN]
+    CheckStatus -->|No| ErrorInactive[Throw UserInactiveForbiddenException<br/>403 Forbidden]
     CheckStatus -->|Yes| CheckPassword{Password<br/>expired?}
     
-    CheckPassword -->|Yes| ErrorPassword[Throw ForbiddenException<br/>PASSWORD_EXPIRED]
+    CheckPassword -->|Yes| ErrorPassword[Throw UserPasswordExpiredException<br/>403 Forbidden]
     CheckPassword -->|No| CheckVerified{isVerified required<br/>AND user not verified?}
     
-    CheckVerified -->|Yes| ErrorVerified[Throw ForbiddenException<br/>EMAIL_NOT_VERIFIED]
+    CheckVerified -->|Yes| ErrorVerified[Throw UserEmailNotVerifiedException<br/>403 Forbidden]
     CheckVerified -->|No| SetUser[Store user via<br/>RequestStoreService.set UserStoreKey, user]
     
     SetUser --> Success([Access Granted])
@@ -244,16 +244,16 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
-    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
     
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant access with<br/>empty abilities array]
     CheckSuperAdmin -->|No| CheckRequired{Required roles<br/>defined?}
     
-    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
+    CheckRequired -->|No| ErrorPredefined[Throw RolePredefinedNotFoundException<br/>500 Internal Server Error]
     CheckRequired -->|Yes| CheckRoleMatch{User role matches<br/>required roles?}
     
-    CheckRoleMatch -->|No| ErrorForbidden[Throw ForbiddenException<br/>ROLE_FORBIDDEN]
+    CheckRoleMatch -->|No| ErrorForbidden[Throw RoleForbiddenException<br/>403 Forbidden]
     CheckRoleMatch -->|Yes| SetAbilities[Store abilities via<br/>RequestStoreService.set RoleAbilityStoreKey, abilities]
     
     GrantSuperAdmin --> Success([Access Granted])
@@ -378,18 +378,18 @@ flowchart TD
     UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
     RoleGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
-    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
     
     CheckSuperAdmin -->|Yes| GrantSuperAdmin[Grant immediate access]
     CheckSuperAdmin -->|No| CheckRequired{Required abilities<br/>defined?}
     
-    CheckRequired -->|No| ErrorPredefined[Throw InternalServerErrorException<br/>PREDEFINED_NOT_FOUND]
+    CheckRequired -->|No| ErrorPredefined[Throw PolicyPredefinedNotFoundException<br/>500 Internal Server Error]
     CheckRequired -->|Yes| CreateAbilities[Create CASL ability rules<br/>from RequestStoreService.get RoleAbilityStoreKey]
     
     CreateAbilities --> ValidateAbilities{All required abilities<br/>present in user abilities?}
     
-    ValidateAbilities -->|No| ErrorForbidden[Throw ForbiddenException<br/>POLICY_FORBIDDEN]
+    ValidateAbilities -->|No| ErrorForbidden[Throw PolicyForbiddenException<br/>403 Forbidden]
     ValidateAbilities -->|Yes| GrantAccess[Grant access]
     
     GrantSuperAdmin --> Success([Access Granted])
@@ -499,7 +499,7 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
     
-    CheckUser -->|No| ErrorUser[Throw ForbiddenException<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
     
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
@@ -510,7 +510,7 @@ flowchart TD
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
     
-    CheckAcceptance -->|No| ErrorRequired[Throw ForbiddenException<br/>REQUIRED_INVALID]
+    CheckAcceptance -->|No| ErrorRequired[Throw TermPolicyRequiredInvalidException<br/>403 Forbidden]
     CheckAcceptance -->|Yes| GrantAccess[Grant access]
     
     GrantAccess --> Success([Access Granted])

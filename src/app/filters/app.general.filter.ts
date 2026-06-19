@@ -42,6 +42,8 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode,
+            statusCodeKey: 'unknown',
+            module: 'app',
             message,
             metadata,
         };

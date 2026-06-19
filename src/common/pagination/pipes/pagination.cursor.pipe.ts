@@ -1,6 +1,5 @@
 import {
     Injectable,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { PipeTransform, Type } from '@nestjs/common/interfaces';
@@ -15,8 +14,14 @@ import {
     IPaginationQuery,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
+import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
+import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
+import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
+import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
+import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
 
 export function PaginationCursorPipe(
     defaultPerPage: number = PaginationDefaultPerPage,
@@ -52,15 +57,11 @@ export function PaginationCursorPipe(
                     cursorField: defaultCursorField,
                 };
             } catch (error) {
-                if (error instanceof UnprocessableEntityException) {
+                if (error instanceof AppBaseException) {
                     throw error;
                 }
 
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidCursorPaginationParams,
-                    message: 'pagination.error.invalidCursorPaginationParams',
-                });
+                throw new PaginationInvalidCursorPaginationParamsException();
             }
         }
 
@@ -75,37 +76,15 @@ export function PaginationCursorPipe(
                 !Number.isFinite(finalPerPage) ||
                 !Number.isInteger(finalPerPage)
             ) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                    message: 'pagination.error.invalidPerPage',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                    },
-                });
+                throw new PaginationInvalidPerPageException(PaginationDefaultMaxPerPage);
             }
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageExceedsMaximum,
-                    message: 'pagination.error.perPageExceedsMaximum',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageExceedsMaximumException(PaginationDefaultMaxPerPage, finalPerPage);
             }
 
             if (finalPerPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                    message: 'pagination.error.perPageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPerPage: 1,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageCannotBeLessThanOneException(finalPerPage);
             }
 
             return finalPerPage;
@@ -126,25 +105,12 @@ export function PaginationCursorPipe(
             }
 
             if (trimmed.length > PaginationMaxCursorLength) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.cursorTooLong,
-                    message: 'pagination.error.cursorTooLong',
-                    messageProperties: {
-                        maxCursorLength: PaginationMaxCursorLength,
-                    },
-                });
+                throw new PaginationCursorTooLongException(PaginationMaxCursorLength);
             }
 
             const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
             if (!urlSafeBase64Regex.test(trimmed)) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidCursorFormat,
-                    message: 'pagination.error.invalidCursorFormat',
-                    messageProperties: {
-                        format: 'URL-safe base64 (A-Za-z0-9_-)',
-                    },
-                });
+                throw new PaginationInvalidCursorFormatException('URL-safe base64 (A-Za-z0-9_-)');
             }
 
             return trimmed;

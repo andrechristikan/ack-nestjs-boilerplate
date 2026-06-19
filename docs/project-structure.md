@@ -50,7 +50,7 @@ Each folder serves a specific purpose, supporting modularity and maintainability
 
 The App Module is the root module and entry point for the ACK NestJS Boilerplate application. It orchestrates the core setup by:
 - Importing essential modules: `CommonModule` (shared utilities), `RouterModule` (API routing), and `QueueModule` (background jobs).
-- Registering four global exception filters for handling general, HTTP, validation, and import validation errors.
+- Registering five global exception filters for handling application exceptions, general, HTTP, validation, and import validation errors.
 - Following NestJS best practices for modular architecture and separation of concerns.
 
 ## Common Module
@@ -149,6 +149,7 @@ module
   ├── controllers
   ├── dtos
   ├── enums
+  ├── exceptions
   ├── interfaces
   ├── repositories
   ├── services
@@ -187,6 +188,9 @@ Classes that define the shape of data sent and received via API endpoints, ensur
 
 ### Enums
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
+
+### Exceptions
+Dedicated exception classes, one per error, each extending `AppBaseException`. Named `<module>.<kebab-error>.exception.ts` (e.g., `user.not-found.exception.ts`).
 
 ### Factories
 Factory classes or functions for creating instances of complex objects or aggregating dependencies.

@@ -1,13 +1,10 @@
-import {
-    Injectable,
-    UnprocessableEntityException,
-    UnsupportedMediaTypeException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
+import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
 /**
  * Validates an uploaded CSV file and parses its UTF-8 buffer into typed rows.
@@ -32,17 +29,11 @@ export class FileCsvParsePipe<T> implements PipeTransform {
      */
     async validate(value: IFile): Promise<void> {
         if (!value.buffer || value.buffer.length === 0) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumFileStatusCodeError.required,
-                message: 'file.error.required',
-            });
+            throw new FileRequiredException();
         }
 
         if (!value.originalname) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: EnumFileStatusCodeError.extensionInvalid,
-                message: 'file.error.extensionInvalid',
-            });
+            throw new FileExtensionInvalidException();
         }
 
         const extension = this.fileService.extractExtensionFromFilename(
@@ -50,10 +41,7 @@ export class FileCsvParsePipe<T> implements PipeTransform {
         );
 
         if (!extension || extension !== EnumFileExtensionDocument.csv) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: EnumFileStatusCodeError.extensionInvalid,
-                message: 'file.error.extensionInvalid',
-            });
+            throw new FileExtensionInvalidException();
         }
 
         return;

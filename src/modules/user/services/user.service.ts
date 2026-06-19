@@ -1,4 +1,43 @@
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
+import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
+import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
+import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
+import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
+import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
+import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
+import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
+import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
+import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
+import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
+import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
+import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
+import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
+import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
+import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
+import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
+import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.not-found-forbidden.exception';
+import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
+import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
+import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
+import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
+import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
+import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
+import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
 import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -25,7 +64,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import {
     IAuthJwtRefreshTokenPayload,
     IAuthPassword,
@@ -33,10 +71,8 @@ import {
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
@@ -71,7 +107,6 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import {
     IUser,
     IUserVerificationEmailCreate,
@@ -79,17 +114,7 @@ import {
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
-import {
-    BadRequestException,
-    ConflictException,
-    ForbiddenException,
-    Injectable,
-    InternalServerErrorException,
-    Logger,
-    NotFoundException,
-    ServiceUnavailableException,
-    UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -105,17 +130,14 @@ import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { RequestTooManyException } from '@common/request/exceptions/request.too-many.exception';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
@@ -159,45 +181,27 @@ export class UserService implements IUserService {
         requiredVerified: boolean
     ): Promise<IUser> {
         if (!request.user) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
+            throw new AuthJwtAccessTokenInvalidException();
         }
 
         const { userId } = request.user;
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundForbiddenException();
         } else if (user.status === EnumUserStatus.blocked) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.blockedForbidden,
-                message: 'user.error.blocked',
-            });
+            throw new UserBlockedForbiddenException();
         } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
+            throw new UserInactiveForbiddenException();
         }
 
         const checkPasswordExpired: boolean =
             this.authUtil.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.passwordExpired,
-                message: 'auth.error.passwordExpired',
-            });
+            throw new UserPasswordExpiredException();
         }
 
         if (requiredVerified === true && user.isVerified !== true) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.emailNotVerified,
-                message: 'user.error.emailNotVerified',
-            });
+            throw new UserEmailNotVerifiedException();
         }
 
         return user;
@@ -254,10 +258,7 @@ export class UserService implements IUserService {
     async getOne(id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
         const user = await this.userRepository.findOneProfileById(id);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         }
 
         return { data: this.userUtil.mapProfile(user) };
@@ -277,20 +278,11 @@ export class UserService implements IUserService {
         ]);
 
         if (!checkRole) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         } else if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         } else if (emailExist) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.emailExist,
-                message: 'user.error.emailExist',
-            });
+            throw new UserEmailExistException();
         }
 
         try {
@@ -343,11 +335,7 @@ export class UserService implements IUserService {
                 data: { id: created.id },
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -360,23 +348,14 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (userId === updatedBy) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.notSelf,
-                message: 'user.error.notSelf',
-            });
+            throw new UserNotSelfException();
         }
 
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                message: 'user.error.blockedInvalid',
-            });
+            throw new UserBlockedInvalidException();
         }
 
         try {
@@ -394,11 +373,7 @@ export class UserService implements IUserService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -445,10 +420,7 @@ export class UserService implements IUserService {
     ): Promise<IResponseReturn<UserProfileResponseDto>> {
         const user = await this.userRepository.findOneActiveProfileById(userId);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         }
 
         const mapped = this.userUtil.mapProfile(user);
@@ -467,10 +439,7 @@ export class UserService implements IUserService {
 
         const checkCountry = await this.countryRepository.existById(countryId);
         if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         }
 
         try {
@@ -485,11 +454,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -514,10 +479,7 @@ export class UserService implements IUserService {
             );
 
         if (!aws) {
-            throw new ServiceUnavailableException({
-                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
-                message: 'aws.error.serviceUnavailable',
-            });
+            throw new AwsServiceUnavailableException();
         }
 
         return { data: aws };
@@ -544,11 +506,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -566,11 +524,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -584,10 +538,7 @@ export class UserService implements IUserService {
         const checkCountry =
             await this.countryRepository.findOneById(countryId);
         if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         }
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
@@ -599,15 +550,9 @@ export class UserService implements IUserService {
             }),
         ]);
         if (!checkValidMobileNumber) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-                message: 'user.error.mobileNumberInvalid',
-            });
+            throw new UserMobileNumberInvalidException();
         } else if (checkExist) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                message: 'user.error.mobileNumberExist',
-            });
+            throw new UserMobileNumberExistException();
         }
 
         try {
@@ -627,11 +572,7 @@ export class UserService implements IUserService {
                 data: mapped,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -648,15 +589,9 @@ export class UserService implements IUserService {
             this.countryRepository.findOneById(countryId),
         ]);
         if (!checkMobileNumberExist) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                message: 'user.error.mobileNumberNotFound',
-            });
+            throw new UserMobileNumberNotFoundException();
         } else if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         }
 
         const checkExist = await this.userRepository.existMobileNumber(
@@ -665,10 +600,7 @@ export class UserService implements IUserService {
             mobileNumberId
         );
         if (checkExist) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-                message: 'user.error.mobileNumberExist',
-            });
+            throw new UserMobileNumberExistException();
         }
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
@@ -676,10 +608,7 @@ export class UserService implements IUserService {
             phoneCode
         );
         if (!checkValidMobileNumber) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-                message: 'user.error.mobileNumberInvalid',
-            });
+            throw new UserMobileNumberInvalidException();
         }
 
         try {
@@ -700,11 +629,7 @@ export class UserService implements IUserService {
                 data: mapped,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -720,10 +645,7 @@ export class UserService implements IUserService {
             mobileNumberId
         );
         if (!checkExist) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                message: 'user.error.mobileNumberNotFound',
-            });
+            throw new UserMobileNumberNotFoundException();
         }
 
         try {
@@ -739,11 +661,7 @@ export class UserService implements IUserService {
                 data: mapped,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -760,20 +678,11 @@ export class UserService implements IUserService {
             this.userRepository.existByUsername(username),
         ]);
         if (checkUsername) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                message: 'user.error.usernameNotAllowed',
-            });
+            throw new UserUsernameNotAllowedException();
         } else if (checkBadWord) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                message: 'user.error.usernameContainBadWord',
-            });
+            throw new UserUsernameContainBadWordException();
         } else if (exist) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.usernameExist,
-                message: 'user.error.usernameExist',
-            });
+            throw new UserUsernameExistException();
         }
 
         try {
@@ -785,11 +694,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -834,11 +739,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -850,23 +751,14 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (userId === updatedBy) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.notSelf,
-                message: 'user.error.notSelf',
-            });
+            throw new UserNotSelfException();
         }
 
         const user = await this.userRepository.findOneById(userId);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                message: 'user.error.blockedInvalid',
-            });
+            throw new UserBlockedInvalidException();
         }
 
         try {
@@ -912,11 +804,7 @@ export class UserService implements IUserService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -935,19 +823,13 @@ export class UserService implements IUserService {
 
         if (user.password) {
             if (this.authUtil.checkPasswordAttempt(user)) {
-                throw new ForbiddenException({
-                    statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                    message: 'auth.error.passwordAttemptMax',
-                });
+                throw new UserPasswordAttemptMaxException();
             } else if (
                 !this.authUtil.validatePassword(oldPassword, user.password)
             ) {
                 await this.userRepository.increasePasswordAttempt(user.id);
 
-                throw new BadRequestException({
-                    statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                    message: 'auth.error.passwordNotMatch',
-                });
+                throw new UserPasswordNotMatchException();
             }
 
             await this.userRepository.resetPasswordAttempt(user.id);
@@ -959,15 +841,9 @@ export class UserService implements IUserService {
                 newPassword
             );
             if (passwordCheck) {
-                throw new BadRequestException({
-                    statusCode: EnumUserStatusCodeError.passwordMustNew,
-                    message: 'auth.error.passwordMustNew',
-                    messageProperties: {
-                        period: this.helperService.dateFormatToRFC2822(
+                throw new UserPasswordMustNewException(this.helperService.dateFormatToRFC2822(
                             passwordCheck.expiredAt
-                        ),
-                    },
-                });
+                        ));
             }
         }
 
@@ -1005,11 +881,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1024,20 +896,11 @@ export class UserService implements IUserService {
 
         const user = await this.userRepository.findOneWithRoleByEmail(email);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
+            throw new UserInactiveForbiddenException();
         } else if (!user.password) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.passwordNotSet,
-                message: 'auth.error.passwordNotSet',
-            });
+            throw new UserPasswordNotSetException();
         }
 
         if (this.authUtil.checkPasswordAttempt(user)) {
@@ -1046,17 +909,11 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                message: 'auth.error.passwordAttemptMax',
-            });
+            throw new UserPasswordAttemptMaxException();
         } else if (!this.authUtil.validatePassword(password, user.password)) {
             await this.userRepository.increasePasswordAttempt(user.id);
 
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                message: 'auth.error.passwordNotMatch',
-            });
+            throw new UserPasswordNotMatchException();
         }
 
         await this.userRepository.resetPasswordAttempt(user.id);
@@ -1064,10 +921,7 @@ export class UserService implements IUserService {
         const checkPasswordExpired: boolean =
             this.authUtil.checkPasswordExpired(user.passwordExpired!);
         if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.passwordExpired,
-                message: 'auth.error.passwordExpired',
-            });
+            throw new UserPasswordExpiredException();
         }
 
         return this.handleLogin(
@@ -1102,10 +956,7 @@ export class UserService implements IUserService {
                 this.userRoleName
             );
             if (!role) {
-                throw new NotFoundException({
-                    statusCode: EnumRoleStatusCodeError.notFound,
-                    message: 'role.error.notFound',
-                });
+                throw new RoleNotFoundException();
             }
 
             const randomUsername = this.userUtil.createRandomUsername();
@@ -1123,10 +974,7 @@ export class UserService implements IUserService {
         }
 
         if (user!.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
+            throw new UserInactiveForbiddenException();
         }
 
         if (!user!.isVerified) {
@@ -1165,10 +1013,7 @@ export class UserService implements IUserService {
 
         const session = await this.sessionUtil.getLogin(userId, sessionId);
         if (!session || session.jti !== oldJti) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                message: 'auth.error.refreshTokenInvalid',
-            });
+            throw new AuthJwtRefreshTokenInvalidException();
         }
 
         try {
@@ -1203,11 +1048,7 @@ export class UserService implements IUserService {
                 data: tokens,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1226,20 +1067,11 @@ export class UserService implements IUserService {
             this.countryRepository.existById(countryId),
         ]);
         if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         } else if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         } else if (emailExist) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.emailExist,
-                message: 'user.error.emailExist',
-            });
+            throw new UserEmailExistException();
         }
 
         try {
@@ -1282,11 +1114,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1300,10 +1128,7 @@ export class UserService implements IUserService {
                 hashedToken
             );
         if (!verification) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-                message: 'user.error.verificationTokenInvalid',
-            });
+            throw new UserTokenInvalidException();
         }
 
         try {
@@ -1320,11 +1145,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1336,15 +1157,9 @@ export class UserService implements IUserService {
 
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.isVerified) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
-                message: 'user.error.emailAlreadyVerified',
-            });
+            throw new UserEmailAlreadyVerifiedException();
         }
 
         const lastVerification =
@@ -1359,17 +1174,10 @@ export class UserService implements IUserService {
             );
 
             if (today < canResendAt) {
-                throw new BadRequestException({
-                    statusCode:
-                        EnumUserStatusCodeError.verificationEmailResendLimitExceeded,
-                    message: 'user.error.verificationEmailResendLimitExceeded',
-                    messageProperties: {
-                        resendIn: this.helperService.dateDiff(
+                throw new UserVerificationEmailResendLimitExceededException(this.helperService.dateDiff(
                             today,
                             canResendAt
-                        ).minutes,
-                    },
-                });
+                        ).minutes);
             }
         }
 
@@ -1398,11 +1206,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1414,10 +1218,7 @@ export class UserService implements IUserService {
 
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         }
 
         const lastForgotPassword =
@@ -1432,17 +1233,10 @@ export class UserService implements IUserService {
             );
 
             if (today < canResendAt) {
-                throw new BadRequestException({
-                    statusCode:
-                        EnumUserStatusCodeError.forgotPasswordRequestLimitExceeded,
-                    message: 'user.error.forgotPasswordRequestLimitExceeded',
-                    messageProperties: {
-                        resendIn: this.helperService.dateDiff(
+                throw new UserForgotPasswordRequestLimitExceededException(this.helperService.dateDiff(
                             today,
                             canResendAt
-                        ).minutes,
-                    },
-                });
+                        ).minutes);
             }
         }
 
@@ -1468,11 +1262,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1492,10 +1282,7 @@ export class UserService implements IUserService {
                 hashedToken
             );
         if (!resetPassword) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         }
 
         const passwordHistories =
@@ -1507,13 +1294,7 @@ export class UserService implements IUserService {
             newPassword
         );
         if (passwordCheck) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.passwordMustNew,
-                message: 'auth.error.passwordMustNew',
-                messageProperties: {
-                    period: this.authUtil.getPasswordPeriodInDays(),
-                },
-            });
+            throw new UserPasswordMustNewException(this.authUtil.getPasswordPeriodInDays());
         }
 
         let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
@@ -1562,11 +1343,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1669,10 +1446,7 @@ export class UserService implements IUserService {
                 expiredInMinutes: emailVerification.expiredInMinutes,
             });
 
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.emailNotVerified,
-                message: 'user.error.emailNotVerified',
-            });
+            throw new UserEmailNotVerifiedException();
         }
 
         if (!user.twoFactor?.enabled) {
@@ -1746,19 +1520,9 @@ export class UserService implements IUserService {
         const retryAfterMs =
             await this.authTwoFactorUtil.getLockTwoFactorAttempt(user);
         if (retryAfterMs > 0) {
-            throw new RequestTooManyException({
-                statusCode:
-                    EnumAuthStatusCodeError.twoFactorAttemptTemporaryLock,
-                message: 'auth.error.twoFactorAttemptTemporaryLock',
-                messageProperties: {
-                    retryAfterSeconds: retryAfterMs / 1000,
-                },
-            });
+            throw new AuthTwoFactorAttemptTemporaryLockException(retryAfterMs / 1000);
         } else if (!method) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorMethodRequired,
-                message: 'auth.error.twoFactorMethodRequired',
-            });
+            throw new AuthTwoFactorMethodRequiredException();
         }
 
         const verified = await this.authTwoFactorUtil.verifyTwoFactor(
@@ -1776,10 +1540,7 @@ export class UserService implements IUserService {
                 await this.authTwoFactorUtil.lockTwoFactorAttempt(user);
             }
 
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                message: 'auth.error.twoFactorInvalid',
-            });
+            throw new AuthTwoFactorInvalidException();
         }
 
         await this.userRepository.resetTwoFactorAttempt(user.id);
@@ -1801,40 +1562,22 @@ export class UserService implements IUserService {
         const challenge =
             await this.authTwoFactorUtil.getChallenge(challengeToken);
         if (!challenge) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
-                message: 'auth.error.twoFactorChallengeInvalid',
-            });
+            throw new AuthTwoFactorChallengeInvalidException();
         }
 
         const user = await this.userRepository.findOneWithRoleById(
             challenge.userId
         );
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
+            throw new UserInactiveForbiddenException();
         } else if (!user.isVerified) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.emailNotVerified,
-                message: 'user.error.emailNotVerified',
-            });
+            throw new UserEmailNotVerifiedException();
         } else if (!user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorNotEnabled',
-            });
+            throw new AuthTwoFactorNotEnabledException();
         } else if (user.twoFactor?.requiredSetup) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorRequiredSetup,
-                message: 'auth.error.twoFactorRequiredSetup',
-            });
+            throw new AuthTwoFactorRequiredSetupException();
         }
 
         const twoFactorVerified = await this.handleTwoFactorValidation(user, {
@@ -1865,11 +1608,7 @@ export class UserService implements IUserService {
                 data: tokens,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1885,40 +1624,22 @@ export class UserService implements IUserService {
         const challenge =
             await this.authTwoFactorUtil.getChallenge(challengeToken);
         if (!challenge) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
-                message: 'auth.error.twoFactorChallengeInvalid',
-            });
+            throw new AuthTwoFactorChallengeInvalidException();
         }
 
         const user = await this.userRepository.findOneWithRoleById(
             challenge.userId
         );
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status !== EnumUserStatus.active) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                message: 'user.error.inactive',
-            });
+            throw new UserInactiveForbiddenException();
         } else if (!user.isVerified) {
-            throw new ForbiddenException({
-                statusCode: EnumUserStatusCodeError.emailNotVerified,
-                message: 'user.error.emailNotVerified',
-            });
+            throw new UserEmailNotVerifiedException();
         } else if (!user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorNotEnabled',
-            });
+            throw new AuthTwoFactorNotEnabledException();
         } else if (!user.twoFactor?.requiredSetup) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotRequiredSetup,
-                message: 'auth.error.twoFactorNotRequiredSetup',
-            });
+            throw new AuthTwoFactorNotRequiredSetupException();
         }
 
         await this.handleTwoFactorValidation(user, {
@@ -1940,11 +1661,7 @@ export class UserService implements IUserService {
                 },
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -1963,10 +1680,7 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
-                message: 'auth.error.twoFactorAlreadyEnabled',
-            });
+            throw new AuthTwoFactorAlreadyEnabledException();
         }
 
         try {
@@ -1986,11 +1700,7 @@ export class UserService implements IUserService {
                 },
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2002,15 +1712,9 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorAlreadyEnabled,
-                message: 'auth.error.twoFactorAlreadyEnabled',
-            });
+            throw new AuthTwoFactorAlreadyEnabledException();
         } else if (!user.twoFactor?.iv || !user.twoFactor?.secret) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorSetupRequired',
-            });
+            throw new AuthTwoFactorSetupRequiredException();
         }
 
         const secret = this.authTwoFactorUtil.decryptSecret(
@@ -2019,10 +1723,7 @@ export class UserService implements IUserService {
         );
         const isValidCode = this.authTwoFactorUtil.verifyCode(secret, code);
         if (!isValidCode) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                message: 'auth.error.twoFactorInvalid',
-            });
+            throw new AuthTwoFactorInvalidException();
         }
 
         try {
@@ -2039,11 +1740,7 @@ export class UserService implements IUserService {
                 },
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2055,10 +1752,7 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (!user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorNotEnabled',
-            });
+            throw new AuthTwoFactorNotEnabledException();
         }
 
         const verified = await this.authTwoFactorUtil.verifyTwoFactor(
@@ -2072,10 +1766,7 @@ export class UserService implements IUserService {
         if (!verified.isValid) {
             await this.userRepository.increaseTwoFactorAttempt(user.id);
 
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.twoFactorInvalid,
-                message: 'auth.error.twoFactorInvalid',
-            });
+            throw new AuthTwoFactorInvalidException();
         }
 
         try {
@@ -2088,11 +1779,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2103,10 +1790,7 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (!user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorNotEnabled',
-            });
+            throw new AuthTwoFactorNotEnabledException();
         }
 
         try {
@@ -2123,11 +1807,7 @@ export class UserService implements IUserService {
                 },
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2139,28 +1819,16 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (userId === updatedBy) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.notSelf,
-                message: 'user.error.notSelf',
-            });
+            throw new UserNotSelfException();
         }
 
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
-            throw new NotFoundException({
-                statusCode: EnumUserStatusCodeError.notFound,
-                message: 'user.error.notFound',
-            });
+            throw new UserNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
-            throw new BadRequestException({
-                statusCode: EnumUserStatusCodeError.blockedInvalid,
-                message: 'user.error.blockedInvalid',
-            });
+            throw new UserBlockedInvalidException();
         } else if (!user.twoFactor?.enabled) {
-            throw new BadRequestException({
-                statusCode: EnumAuthStatusCodeError.twoFactorNotEnabled,
-                message: 'auth.error.twoFactorNotEnabled',
-            });
+            throw new AuthTwoFactorNotEnabledException();
         }
 
         try {
@@ -2183,11 +1851,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2212,23 +1876,11 @@ export class UserService implements IUserService {
         ]);
 
         if (existingUsers.length > 0) {
-            throw new ConflictException({
-                statusCode: EnumUserStatusCodeError.emailExist,
-                message: 'user.error.importEmailExist',
-                messageProperties: {
-                    emails: existingUsers.map(user => user.email).join(', '),
-                },
-            });
+            throw new UserImportEmailExistException(existingUsers.map(user => user.email).join(', '));
         } else if (!checkRole) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         } else if (!checkCountry) {
-            throw new NotFoundException({
-                statusCode: EnumCountryStatusCodeError.notFound,
-                message: 'country.error.notFound',
-            });
+            throw new CountryNotFoundException();
         }
 
         try {
@@ -2282,11 +1934,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -2329,10 +1977,7 @@ export class UserService implements IUserService {
             sessionId
         );
         if (!checkActive) {
-            throw new NotFoundException({
-                statusCode: EnumSessionStatusCodeError.notFound,
-                message: 'session.error.notFound',
-            });
+            throw new SessionNotFoundException();
         }
 
         try {
@@ -2348,11 +1993,7 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 }

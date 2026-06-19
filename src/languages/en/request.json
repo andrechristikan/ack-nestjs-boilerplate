@@ -3,7 +3,6 @@
         "validation": "There are validation errors.",
         "paramRequired": "Required parameter is missing.",
         "unknownValue": "Unknown value is not allowed.",
-        "tooManyRequests": "Too many requests. Please try again later.",
         "min": "{property} has fewer elements than the minimum allowed.",
         "max": "{property} has more elements than the maximum allowed.",
         "maxLength": "{property} exceeds the maximum length allowed.",

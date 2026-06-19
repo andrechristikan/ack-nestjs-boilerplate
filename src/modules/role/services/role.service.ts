@@ -7,14 +7,18 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
+import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -22,13 +26,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import {
-    ConflictException,
-    ForbiddenException,
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @Injectable()
@@ -84,10 +82,7 @@ export class RoleService implements IRoleService {
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         }
 
         return { data: this.roleUtil.mapOne(role) };
@@ -98,10 +93,7 @@ export class RoleService implements IRoleService {
     ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         }
 
         return { data: this.roleUtil.mapAbilities(role) };
@@ -113,10 +105,7 @@ export class RoleService implements IRoleService {
     }: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
         const exist = await this.roleRepository.existByName(name);
         if (exist) {
-            throw new ConflictException({
-                statusCode: EnumRoleStatusCodeError.exist,
-                message: 'role.error.exist',
-            });
+            throw new RoleExistException();
         }
 
         const created = await this.roleRepository.create({ name, ...others });
@@ -137,10 +126,7 @@ export class RoleService implements IRoleService {
     ): Promise<IResponseReturn<RoleDto>> {
         const role = await this.roleRepository.existById(id);
         if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         }
 
         const updated = await this.roleRepository.update(id, data);
@@ -162,15 +148,9 @@ export class RoleService implements IRoleService {
         ]);
 
         if (!role) {
-            throw new NotFoundException({
-                statusCode: EnumRoleStatusCodeError.notFound,
-                message: 'role.error.notFound',
-            });
+            throw new RoleNotFoundException();
         } else if (roleUsed) {
-            throw new ConflictException({
-                statusCode: EnumRoleStatusCodeError.used,
-                message: 'role.error.used',
-            });
+            throw new RoleUsedException();
         }
 
         const deleted = await this.roleRepository.delete(id);
@@ -188,10 +168,7 @@ export class RoleService implements IRoleService {
         requiredRoles: EnumRoleType[]
     ): Promise<RoleAbilityDto[]> {
         if (!user) {
-            throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
+            throw new AuthJwtAccessTokenInvalidException();
         }
 
         const { role } = user;
@@ -199,15 +176,9 @@ export class RoleService implements IRoleService {
         if (role.type === EnumRoleType.superAdmin) {
             return [];
         } else if (requiredRoles.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumRoleStatusCodeError.predefinedNotFound,
-                message: 'role.error.predefinedNotFound',
-            });
+            throw new RolePredefinedNotFoundException();
         } else if (!requiredRoles.includes(role.type)) {
-            throw new ForbiddenException({
-                statusCode: EnumRoleStatusCodeError.forbidden,
-                message: 'role.error.forbidden',
-            });
+            throw new RoleForbiddenException();
         }
 
         const abilities = this.roleUtil.mapOne(role).abilities;

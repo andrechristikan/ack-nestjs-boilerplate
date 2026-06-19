@@ -1,6 +1,5 @@
 import {
     Injectable,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { PipeTransform, Type } from '@nestjs/common/interfaces';
@@ -14,8 +13,15 @@ import {
     IPaginationQuery,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidOffsetPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-offset-pagination-params.exception';
+import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
+import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
+import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
+import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
+import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
+import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 
 export function PaginationOffsetPipe(
     defaultPerPage: number = PaginationDefaultPerPage
@@ -50,15 +56,11 @@ export function PaginationOffsetPipe(
                     skip: skip,
                 };
             } catch (error) {
-                if (error instanceof UnprocessableEntityException) {
+                if (error instanceof AppBaseException) {
                     throw error;
                 }
 
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidOffsetPaginationParams,
-                    message: 'pagination.error.invalidOffsetPaginationParams',
-                });
+                throw new PaginationInvalidOffsetPaginationParamsException();
             }
         }
 
@@ -70,37 +72,15 @@ export function PaginationOffsetPipe(
             }
 
             if (!Number.isFinite(finalPage) || !Number.isInteger(finalPage)) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPage,
-                    message: 'pagination.error.invalidPage',
-                    messageProperties: {
-                        maxPage: PaginationDefaultMaxPage,
-                    },
-                });
+                throw new PaginationInvalidPageException(PaginationDefaultMaxPage);
             }
 
             if (finalPage > PaginationDefaultMaxPage) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.pageExceedsMaximum,
-                    message: 'pagination.error.pageExceedsMaximum',
-                    messageProperties: {
-                        maxPage: PaginationDefaultMaxPage,
-                        receivedPage: finalPage,
-                    },
-                });
+                throw new PaginationPageExceedsMaximumException(PaginationDefaultMaxPage, finalPage);
             }
 
             if (finalPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
-                    message: 'pagination.error.pageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPage: 1,
-                        receivedPage: finalPage,
-                    },
-                });
+                throw new PaginationPageCannotBeLessThanOneException(finalPage);
             }
 
             return finalPage;
@@ -117,37 +97,15 @@ export function PaginationOffsetPipe(
                 !Number.isFinite(finalPerPage) ||
                 !Number.isInteger(finalPerPage)
             ) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                    message: 'pagination.error.invalidPerPage',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                    },
-                });
+                throw new PaginationInvalidPerPageException(PaginationDefaultMaxPerPage);
             }
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageExceedsMaximum,
-                    message: 'pagination.error.perPageExceedsMaximum',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageExceedsMaximumException(PaginationDefaultMaxPerPage, finalPerPage);
             }
 
             if (finalPerPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                    message: 'pagination.error.perPageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPerPage: 1,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageCannotBeLessThanOneException(finalPerPage);
             }
 
             return finalPerPage;

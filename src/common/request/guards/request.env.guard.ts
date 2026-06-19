@@ -1,14 +1,9 @@
-import {
-    CanActivate,
-    ExecutionContext,
-    ForbiddenException,
-    Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestEnvMetaKey } from '@common/request/constants/request.constant';
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { RequestEnvForbiddenException } from '@common/request/exceptions/request.env-forbidden.exception';
 
 /**
  * Allows a route only when the current app environment is in its allowed list; else 403.
@@ -30,10 +25,7 @@ export class RequestEnvGuard implements CanActivate {
         >(RequestEnvMetaKey, [context.getHandler(), context.getClass()]);
 
         if (!required || !required.includes(this.env)) {
-            throw new ForbiddenException({
-                statusCode: EnumRequestStatusCodeError.envForbidden,
-                message: 'http.clientError.forbidden',
-            });
+            throw new RequestEnvForbiddenException();
         }
 
         return true;

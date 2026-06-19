@@ -1,4 +1,3 @@
-import { MessageService } from '@common/message/services/message.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import {
     EnumNotificationChannel,
@@ -10,7 +9,8 @@ import { NotificationSettingUpdateAllowedCombinations } from '@modules/notificat
 import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
+import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
+import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
@@ -25,7 +25,7 @@ import {
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
@@ -37,7 +37,6 @@ export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly messageService: MessageService,
         private readonly responseUtil: ResponseUtil
     ) {}
 
@@ -395,21 +394,11 @@ export class NotificationUtil {
         );
 
         if (!validType) {
-            throw new BadRequestException({
-                statusCode: EnumNotificationStatusCodeError.invalidType,
-                message: this.messageService.setMessage(
-                    'notification.error.invalidType'
-                ),
-            });
+            throw new NotificationInvalidTypeException();
         }
 
         if (!validType.channels.includes(channel)) {
-            throw new BadRequestException({
-                statusCode: EnumNotificationStatusCodeError.invalidChannel,
-                message: this.messageService.setMessage(
-                    'notification.error.invalidChannel'
-                ),
-            });
+            throw new NotificationInvalidChannelException();
         }
     }
 

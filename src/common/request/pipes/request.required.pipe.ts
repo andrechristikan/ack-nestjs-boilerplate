@@ -1,9 +1,5 @@
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import {
-    ArgumentMetadata,
-    BadRequestException,
-    Injectable,
-} from '@nestjs/common';
+import { RequestParamRequiredException } from '@common/request/exceptions/request.param-required.exception';
+import { ArgumentMetadata, Injectable } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common';
 
 /**
@@ -16,13 +12,7 @@ export class RequestRequiredPipe implements PipeTransform {
         metadata: ArgumentMetadata
     ): Promise<string> {
         if (!value) {
-            throw new BadRequestException({
-                statusCode: EnumRequestStatusCodeError.paramRequired,
-                message: 'request.error.paramRequired',
-                messageProperties: {
-                    property: metadata.data,
-                },
-            });
+            throw new RequestParamRequiredException(metadata.data!);
         }
 
         return value;

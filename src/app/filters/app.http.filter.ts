@@ -9,18 +9,17 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { IAppException } from '@app/interfaces/app.interface';
+import Case from 'case';
 import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import * as Sentry from '@sentry/nestjs';
 
 /**
- * Handles `HttpException`: redirects off-prefix paths, builds the standard error envelope,
- * and reports 5xx to Sentry.
+ * Handles framework `HttpException`: redirects off-prefix paths, builds the standard error
+ * envelope from the HTTP status, and reports 5xx to Sentry.
  */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
@@ -60,53 +59,39 @@ export class AppHttpFilter implements ExceptionFilter {
 
         this.sendToSentry(exception);
 
-        let messagePath: string;
-        let statusCode: number;
-        let messageProperties: IMessageProperties | undefined;
-        let data: unknown;
+        const statusHttp: HttpStatus = exception.getStatus();
+        const statusName: string = HttpStatus[statusHttp];
+        const responseException: unknown = exception.getResponse();
+        const extended =
+            responseException && typeof responseException === 'object'
+                ? (responseException as Record<string, unknown>)
+                : undefined;
 
-        let metadata: ResponseMetadataDto =
+        const metadata: ResponseMetadataDto =
             this.responseMetadataService.create();
 
-        const responseException = exception.getResponse();
-        const statusHttp: HttpStatus = exception.getStatus();
-        statusCode = statusHttp;
-        messagePath = `http.${statusHttp}`;
-
-        if (this.isErrorException(responseException)) {
-            statusCode = responseException.statusCode;
-            messagePath = responseException.message;
-            messageProperties = responseException.messageProperties;
-            data = responseException.data;
-
-            metadata = {
-                ...responseException.metadata,
-                ...metadata,
-            };
-        }
-
-        const message: string = this.messageService.setMessage(messagePath, {
-            customLanguage: metadata.language,
-            properties: messageProperties,
-        });
+        const message: string = this.messageService.setMessage(
+            `http.${statusHttp}`,
+            {
+                customLanguage: metadata.language,
+            }
+        );
 
         const responseBody: ResponseErrorDto = {
-            statusCode,
+            statusCode: statusHttp,
+            statusCodeKey:
+                (extended?.statusCodeKey as string) ??
+                (statusName ? Case.camel(statusName) : 'unknown'),
+            module: (extended?.module as string) ?? 'http',
             message,
             metadata,
-            data,
+            data: extended?.data,
         };
 
         this.responseMetadataService.setHeaders(response, metadata);
         response.status(statusHttp).json(responseBody);
 
         return;
-    }
-
-    isErrorException(obj: unknown): obj is IAppException<unknown> {
-        return obj && typeof obj === 'object'
-            ? 'statusCode' in obj && 'message' in obj
-            : false;
     }
 
     sendToSentry(exception: HttpException): void {

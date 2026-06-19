@@ -1,11 +1,12 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { validate } from 'class-validator';
 import { FileMaxDataImport } from '@common/file/constants/file.constant';
+import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
+import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
 
 /**
  * Transforms parsed CSV rows into the given DTO and validates each via class-validator,
@@ -32,15 +33,9 @@ export class FileCsvValidationPipe<
      */
     private async parse(value: TRaw[]): Promise<TDto[]> {
         if (!value || value.length === 0) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumFileStatusCodeError.requiredExtractFirst,
-                message: 'file.error.requiredParseFirst',
-            });
+            throw new FileRequiredExtractFirstException();
         } else if (value.length > FileMaxDataImport) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumFileStatusCodeError.exceedMaxDataImport,
-                message: 'file.error.exceedMaxDataImport',
-            });
+            throw new FileExceedMaxDataImportException();
         }
 
         return this.validateDto(value);

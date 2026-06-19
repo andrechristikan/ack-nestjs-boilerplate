@@ -1,5 +1,10 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
+import { AuthSocialAppleRequiredException } from '@modules/auth/exceptions/auth.social-apple-required.exception';
+import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
+import { AuthSocialGoogleRequiredException } from '@modules/auth/exceptions/auth.social-google-required.exception';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -7,9 +12,9 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { SessionForbiddenException } from '@modules/session/exceptions/session.forbidden.exception';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TokenPayload } from 'google-auth-library';
 
 @Injectable()
@@ -31,18 +36,12 @@ export class AuthService implements IAuthService {
             !jti ||
             typeof jti !== 'string'
         ) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
+            throw new AuthJwtAccessTokenInvalidException();
         }
 
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
-            throw new UnauthorizedException({
-                statusCode: EnumSessionStatusCodeError.forbidden,
-                message: 'session.error.forbidden',
-            });
+            throw new SessionForbiddenException();
         }
 
         return payload;
@@ -54,11 +53,7 @@ export class AuthService implements IAuthService {
         info: Error
     ): IAuthJwtAccessTokenPayload {
         if (err || !user) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-                _error: err ? err : info,
-            });
+            throw new AuthJwtAccessTokenInvalidException(err ? err : info);
         }
 
         return user;
@@ -75,18 +70,12 @@ export class AuthService implements IAuthService {
             !jti ||
             typeof jti !== 'string'
         ) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                message: 'auth.error.refreshTokenUnauthorized',
-            });
+            throw new AuthJwtRefreshTokenInvalidException();
         }
 
         const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
         if (!isValidSession || jti !== isValidSession.jti) {
-            throw new UnauthorizedException({
-                statusCode: EnumSessionStatusCodeError.forbidden,
-                message: 'session.error.forbidden',
-            });
+            throw new SessionForbiddenException();
         }
 
         return payload;
@@ -98,11 +87,7 @@ export class AuthService implements IAuthService {
         info: Error
     ): IAuthJwtRefreshTokenPayload {
         if (err || !user) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                message: 'auth.error.refreshTokenUnauthorized',
-                _error: err ? err : info,
-            });
+            throw new AuthJwtRefreshTokenInvalidException(err ? err : info);
         }
 
         return user;
@@ -113,10 +98,7 @@ export class AuthService implements IAuthService {
     ): Promise<boolean> {
         const requestHeaders = this.authUtil.extractHeaderApple(request);
         if (requestHeaders.length !== 2) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-                message: 'auth.error.socialAppleRequired',
-            });
+            throw new AuthSocialAppleRequiredException();
         }
 
         try {
@@ -129,11 +111,7 @@ export class AuthService implements IAuthService {
 
             return true;
         } catch (err: unknown) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                message: 'auth.error.socialAppleInvalid',
-                _error: err,
-            });
+            throw new AuthSocialAppleInvalidException(err);
         }
     }
 
@@ -143,10 +121,7 @@ export class AuthService implements IAuthService {
         const requestHeaders = this.authUtil.extractHeaderGoogle(request);
 
         if (requestHeaders.length !== 2) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-                message: 'auth.error.socialGoogleRequired',
-            });
+            throw new AuthSocialGoogleRequiredException();
         }
 
         try {
@@ -161,11 +136,7 @@ export class AuthService implements IAuthService {
 
             return true;
         } catch (err: unknown) {
-            throw new UnauthorizedException({
-                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                message: 'auth.error.socialGoogleInvalid',
-                _error: err,
-            });
+            throw new AuthSocialGoogleInvalidException(err);
         }
     }
 }

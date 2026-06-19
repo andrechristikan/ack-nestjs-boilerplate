@@ -1,6 +1,5 @@
 import { PaginationDefaultCursorField, PaginationDefaultOrderBy } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import {
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -11,7 +10,13 @@ import {
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
+import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
+import { PaginationInvalidCursorDataException } from '@common/pagination/exceptions/pagination.invalid-cursor-data.exception';
+import { PaginationFailedToEncodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-encode-cursor.exception';
+import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
 
 @Injectable()
 export class PaginationService implements IPaginationService {
@@ -80,11 +85,7 @@ export class PaginationService implements IPaginationService {
             try {
                 decodedCursor = this.decodeCursor(cursor);
             } catch {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidCursorFormat,
-                    message: 'pagination.error.invalidCursorFormat',
-                });
+                throw new PaginationInvalidCursorFormatException();
             }
 
             if (decodedCursor) {
@@ -98,12 +99,7 @@ export class PaginationService implements IPaginationService {
                 );
 
                 if (orderByChanged || whereChanged) {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.invalidCursorPaginationParams,
-                        message:
-                            'pagination.error.invalidCursorPaginationParams',
-                    });
+                    throw new PaginationInvalidCursorPaginationParamsException();
                 }
             }
         }
@@ -157,10 +153,7 @@ export class PaginationService implements IPaginationService {
 
     private encodeCursor(data: IPaginationCursorValue): string {
         if (!data || data.cursor === undefined || data.cursor === null) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
-                message: 'pagination.error.invalidCursorData',
-            });
+            throw new PaginationInvalidCursorDataException();
         }
 
         try {
@@ -170,19 +163,13 @@ export class PaginationService implements IPaginationService {
                 .replaceAll(/\//g, '_')
                 .replaceAll(/=/g, '');
         } catch {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
-                message: 'pagination.error.failedToEncodeCursor',
-            });
+            throw new PaginationFailedToEncodeCursorException();
         }
     }
 
     private decodeCursor(cursor: string): IPaginationCursorValue {
         if (!cursor || typeof cursor !== 'string') {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
-                message: 'pagination.error.invalidCursorFormat',
-            });
+            throw new PaginationInvalidCursorFormatException();
         }
 
         try {
@@ -193,22 +180,16 @@ export class PaginationService implements IPaginationService {
             );
 
             if (!decoded.cursor || !decoded.orderBy) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorData,
-                    message: 'pagination.error.invalidCursorData',
-                });
+                throw new PaginationInvalidCursorDataException();
             }
 
             return decoded as IPaginationCursorValue;
         } catch (error) {
-            if (error instanceof UnprocessableEntityException) {
+            if (error instanceof AppBaseException) {
                 throw error;
             }
 
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
-                message: 'pagination.error.failedToDecodeCursor',
-            });
+            throw new PaginationFailedToDecodeCursorException();
         }
     }
 

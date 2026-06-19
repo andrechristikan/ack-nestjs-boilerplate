@@ -11,15 +11,12 @@ import { NotificationUserSettingDto } from '@modules/notification/dtos/notificat
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
+import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
+import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class NotificationService implements INotificationService {
@@ -76,15 +73,9 @@ export class NotificationService implements INotificationService {
             notificationId
         );
         if (!checkExist) {
-            throw new NotFoundException({
-                statusCode: EnumNotificationStatusCodeError.notFound,
-                message: 'notification.error.notFound',
-            });
+            throw new NotificationNotFoundException();
         } else if (checkExist.isRead) {
-            throw new BadRequestException({
-                statusCode: EnumNotificationStatusCodeError.alreadyRead,
-                message: 'notification.error.alreadyRead',
-            });
+            throw new NotificationAlreadyReadException();
         }
 
         await this.notificationRepository.markAsRead(userId, notificationId);

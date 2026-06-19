@@ -1,7 +1,6 @@
 import {
     Injectable,
     Type,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
@@ -17,10 +16,11 @@ import {
     IPaginationQueryFilterEnumOptions,
     IPaginationQueryFilterEqualOptions,
 } from '@common/pagination/interfaces/pagination.interface';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationFilterInvalidValueEnumException } from '@common/pagination/exceptions/pagination.filter-invalid-value-enum.exception';
+import { PaginationFilterInvalidValueException } from '@common/pagination/exceptions/pagination.filter-invalid-value.exception';
 
 /**
  * Pipe validating a comma-separated value against an enum and emitting an `in` filter.
@@ -64,15 +64,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.filterInvalidValue,
-                    message: `pagination.error.filterInvalidValueEnum`,
-                    messageProperties: {
-                        property: metadata.data,
-                        allowedValues: defaultEnum.join(', '),
-                    },
-                });
+                throw new PaginationFilterInvalidValueEnumException(metadata.data!, defaultEnum.join(', '));
             }
 
             const field = metadata.data!;
@@ -143,15 +135,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.filterInvalidValue,
-                    message: `pagination.error.filterInvalidValueEnum`,
-                    messageProperties: {
-                        property: metadata.data,
-                        allowedValues: defaultEnum.join(', '),
-                    },
-                });
+                throw new PaginationFilterInvalidValueEnumException(metadata.data!, defaultEnum.join(', '));
             }
 
             const field = metadata.data!;
@@ -204,14 +188,7 @@ export function PaginationQueryFilterEqualPipe<T>(
             if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.filterInvalidValue,
-                        message: `pagination.error.filterInvalidValue`,
-                        messageProperties: {
-                            property: metadata.data,
-                        },
-                    });
+                    throw new PaginationFilterInvalidValueException(metadata.data!);
                 }
 
                 finalValue = (booleanString === 'true') as T;
@@ -219,14 +196,7 @@ export function PaginationQueryFilterEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.filterInvalidValue,
-                        message: `pagination.error.filterInvalidValue`,
-                        messageProperties: {
-                            property: metadata.data,
-                        },
-                    });
+                    throw new PaginationFilterInvalidValueException(metadata.data!);
                 }
             } else {
                 finalValue = value.trim() as T;
@@ -286,14 +256,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.filterInvalidValue,
-                        message: `pagination.error.filterInvalidValue`,
-                        messageProperties: {
-                            property: metadata.data,
-                        },
-                    });
+                    throw new PaginationFilterInvalidValueException(metadata.data!);
                 }
 
                 finalValue = (booleanString === 'true') as T;
@@ -301,14 +264,7 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.filterInvalidValue,
-                        message: `pagination.error.filterInvalidValue`,
-                        messageProperties: {
-                            property: metadata.data,
-                        },
-                    });
+                    throw new PaginationFilterInvalidValueException(metadata.data!);
                 }
             } else {
                 finalValue = value.trim() as T;
@@ -366,14 +322,9 @@ export function PaginationQueryFilterDatePipe(
             }
 
             if (!this.helperService.dateCheckIso(value)) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.filterInvalidValue,
-                    message: `pagination.error.filterInvalidValue`,
-                    messageProperties: {
-                        property: metadata.data,
-                    },
-                });
+                throw new PaginationFilterInvalidValueException(
+                    metadata.data!
+                );
             }
 
             const finalValue = this.helperService.dateCreateFromIso(value, {

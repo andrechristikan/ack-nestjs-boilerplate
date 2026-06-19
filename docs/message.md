@@ -200,23 +200,18 @@ await axios.get('http://localhost:3000/api/users', {
 
 ### Exception Filters
 
-Exception filters automatically translate message paths. The exception body follows the `IAppException` interface.
+Exception filters automatically translate message paths. Application errors are dedicated `AppBaseException` subclasses; the filter resolves each exception's `messagePath` against the message system.
 
 ```typescript
-throw new BadRequestException({
-    statusCode: EnumUserStatusCodeError.emailExist,
-    message: 'user.error.emailExists', // Will be translated
-});
+throw new UserEmailExistException();
+// the class internally calls super('user.error.emailExist')
 ```
 
-With variables, pass `messageProperties` directly in the exception body:
+With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
 
 ```typescript
-throw new NotFoundException({
-    statusCode: EnumUserStatusCodeError.notFound,
-    message: 'user.error.notFoundWithId',
-    messageProperties: { id: userId },
-});
+throw new UserVerificationEmailResendLimitExceededException(resendIn);
+// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { resendIn } })
 ```
 
 ### Response Decorator
@@ -303,6 +298,8 @@ class UserDto {
 // Automatic transformation
 {
     "statusCode": 5030,
+    "statusCodeKey": "validation",
+    "module": "request",
     "message": "There are validation errors.",
     "errors": [
         {

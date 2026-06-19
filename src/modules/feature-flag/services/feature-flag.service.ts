@@ -11,18 +11,17 @@ import { Prisma } from '@generated/prisma-client';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
-import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
+import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
+import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
+import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-length-exceeded.exception';
+import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
+import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagService } from '@modules/feature-flag/interfaces/feature-flag.service.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
-import {
-    BadRequestException,
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-    ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagService implements IFeatureFlagService {
@@ -37,45 +36,27 @@ export class FeatureFlagService implements IFeatureFlagService {
     ): Promise<void> {
         const keys = keyPath.split('.');
         if (keys.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumFeatureFlagStatusCodeError.predefinedKeyEmpty,
-                message: 'featureFlag.error.predefinedKeyEmpty',
-            });
+            throw new FeatureFlagPredefinedKeyEmptyException();
         } else if (keys.length > 2) {
-            throw new InternalServerErrorException({
-                statusCode:
-                    EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded,
-                message: 'featureFlag.error.predefinedKeyLengthExceeded',
-            });
+            throw new FeatureFlagPredefinedKeyLengthExceededException();
         }
 
         const featureFlag = await this.featureFlagUtil.getByKeyAndCache(
             keys[0]
         );
         if (!featureFlag?.isEnable) {
-            throw new ServiceUnavailableException({
-                statusCode: EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                message: 'featureFlag.error.serviceUnavailable',
-            });
+            throw new FeatureFlagServiceUnavailableException();
         } else if (keys.length > 1) {
             const metadata: unknown =
                 (featureFlag?.metadata as Record<string, unknown>)?.[keys[1]] ??
                 null;
 
             if (typeof metadata !== 'boolean') {
-                throw new InternalServerErrorException({
-                    statusCode:
-                        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid,
-                    message: 'featureFlag.error.predefinedKeyTypeInvalid',
-                });
+                throw new FeatureFlagPredefinedKeyTypeInvalidException();
             }
 
             if (!metadata) {
-                throw new ServiceUnavailableException({
-                    statusCode:
-                        EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                    message: 'featureFlag.error.serviceUnavailable',
-                });
+                throw new FeatureFlagServiceUnavailableException();
             }
         }
 
@@ -86,11 +67,7 @@ export class FeatureFlagService implements IFeatureFlagService {
                 user.userId
             );
             if (!checkRollout) {
-                throw new ServiceUnavailableException({
-                    statusCode:
-                        EnumFeatureFlagStatusCodeError.serviceUnavailable,
-                    message: 'featureFlag.error.serviceUnavailable',
-                });
+                throw new FeatureFlagServiceUnavailableException();
             }
         }
     }
@@ -139,10 +116,7 @@ export class FeatureFlagService implements IFeatureFlagService {
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
-            throw new NotFoundException({
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
-                message: 'featureFlag.error.notFound',
-            });
+            throw new FeatureFlagNotFoundException();
         }
 
         const [updated] = await Promise.all([
@@ -164,10 +138,7 @@ export class FeatureFlagService implements IFeatureFlagService {
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
-            throw new NotFoundException({
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
-                message: 'featureFlag.error.notFound',
-            });
+            throw new FeatureFlagNotFoundException();
         }
 
         const validated = this.featureFlagUtil.checkMetadataKey(
@@ -175,10 +146,7 @@ export class FeatureFlagService implements IFeatureFlagService {
             data.metadata
         );
         if (!validated) {
-            throw new BadRequestException({
-                statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
-                message: 'featureFlag.error.invalidMetadata',
-            });
+            throw new FeatureFlagInvalidMetadataException();
         }
 
         const [updated] = await Promise.all([

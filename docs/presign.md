@@ -81,7 +81,7 @@ export class UserService {
     // Verify user owns the file
     const user = await this.userRepository.findOneById(userId);
     if (user.photo?.key !== key) {
-      throw new ForbiddenException('Access denied to this resource');
+      throw new UserNotFoundForbiddenException();
     }
 
     const presign: IAwsS3Presign = await this.awsS3Service.presignGetItem(

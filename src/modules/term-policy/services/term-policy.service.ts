@@ -1,8 +1,8 @@
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -15,7 +15,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -25,7 +25,15 @@ import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/req
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
+import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
+import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
+import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
+import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
+import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
+import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -35,15 +43,7 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import {
-    BadRequestException,
-    ConflictException,
-    ForbiddenException,
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-    ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
@@ -65,10 +65,7 @@ export class TermPolicyService implements ITermPolicyService {
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void> {
         if (!user) {
-            throw new ForbiddenException({
-                statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                message: 'auth.error.accessTokenUnauthorized',
-            });
+            throw new AuthJwtAccessTokenInvalidException();
         }
 
         const { termPolicy } = user;
@@ -83,10 +80,7 @@ export class TermPolicyService implements ITermPolicyService {
                 : requiredTermPolicies;
 
         if (!requiredTermPolicies.every(type => termPolicy[type])) {
-            throw new ForbiddenException({
-                statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
-                message: 'termPolicy.error.requiredInvalid',
-            });
+            throw new TermPolicyRequiredInvalidException();
         }
     }
 
@@ -164,10 +158,7 @@ export class TermPolicyService implements ITermPolicyService {
         const policy =
             await this.termPolicyRepository.existLatestPublishedByType(type);
         if (!policy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         }
 
         const exist =
@@ -176,10 +167,7 @@ export class TermPolicyService implements ITermPolicyService {
                 policy.id
             );
         if (exist) {
-            throw new ConflictException({
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-                message: 'termPolicy.error.alreadyAccepted',
-            });
+            throw new TermPolicyAlreadyAcceptedException();
         }
 
         try {
@@ -199,11 +187,7 @@ export class TermPolicyService implements ITermPolicyService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -216,19 +200,13 @@ export class TermPolicyService implements ITermPolicyService {
             type
         );
         if (isExist) {
-            throw new ConflictException({
-                statusCode: EnumTermPolicyStatusCodeError.exist,
-                message: 'termPolicy.error.exist',
-            });
+            throw new TermPolicyExistException();
         }
 
         const isUniqueLanguages =
             this.termPolicyUtil.validateUniqueLanguages(contents);
         if (!isUniqueLanguages) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
-                message: 'termPolicy.error.contentsLanguageMustBeUnique',
-            });
+            throw new TermPolicyLanguageDuplicateException();
         }
 
         try {
@@ -262,11 +240,7 @@ export class TermPolicyService implements ITermPolicyService {
                 data: termPolicy,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -276,15 +250,9 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         } else if (termPolicy.status !== EnumTermPolicyStatus.draft) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         }
 
         try {
@@ -307,11 +275,7 @@ export class TermPolicyService implements ITermPolicyService {
                 data: mapped,
             };
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -332,10 +296,7 @@ export class TermPolicyService implements ITermPolicyService {
             termPolicy &&
             termPolicy.status === EnumTermPolicyStatus.published
         ) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         }
 
         const key: string =
@@ -361,10 +322,7 @@ export class TermPolicyService implements ITermPolicyService {
             );
 
         if (!aws) {
-            throw new ServiceUnavailableException({
-                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
-                message: 'aws.error.serviceUnavailable',
-            });
+            throw new AwsServiceUnavailableException();
         }
 
         return { data: aws };
@@ -378,15 +336,9 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         }
 
         try {
@@ -413,11 +365,7 @@ export class TermPolicyService implements ITermPolicyService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -429,15 +377,9 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
@@ -445,10 +387,7 @@ export class TermPolicyService implements ITermPolicyService {
             language
         );
         if (existingContent) {
-            throw new ConflictException({
-                statusCode: EnumTermPolicyStatusCodeError.contentExist,
-                message: 'termPolicy.error.contentExist',
-            });
+            throw new TermPolicyContentExistException();
         }
 
         try {
@@ -474,11 +413,7 @@ export class TermPolicyService implements ITermPolicyService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -490,15 +425,9 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         }
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
@@ -506,10 +435,7 @@ export class TermPolicyService implements ITermPolicyService {
             language
         );
         if (!existingContent) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
-                message: 'termPolicy.error.contentNotFound',
-            });
+            throw new TermPolicyContentNotFoundException();
         }
 
         try {
@@ -527,11 +453,7 @@ export class TermPolicyService implements ITermPolicyService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -542,10 +464,7 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
@@ -553,10 +472,7 @@ export class TermPolicyService implements ITermPolicyService {
             language
         );
         if (!existContent) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
-                message: 'termPolicy.error.contentNotFound',
-            });
+            throw new TermPolicyContentNotFoundException();
         }
 
         const awsPresign: IAwsS3Presign | null =
@@ -565,10 +481,7 @@ export class TermPolicyService implements ITermPolicyService {
             });
 
         if (!awsPresign) {
-            throw new ServiceUnavailableException({
-                statusCode: EnumAwsStatusCodeError.serviceUnavailable,
-                message: 'aws.error.serviceUnavailable',
-            });
+            throw new AwsServiceUnavailableException();
         }
 
         return { data: awsPresign };
@@ -581,22 +494,13 @@ export class TermPolicyService implements ITermPolicyService {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
-            throw new NotFoundException({
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-                message: 'termPolicy.error.notFound',
-            });
+            throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                message: 'termPolicy.error.statusInvalid',
-            });
+            throw new TermPolicyStatusInvalidException();
         } else if (
             (termPolicy.contents as unknown as TermContentDto[]).length === 0
         ) {
-            throw new BadRequestException({
-                statusCode: EnumTermPolicyStatusCodeError.contentEmpty,
-                message: 'termPolicy.error.contentEmpty',
-            });
+            throw new TermPolicyContentEmptyException();
         }
 
         try {
@@ -644,11 +548,7 @@ export class TermPolicyService implements ITermPolicyService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 }

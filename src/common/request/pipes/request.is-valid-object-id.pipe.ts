@@ -1,9 +1,5 @@
-import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
-import {
-    ArgumentMetadata,
-    BadRequestException,
-    Injectable,
-} from '@nestjs/common';
+import { RequestIsMongoIdException } from '@common/request/exceptions/request.is-mongo-id.exception';
+import { ArgumentMetadata, Injectable } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common';
 import { isMongoId } from 'class-validator';
 
@@ -17,13 +13,7 @@ export class RequestIsValidObjectIdPipe implements PipeTransform {
         metadata: ArgumentMetadata
     ): Promise<string> {
         if (!value || typeof value !== 'string' || !isMongoId(value)) {
-            throw new BadRequestException({
-                statusCode: EnumRequestStatusCodeError.validation,
-                message: 'request.error.isMongoId',
-                messageProperties: {
-                    property: metadata.data,
-                },
-            });
+            throw new RequestIsMongoIdException(metadata.data!);
         }
 
         return value;

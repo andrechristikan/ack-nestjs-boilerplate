@@ -57,9 +57,6 @@ Comprehensive logging system using Pino with file rotation, sensitive data redac
 - [Sentry Integration](#sentry-integration)
   - [Sentry Configuration](#sentry-configuration)
   - [Configuration Details](#configuration-details)
-  - [Error Tracking](#error-tracking)
-  - [Usage Example](#usage-example-1)
-  - [Sentry Context](#sentry-context)
   - [Disabling Sentry](#disabling-sentry)
 
 ## Configuration
@@ -609,7 +606,14 @@ async callExternalService(requestId: string) {
 
 ## Sentry Integration
 
-The logger includes built-in Sentry integration for error tracking and monitoring in production environments.
+Sentry is initialized at bootstrap by `src/instrument.ts` using `loggerConfigs.sentry.dsn`. The logger itself does not forward log entries to Sentry.
+
+Error reporting to Sentry is done by the exception filters:
+
+- `AppBaseExceptionFilter`: reports `rawError ?? exception` for any `AppBaseException` with HTTP status >= 500.
+- `AppHttpFilter`: reports the `HttpException` for framework errors with HTTP status >= 500.
+- `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500).
+- `QueueProcessorBase`: reports fatal queue job failures on the last retry attempt.
 
 ### Sentry Configuration
 
@@ -633,66 +637,15 @@ sentry: {
 
 **Default timeout:** 10 seconds (`10000ms`)
 
-### Error Tracking
-
-When Sentry DSN is configured, errors logged through the logger are automatically sent to Sentry for:
-
-- **Error aggregation** and grouping
-- **Stack trace analysis**
-- **Release tracking**
-- **Environment tagging**
-- **User context** (if available)
-- **Request context** (URL, method, headers)
-
-### Usage Example
-
-```typescript
-export class PaymentService {
-    private readonly logger = new Logger(PaymentService.name);
-
-    async processPayment(orderId: string) {
-        try {
-            // Process payment logic
-        } catch (error) {
-            // This error will be sent to Sentry automatically
-            // NOTE: pass object/error first, message string second
-            this.logger.error(error, `Payment processing failed for order: ${orderId}`);
-            throw error;
-        }
-    }
-}
-```
-
-### Sentry Context
-
-The logger automatically includes the following context in Sentry reports:
-
-```json
-{
-  "service": {
-    "name": "ACKNestJs",
-    "environment": "production",
-    "version": "8.0.0"
-  },
-  "request": {
-    "id": "req-123-abc",
-    "method": "POST",
-    "url": "/api/payments",
-    "ip": "203.0.113.45",
-    "user": "user-789"
-  }
-}
-```
-
 ### Disabling Sentry
 
-To disable Sentry integration, simply remove or comment out the `SENTRY_DSN` environment variable:
+To disable Sentry integration, remove or comment out the `SENTRY_DSN` environment variable:
 
 ```env
 # SENTRY_DSN=https://...
 ```
 
-When DSN is not configured, errors are only logged locally without being sent to Sentry.
+When DSN is not configured, exceptions are only logged locally without being sent to Sentry.
 
 <!-- REFERENCES -->
 

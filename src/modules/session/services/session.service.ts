@@ -9,11 +9,11 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -83,10 +83,7 @@ export class SessionService implements ISessionService {
             sessionId
         );
         if (!checkActive) {
-            throw new NotFoundException({
-                statusCode: EnumSessionStatusCodeError.notFound,
-                message: 'session.error.notFound',
-            });
+            throw new SessionNotFoundException();
         }
 
         await Promise.all([
@@ -110,10 +107,7 @@ export class SessionService implements ISessionService {
             sessionId
         );
         if (!checkActive) {
-            throw new NotFoundException({
-                statusCode: EnumSessionStatusCodeError.notFound,
-                message: 'session.error.notFound',
-            });
+            throw new SessionNotFoundException();
         }
 
         const [removed] = await Promise.all([

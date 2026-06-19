@@ -21,27 +21,25 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         // @note: we don't validate jti here
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.jwt.prefix') ?? 'Bearer'
+                configService.get<string>('auth.jwt.prefix')!
             ),
             ignoreExpiration: false,
             passReqToCallback: false,
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
-                audience: configService.get<string>('auth.jwt.audience') ?? '',
-                issuer: configService.get<string>('auth.jwt.issuer') ?? '',
+                audience: configService.get<string>('auth.jwt.audience')!,
+                issuer: configService.get<string>('auth.jwt.issuer')!,
             },
             secretOrKeyProvider: passportJwtSecret({
                 cache: true,
                 rateLimit: true,
                 jwksRequestsPerMinute: 5,
-                jwksUri:
-                    configService.get<string>('auth.jwt.accessToken.jwksUri') ??
-                    '',
+                jwksUri: configService.get<string>(
+                    'auth.jwt.accessToken.jwksUri'
+                )!,
             }),
             algorithms: [
-                configService.get<Algorithm>(
-                    'auth.jwt.accessToken.algorithm'
-                ) ?? 'ES256',
+                configService.get<Algorithm>('auth.jwt.accessToken.algorithm')!,
             ],
         });
     }

@@ -1,11 +1,9 @@
 import {
     Injectable,
     Type,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationOrderBy,
@@ -19,6 +17,8 @@ import {
     PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationOrderByNotAllowedException } from '@common/pagination/exceptions/pagination.order-by-not-allowed.exception';
+import { PaginationOrderDirectionNotAllowedException } from '@common/pagination/exceptions/pagination.order-direction-not-allowed.exception';
 
 export function PaginationOrderPipe(
     defaultAvailableOrder?: string[]
@@ -146,23 +146,9 @@ export function PaginationOrderPipe(
             );
 
             if (invalidField) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
-                    message: `pagination.error.orderByNotAllowed`,
-                    messageProperties: {
-                        allowedFields: availableOrderBy.join(', '),
-                    },
-                });
+                throw new PaginationOrderByNotAllowedException(availableOrderBy.join(', '));
             } else if (invalidDirection) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.orderDirectionNotAllowed,
-                    message: `pagination.error.orderDirectionNotAllowed`,
-                    messageProperties: {
-                        allowedDirections:
-                            PaginationAllowedOrderDirections.join(', '),
-                    },
-                });
+                throw new PaginationOrderDirectionNotAllowedException(PaginationAllowedOrderDirections.join(', '));
             }
 
             return this.parseOrderBy(orderByExtractFromRequest);

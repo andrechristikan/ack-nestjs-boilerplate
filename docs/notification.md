@@ -262,7 +262,7 @@ Allowed type+channel combinations are defined in `NotificationSettingUpdateAllow
 | `userActivity` | `email`, `inApp`, `push` |
 | `marketing` | `email`, `push` |
 
-`NotificationService.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw a `BadRequestException` with `EnumNotificationStatusCodeError.invalidType` or `invalidChannel`.
+`NotificationService.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw `NotificationInvalidTypeException` or `NotificationInvalidChannelException`.
 
 The request DTO (`NotificationUserSettingRequestDto`) accepts:
 - `type`: `userActivity` | `marketing`

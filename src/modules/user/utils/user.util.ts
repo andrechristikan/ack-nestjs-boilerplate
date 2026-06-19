@@ -59,42 +59,54 @@ export class UserUtil {
         private readonly responseUtil: ResponseUtil
     ) {
         this.usernamePrefix =
-            this.configService.get<string>('user.usernamePrefix') ?? '';
+            this.configService.get<string>('user.usernamePrefix')!;
         this.usernamePattern =
-            this.configService.get<RegExp>('user.usernamePattern') ??
-            /^[a-zA-Z0-9_-]+$/;
+            this.configService.get<RegExp>('user.usernamePattern')!;
         this.uploadPhotoProfilePath =
-            this.configService.get<string>('user.uploadPhotoProfilePath') ?? '';
+            this.configService.get<string>('user.uploadPhotoProfilePath')!;
 
-        this.homeUrl = this.configService.get('home.url') ?? '';
+        this.homeUrl = this.configService.get<string>('home.url')!;
 
-        this.forgotPasswordReferencePrefix =
-            this.configService.get('forgotPassword.reference.prefix') ?? '';
-        this.forgotPasswordReferenceLength =
-            this.configService.get('forgotPassword.reference.length') ?? 10;
-        this.forgotExpiredInMinutes =
-            this.configService.get('forgotPassword.expiredInMinutes') ?? 30;
-        this.forgotTokenLength =
-            this.configService.get('forgotPassword.tokenLength') ?? 20;
-        this.forgotResendInMinutes =
-            this.configService.get('forgotPassword.resendInMinutes') ?? 5;
-        this.forgotLinkBaseUrl =
-            this.configService.get('forgotPassword.linkBaseUrl') ?? '';
+        this.forgotPasswordReferencePrefix = this.configService.get<string>(
+            'forgotPassword.reference.prefix'
+        )!;
+        this.forgotPasswordReferenceLength = this.configService.get<number>(
+            'forgotPassword.reference.length'
+        )!;
+        this.forgotExpiredInMinutes = this.configService.get<number>(
+            'forgotPassword.expiredInMinutes'
+        )!;
+        this.forgotTokenLength = this.configService.get<number>(
+            'forgotPassword.tokenLength'
+        )!;
+        this.forgotResendInMinutes = this.configService.get<number>(
+            'forgotPassword.resendInMinutes'
+        )!;
+        this.forgotLinkBaseUrl = this.configService.get<string>(
+            'forgotPassword.linkBaseUrl'
+        )!;
 
-        this.verificationReferencePrefix =
-            this.configService.get('verification.reference.prefix') ?? '';
-        this.verificationReferenceLength =
-            this.configService.get('verification.reference.length') ?? 10;
-        this.verificationOtpLength =
-            this.configService.get('verification.otpLength') ?? 6;
-        this.verificationExpiredInMinutes =
-            this.configService.get('verification.expiredInMinutes') ?? 30;
-        this.verificationTokenLength =
-            this.configService.get('verification.tokenLength') ?? 20;
-        this.verificationResendInMinutes =
-            this.configService.get('verification.resendInMinutes') ?? 5;
-        this.verificationLinkBaseUrl =
-            this.configService.get('verification.linkBaseUrl') ?? '';
+        this.verificationReferencePrefix = this.configService.get<string>(
+            'verification.reference.prefix'
+        )!;
+        this.verificationReferenceLength = this.configService.get<number>(
+            'verification.reference.length'
+        )!;
+        this.verificationOtpLength = this.configService.get<number>(
+            'verification.otpLength'
+        )!;
+        this.verificationExpiredInMinutes = this.configService.get<number>(
+            'verification.expiredInMinutes'
+        )!;
+        this.verificationTokenLength = this.configService.get<number>(
+            'verification.tokenLength'
+        )!;
+        this.verificationResendInMinutes = this.configService.get<number>(
+            'verification.resendInMinutes'
+        )!;
+        this.verificationLinkBaseUrl = this.configService.get<string>(
+            'verification.linkBaseUrl'
+        )!;
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'

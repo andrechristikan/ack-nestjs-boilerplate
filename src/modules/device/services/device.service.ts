@@ -1,4 +1,4 @@
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -11,7 +11,7 @@ import {
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -22,11 +22,7 @@ import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import {
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceService implements IDeviceService {
@@ -96,10 +92,7 @@ export class DeviceService implements IDeviceService {
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
 
         const requestLog: IRequestLog =
@@ -119,11 +112,7 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -134,10 +123,7 @@ export class DeviceService implements IDeviceService {
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
 
         const requestLog: IRequestLog =
@@ -162,11 +148,7 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
@@ -181,10 +163,7 @@ export class DeviceService implements IDeviceService {
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
 
         const requestLog: IRequestLog =
@@ -214,11 +193,7 @@ export class DeviceService implements IDeviceService {
 
             return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 }

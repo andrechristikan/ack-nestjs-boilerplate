@@ -26,7 +26,7 @@ export class AppValidationImportFilter implements ExceptionFilter {
 
         const metadata = this.responseMetadataService.create();
 
-        const message = this.messageService.setMessage(exception.message, {
+        const message = this.messageService.setMessage(exception.messagePath, {
             customLanguage: metadata.language,
         });
         const errors: IMessageValidationImportError[] =
@@ -36,9 +36,11 @@ export class AppValidationImportFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode: exception.statusCode,
+            statusCodeKey: exception.statusCodeKey,
+            module: exception.module,
             message,
-            errors,
             metadata,
+            errors,
         };
 
         this.responseMetadataService.setHeaders(response, metadata);

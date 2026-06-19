@@ -60,6 +60,12 @@ All four below are mandatory. None optional. Reviewer rejects on violation.
 
 > Duplication beats the wrong abstraction. Do not abstract to satisfy DRY/SOLID against YAGNI/KISS.
 
+### Boilerplate — no backward-compat burden
+
+- No external client depends on this repo. Breaking changes are fine; never keep a worse design for compatibility.
+- Default to current community best practice. Pick the clean/correct shape over the existing one.
+- Use existing code only as a divergence check: when best practice clashes HARD with an established pattern, WARN the user before applying — do not apply silently. Minor/local divergence: just proceed.
+
 ---
 
 ## 3. ARCHITECTURE (HARD)
