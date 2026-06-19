@@ -982,6 +982,17 @@ For detailed Doc module documentation, see [Doc module documentation][ref-doc-do
 
 ## Implementation Notes
 
+### Pagination State (CLS store)
+
+Pagination pipes are singletons (not request-scoped). After parsing query parameters, each pipe writes response-metadata into the per-request CLS store via `RequestStoreService.merge(PaginationStoreKey, ...)`, merging keys individually so multiple pipes can contribute without overwriting each other.
+
+`ResponsePagingInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response. Key points:
+
+- The store carries response metadata only. Parsed values (page, limit, order, etc.) are passed directly to the handler as method parameters and never flow through the store.
+- The store never enters a service or repository layer.
+- Per-request isolation is guaranteed by the CLS store opened once per request by `ClsMiddleware`, not by DI scope.
+- Pagination metadata appears on the success path only. On error the interceptor is skipped and no pagination fields are emitted.
+
 ### Performance Considerations
 
 **Offset Pagination:**

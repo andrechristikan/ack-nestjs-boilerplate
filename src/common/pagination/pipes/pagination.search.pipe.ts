@@ -1,22 +1,22 @@
-import { Inject, Injectable, Type, mixin } from '@nestjs/common';
-import { PipeTransform, Scope } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Injectable, Type, mixin } from '@nestjs/common';
+import { PipeTransform } from '@nestjs/common/interfaces';
 import {
+    IPaginationQuery,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 
-/**
- * Request-scoped pipe building a case-insensitive `OR contains` search over the given fields.
- */
 export function PaginationSearchPipe(
     availableSearch: string[] = []
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationSearchPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         async transform(
             value: { search: string } & (
@@ -31,7 +31,10 @@ export function PaginationSearchPipe(
             }
 
             const finalSearch = value.search?.trim();
-            this.addToRequestInstance(finalSearch, availableSearch);
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                { search: finalSearch, availableSearch }
+            );
 
             return {
                 ...value,
@@ -50,17 +53,6 @@ export function PaginationSearchPipe(
                         mode: Prisma.QueryMode.insensitive,
                     },
                 })),
-            };
-        }
-
-        private addToRequestInstance(
-            search: string,
-            availableSearch: string[]
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                search,
-                availableSearch,
             };
         }
     }

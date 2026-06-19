@@ -1,31 +1,32 @@
 import {
-    Inject,
     Injectable,
     UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
-import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
+import { PipeTransform, Type } from '@nestjs/common/interfaces';
 import {
     PaginationDefaultCursorField,
     PaginationDefaultMaxPerPage,
     PaginationDefaultPerPage,
     PaginationMaxCursorLength,
+    PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQuery,
+    IPaginationQueryCursorParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Request-scoped pipe parsing and validating cursor pagination query params.
- */
 export function PaginationCursorPipe(
     defaultPerPage: number = PaginationDefaultPerPage,
     defaultCursorField: string = PaginationDefaultCursorField
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationCursorPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         async transform(
             value: {
@@ -39,7 +40,10 @@ export function PaginationCursorPipe(
                     value.cursor
                 );
 
-                this.addToRequestInstance(finalPerPage, trimmedCursor);
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { perPage: finalPerPage, cursor: trimmedCursor }
+                );
 
                 return {
                     ...value,
@@ -144,14 +148,6 @@ export function PaginationCursorPipe(
             }
 
             return trimmed;
-        }
-
-        private addToRequestInstance(perPage: number, cursor?: string): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                perPage,
-                cursor,
-            };
         }
     }
 

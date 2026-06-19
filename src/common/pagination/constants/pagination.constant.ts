@@ -25,3 +25,5 @@ export const PaginationAllowedOrderDirections: EnumPaginationOrderDirectionType[
         EnumPaginationOrderDirectionType.asc,
         EnumPaginationOrderDirectionType.desc,
     ];
+
+export const PaginationStoreKey = 'PaginationStore';

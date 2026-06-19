@@ -1,17 +1,10 @@
 import {
-    Inject,
     Injectable,
     Type,
     UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
-import {
-    ArgumentMetadata,
-    PipeTransform,
-    Scope,
-} from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationDate,
@@ -19,12 +12,15 @@ import {
     IPaginationIn,
     IPaginationNin,
     IPaginationNotEqual,
+    IPaginationQuery,
     IPaginationQueryFilterDateOptions,
     IPaginationQueryFilterEnumOptions,
     IPaginationQueryFilterEqualOptions,
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 
 /**
  * Pipe validating a comma-separated value against an enum and emitting an `in` filter.
@@ -33,11 +29,11 @@ export function PaginationQueryFilterInEnumPipe<T>(
     defaultEnum: T[],
     options?: IPaginationQueryFilterEnumOptions
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationFilterInEnumPipe implements PipeTransform {
         constructor(
-            @Inject(REQUEST) private readonly request: IRequestApp,
-            private readonly helperService: HelperService
+            private readonly helperService: HelperService,
+            private readonly requestStoreService: RequestStoreService
         ) {}
 
         async transform(
@@ -80,28 +76,24 @@ export function PaginationQueryFilterInEnumPipe<T>(
             }
 
             const field = metadata.data!;
-            this.addToRequestInstance(field, finalValue);
+            const filters =
+                this.requestStoreService.get<Partial<IPaginationQuery>>(
+                    PaginationStoreKey
+                )?.filters;
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    filters: filters
+                        ? { ...filters, [field]: finalValue }
+                        : { [field]: finalValue },
+                }
+            );
 
             const customField = options?.customField ?? field;
             return {
                 [customField]: {
                     in: finalValue,
                 },
-            };
-        }
-
-        private addToRequestInstance(
-            field: string,
-            value: (string | number)[]
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                filters: this.request.pagination?.filters
-                    ? {
-                          ...this.request.pagination?.filters,
-                          [field]: value,
-                      }
-                    : { [field]: value },
             };
         }
     }
@@ -116,11 +108,11 @@ export function PaginationQueryFilterNinEnumPipe<T>(
     defaultEnum: T[],
     options?: IPaginationQueryFilterEnumOptions
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationFilterNinEnumPipe implements PipeTransform {
         constructor(
-            @Inject(REQUEST) private readonly request: IRequestApp,
-            private readonly helperService: HelperService
+            private readonly helperService: HelperService,
+            private readonly requestStoreService: RequestStoreService
         ) {}
 
         async transform(
@@ -163,28 +155,24 @@ export function PaginationQueryFilterNinEnumPipe<T>(
             }
 
             const field = metadata.data!;
-            this.addToRequestInstance(field, finalValue);
+            const filters =
+                this.requestStoreService.get<Partial<IPaginationQuery>>(
+                    PaginationStoreKey
+                )?.filters;
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    filters: filters
+                        ? { ...filters, [field]: finalValue }
+                        : { [field]: finalValue },
+                }
+            );
 
             const customField = options?.customField ?? field;
             return {
                 [customField]: {
                     notIn: finalValue,
                 },
-            };
-        }
-
-        private addToRequestInstance(
-            field: string,
-            value: (string | number)[]
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                filters: this.request.pagination?.filters
-                    ? {
-                          ...this.request.pagination?.filters,
-                          [field]: value,
-                      }
-                    : { [field]: value },
             };
         }
     }
@@ -198,9 +186,11 @@ export function PaginationQueryFilterNinEnumPipe<T>(
 export function PaginationQueryFilterEqualPipe<T>(
     options?: IPaginationQueryFilterEqualOptions
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationFilterEqualPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         async transform(
             value: string,
@@ -243,9 +233,20 @@ export function PaginationQueryFilterEqualPipe<T>(
             }
 
             const field = metadata.data!;
-            this.addToRequestInstance(
-                field,
-                finalValue as string | number | boolean
+            const filters =
+                this.requestStoreService.get<Partial<IPaginationQuery>>(
+                    PaginationStoreKey
+                )?.filters;
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    filters: filters
+                        ? {
+                              ...filters,
+                              [field]: finalValue as string | number | boolean,
+                          }
+                        : { [field]: finalValue as string | number | boolean },
+                }
             );
 
             const customField = options?.customField ?? field;
@@ -254,21 +255,6 @@ export function PaginationQueryFilterEqualPipe<T>(
                 [customField]: {
                     equals: finalValue as string | number | boolean,
                 },
-            };
-        }
-
-        private addToRequestInstance(
-            field: string,
-            value: string | number | boolean
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                filters: this.request.pagination?.filters
-                    ? {
-                          ...this.request.pagination?.filters,
-                          [field]: value,
-                      }
-                    : { [field]: value },
             };
         }
     }
@@ -282,9 +268,11 @@ export function PaginationQueryFilterEqualPipe<T>(
 export function PaginationQueryFilterNotEqualPipe<T>(
     options?: IPaginationQueryFilterEqualOptions
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationFilterNotEqualPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         async transform(
             value: string,
@@ -327,9 +315,20 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             }
 
             const field = metadata.data!;
-            this.addToRequestInstance(
-                field,
-                finalValue as string | number | boolean
+            const filters =
+                this.requestStoreService.get<Partial<IPaginationQuery>>(
+                    PaginationStoreKey
+                )?.filters;
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    filters: filters
+                        ? {
+                              ...filters,
+                              [field]: finalValue as string | number | boolean,
+                          }
+                        : { [field]: finalValue as string | number | boolean },
+                }
             );
 
             const customField = options?.customField ?? field;
@@ -338,21 +337,6 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 [customField]: {
                     not: finalValue as string | number | boolean,
                 },
-            };
-        }
-
-        private addToRequestInstance(
-            field: string,
-            value: string | number | boolean
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                filters: this.request.pagination?.filters
-                    ? {
-                          ...this.request.pagination?.filters,
-                          [field]: value,
-                      }
-                    : { [field]: value },
             };
         }
     }
@@ -366,11 +350,11 @@ export function PaginationQueryFilterNotEqualPipe<T>(
 export function PaginationQueryFilterDatePipe(
     options?: IPaginationQueryFilterDateOptions
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationFilterDatePipe implements PipeTransform {
         constructor(
-            @Inject(REQUEST) private readonly request: IRequestApp,
-            private readonly helperService: HelperService
+            private readonly helperService: HelperService,
+            private readonly requestStoreService: RequestStoreService
         ) {}
 
         async transform(
@@ -397,7 +381,18 @@ export function PaginationQueryFilterDatePipe(
             });
 
             const field = metadata.data!;
-            this.addToRequestInstance(field, finalValue);
+            const filters =
+                this.requestStoreService.get<Partial<IPaginationQuery>>(
+                    PaginationStoreKey
+                )?.filters;
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    filters: filters
+                        ? { ...filters, [field]: finalValue }
+                        : { [field]: finalValue },
+                }
+            );
 
             const customField = options?.customField ?? field;
             const operation = options?.type
@@ -410,20 +405,6 @@ export function PaginationQueryFilterDatePipe(
                 [customField]: {
                     [operation]: finalValue,
                 },
-            };
-        }
-
-        private addToRequestInstance(field: string, value: Date): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                filters: this.request.pagination?.filters
-                    ? {
-                          ...this.request.pagination?.filters,
-                          [field]: value,
-                      }
-                    : {
-                          [field]: value,
-                      },
             };
         }
     }

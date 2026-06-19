@@ -10,7 +10,6 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
 import {
     ResponsePagingDto,
@@ -20,17 +19,21 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Wraps paginated handler results into the standard envelope, merging request pagination state
- * into the metadata and localizing the message.
+ * Wraps paginated handler results into the standard envelope, merging pagination state from the
+ * per-request store into the metadata and localizing the message.
  */
 @Injectable()
 export class ResponsePagingInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly responseMetadataService: ResponseMetadataService
+        private readonly responseMetadataService: ResponseMetadataService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
@@ -45,7 +48,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                 map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
-                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
                         ResponseMessagePathMetaKey,
@@ -105,7 +107,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const pagination = request.pagination ?? {};
+                    const pagination =
+                        this.requestStoreService.get<Partial<IPaginationQuery>>(
+                            PaginationStoreKey
+                        ) ?? {};
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,

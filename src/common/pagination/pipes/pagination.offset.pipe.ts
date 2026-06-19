@@ -1,29 +1,30 @@
 import {
-    Inject,
     Injectable,
     UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
-import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
+import { PipeTransform, Type } from '@nestjs/common/interfaces';
 import {
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
     PaginationDefaultPerPage,
+    PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQuery,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Request-scoped pipe parsing and validating offset pagination (page, perPage) into limit/skip.
- */
 export function PaginationOffsetPipe(
     defaultPerPage: number = PaginationDefaultPerPage
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationOffsetPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         transform(
             value: {
@@ -38,7 +39,10 @@ export function PaginationOffsetPipe(
                 );
 
                 const skip = (finalPage - 1) * finalPerPage;
-                this.addToRequestInstance(finalPage, finalPerPage);
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { page: finalPage, perPage: finalPerPage }
+                );
 
                 return {
                     ...value,
@@ -147,14 +151,6 @@ export function PaginationOffsetPipe(
             }
 
             return finalPerPage;
-        }
-
-        private addToRequestInstance(page: number, perPage: number): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                page,
-                perPage,
-            };
         }
     }
 

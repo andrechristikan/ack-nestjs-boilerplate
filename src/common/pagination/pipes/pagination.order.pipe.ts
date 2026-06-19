@@ -1,35 +1,33 @@
 import {
-    Inject,
     Injectable,
     Type,
     UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
-import { PipeTransform, Scope } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { PipeTransform } from '@nestjs/common/interfaces';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationOrderBy,
+    IPaginationQuery,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
     PaginationAllowedOrderDirections,
     PaginationDefaultOrderBy,
+    PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/**
- * Request-scoped pipe parsing `field:direction` order params against an allowed-field list,
- * falling back to the default order.
- */
 export function PaginationOrderPipe(
     defaultAvailableOrder?: string[]
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationOrderPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
         async transform(
             value: {
@@ -65,7 +63,13 @@ export function PaginationOrderPipe(
                 defaultAvailableOrder
             );
 
-            this.addToRequestInstance(parsedOrderBy, defaultAvailableOrder);
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    orderBy: parsedOrderBy,
+                    availableOrderBy: defaultAvailableOrder,
+                }
+            );
 
             return {
                 ...value,
@@ -162,17 +166,6 @@ export function PaginationOrderPipe(
             }
 
             return this.parseOrderBy(orderByExtractFromRequest);
-        }
-
-        private addToRequestInstance(
-            orderBy: IPaginationOrderBy[],
-            availableOrderBy: string[]
-        ): void {
-            this.request.pagination = {
-                ...this.request.pagination,
-                orderBy,
-                availableOrderBy,
-            };
         }
     }
 
