@@ -7,6 +7,7 @@ import {
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
+import { RequestRequestLogMiddleware } from '@common/request/middlewares/request.request-log.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
 import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
@@ -17,8 +18,7 @@ import { RequestCompressionMiddleware } from '@common/request/middlewares/reques
 import { SentryModule } from '@sentry/nestjs/setup';
 
 /**
- * Central middleware configuration module for HTTP request/response processing.
- * Configures security, performance optimization, and monitoring.
+ * Registers the throttler guard and applies the security/perf/monitoring middleware chain to all routes.
  */
 @Module({
     controllers: [],
@@ -46,15 +46,11 @@ import { SentryModule } from '@sentry/nestjs/setup';
     ],
 })
 export class RequestMiddlewareModule implements NestModule {
-    /**
-     * Configures the middleware processing pipeline for all HTTP requests.
-     *
-     * @param consumer - NestJS middleware consumer for applying middleware to routes
-     */
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(
                 RequestRequestIdMiddleware,
+                RequestRequestLogMiddleware,
                 RequestHelmetMiddleware,
                 RequestBodyParserMiddleware,
                 RequestCorsMiddleware,

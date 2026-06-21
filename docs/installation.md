@@ -48,9 +48,9 @@ Before starting, install the following tools and packages. We recommend using th
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org) | v24.11.0+ |
-| [MongoDB](https://docs.mongodb.com/) | v8.0.x |
-| [Redis](https://redis.io) | v8.x |
-| [PNPM](http://pnpm.io) | v10.25.x |
+| [MongoDB](https://docs.mongodb.com/) | v8.2.11 |
+| [Redis](https://redis.io) | v8.8.0 |
+| [PNPM](http://pnpm.io) | v11.5.x |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]
@@ -138,8 +138,8 @@ After hosting your JWKS files, update your `.env` file:
 
 ```bash
 # Update with your actual JWKS URLs
-AUTH_JWT_ACCESS_TOKEN_JWKS_URI="https://your-domain.com/.well-known/access-jwks.json"
-AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://your-domain.com/.well-known/refresh-jwks.json"
+AUTH_JWT_ACCESS_TOKEN_JWKS_URI="https://<your_domain>/.well-known/access-jwks.json"
+AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://<your_domain>/.well-known/refresh-jwks.json"
 ```
 
 
@@ -154,7 +154,7 @@ Docker provides the fastest and most reliable way to set up the ACK NestJS Boile
 
 The Docker setup provides:
 - **MongoDB replica set** - Configured for transactions
-- **Redis instances** - Separate instances for caching and queues
+- **Redis** - Single instance serving both caching (`db:0`) and queues (`db:1`)
 - **JWKS server** - Hosts your JWT public keys automatically
 - **BullMQ Dashboard** - Queue monitoring interface
 
@@ -257,7 +257,7 @@ docker-compose --profile apis up -d
 ```
 
 **What this command does:**
-- Starts MongoDB replica set with 1 nodes (ports 27017)
+- Starts MongoDB single-node replica set (port 27017)
 - Launches Redis server for caching and queues (port 6379)
 - Starts JWKS server to host your JWT public keys (port 3011)
 - Runs BullMQ dashboard for queue monitoring (port 3010)

@@ -102,7 +102,7 @@ export default registerAs(
             maxAttempt: 5,
             
             // Length of salt used in bcrypt password hashing
-            saltLength: 8,
+            saltLength: 12,
             
             // Password expiration time in seconds (182 days = 15724800 seconds)
             expiredInSeconds: 15724800,
@@ -270,7 +270,7 @@ sequenceDiagram
         API-->>Client: Response
     else Session not found or jti mismatch
         Redis-->>API: Validation failed
-        API-->>Client: 401 Unauthorized
+        API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
         Note over API: Token valid but session invalid/revoked<br/>or jti doesn't match (potential token reuse)
     end
 ```
@@ -288,7 +288,7 @@ sequenceDiagram
 
     Client->>API: API Request with expired Access Token
     API->>API: Verify token signature (ES256)
-    API-->>Client: 401 Unauthorized (Token expired)
+    API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
     
     Client->>API: POST /shared/user/refresh
     Note over Client,API: Authorization: Bearer <refresh_token>
@@ -325,14 +325,14 @@ sequenceDiagram
             API-->>Client: Response
             
         else jti mismatch
-            API-->>Client: 401 Unauthorized (Invalid jti - potential token reuse)
+            API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException)
             Note over API,Redis: Security breach detected: token reuse attempt
             Client->>User: Redirect to login
         end
         
     else Session not found in Redis (expired)
         Redis-->>API: Session not found
-        API-->>Client: 401 Unauthorized (Session expired)
+        API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException)
         Client->>User: Redirect to login
     end
     
@@ -366,7 +366,7 @@ sequenceDiagram
         end
         API-->>Client: 200 OK (user.logout)
     else Session not found
-        API-->>Client: 404 Not Found (session.error.notFound)
+        API-->>Client: 404 Not Found (SessionNotFoundException)
     end
 ```
 
@@ -428,13 +428,16 @@ Interface `IAuthJwtAccessTokenPayload`
 
 Interface `IAuthJwtRefreshTokenPayload`
 
+Derived as `Omit<IAuthJwtAccessTokenPayload, 'roleId' | 'username' | 'email'>` — the refresh payload drops `roleId`, `username`, and `email`, keeping the rest:
+
 ```typescript
 {
     loginAt: Date;
     loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserSignUpWith;
+    loginWith: EnumUserLoginWith;
     userId: string;
     sessionId: string;
+    deviceOwnershipId: string;
     
     // Standard JWT claims
     jti?: string;  // JWT ID - unique token identifier
@@ -642,7 +645,7 @@ sequenceDiagram
         Client->>Client: Store tokens securely
         
     else Token Invalid
-        API-->>Client: 401 Unauthorized (Invalid OAuth token)
+        API-->>Client: 401 Unauthorized (AuthSocialGoogleInvalidException / AuthSocialAppleInvalidException)
     end
 ```
 
@@ -1009,7 +1012,7 @@ sequenceDiagram
     Guard->>Guard: Parse key:secret format
 
     alt Invalid Format
-        Guard-->>Client: 401 Unauthorized (Invalid format)
+        Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyRequiredException)
     else Valid Format
         Guard->>Guard: Split into [key, secret]
         Guard->>Cache: Check cache for API key
@@ -1023,21 +1026,21 @@ sequenceDiagram
         end
 
         alt API Key Not Found
-            Guard-->>Client: 403 Forbidden (Not found)
+            Guard-->>Client: 403 Forbidden (ApiKeyXApiKeyNotFoundException)
         else API Key Found
             Guard->>Guard: Validate secret against hash
             Guard->>Guard: Check isActive status
             Guard->>Guard: Check startDate/endDate
 
             alt Invalid Credentials or Inactive
-                Guard-->>Client: 401 Unauthorized (Invalid)
+                Guard-->>Client: 401 Unauthorized (ApiKeyXApiKeyInvalidException)
             else Valid
-                Guard->>API: Attach apiKey to request.__apiKey
+                Guard->>API: Store apiKey via RequestStoreService.set(ApiKeyStoreKey, apiKey)
                 API->>Guard: ApiKeyXApiKeyTypeGuard
                 Guard->>Guard: Check API key type matches decorator
 
                 alt Type Mismatch
-                    Guard-->>Client: 403 Forbidden (Wrong type)
+                    Guard-->>Client: 403 Forbidden (ApiKeyXApiKeyForbiddenException)
                 else Type Match
                     Guard-->>API: Validation success
                     API->>API: Process request with API key context
@@ -1213,7 +1216,7 @@ sequenceDiagram
     
     API->>JWT: Verify Token Signature (ES256)
     alt Invalid Signature
-        JWT-->>Client: 401 Unauthorized (Invalid token)
+        JWT-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
     else Valid Signature
         JWT->>API: Signature valid
         
@@ -1223,14 +1226,14 @@ sequenceDiagram
         
         alt Session Not Found
             Redis-->>API: null
-            API-->>Client: 401 Unauthorized (Session not found/expired)
+            API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
         else Session Found
             Redis-->>API: {userId, sessionId, jti, expiredAt}
             
             API->>API: Compare token jti with Redis jti
             
             alt jti Mismatch
-                API-->>Client: 401 Unauthorized (Invalid jti - token reuse detected)
+                API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
                 Note over API: Potential security breach:<br/>Old token used after refresh
             else jti Match
                 API->>API: All validations passed

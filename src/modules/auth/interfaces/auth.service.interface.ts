@@ -13,7 +13,7 @@ export interface IAuthService {
         err: Error,
         user: IAuthJwtAccessTokenPayload,
         info: Error
-    ): Promise<IAuthJwtAccessTokenPayload>;
+    ): IAuthJwtAccessTokenPayload;
     validateJwtRefreshStrategy(
         payload: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload>;
@@ -21,7 +21,7 @@ export interface IAuthService {
         err: Error,
         user: IAuthJwtRefreshTokenPayload,
         info: Error
-    ): Promise<IAuthJwtRefreshTokenPayload>;
+    ): IAuthJwtRefreshTokenPayload;
     validateOAuthAppleGuard(
         request: IRequestApp<IAuthSocialPayload>
     ): Promise<boolean>;

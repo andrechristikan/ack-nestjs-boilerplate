@@ -9,21 +9,13 @@ import {
 } from 'class-validator';
 
 /**
- * Validator constraint that checks if a value is less than or equal to another property's value.
- * Supports numbers and dates comparison.
+ * Validates a number/date value is `<=` another property's value.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class LessThanEqualOtherPropertyConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperService: HelperService) {}
 
-    /**
-     * Validates that the current value is less than or equal to the related property value.
-     *
-     * @param value - The value to validate (numbers and dates only)
-     * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is less than or equal to the related property
-     */
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
             return false;
@@ -57,21 +49,10 @@ export class LessThanEqualOtherPropertyConstraint implements ValidatorConstraint
         return false;
     }
 
-    /**
-     * Generates a default error message for validation failures.
-     *
-     * @returns Error message string
-     */
     defaultMessage(): string {
         return `request.error.lessThanEqualOtherProperty.invalid`;
     }
 
-    /**
-     * Converts a value to number if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert
-     * @returns Converted number or null if conversion fails
-     */
     private convertToNumber(value: unknown): number | null {
         if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
@@ -85,12 +66,6 @@ export class LessThanEqualOtherPropertyConstraint implements ValidatorConstraint
         return null;
     }
 
-    /**
-     * Converts a value to Date if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert (Date object, ISO string, timestamp)
-     * @returns Converted Date or null if conversion fails
-     */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
@@ -110,13 +85,6 @@ export class LessThanEqualOtherPropertyConstraint implements ValidatorConstraint
     }
 }
 
-/**
- * Decorator that validates a property is less than or equal to another property's value.
- *
- * @param property - The name of the property to compare against
- * @param validationOptions - Standard class-validator validation options
- * @returns Property decorator function
- */
 export function LessThanEqualOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
@@ -134,21 +102,13 @@ export function LessThanEqualOtherProperty(
 }
 
 /**
- * Validator constraint that checks if a value is strictly less than another property's value.
- * Supports numbers and dates comparison.
+ * Validates a number/date value is strictly `<` another property's value.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class LessThanOtherPropertyConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperService: HelperService) {}
 
-    /**
-     * Validates that the current value is strictly less than the related property value.
-     *
-     * @param value - The value to validate (numbers and dates only)
-     * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is less than the related property
-     */
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
             return false;
@@ -182,21 +142,10 @@ export class LessThanOtherPropertyConstraint implements ValidatorConstraintInter
         return false;
     }
 
-    /**
-     * Generates a default error message for validation failures.
-     *
-     * @returns Error message string
-     */
     defaultMessage(): string {
         return `request.error.lessThanOtherProperty.invalid`;
     }
 
-    /**
-     * Converts a value to number if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert
-     * @returns Converted number or null if conversion fails
-     */
     private convertToNumber(value: unknown): number | null {
         if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
@@ -210,12 +159,6 @@ export class LessThanOtherPropertyConstraint implements ValidatorConstraintInter
         return null;
     }
 
-    /**
-     * Converts a value to Date if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert (Date object, ISO string, timestamp)
-     * @returns Converted Date or null if conversion fails
-     */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
@@ -235,13 +178,6 @@ export class LessThanOtherPropertyConstraint implements ValidatorConstraintInter
     }
 }
 
-/**
- * Decorator that validates a property is strictly less than another property's value.
- *
- * @param property - The name of the property to compare against
- * @param validationOptions - Standard class-validator validation options
- * @returns Property decorator function
- */
 export function LessThanOtherProperty(
     property: string,
     validationOptions?: ValidationOptions

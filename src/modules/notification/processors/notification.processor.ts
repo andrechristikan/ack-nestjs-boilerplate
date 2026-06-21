@@ -20,9 +20,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
- * Central background job processor for multi-channel notifications.
- * Handles notification routing across email, push, and in-app channels based on user preferences.
- * Processes notifications like device login alerts, password resets, and email verifications.
+ * Consumes the main notification queue and fans each job out to email, push, and in-app channels.
  */
 @QueueProcessor(EnumQueue.notification)
 export class NotificationProcessor extends QueueProcessorBase {
@@ -34,14 +32,7 @@ export class NotificationProcessor extends QueueProcessorBase {
         super();
     }
 
-    /**
-     * Processes notification jobs from the queue.
-     * Routes job to appropriate handler method based on job name (enum).
-     * Handles multi-channel notification logic based on user preferences.
-     *
-     * @param job - The BullMQ job containing notification type and payload
-     * @returns Queue response with success/failure status and optional message
-     */
+    /** Dispatches each job to its handler by job name. */
     async process(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {

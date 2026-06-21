@@ -49,7 +49,7 @@ export interface IApiKeyService {
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
     validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey>;
     validateXApiKeyTypeGuard(
-        request: IRequestApp,
+        apiKey: ApiKey | null,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean;
 }

@@ -1,52 +1,38 @@
 import {
-    Inject,
     Injectable,
-    UnprocessableEntityException,
     mixin,
 } from '@nestjs/common';
-import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
+import { PipeTransform, Type } from '@nestjs/common/interfaces';
 import {
     PaginationDefaultCursorField,
     PaginationDefaultMaxPerPage,
     PaginationDefaultPerPage,
     PaginationMaxCursorLength,
+    PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import {
+    IPaginationQuery,
+    IPaginationQueryCursorParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
+import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
+import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
+import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
+import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
+import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
 
-/**
- * Factory function to create a request-scoped NestJS pipe for cursor-based pagination.
- *
- * @param {number} [defaultPerPage=PaginationDefaultPerPage] - Default number of items per page if not provided by the client.
- * @param {string} [defaultCursorField=PaginationDefaultCursorField] - Default field to use as the cursor for pagination.
- * @returns {Type<PipeTransform>} A NestJS pipe class that parses and validates cursor pagination query parameters.
- *
- * @constraint
- * - PerPage: minimum 1, maximum PaginationDefaultMaxPerPage
- * - Cursor: optional, maximum PaginationMaxCursorLength characters, URL-safe base64 format (A-Za-z0-9_-)
- * - Default perPage: PaginationDefaultPerPage or custom defaultPerPage parameter
- * - Default cursor: undefined
- * - Default cursorField: PaginationDefaultCursorField or custom defaultCursorField parameter
- */
 export function PaginationCursorPipe(
     defaultPerPage: number = PaginationDefaultPerPage,
     defaultCursorField: string = PaginationDefaultCursorField
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationCursorPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
-        /**
-         * Transforms and validates the incoming pagination query parameters for cursor-based pagination.
-         *
-         * @param {Object} value - The input object containing pagination parameters.
-         * @param {string} [value.cursor] - The cursor value for pagination (optional).
-         * @param {number|string} [value.perPage] - The number of items per page (optional).
-         * @returns {Promise<IPaginationQueryCursorParams>} The validated and normalized cursor pagination parameters.
-         * @throws {UnprocessableEntityException} If any parameter is invalid.
-         */
         async transform(
             value: {
                 cursor?: string;
@@ -59,7 +45,10 @@ export function PaginationCursorPipe(
                     value.cursor
                 );
 
-                this.addToRequestInstance(finalPerPage, trimmedCursor);
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { perPage: finalPerPage, cursor: trimmedCursor }
+                );
 
                 return {
                     ...value,
@@ -68,31 +57,14 @@ export function PaginationCursorPipe(
                     cursorField: defaultCursorField,
                 };
             } catch (error) {
-                if (error instanceof UnprocessableEntityException) {
+                if (error instanceof AppBaseException) {
                     throw error;
                 }
 
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
-                    message: 'pagination.error.invalidCursorPaginationParams',
-                });
+                throw new PaginationInvalidCursorPaginationParamsException();
             }
         }
 
-        /**
-         * Validates and normalizes the perPage parameter.
-         * Ensures it is a positive integer and does not exceed the maximum allowed.
-         * Throws explicit error for invalid values (consistent with OffsetPipe).
-         *
-         * @param {number|string} [perPage] - The requested number of items per page.
-         * @returns {number} The validated perPage value.
-         * @throws {UnprocessableEntityException} If perPage is not a valid integer or out of range.
-         *
-         * @constraint
-         * - Must be a valid integer
-         * - Must be >= 1
-         * - Must be <= PaginationDefaultMaxPerPage
-         */
         private validatePerPage(perPage?: number | string): number {
             let finalPerPage = perPage ?? defaultPerPage;
 
@@ -104,56 +76,22 @@ export function PaginationCursorPipe(
                 !Number.isFinite(finalPerPage) ||
                 !Number.isInteger(finalPerPage)
             ) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                    message: 'pagination.error.invalidPerPage',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                    },
-                });
+                throw new PaginationInvalidPerPageException(PaginationDefaultMaxPerPage);
             }
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.perPageExceedsMaximum,
-                    message: 'pagination.error.perPageExceedsMaximum',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageExceedsMaximumException(PaginationDefaultMaxPerPage, finalPerPage);
             }
 
             if (finalPerPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                    message: 'pagination.error.perPageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPerPage: 1,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageCannotBeLessThanOneException(finalPerPage);
             }
 
             return finalPerPage;
         }
 
         /**
-         * Validates and sanitizes the cursor parameter.
-         * Trims whitespace, checks length, and ensures URL-safe base64 format (A-Za-z0-9_-).
-         *
-         * Cursor encoding uses: Buffer.from(data).toString('base64').replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
-         * Which produces URL-safe base64 without padding.
-         *
-         * @param {string} [cursor] - The cursor value to validate.
-         * @returns {string|undefined} The sanitized cursor or undefined if not provided.
-         * @throws {UnprocessableEntityException} If the cursor is too long or has an invalid format.
-         *
-         * @constraint
-         * - Optional parameter
-         * - Maximum length: PaginationMaxCursorLength
-         * - Format: URL-safe base64 (A-Za-z0-9_-) without padding
-         * - Returns undefined if cursor is empty string after trimming
+         * Trims and validates the cursor: max length and URL-safe base64 format (no padding).
          */
         private validateAndSanitizeCursor(cursor?: string): string | undefined {
             if (typeof cursor !== 'string') {
@@ -167,44 +105,15 @@ export function PaginationCursorPipe(
             }
 
             if (trimmed.length > PaginationMaxCursorLength) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.cursorTooLong,
-                    message: 'pagination.error.cursorTooLong',
-                    messageProperties: {
-                        maxCursorLength: PaginationMaxCursorLength,
-                    },
-                });
+                throw new PaginationCursorTooLongException(PaginationMaxCursorLength);
             }
 
-            // URL-safe base64 format: A-Za-z0-9_- (no padding = removed)
-            // Using + instead of * to require at least 1 character
             const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
             if (!urlSafeBase64Regex.test(trimmed)) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
-                    message: 'pagination.error.invalidCursorFormat',
-                    messageProperties: {
-                        format: 'URL-safe base64 (A-Za-z0-9_-)',
-                    },
-                });
+                throw new PaginationInvalidCursorFormatException('URL-safe base64 (A-Za-z0-9_-)');
             }
 
             return trimmed;
-        }
-
-        /**
-         * Adds cursor pagination information to the request instance for downstream access.
-         *
-         * @param {number} perPage - The number of items per page.
-         * @param {string} [cursor] - The cursor value for pagination.
-         * @private
-         */
-        private addToRequestInstance(perPage: number, cursor?: string): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                perPage,
-                cursor,
-            };
         }
     }
 

@@ -9,6 +9,7 @@ import { IsTwoFactorCodeConstraint } from '@modules/auth/validations/auth.two-fa
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 
+/** Global auth module: registers JWT, strategies, 2FA validators, and auth services. */
 @Global()
 @Module({
     providers: [

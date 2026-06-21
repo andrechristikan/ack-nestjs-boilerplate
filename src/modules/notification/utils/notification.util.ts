@@ -1,4 +1,3 @@
-import { MessageService } from '@common/message/services/message.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import {
     EnumNotificationChannel,
@@ -10,7 +9,8 @@ import { NotificationSettingUpdateAllowedCombinations } from '@modules/notificat
 import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
+import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
+import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationForgotPasswordPayload,
@@ -25,32 +25,22 @@ import {
     INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
- * Central notification utility for multi-channel notifications.
- * Routes notifications to email, push, and in-app channels based on user preferences.
- * Encrypts sensitive data before enqueueing and validates notification settings.
+ * Enqueues jobs onto the main notification queue and maps notification entities to response DTOs.
  */
 @Injectable()
 export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
         private readonly notificationQueue: Queue,
-        private readonly messageService: MessageService,
         private readonly responseUtil: ResponseUtil
     ) {}
 
-    /**
-     * Queues welcome notification with temporary password sent by admin.
-     *
-     * @param userId - User receiving the notification
-     * @param passwordData - Temporary password data (plaintext password, dates)
-     * @param createdBy - Admin/user ID who initiated the action
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the admin-created welcome notification carrying the temporary password. */
     async sendWelcomeByAdmin(
         userId: string,
         {
@@ -81,13 +71,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues welcome notification for new user with verification link.
-     *
-     * @param userId - User receiving the notification
-     * @param verificationData - Email verification link data (link, expiry, reference)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the welcome notification for a new user (bundles the email verification link). */
     async sendWelcome(
         userId: string,
         {
@@ -119,12 +103,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues welcome notification for social login user.
-     *
-     * @param userId - User receiving the notification
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the welcome notification for a social-login signup. */
     async sendWelcomeSocial(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeSocial,
@@ -142,14 +121,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues temporary password notification sent by admin.
-     *
-     * @param userId - User receiving the notification
-     * @param passwordData - Temporary password data (plaintext password, dates)
-     * @param createdBy - Admin/user ID who initiated the action
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the admin-issued temporary password notification. */
     async sendTemporaryPasswordByAdmin(
         userId: string,
         {
@@ -180,12 +152,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues password change confirmation notification.
-     *
-     * @param userId - User receiving the notification
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the password change confirmation notification. */
     async sendChangePassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.changePassword,
@@ -203,13 +170,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues email verification confirmation notification.
-     *
-     * @param userId - User receiving the notification
-     * @param verified - Verified email data (reference)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the email-verified confirmation notification. */
     async sendVerifiedEmail(
         userId: string,
         verified: INotificationVerifiedEmailPayload
@@ -231,13 +192,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues email verification link notification.
-     *
-     * @param userId - User receiving the notification
-     * @param verificationData - Email verification link data (link, expiry, reference)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the email verification link notification. */
     async sendVerificationEmail(
         userId: string,
         {
@@ -269,13 +224,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues forgot password reset link notification.
-     *
-     * @param userId - User receiving the notification
-     * @param forgotPasswordData - Reset link data (link, expiry, reference, resend time)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the forgot-password reset link notification. */
     async sendForgotPassword(
         userId: string,
         {
@@ -309,12 +258,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues password reset confirmation notification.
-     *
-     * @param userId - User receiving the notification
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the password reset confirmation notification. */
     async sendResetPassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.resetPassword,
@@ -332,13 +276,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues 2FA reset notification sent by admin.
-     *
-     * @param userId - User receiving the notification
-     * @param createdBy - Admin/user ID who initiated the action
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the admin-triggered two-factor reset notification. */
     async sendResetTwoFactorByAdmin(
         userId: string,
         createdBy: string
@@ -359,13 +297,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues new device login alert notification.
-     *
-     * @param userId - User receiving the notification
-     * @param newDevice - Login details (device, IP, location, time)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the new-device login alert notification. */
     async sendNewDeviceLogin(
         userId: string,
         newDevice: INotificationNewDeviceLoginPayload
@@ -387,13 +319,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues term policy publication notification to multiple users.
-     *
-     * @param payload - Term policy publication data
-     * @param publishedBy - Admin/user ID who published the policy
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the bulk term-policy publication notification. */
     async sendPublishTermPolicy(
         payload: INotificationPublishTermPolicyPayload,
         publishedBy: string
@@ -414,13 +340,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues mobile number verification confirmation notification.
-     *
-     * @param userId - User receiving the notification
-     * @param verifiedMobile - Verified mobile number and reference
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the mobile-number-verified confirmation notification. */
     async sendVerifiedMobileNumber(
         userId: string,
         verifiedMobile: INotificationVerifiedMobileNumberPayload
@@ -442,13 +362,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Queues user acceptance of term policy notification.
-     *
-     * @param userId - User receiving the notification
-     * @param payload - Term policy version accepted by the user
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Queues the user-accepted-term-policy notification. */
     async sendUserAcceptTermPolicy(
         userId: string,
         payload: INotificationAcceptTermPolicyPayload
@@ -470,14 +384,7 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Validates if a notification type/channel combination is allowed.
-     * Throws error if combination is not in the allowed list.
-     *
-     * @param type - Notification type (userActivity, marketing, etc.)
-     * @param channel - Delivery channel (email, push, inApp)
-     * @throws {BadRequestException} If combination is not allowed
-     */
+    /** Rejects any type/channel pair not in the allowed combinations list. */
     validateUserSetting(
         type: EnumNotificationType,
         channel: EnumNotificationChannel
@@ -487,30 +394,14 @@ export class NotificationUtil {
         );
 
         if (!validType) {
-            throw new BadRequestException({
-                statusCode: EnumNotificationStatusCodeError.invalidType,
-                message: this.messageService.setMessage(
-                    'notification.error.invalidType'
-                ),
-            });
+            throw new NotificationInvalidTypeException();
         }
 
         if (!validType.channels.includes(channel)) {
-            throw new BadRequestException({
-                statusCode: EnumNotificationStatusCodeError.invalidChannel,
-                message: this.messageService.setMessage(
-                    'notification.error.invalidChannel'
-                ),
-            });
+            throw new NotificationInvalidChannelException();
         }
     }
 
-    /**
-     * Maps notification entities to response DTOs.
-     *
-     * @param notifications - Array of notification entities from database
-     * @returns Array of notification response DTOs
-     */
     mapList(notifications: Notification[]): NotificationResponseDto[] {
         return this.responseUtil.serialize(
             NotificationResponseDto,
@@ -518,12 +409,6 @@ export class NotificationUtil {
         );
     }
 
-    /**
-     * Maps user notification settings to response DTOs.
-     *
-     * @param settings - Array of user notification settings from database
-     * @returns Array of notification setting response DTOs
-     */
     mapUserSettingList(
         settings: NotificationUserSetting[]
     ): NotificationUserSettingDto[] {

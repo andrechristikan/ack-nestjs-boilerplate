@@ -18,6 +18,7 @@ The error handling system provides comprehensive exception management using Nest
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Exception Filters](#exception-filters)
+  - [AppBaseExceptionFilter](#appbaseexceptionfilter)
   - [AppGeneralFilter](#appgeneralfilter)
   - [AppHttpFilter](#apphttpfilter)
   - [AppValidationFilter](#appvalidationfilter)
@@ -26,24 +27,26 @@ The error handling system provides comprehensive exception management using Nest
 - [Response Metadata](#response-metadata)
 - [Response Headers](#response-headers)
 - [Usage](#usage)
-  - [Error with Default HTTP Exception](#error-with-default-http-exception)
-  - [Custom Error with Message Properties](#custom-error-with-message-properties)
-  - [Custom Error with Additional Data](#custom-error-with-additional-data)
+  - [Throwing an error](#throwing-an-error)
+  - [Error with message interpolation](#error-with-message-interpolation)
+  - [Error wrapping a cause](#error-wrapping-a-cause)
+  - [Defining a new exception](#defining-a-new-exception)
 
 ## Exception Filters
 
-ACK NestJS Boilerplate uses 4 specialized exception filters registered globally in hierarchical order:
+ACK NestJS Boilerplate uses 5 specialized exception filters registered globally in hierarchical order:
 
 1. **AppValidationImportFilter** - Handles `FileImportException`
 2. **AppValidationFilter** - Handles `RequestValidationException`
-3. **AppHttpFilter** - Handles `HttpException`
-4. **AppGeneralFilter** - Catches all unhandled exceptions
+3. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
+4. **AppHttpFilter** - Handles framework `HttpException` (route 404s, throttler, etc.)
+5. **AppGeneralFilter** - Catches all unhandled exceptions
 
 **Processing flow**:
 ```
 Exception thrown
     ↓
-Match specific filter? (validation import/request, HTTP)
+Match specific filter? (validation import/request, AppBaseException, framework HTTP)
     ↓ No
 AppGeneralFilter (fallback)
     ↓
@@ -51,7 +54,7 @@ Standardized error response + Sentry (if applicable)
 ```
 
 **Common behavior**:
-- Extract metadata from request (language, version, requestId, correlationId)
+- Build metadata and headers via the shared `ResponseMetadataService` (`create()` / `setHeaders()`), sourced from the request store (`RequestLanguageStoreKey` / `RequestVersionStoreKey` / `RequestIdStoreKey` / `RequestCorrelationIdStoreKey`)
 - Generate timestamp and timezone information
 - Resolve localized error message using [Message System][ref-doc-message]
 - Set response headers
@@ -64,11 +67,13 @@ All errors are formatted into `ResponseErrorDto`:
 
 ```typescript
 {
-  "statusCode": number,        // Custom status code (not HTTP status)
+  "statusCode": number,        // Custom status code or HTTP status
+  "statusCodeKey": string,     // Status-code enum key (camelCase)
+  "module": string,            // Owning module
   "message": string,           // Localized error message
   "metadata": { ... },         // Request/response metadata
-  "errors": [ ... ],          // Optional: validation errors
-  "data": { ... }             // Optional: additional error context
+  "data": { ... },            // Optional: additional error context
+  "errors": [ ... ]           // Optional: validation errors
 }
 ```
 
@@ -77,10 +82,12 @@ All errors are formatted into `ResponseErrorDto`:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `statusCode` | `number` | Yes | Custom status code for error identification |
+| `statusCodeKey` | `string` | Yes | Status-code enum key (camelCase). Domain errors: enum key (e.g. `'notFound'`). Framework HTTP errors: camelCase HTTP status name (e.g. `'notFound'`). General/unknown: `'unknown'` |
+| `module` | `string` | Yes | Owning module. Domain errors: module name (e.g. `'user'`). Framework HTTP errors: `'http'`. General/unknown: `'app'` |
 | `message` | `string` | Yes | Localized message from [Message System][ref-doc-message] |
 | `metadata` | `ResponseMetadataDto` | Yes | Request/response metadata |
+| `data` | `unknown` | No | Additional error context |
 | `errors` | `array` | No | Validation error details (validation exceptions only) |
-| `data` | `unknown` | No | Additional error context (custom exceptions only) |
 
 ## Response Metadata
 
@@ -91,7 +98,6 @@ All errors are formatted into `ResponseErrorDto`:
   "language": "en",
   "timestamp": 1660190937231,
   "timezone": "Asia/Jakarta",
-  "path": "/api/v1/users",
   "version": "1",
   "repoVersion": "1.0.0",
   "requestId": "550e8400-e29b-41d4-a716-446655440000",
@@ -103,14 +109,13 @@ All errors are formatted into `ResponseErrorDto`:
 
 | Field | Source | Fallback |
 |-------|--------|----------|
-| `language` | `request.__language` | Config `message.language` |
+| `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
 | `timestamp` | `HelperService.dateGetTimestamp()` | - |
 | `timezone` | `HelperService.dateGetZone()` | - |
-| `path` | `request.path` | - |
-| `version` | `request.__version` | Config `app.urlVersion.version` |
+| `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
-| `requestId` | `request.id` | - |
-| `correlationId` | `request.correlationId` | - |
+| `requestId` | Request store `RequestIdStoreKey` | - |
+| `correlationId` | Request store `RequestCorrelationIdStoreKey` | - |
 
 ## Response Headers
 
@@ -127,6 +132,31 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
 ## Exception Filters
+
+### AppBaseExceptionFilter
+
+**Location**: `src/app/filters/app.base-exception.filter.ts`
+
+**Catches**: `@Catch(AppBaseException)` - every application error
+
+**Use case**: All errors thrown by application code (services, guards, pipes) as dedicated exception classes extending `AppBaseException`.
+
+**Behavior**:
+- Reads `statusCode`, `httpStatus`, `messagePath`, `messageProperties`, `metadata`, and optional `data` directly from the exception instance
+- Resolves the localized message via the [Message System][ref-doc-message]
+- Merges `exception.metadata` into the response metadata
+- Reports `exception.rawError` (or the exception itself) to Sentry only when `httpStatus >= 500`
+
+**Response example**:
+```json
+{
+  "statusCode": 5150,
+  "statusCodeKey": "notFound",
+  "module": "user",
+  "message": "User not found",
+  "metadata": { ... }
+}
+```
 
 ### AppGeneralFilter
 
@@ -145,6 +175,8 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```json
 {
   "statusCode": 500,
+  "statusCodeKey": "unknown",
+  "module": "app",
   "message": "Internal Server Error",
   "metadata": { ... }
 }
@@ -154,42 +186,23 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 
 **Location**: `src/app/filters/app.http.filter.ts`
 
-**Catches**: `@Catch(HttpException)` - all HTTP exceptions
+**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, throttler 429, payload limits, etc.)
 
-**Use case**: Standard and custom HTTP exceptions from application code
+**Use case**: NestJS/framework `HttpException`s. Application code no longer throws `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 
 **Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308
 
-**Custom exception support**: Extracts custom properties if exception response implements `IAppException`:
-```typescript
-interface IAppException<T = unknown> {
-  statusCode: number;                         // Custom status code
-  message: string;                            // Message path for i18n
-  messageProperties?: Record<string, string | number>; // Variables for message interpolation
-  data?: T;                                   // Additional error context
-  metadata?: Record<string, string | number>; // Additional metadata to merge into response
-  errors?: IMessageValidationError[];         // Optional validation error details
-  _error?: unknown;                           // Internal error object (not serialized)
-}
-```
+**Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
 **Sentry integration**: Only sends exceptions with HTTP status ≥ 500
 
-**Response example** (standard):
+**Response example**:
 ```json
 {
   "statusCode": 404,
+  "statusCodeKey": "notFound",
+  "module": "http",
   "message": "Not Found",
-  "metadata": { ... }
-}
-```
-
-**Response example** (custom):
-```json
-{
-  "statusCode": 5100,
-  "message": "User status active is invalid",
-  "data": { "userId": "123" },
   "metadata": { ... }
 }
 ```
@@ -210,8 +223,10 @@ interface IAppException<T = unknown> {
 **Response example**:
 ```json
 {
-  "statusCode": 422,
-  "message": "Validation error",
+  "statusCode": 5030,
+  "statusCodeKey": "validation",
+  "module": "request",
+  "message": "There are validation errors.",
   "errors": [
     {
       "key": "isEmail",
@@ -241,8 +256,10 @@ See [Request Validation][ref-doc-request-validation] for details.
 **Response example**:
 ```json
 {
-  "statusCode": 422,
-  "message": "File import validation failed",
+  "statusCode": 5030,
+  "statusCodeKey": "validation",
+  "module": "file",
+  "message": "The imported data failed validation.",
   "errors": [
     {
       "row": 2,
@@ -263,79 +280,62 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-### Error with Default HTTP Exception
+Application code throws a dedicated exception class per error, each extending `AppBaseException`. Inline `HttpException` plus an object is no longer used. Each class fixes its own `statusCode`, `httpStatus`, `messagePath`, and `statusCodeKey`, and lives in the `exceptions/` folder of the module that owns its status-code enum.
 
-For standard HTTP errors:
-
-```typescript
-throw new NotFoundException();
-// HTTP 404, statusCode: 404, message: "Not Found"
-```
-
-See [NestJS Exception Filters][ref-nestjs-exception-filters] for available exceptions.
-
-### Error with Message Properties
-
-Use message properties for dynamic message interpolation:
+### Throwing an error
 
 ```typescript
-throw new BadRequestException({
-  statusCode: EnumUserStatusCodeError.statusInvalid,
-  message: 'user.error.statusInvalid',
-  messageProperties: {
-    status: user.status.toLowerCase(),
-  },
-});
+throw new UserNotFoundException();
 ```
 
-**Message file** (`en/user.json`):
+### Error with message interpolation
+
+When the i18n message has placeholders, the constructor takes explicit named params and maps them to `messageProperties`:
+
+```typescript
+throw new UserPasswordMustNewException(period);
+```
+
+The class wires it internally:
+```typescript
+super('auth.error.passwordMustNew', { messageProperties: { period } });
+```
+
+**Message file** (`en/auth.json`):
 ```json
 {
   "error": {
-    "statusInvalid": "User status {status} is invalid"
+    "passwordMustNew": "Password must be different; last changed {period}"
   }
 }
 ```
 
-**Response**:
-```json
-{
-  "statusCode": 5100,
-  "message": "User status active is invalid",
-  "metadata": { ... }
+### Error wrapping a cause
+
+For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body:
+
+```typescript
+try {
+  // ...
+} catch (err: unknown) {
+  throw new AppUnknownException(err);
 }
 ```
 
-### Error with Additional Data
+### Defining a new exception
 
-Add contextual data to help debugging:
+Add a numeric status-code enum entry, then the class:
 
 ```typescript
-throw new BadRequestException({
-  statusCode: EnumUserStatusCodeError.statusInvalid,
-  message: 'user.error.statusInvalid',
-  messageProperties: {
-    status: user.status.toLowerCase(),
-  },
-  data: {
-    userId: user._id,
-    currentStatus: user.status,
-    allowedStatuses: ['active', 'inactive'],
-  },
-});
-```
+export class ExampleSomethingException extends AppBaseException {
+    readonly module = 'example';
+    readonly statusCode = EnumExampleStatusCodeError.something;
+    readonly statusCodeKey = EnumExampleStatusCodeError[this.statusCode];
+    readonly httpStatus = HttpStatus.BAD_REQUEST;
 
-**Response**:
-```json
-{
-  "statusCode": 5100,
-  "message": "User status active is invalid",
-  "data": {
-    "userId": "507f1f77bcf86cd799439011",
-    "currentStatus": "active",
-    "allowedStatuses": ["active", "inactive"]
-  },
-  "metadata": { ... }
+    constructor() {
+        super('example.error.something');
+    }
 }
 ```
 

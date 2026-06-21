@@ -6,11 +6,6 @@ import {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    RequestGeoLocation,
-    RequestIPAddress,
-    RequestUserAgent,
-} from '@common/request/decorators/request.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -24,9 +19,7 @@ import {
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    GeoLocation,
     Prisma,
-    UserAgent,
 } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
@@ -124,9 +117,6 @@ export class DeviceAdminController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @Param(
@@ -139,11 +129,6 @@ export class DeviceAdminController {
         return this.deviceService.removeByAdmin(
             userId,
             deviceOwnershipId,
-            {
-                ipAddress,
-                userAgent,
-                geoLocation,
-            },
             removedBy
         );
     }

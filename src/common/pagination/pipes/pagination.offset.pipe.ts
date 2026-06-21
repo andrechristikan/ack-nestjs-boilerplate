@@ -1,41 +1,37 @@
-import { Inject, Injectable, UnprocessableEntityException, mixin } from '@nestjs/common';
-import { PipeTransform, Scope, Type } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
+import {
+    Injectable,
+    mixin,
+} from '@nestjs/common';
+import { PipeTransform, Type } from '@nestjs/common/interfaces';
 import {
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
     PaginationDefaultPerPage,
+    PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import {
+    IPaginationQuery,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidOffsetPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-offset-pagination-params.exception';
+import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
+import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
+import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
+import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
+import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
+import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 
-/**
- * Factory function to create PaginationOffsetPipe that handles offset-based pagination
- * @param {number} defaultPerPage - Default number of items per page (default: PaginationDefaultPerPage)
- * @returns {Type<PipeTransform>} Configured pipe class for offset pagination
- *
- * @constraint
- * - Page: minimum 1, maximum PaginationDefaultMaxPage
- * - PerPage: minimum 1, maximum PaginationDefaultMaxPerPage
- * - Default page: 1
- * - Default perPage: PaginationDefaultPerPage or custom defaultPerPage parameter
- */
 export function PaginationOffsetPipe(
     defaultPerPage: number = PaginationDefaultPerPage
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationOffsetPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
-        /**
-         * Transforms input value to add offset pagination functionality with validation and limits
-         * @param {Object} value - Input object containing pagination parameters
-         * @param {number|string} value.page - Page number (validated to be between 1 and PaginationDefaultMaxPage)
-         * @param {number|string} value.perPage - Items per page (validated to be between 1 and PaginationDefaultMaxPerPage)
-         * @returns {IPaginationQueryOffsetParams} Transformed pagination params with limit and skip
-         * @throws {UnprocessableEntityException} If page or perPage is invalid
-         */
         transform(
             value: {
                 page?: number | string;
@@ -49,7 +45,10 @@ export function PaginationOffsetPipe(
                 );
 
                 const skip = (finalPage - 1) * finalPerPage;
-                this.addToRequestInstance(finalPage, finalPerPage);
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { page: finalPage, perPage: finalPerPage }
+                );
 
                 return {
                     ...value,
@@ -57,29 +56,14 @@ export function PaginationOffsetPipe(
                     skip: skip,
                 };
             } catch (error) {
-                if (error instanceof UnprocessableEntityException) {
+                if (error instanceof AppBaseException) {
                     throw error;
                 }
 
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidOffsetPaginationParams,
-                    message: 'pagination.error.invalidOffsetPaginationParams',
-                });
+                throw new PaginationInvalidOffsetPaginationParamsException();
             }
         }
 
-        /**
-         * Validates and parses page parameter
-         * @param {number|string|undefined} page - Page number to validate
-         * @returns {number} Validated page number
-         * @throws {UnprocessableEntityException} If page is not a valid integer or out of bounds
-         *
-         * @constraint
-         * - Must be a valid integer
-         * - Must be >= 1
-         * - Must be <= PaginationDefaultMaxPage
-         */
         private validateAndParsePage(page?: number | string): number {
             let finalPage = page ?? 1;
 
@@ -88,53 +72,20 @@ export function PaginationOffsetPipe(
             }
 
             if (!Number.isFinite(finalPage) || !Number.isInteger(finalPage)) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPage,
-                    message: 'pagination.error.invalidPage',
-                    messageProperties: {
-                        maxPage: PaginationDefaultMaxPage,
-                    },
-                });
+                throw new PaginationInvalidPageException(PaginationDefaultMaxPage);
             }
 
             if (finalPage > PaginationDefaultMaxPage) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.pageExceedsMaximum,
-                    message: 'pagination.error.pageExceedsMaximum',
-                    messageProperties: {
-                        maxPage: PaginationDefaultMaxPage,
-                        receivedPage: finalPage,
-                    },
-                });
+                throw new PaginationPageExceedsMaximumException(PaginationDefaultMaxPage, finalPage);
             }
 
             if (finalPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
-                    message: 'pagination.error.pageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPage: 1,
-                        receivedPage: finalPage,
-                    },
-                });
+                throw new PaginationPageCannotBeLessThanOneException(finalPage);
             }
 
             return finalPage;
         }
 
-        /**
-         * Validates and parses perPage parameter
-         * @param {number|string|undefined} perPage - Items per page to validate
-         * @returns {number} Validated perPage value
-         * @throws {UnprocessableEntityException} If perPage is not a valid integer or out of bounds
-         *
-         * @constraint
-         * - Must be a valid integer
-         * - Must be >= 1
-         * - Must be <= PaginationDefaultMaxPerPage
-         */
         private validateAndParsePerPage(perPage?: number | string): number {
             let finalPerPage = perPage ?? defaultPerPage;
 
@@ -146,54 +97,18 @@ export function PaginationOffsetPipe(
                 !Number.isFinite(finalPerPage) ||
                 !Number.isInteger(finalPerPage)
             ) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                    message: 'pagination.error.invalidPerPage',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                    },
-                });
+                throw new PaginationInvalidPerPageException(PaginationDefaultMaxPerPage);
             }
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageExceedsMaximum,
-                    message: 'pagination.error.perPageExceedsMaximum',
-                    messageProperties: {
-                        maxPerPage: PaginationDefaultMaxPerPage,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageExceedsMaximumException(PaginationDefaultMaxPerPage, finalPerPage);
             }
 
             if (finalPerPage < 1) {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                    message: 'pagination.error.perPageCannotBeLessThanOne',
-                    messageProperties: {
-                        minPerPage: 1,
-                        receivedPerPage: finalPerPage,
-                    },
-                });
+                throw new PaginationPerPageCannotBeLessThanOneException(finalPerPage);
             }
 
             return finalPerPage;
-        }
-
-        /**
-         * Adds pagination information to request instance
-         * @param {number} page - Current page number
-         * @param {number} perPage - Items per page
-         * @returns {void}
-         */
-        private addToRequestInstance(page: number, perPage: number): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                page,
-                perPage,
-            };
         }
     }
 

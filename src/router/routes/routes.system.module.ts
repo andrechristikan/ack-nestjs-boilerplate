@@ -7,8 +7,8 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 /**
- * System routes module that provides system-level endpoints.
- * Contains controllers for user system operations and health checks for monitoring application status.
+ * Mounts system-level controllers (machine-to-machine via API key): user, health,
+ * feature flag, and role.
  */
 @Module({
     controllers: [

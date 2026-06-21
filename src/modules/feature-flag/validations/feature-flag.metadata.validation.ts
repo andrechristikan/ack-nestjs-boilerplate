@@ -6,6 +6,7 @@ import {
     registerDecorator,
 } from 'class-validator';
 
+/** Accepts only a flat object whose values are string, number, or boolean. */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsFeatureFlagMetadataConstraint implements ValidatorConstraintInterface {

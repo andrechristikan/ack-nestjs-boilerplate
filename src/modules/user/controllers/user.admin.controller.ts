@@ -27,9 +27,7 @@ import {
     EnumActivityLogAction,
     EnumRoleType,
     EnumUserStatus,
-    GeoLocation,
     Prisma,
-    UserAgent,
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -73,10 +71,7 @@ import {
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
-    RequestGeoLocation,
-    RequestIPAddress,
     RequestTimeout,
-    RequestUserAgent,
 } from '@common/request/decorators/request.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
@@ -169,18 +164,10 @@ export class UserAdminController {
     async create(
         @Body()
         body: UserCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         return this.userService.createByAdmin(
             body,
-            {
-                ipAddress,
-                userAgent,
-                geoLocation,
-            },
             createdBy
         );
     }
@@ -202,19 +189,11 @@ export class UserAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
-        @Body() body: UserUpdateStatusRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @Body() body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.userService.updateStatusByAdmin(
             userId,
             body,
-            {
-                ipAddress,
-                userAgent,
-                geoLocation,
-            },
             updatedBy
         );
     }
@@ -235,18 +214,10 @@ export class UserAdminController {
     async updatePassword(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.userService.updatePasswordByAdmin(
             userId,
-            {
-                ipAddress,
-                userAgent,
-                geoLocation,
-            },
             updatedBy
         );
     }
@@ -267,16 +238,9 @@ export class UserAdminController {
     async resetTwoFactorByAdmin(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {
-        return this.userService.resetTwoFactorByAdmin(userId, updatedBy, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.userService.resetTwoFactorByAdmin(userId, updatedBy);
     }
 
     @UserAdminImportDoc()
@@ -304,16 +268,9 @@ export class UserAdminController {
             FileCsvParsePipe,
             new FileCsvValidationPipe(UserImportRequestDto)
         )
-        data: UserImportRequestDto[],
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        data: UserImportRequestDto[]
     ): Promise<void> {
-        return this.userService.importByAdmin(data, createdBy, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.userService.importByAdmin(data, createdBy);
     }
 
     @UserAdminExportDoc()

@@ -3,38 +3,35 @@ import { ConfigService } from '@nestjs/config';
 import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { HelperService } from '@common/helper/services/helper.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 
 /**
- * Custom language detection and assignment middleware for internationalization support.
- * Processes 'x-custom-lang' header and validates against supported languages.
+ * Resolves the request language from `x-custom-lang`, validated against supported languages.
  */
 @Injectable()
 export class RequestCustomLanguageMiddleware implements NestMiddleware {
     private readonly availableLanguage: string[];
+    private readonly defaultLanguage: string;
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperService: HelperService,
+        private readonly requestStoreService: RequestStoreService
     ) {
         this.availableLanguage = this.configService.get<string[]>(
             'message.availableLanguage'
         )!;
+        this.defaultLanguage =
+            this.configService.get<string>('message.language')!;
     }
 
-    /**
-     * Processes incoming requests to detect and validate custom language preferences.
-     *
-     * @param req - The Express request object extended with custom properties
-     * @param _res - The Express response object
-     * @param next - The next middleware function
-     */
     async use(
         req: IRequestApp,
         _res: Response,
         next: NextFunction
     ): Promise<void> {
-        let customLang: string =
-            this.configService.get<string>('message.language')!;
+        let customLang: string = this.defaultLanguage;
 
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         if (reqLanguages) {
@@ -45,18 +42,12 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
             }
         }
 
-        req.__language = customLang;
+        this.requestStoreService.set(RequestLanguageStoreKey, customLang);
         req.headers['x-custom-lang'] = customLang;
 
         next();
     }
 
-    /**
-     * Validates requested language against available languages.
-     *
-     * @param customLanguage - The language code to validate
-     * @returns Array of valid languages that match available languages
-     */
     private filterLanguage(customLanguage: string): string[] {
         return this.helperService.arrayIntersection(
             [customLanguage],

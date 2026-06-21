@@ -129,7 +129,7 @@ Validates uploaded file extensions against allowed types. This pipe checks the f
 Pass an array of allowed file extensions from the enum constants. Works with both single file and multiple files uploads.
 
 **Throws:**
-- `UnsupportedMediaTypeException`: When file extension is not in the allowed list
+- `FileExtensionInvalidException`: When file extension is not in the allowed list
 
 ### FileCsvParsePipe
 
@@ -144,8 +144,8 @@ Array of parsed row objects `T[]`
 - Empty lines are automatically skipped
 
 **Throws:**
-- `UnprocessableEntityException`: Empty buffer or missing file
-- `UnsupportedMediaTypeException`: Invalid file extension
+- `FileRequiredException`: Empty buffer or missing file
+- `FileExtensionInvalidException`: Invalid file extension
 
 ### FileCsvValidationPipe
 
@@ -173,11 +173,11 @@ flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
     B --> C{FileExtensionPipe}
     
-    C -->|Invalid Extension| D[Throw UnsupportedMediaTypeException]
+    C -->|Invalid Extension| D[Throw FileExtensionInvalidException]
     C -->|Valid Extension| E{FileCsvParsePipe}
     
-    E -->|Empty Buffer| F[Throw UnprocessableEntityException]
-    E -->|Invalid Format| G[Throw UnsupportedMediaTypeException]
+    E -->|Empty Buffer| F[Throw FileRequiredException]
+    E -->|Invalid Format| G[Throw FileExtensionInvalidException]
     E -->|Success| H[Parse CSV to Array]
     
     H --> I{FileCsvValidationPipe}
@@ -392,16 +392,20 @@ Thrown during CSV validation with detailed error context. This exception provide
 
 **Exception Structure:**
 
+`FileImportException` extends `AppBaseException`. The filter formats it into `ResponseErrorDto`:
+
 ```typescript
 {
-  statusCode: number;
+  statusCode: number;       // EnumRequestStatusCodeError.validation
+  statusCodeKey: string;    // 'validation'
+  module: string;           // 'file'
   message: string;
   errors: Array<{
-    row: number;           // Row index (0-based)
+    row: number;            // Row index (0-based)
     errors: Array<{
-      key: string;         // Constraint name (e.g. 'isEmail', 'min')
-      property: string;    // DTO property name
-      message: string;     // Translated error message
+      key: string;          // Constraint name (e.g. 'isEmail', 'min')
+      property: string;     // DTO property name
+      message: string;      // Translated error message
     }>;
   }>;
 }
@@ -422,13 +426,17 @@ Thrown during CSV validation with detailed error context. This exception provide
 // Invalid Extension
 {
   "statusCode": 5011,
-  "message": "file.error.extensionInvalid"
+  "statusCodeKey": "extensionInvalid",
+  "module": "file",
+  "message": "File extension is invalid"
 }
 
 // Validation Errors
 {
   "statusCode": 5030,
-  "message": "file.error.validationDto",
+  "statusCodeKey": "validation",
+  "module": "file",
+  "message": "The imported data failed validation.",
   "errors": [
     {
       "row": 0,

@@ -24,14 +24,7 @@ import {
     verifySync,
 } from 'otplib';
 
-/**
- * Utility class for Two-Factor Authentication (2FA) operations.
- * - Generate and verify TOTP codes
- * - Manage backup codes
- * - Handle encryption/decryption of secrets
- * - Manage challenge tokens in cache
- * - Used by validation decorators and service logic
- */
+/** 2FA utility: TOTP codes, backup codes, AES secret encryption, challenge tokens, and attempt locking. */
 @Injectable()
 export class AuthTwoFactorUtil {
     private readonly strategy: OTPStrategy;
@@ -92,22 +85,13 @@ export class AuthTwoFactorUtil {
         )!;
     }
 
-    /**
-     * Generate a new TOTP secret for 2FA setup
-     * @returns {string} Secret string
-     */
     generateSecret(): string {
         return generateSecret({
             length: this.secretLength,
         });
     }
 
-    /**
-     * Create a key URI for authenticator apps (QR code)
-     * @param email User email
-     * @param secret TOTP secret
-     * @returns Key URI
-     */
+    /** Builds the otpauth key URI consumed by authenticator apps (QR code). */
     createKeyUri(email: string, secret: string): string {
         return generateURI({
             issuer: this.issuer,
@@ -120,12 +104,7 @@ export class AuthTwoFactorUtil {
         });
     }
 
-    /**
-     * Verify TOTP code against secret
-     * @param secret TOTP secret
-     * @param code Code to verify
-     * @returns True if valid
-     */
+    /** Verifies a TOTP code against the secret, allowing a configurable time-step window. */
     verifyCode(secret: string, code: string): boolean {
         const verified = verifySync({
             token: code,
@@ -140,39 +119,22 @@ export class AuthTwoFactorUtil {
         return verified.valid;
     }
 
-    /**
-     * Generate IV for AES encryption
-     * @returns IV string
-     */
     generateEncryptionIv(): string {
         // Store as a tagged string so we can safely parse/extend formats later.
         return `hex:${randomBytes(16).toString('hex')}`;
     }
 
-    /**
-     * Encrypt secret using AES-256
-     * @param secret Secret to encrypt
-     * @param iv Initialization vector
-     * @returns Encrypted secret
-     */
+    /** Encrypts the TOTP secret with AES-256 before persistence. */
     encryptSecret(secret: string, iv: string): string {
         return this.helperService.aes256Encrypt(secret, this.encryptionKey, iv);
     }
 
-    /**
-     * Decrypt secret using AES-256
-     * @param secret Encrypted secret
-     * @param iv Initialization vector
-     * @returns Decrypted secret
-     */
+    /** Decrypts the stored AES-256 TOTP secret. */
     decryptSecret(secret: string, iv: string): string {
         return this.helperService.aes256Decrypt(secret, this.encryptionKey, iv);
     }
 
-    /**
-     * Generate backup codes for 2FA recovery
-     * @returns Backup codes and hashes
-     */
+    /** Generates recovery backup codes plus their SHA-256 hashes for storage. */
     generateBackupCodes(): IAuthTwoFactorBackupCodes {
         const codes = Array.from({ length: this.backupCodesCount }, () =>
             this.helperService
@@ -186,12 +148,7 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /**
-     * Verify backup code against stored hashes
-     * @param backupCodes Array of hashed backup codes
-     * @param input Input code to verify
-     * @returns Verification result
-     */
+    /** Matches an input code against stored hashes, returning the matched index. */
     verifyBackupCode(
         backupCodes: string[],
         input: string
@@ -207,11 +164,7 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /**
-     * Create a challenge token for 2FA verification
-     * @param cachePayload Challenge payload
-     * @returns ChallengeToken and expiry
-     */
+    /** Stores the challenge payload in cache under a random token with a TTL. */
     async createChallenge(
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
@@ -226,11 +179,6 @@ export class AuthTwoFactorUtil {
         return { challengeToken, expiresInMs: this.challengeTtlInMs };
     }
 
-    /**
-     * Get challenge payload from cache by token
-     * @param token Challenge token
-     * @returns Challenge payload or null
-     */
     async getChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
@@ -241,48 +189,24 @@ export class AuthTwoFactorUtil {
         return cached ?? null;
     }
 
-    /**
-     * Remove challenge token from cache
-     * @param token Challenge token
-     */
     async clearChallenge(token: string): Promise<void> {
         const key = `${this.cachePrefixKey}:${token}`;
         await this.cacheManager.del(key);
     }
 
-    /**
-     * Validate TOTP code format (only digits)
-     * @param code Code to validate
-     * @returns True if valid format
-     */
+    /** Validates the TOTP code format (digits only, configured length). */
     validateCode(code: string): boolean {
         const rgx = new RegExp(`^\d{${this.digits}}$`);
         return rgx.test(code);
     }
 
-    /**
-     * Validate backup code format (A-Z, 0-9)
-     * @param code Code to validate
-     * @returns True if valid format
-     */
+    /** Validates the backup code format (A-Z, 0-9, configured length). */
     validateBackupCode(code: string): boolean {
         const rgx = new RegExp(`^[A-Z0-9]{${this.backupCodesLength}}$`);
         return rgx.test(code);
     }
 
-    /**
-     * Verifies two-factor authentication (2FA) for a user using TOTP or backup code.
-     *
-     * - If method is 'code', decrypts the secret and verifies the TOTP code.
-     * - If method is 'backupCode', checks the backup code against stored hashes and removes it if valid.
-     *
-     * @param twoFactor TwoFactor entity containing secret, IV, and backup codes
-     * @param verifyData Object containing method, code, and backupCode
-     * @param verifyData.method EnumAuthTwoFactorMethod ('code' or 'backupCode')
-     * @param verifyData.code TOTP code to verify (if method is 'code')
-     * @param verifyData.backupCode Backup code to verify (if method is 'backupCode')
-     * @returns Verification result: isValid, method, and optionally newBackupCodes if backup code is used
-     */
+    /** Verifies a TOTP or backup code; a consumed backup code is returned removed in newBackupCodes. */
     async verifyTwoFactor(
         twoFactor: TwoFactor,
         { method, code, backupCode }: IAuthTwoFactorVerify
@@ -343,12 +267,7 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /**
-     * Sets up two-factor authentication (2FA) for a user by generating a secret and otpauth URL.
-     *
-     * @param email - The email address of the user for whom 2FA is being set up.
-     * @returns An object containing the otpauth URL, secret, encrypted secret, and IV for 2FA setup.
-     */
+    /** Generates a new secret, its encrypted form, IV, and the otpauth URL for 2FA enrollment. */
     async setupTwoFactor(email: string): Promise<IAuthTwoFactorSetup> {
         const secret = this.generateSecret();
         const iv = this.generateEncryptionIv();
@@ -363,29 +282,12 @@ export class AuthTwoFactorUtil {
         };
     }
 
-    /**
-     * Checks if the user's 2FA attempt count has reached the maximum allowed attempts.
-     *
-     * @param user - The user to check 2FA attempts for
-     * @returns True if attempts >= maxAttempt, otherwise false
-     */
+    /** True when the user's 2FA attempt count has reached the configured maximum. */
     checkAttempt(user: IUser): boolean {
         return (user.twoFactor?.attempt ?? 0) >= this.maxAttempt;
     }
 
-    /**
-     * Locks the user's two-factor authentication (2FA) attempts by setting a lock flag in cache with exponential backoff TTL.
-     *
-     * - The lock is stored in cache with a key based on the user ID.
-     * - TTL (time to live) is calculated using the formula:
-     *   TTL = 2^(attempt / maxAttempt) * lockAttemptDuration
-     * - lockAttemptDuration can be configured (e.g., 2 minutes = 120000 ms) to set the minimum hold time.
-     * - TTL increases exponentially as the attempt count grows, so the user must wait longer for each failed attempt.
-     * - Used to prevent brute-force attacks on 2FA verification.
-     *
-     * @param user - The user whose 2FA attempts should be locked
-     * @returns Promise<void>
-     */
+    /** Locks 2FA in cache with exponential backoff TTL `2^(attempt/maxAttempt) * lockAttemptDuration` to throttle brute force. */
     async lockTwoFactorAttempt(user: IUser): Promise<void> {
         const key = `${this.cachePrefixKey}:lock:${user.id}`;
         const ttlExponentialInMs =
@@ -396,16 +298,7 @@ export class AuthTwoFactorUtil {
         return;
     }
 
-    /**
-     * Retrieves the remaining lock duration (in milliseconds) for a user's two-factor authentication (2FA) attempts.
-     *
-     * - Checks if the user is currently locked out from 2FA attempts by looking up the lock key in cache.
-     * - If locked, returns the remaining TTL (time to live) in milliseconds until the user can retry.
-     * - If not locked, returns 0.
-     *
-     * @param user - The user whose 2FA lock status is being checked
-     * @returns Promise<number> Remaining lock duration in milliseconds, or 0 if not locked
-     */
+    /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
     async getLockTwoFactorAttempt(user: IUser): Promise<number> {
         const key = `${this.cachePrefixKey}:lock:${user.id}`;
         const isLocked = await this.cacheManager.get<boolean>(key);

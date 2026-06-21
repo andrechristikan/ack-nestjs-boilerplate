@@ -4,9 +4,7 @@ import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard'
 import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
 
 /**
- * Method decorator that applies policy ability-based protection guards
- * @param {...RoleAbilityRequestDto[]} requiredAbilities - List of policy abilities required for access
- * @returns {MethodDecorator} Combined decorators for policy ability validation
+ * Protects a route, requiring the caller to hold the given CASL abilities.
  */
 export function PolicyAbilityProtected(
     ...requiredAbilities: RoleAbilityRequestDto[]

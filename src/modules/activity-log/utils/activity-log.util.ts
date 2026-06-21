@@ -14,6 +14,9 @@ export class ActivityLogUtil {
         private readonly responseUtil: ResponseUtil
     ) {}
 
+    /**
+     * Resolves the human-readable description from the `activityLog.<action>` i18n key, interpolating metadata.
+     */
     getDescription(action: string, metadata?: IActivityLogMetadata): string {
         return this.messageService.setMessage(
             `activityLog.${action}`,

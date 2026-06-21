@@ -307,7 +307,7 @@ type GeoLocation {
 - `Session.geoLocation` — location at login time
 - `ActivityLog.geoLocation` — location when the action was performed
 
-Resolved automatically via the `@RequestGeoLocation()` parameter decorator. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -368,7 +368,7 @@ type UserAgentOs {
 - `Session.userAgent` — client info at login time
 - `ActivityLog.userAgent` — client info when the action was performed
 
-Resolved automatically via the `@RequestUserAgent()` parameter decorator. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 

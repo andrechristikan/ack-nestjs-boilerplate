@@ -9,20 +9,13 @@ import {
 } from 'class-validator';
 
 /**
- * Validator constraint that checks if a value is greater than or equal to another property's value.
- * Supports numbers and dates comparison.
+ * Validates a number/date value is `>=` another property's value.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperService: HelperService) {}
-    /**
-     * Validates that the current value is greater than or equal to the related property value.
-     *
-     * @param value - The value to validate (numbers and dates only)
-     * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is greater than or equal to the related property
-     */
+
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
             return false;
@@ -56,21 +49,10 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
         return false;
     }
 
-    /**
-     * Generates a default error message for validation failures.
-     *
-     * @returns Error message string
-     */
     defaultMessage(): string {
         return `request.error.greaterThanEqualOtherProperty.invalid`;
     }
 
-    /**
-     * Converts a value to number if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert
-     * @returns Converted number or null if conversion fails
-     */
     private convertToNumber(value: unknown): number | null {
         if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
@@ -84,12 +66,6 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
         return null;
     }
 
-    /**
-     * Converts a value to Date if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert (Date object, ISO string, timestamp)
-     * @returns Converted Date or null if conversion fails
-     */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
@@ -109,13 +85,6 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
     }
 }
 
-/**
- * Decorator that validates a property is greater than or equal to another property's value.
- *
- * @param property - The name of the property to compare against
- * @param validationOptions - Standard class-validator validation options
- * @returns Property decorator function
- */
 export function GreaterThanEqualOtherProperty(
     property: string,
     validationOptions?: ValidationOptions
@@ -133,21 +102,13 @@ export function GreaterThanEqualOtherProperty(
 }
 
 /**
- * Validator constraint that checks if a value is strictly greater than another property's value.
- * Supports numbers and dates comparison.
+ * Validates a number/date value is strictly `>` another property's value.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperService: HelperService) {}
 
-    /**
-     * Validates that the current value is strictly greater than the related property value.
-     *
-     * @param value - The value to validate (numbers and dates only)
-     * @param args - Validation arguments containing constraints and object context
-     * @returns True if value is greater than the related property
-     */
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
             return false;
@@ -181,21 +142,10 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
         return false;
     }
 
-    /**
-     * Generates a default error message for validation failures.
-     *
-     * @returns Error message string
-     */
     defaultMessage(): string {
         return `request.error.greaterThanOtherProperty.invalid`;
     }
 
-    /**
-     * Converts a value to number if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert
-     * @returns Converted number or null if conversion fails
-     */
     private convertToNumber(value: unknown): number | null {
         if (typeof value === 'number' && !Number.isNaN(value)) {
             return value;
@@ -209,12 +159,6 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
         return null;
     }
 
-    /**
-     * Converts a value to Date if possible, returns null if conversion fails.
-     *
-     * @param value - Value to convert (Date object, ISO string, timestamp)
-     * @returns Converted Date or null if conversion fails
-     */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date && !Number.isNaN(value.getTime())) {
             return value;
@@ -234,13 +178,6 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
     }
 }
 
-/**
- * Decorator that validates a property is strictly greater than another property's value.
- *
- * @param property - The name of the property to compare against
- * @param validationOptions - Standard class-validator validation options
- * @returns Property decorator function
- */
 export function GreaterThanOtherProperty(
     property: string,
     validationOptions?: ValidationOptions

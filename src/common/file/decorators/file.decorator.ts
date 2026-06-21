@@ -15,12 +15,6 @@ import {
     IFileUploadSingle,
 } from '@common/file/interfaces/file.interface';
 
-/**
- * Creates a decorator for handling single file upload.
- * This decorator uses FileInterceptor to handle file upload with specified field name and size limits.
- * @param {IFileUploadSingle} [options] - Optional configuration for single file upload
- * @returns {MethodDecorator} A method decorator that applies file upload interceptor for single file
- */
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
@@ -34,12 +28,6 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     );
 }
 
-/**
- * Creates a decorator for handling multiple file uploads with the same field name.
- * This decorator uses FilesInterceptor to handle multiple files upload with specified field name, max files count, and size limits.
- * @param {IFileUploadMultiple} [options] - Optional configuration for multiple file upload
- * @returns {MethodDecorator} A method decorator that applies file upload interceptor for multiple files
- */
 export function FileUploadMultiple(
     options?: IFileUploadMultiple
 ): MethodDecorator {
@@ -58,13 +46,6 @@ export function FileUploadMultiple(
     );
 }
 
-/**
- * Creates a decorator for handling multiple file uploads with different field names.
- * This decorator uses FileFieldsInterceptor to handle files upload from multiple fields with different configurations.
- * @param {IFileUploadMultipleField[]} fields - Array of field configurations, each specifying field name and max file count
- * @param {IFileUploadMultipleFieldOptions} [options] - Optional configuration for multiple field file upload
- * @returns {MethodDecorator} A method decorator that applies file upload interceptor for multiple fields
- */
 export function FileUploadMultipleFields(
     fields: IFileUploadMultipleField[],
     options?: IFileUploadMultipleFieldOptions

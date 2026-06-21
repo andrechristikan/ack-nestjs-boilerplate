@@ -10,57 +10,34 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
 import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
 } from '@common/response/dtos/response.paging.dto';
-import { ConfigService } from '@nestjs/config';
-import { HelperService } from '@common/helper/services/helper.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Global pagination response interceptor that standardizes paginated HTTP response format
- * across the entire application.
- *
- * This interceptor transforms all paginated HTTP responses into a consistent format
- * with metadata, pagination information, status codes, messages, and standardized headers.
- * It handles pagination data validation, response data transformation, message localization,
- * and adds custom headers for client-side processing.
- *
- * @template T - The type of the paginated response data items
+ * Wraps paginated handler results into the standard envelope, merging pagination state from the
+ * per-request store into the metadata and localizing the message.
  */
 @Injectable()
 export class ResponsePagingInterceptor<T> implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly responseMetadataService: ResponseMetadataService,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     /**
-     * Intercepts HTTP requests and transforms paginated responses into standardized format.
-     *
-     * This method only processes HTTP contexts, ignoring other types like WebSocket
-     * or RPC contexts. It validates pagination data, extracts response metadata,
-     * applies localization, sets custom headers, and returns a consistent paginated
-     * response structure with pagination information.
-     *
-     * **Pagination Type Handling:**
-     * - For **CURSOR** type: Extracts `cursor` field for next page navigation
-     * - For **OFFSET** type: Extracts `page`, `totalPage`, `nextPage`, `previousPage`, and `hasPrevious` fields
-     *
-     * @param context - The execution context containing request/response information
-     * @param next - The next handler in the chain
-     * @returns Observable of the transformed paginated response promise
-     * @throws Error when response data is not properly formatted for pagination
-     * @throws Error when type is not 'offset' or 'cursor'
-     * @throws Error when data field is not an array
+     * Cursor type contributes `nextCursor`; offset type contributes page fields.
      */
     intercept(
         context: ExecutionContext,
@@ -71,7 +48,6 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                 map(async (res: Promise<Response>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
-                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
                         ResponseMessagePathMetaKey,
@@ -80,8 +56,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
 
                     let data: T[] = [];
 
-                    const metadata: ResponsePagingMetadataDto =
-                        this.createPagingResponseMetadata(request);
+                    const metadata = this.responseMetadataService.create();
 
                     const responseData =
                         (await res) as unknown as IResponsePagingReturn<T>;
@@ -132,7 +107,10 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const pagination = request.__pagination ?? {};
+                    const pagination =
+                        this.requestStoreService.get<Partial<IPaginationQuery>>(
+                            PaginationStoreKey
+                        ) ?? {};
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,
@@ -161,7 +139,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         }
                     );
 
-                    this.setResponseHeaders(response, metadata);
+                    this.responseMetadataService.setHeaders(response, metadata);
                     response.status(httpStatus);
 
                     return {
@@ -178,69 +156,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
     }
 
     /**
-     * Creates standardized pagination response metadata from request information.
-     *
-     * Initializes pagination metadata with default values including:
-     * - Request tracking information (language, timestamp, timezone, path, version, IDs)
-     * - Pagination defaults (type: OFFSET, page: 0, perPage: 0, count: 0)
-     * - Search and filter defaults (undefined)
-     * - Navigation flags (hasNext: false, hasPrevious: false)
-     *
-     * @param request - The incoming HTTP request
-     * @returns ResponsePagingMetadataDto containing base metadata for the response with default OFFSET type
-     */
-    private createPagingResponseMetadata(
-        request: IRequestApp
-    ): ResponsePagingMetadataDto {
-        const today = this.helperService.dateCreate();
-        const xLanguage: EnumMessageLanguage =
-            (request.__language as EnumMessageLanguage) ??
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        const xVersion =
-            request.__version ??
-            this.configService.get<string>('app.urlVersion.version')!;
-
-        return {
-            language: xLanguage,
-            timestamp: this.helperService.dateGetTimestamp(today),
-            timezone: this.helperService.dateGetZone(today),
-            path: request.path,
-            version: xVersion,
-            repoVersion: this.configService.get<string>('app.version')!,
-            requestId: String(request.id),
-            correlationId: String(request.correlationId),
-
-            totalPage: 0,
-            count: 0,
-            search: undefined,
-            filters: undefined,
-            page: 0,
-            perPage: 0,
-            orderBy: [],
-            availableSearch: [],
-            availableOrderBy: [],
-            nextPage: undefined,
-            previousPage: undefined,
-            hasNext: false,
-            hasPrevious: false,
-            nextCursor: undefined,
-            previousCursor: undefined,
-            type: EnumPaginationType.offset,
-        };
-    }
-
-    /**
-     * Validates the pagination response data structure.
-     *
-     * **Validations:**
-     * - Response data must be an instance of IResponsePaging
-     * - Type field must be either 'offset' or 'cursor'
-     * - Data field must be an array and cannot be empty
-     *
-     * @param responseData - The response data to validate
-     * @throws Error when response data is not properly formatted for pagination
-     * @throws Error when type is not 'offset' or 'cursor'
-     * @throws Error when data field is not an array
+     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
      */
     private validatePaginationResponse(
         responseData: IResponsePagingReturn<T>
@@ -259,28 +175,5 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         if (!responseData.data || !Array.isArray(responseData.data)) {
             throw new Error('Field data must in array and can not be empty');
         }
-    }
-
-    /**
-     * Sets custom headers on the HTTP response.
-     *
-     * Adds standardized headers including language, timestamp, timezone,
-     * version information, and request ID for client-side processing
-     * and request correlation.
-     *
-     * @param response - The HTTP response object
-     * @param metadata - Response metadata containing header values
-     */
-    private setResponseHeaders(
-        response: Response,
-        metadata: ResponsePagingMetadataDto
-    ): void {
-        response.setHeader('x-custom-lang', metadata.language);
-        response.setHeader('x-timestamp', metadata.timestamp);
-        response.setHeader('x-timezone', metadata.timezone);
-        response.setHeader('x-version', metadata.version);
-        response.setHeader('x-repo-version', metadata.repoVersion);
-        response.setHeader('x-request-id', String(metadata.requestId));
-        response.setHeader('x-correlation-id', String(metadata.correlationId));
     }
 }

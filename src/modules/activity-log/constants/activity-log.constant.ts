@@ -1,2 +1,3 @@
 export const ActivityLogActionMetaKey = 'ActivityLogActionMetaKey';
-export const ActivityLogMetadataMetaKey = 'ActivityLogMetadataMetaKey';
+export const ActivityLogMetadataStoreKey =
+    'ActivityLogMetadataStoreKey';

@@ -8,8 +8,7 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Public routes module that provides publicly accessible endpoints.
- * Contains controllers for countries, roles, hello world, users, term policies, and verification that don't require authentication.
+ * Mounts unauthenticated public controllers: country, hello, user, and term policy.
  */
 @Module({
     controllers: [

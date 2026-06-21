@@ -4,17 +4,8 @@ import bodyParser from 'body-parser';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Unified body parser middleware that handles multiple content types.
- * Automatically detects content-type and applies appropriate body parser with configurable size limits.
- *
- * Supported Content Types:
- * - application/json: JSON data with configurable size limit
- * - application/x-www-form-urlencoded: URL-encoded form data
- * - text/*: Plain text content
- * - application/octet-stream: Binary data
- *
- * Note: Multipart form data (multipart/form-data) is intentionally skipped
- * as it will be handled by Multer middleware for file uploads.
+ * Parses the body per content-type (json, urlencoded, text, octet-stream) with configured size
+ * limits. Multipart is skipped on purpose, left to Multer for file uploads.
  */
 @Injectable()
 export class RequestBodyParserMiddleware implements NestMiddleware {
@@ -39,23 +30,6 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
             )!;
     }
 
-    /**
-     * Processes HTTP request bodies based on content-type header.
-     *
-     * The middleware examines the Content-Type header and applies the appropriate
-     * body parser with the configured size limits:
-     *
-     * - JSON requests: Parsed with json parser
-     * - URL-encoded forms: Parsed with urlencoded parser (extended: false)
-     * - Text content: Parsed with text parser for any text/* type
-     * - Binary data: Parsed with raw parser for application/octet-stream
-     * - Multipart forms: Skipped (handled by Multer middleware)
-     * - Unknown/empty content-type: Skipped, passed to next middleware
-     *
-     * @param req - The Express request object containing the HTTP request data
-     * @param res - The Express response object for sending HTTP response
-     * @param next - The next middleware function in the chain
-     */
     use(req: Request, res: Response, next: NextFunction): void {
         const contentType = req.get('content-type') ?? '';
 
@@ -81,17 +55,7 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
                 type: 'application/octet-stream',
             })(req, res, next);
         } else {
-            /**
-             * For requests with no content-type, empty content-type, or unknown content-types
-             * (including multipart/form-data):
-             * Skip body parsing and continue to the next middleware.
-             *
-             * Multipart forms are intentionally not processed here as they will be
-             * handled by Multer middleware which is specifically designed for file uploads
-             * and multipart form processing.
-             *
-             * This allows other middleware or route handlers to handle the request appropriately.
-             */
+            // unknown/empty/multipart content-type: skip parsing (Multer handles multipart)
             next();
         }
     }

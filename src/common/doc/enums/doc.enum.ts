@@ -1,8 +1,6 @@
 /**
- * Supported request body content types for Swagger documentation.
- *
- * `none` indicates the endpoint has no request body. It does not map to a MIME type
- * and causes `DocRequest` to skip the `ApiConsumes` decorator entirely.
+ * Request body content types for Swagger. `none` means no body: it maps to no MIME type
+ * and makes `DocRequest` skip `ApiConsumes`.
  */
 export enum EnumDocRequestBodyType {
     json = 'json',

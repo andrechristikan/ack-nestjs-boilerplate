@@ -189,9 +189,11 @@ export class SessionRepository {
 
     async revokeByAdmin(
         sessionId: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog,
-        revokedBy: string
+        revokedBy: string,
+        requestLog: IRequestLog
     ): Promise<ISession> {
+        const { ipAddress, userAgent, geoLocation } = requestLog;
+
         return this.databaseService.session.update({
             where: {
                 id: sessionId,

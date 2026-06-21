@@ -2,10 +2,11 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestVersionStoreKey } from '@common/request/constants/request.constant';
 
 /**
- * URL-based API versioning middleware for managing multiple API versions.
- * Extracts and validates API version information from request URLs.
+ * Extracts the API version from the URL prefix into the request store, defaulting when disabled.
  */
 @Injectable()
 export class RequestUrlVersionMiddleware implements NestMiddleware {
@@ -15,7 +16,10 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
     private readonly urlVersionPrefix: string;
     private readonly urlVersion: string;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly requestStoreService: RequestStoreService
+    ) {
         this.globalPrefix = this.configService.get<string>('app.globalPrefix')!;
         this.urlVersionEnable = this.configService.get<boolean>(
             'app.urlVersion.enable'
@@ -28,13 +32,6 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
         )!;
     }
 
-    /**
-     * Processes incoming requests to extract and validate API version information.
-     *
-     * @param req - The Express request object extended with custom properties
-     * @param _res - The Express response object
-     * @param next - The next middleware function
-     */
     async use(
         req: IRequestApp,
         _res: Response,
@@ -52,7 +49,7 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
             version = url[2].replace(this.urlVersionPrefix, '');
         }
 
-        req.__version = version;
+        this.requestStoreService.set(RequestVersionStoreKey, version);
 
         next();
     }

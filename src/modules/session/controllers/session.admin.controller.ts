@@ -6,11 +6,6 @@ import {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    RequestGeoLocation,
-    RequestIPAddress,
-    RequestUserAgent,
-} from '@common/request/decorators/request.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -47,9 +42,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    GeoLocation,
     Prisma,
-    UserAgent,
 } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.user.session')
@@ -122,19 +115,11 @@ export class SessionAdminController {
         userId: string,
         @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         sessionId: string,
-        @AuthJwtPayload('userId') revokedBy: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
         return this.sessionService.revokeByAdmin(
             userId,
             sessionId,
-            {
-                ipAddress,
-                userAgent,
-                geoLocation,
-            },
             revokedBy
         );
     }

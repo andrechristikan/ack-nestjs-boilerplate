@@ -1,31 +1,23 @@
-import { Inject, Injectable, Type, mixin } from '@nestjs/common';
-import { PipeTransform, Scope } from '@nestjs/common/interfaces';
-import { REQUEST } from '@nestjs/core';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Injectable, Type, mixin } from '@nestjs/common';
+import { PipeTransform } from '@nestjs/common/interfaces';
 import {
+    IPaginationQuery,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 
-/**
- * Factory function to create PaginationSearchPipe that can perform search on available fields
- * @param {string[]} availableSearch - Array of searchable fields
- * @returns {Type<PipeTransform>} Configured pipe class for searching
- */
 export function PaginationSearchPipe(
     availableSearch: string[] = []
 ): Type<PipeTransform> {
-    @Injectable({ scope: Scope.REQUEST })
+    @Injectable()
     class MixinPaginationSearchPipe implements PipeTransform {
-        constructor(@Inject(REQUEST) private readonly request: IRequestApp) {}
+        constructor(
+            private readonly requestStoreService: RequestStoreService
+        ) {}
 
-        /**
-         * Transforms input value to add search functionality
-         * @param {Object} value - Input object containing search string and pagination params
-         * @param {string} value.search - Search string
-         * @returns {Promise<IPaginationQueryOffsetParams | IPaginationQueryCursorParams>} Transformed pagination params
-         */
         async transform(
             value: { search: string } & (
                 | IPaginationQueryOffsetParams
@@ -39,7 +31,10 @@ export function PaginationSearchPipe(
             }
 
             const finalSearch = value.search?.trim();
-            this.addToRequestInstance(finalSearch, availableSearch);
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                { search: finalSearch, availableSearch }
+            );
 
             return {
                 ...value,
@@ -47,37 +42,17 @@ export function PaginationSearchPipe(
             };
         }
 
-        /**
-         * Builds search object for database query
-         * @param {string} search - Search string
-         * @param {string[]} availableSearch - Array of searchable fields
-         * @returns {{ OR: Array<Record<string, Prisma.StringFilter>> }} Query object for search
-         */
         private buildSearchObject(
             search: string,
             availableSearch: string[]
         ): { OR: Array<Record<string, Prisma.StringFilter>> } {
             return {
                 OR: availableSearch.map(field => ({
-                    [field]: { contains: search, mode: Prisma.QueryMode.insensitive },
+                    [field]: {
+                        contains: search,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
                 })),
-            };
-        }
-
-        /**
-         * Adds search information to request instance
-         * @param {string} search - Search string
-         * @param {string[]} availableSearch - Array of searchable fields
-         * @returns {void}
-         */
-        private addToRequestInstance(
-            search: string,
-            availableSearch: string[]
-        ): void {
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                search,
-                availableSearch,
             };
         }
     }

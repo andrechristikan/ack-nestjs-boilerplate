@@ -8,6 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 
+/**
+ * Seeds feature flag toggles for the current environment.
+ */
 @Command({
     name: 'featureFlag',
     description: 'Seed/Remove Feature Flags',

@@ -55,11 +55,6 @@ import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-p
 // the public generateSchema return type instead of deep-importing dist internals.
 type SchemaObject = ReturnType<typeof generateSchema>['schema'];
 
-/**
- * Helper function to create a schema object with consistent structure.
- * @param doc - Document options containing DTO and status information
- * @returns Schema object for OpenAPI specification
- */
 function createSchemaObject(doc: IDocOfOptions): SchemaObject {
     const schema: SchemaObject = {
         allOf: [{ $ref: getSchemaPath(ResponseDto) }],
@@ -87,11 +82,7 @@ function createSchemaObject(doc: IDocOfOptions): SchemaObject {
 }
 
 /**
- * Creates a default API documentation decorator with a standard response schema.
- * This decorator defines the basic structure for API responses including message, status code, and optional data.
- * @template T - Type of the optional DTO for response data
- * @param {IDocDefaultOptions<T>} options - Configuration options for the default documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger API documentation
+ * Documents a single response with the standard envelope (message, statusCode, optional data).
  */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     const docs: MethodDecorator[] = [];
@@ -130,11 +121,7 @@ export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
 }
 
 /**
- * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `oneOf`.
- * This is useful when an endpoint can return one of several different response types.
- * @param {HttpStatus} httpStatus - The HTTP status code for the response
- * @param {...IDocOfOptions[]} documents - Variable number of document options, each representing a possible response
- * @returns {MethodDecorator} A method decorator that applies Swagger API documentation with oneOf schema
+ * Documents a response that may match one of several schemas (OpenAPI `oneOf`).
  */
 export function DocOneOf(
     httpStatus: HttpStatus,
@@ -167,11 +154,7 @@ export function DocOneOf(
 }
 
 /**
- * Creates an API documentation decorator that supports multiple possible response schemas using OpenAPI's `anyOf`.
- * This allows for responses that can match any combination of the provided schemas.
- * @param {HttpStatus} httpStatus - The HTTP status code for the response
- * @param {...IDocOfOptions[]} documents - Variable number of document options, each representing a possible response schema
- * @returns {MethodDecorator} A method decorator that applies Swagger API documentation with anyOf schema
+ * Documents a response that may match any combination of schemas (OpenAPI `anyOf`).
  */
 export function DocAnyOf(
     httpStatus: HttpStatus,
@@ -204,11 +187,7 @@ export function DocAnyOf(
 }
 
 /**
- * Creates an API documentation decorator that requires all provided response schemas using OpenAPI's `allOf`.
- * This means the response must satisfy all the provided schema definitions.
- * @param {HttpStatus} httpStatus - The HTTP status code for the response
- * @param {...IDocOfOptions[]} documents - Variable number of document options, all of which must be satisfied
- * @returns {MethodDecorator} A method decorator that applies Swagger API documentation with allOf schema
+ * Documents a response that must satisfy all provided schemas (OpenAPI `allOf`).
  */
 export function DocAllOf(
     httpStatus: HttpStatus,
@@ -241,10 +220,7 @@ export function DocAllOf(
 }
 
 /**
- * Creates a basic API documentation decorator that sets up common API operation metadata.
- * This decorator automatically includes standard error responses and custom language headers.
- * @param {IDocOptions} [options] - Optional configuration for the API documentation
- * @returns {MethodDecorator} A method decorator that applies basic Swagger API documentation
+ * Base endpoint doc: operation metadata, language/correlation headers, and standard error responses.
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
     return applyDecorators(
@@ -285,13 +261,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 }
 
 /**
- * Creates an API documentation decorator for request specifications including body, parameters, and queries.
- *
- * `ApiConsumes` is only applied when `bodyType` maps to a known MIME type in `DocContentTypeMapping`.
- * When `bodyType` is `EnumDocRequestBodyType.none` or omitted, no `ApiConsumes` decorator is added.
- *
- * @param {IDocRequestOptions} [options] - Optional configuration for request documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger request documentation
+ * Documents request body, params, and queries. `ApiConsumes` is added only when `bodyType`
+ * maps to a known MIME type; `none` or omitted skips it.
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
@@ -323,10 +294,7 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 }
 
 /**
- * Creates an API documentation decorator specifically for file upload endpoints.
- * This decorator automatically sets the content type to multipart/form-data and handles file-related parameters.
- * @param {IDocRequestFileOptions} [options] - Optional configuration for file request documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger file upload documentation
+ * Documents a multipart/form-data file upload request plus file-related error responses.
  */
 export function DocRequestFile(
     options?: IDocRequestFileOptions
@@ -353,18 +321,7 @@ export function DocRequestFile(
 }
 
 /**
- * Creates an API documentation decorator for endpoints protected by authorization guards (role, policy, term policy).
- *
- * This decorator will automatically document possible forbidden (403) responses for each guard type enabled in the options:
- * - If `role` is true, adds forbidden response for role-based access control.
- * - If `policy` is true, adds forbidden response for policy-based access control.
- * - If `termPolicy` is true, adds forbidden response for term policy acceptance.
- *
- * @param {IDocGuardOptions} [options] - Guard documentation options:
- *   - role: boolean — Document forbidden if role is insufficient
- *   - policy: boolean — Document forbidden if policy is violated
- *   - termPolicy: boolean — Document forbidden if term policy not accepted
- * @returns {MethodDecorator} Swagger method decorator with forbidden responses for enabled guards
+ * Documents the 403 responses for each enabled authorization guard (role, policy, term policy).
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfForbidden: IDocOfOptions[] = [];
@@ -394,10 +351,7 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
 }
 
 /**
- * Creates an API documentation decorator for endpoints that require authentication.
- * This decorator handles various authentication methods and their corresponding error responses.
- * @param {IDocAuthOptions} [options] - Optional configuration for authentication documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger authentication documentation
+ * Documents auth schemes (JWT, social, x-api-key) and their 401 responses per enabled option.
  */
 export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
     const docs: MethodDecorator[] = [];
@@ -476,12 +430,7 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
 }
 
 /**
- * Creates an API documentation decorator for standard response documentation.
- * This decorator sets up the response schema with the specified message and optional DTO.
- * @template T - Type of the optional DTO for response data
- * @param {string} messagePath - The message path/key for internationalization
- * @param {IDocResponseOptions<T>} [options] - Optional configuration for response documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger response documentation
+ * Documents a standard JSON success response with an i18n message and optional DTO.
  */
 export function DocResponse<T = void>(
     messagePath: string,
@@ -501,27 +450,9 @@ export function DocResponse<T = void>(
 }
 
 /**
- * Creates an API documentation decorator for paginated response endpoints.
- * This decorator automatically includes pagination query parameters and sets up the response schema
- * for paginated data with metadata about total count, current page, etc.
- *
- * The decorator supports two pagination types:
- * - **CURSOR**: Uses cursor-based pagination queries (cursor, nextCursor, previousCursor)
- * - **OFFSET**: Uses offset-based pagination queries (page, perPage, limit, offset)
- *
- * It also supports optional search and ordering functionality.
- *
- * Ordering documented here reflects the request query format:
- * - `orderBy` is a single field name
- * - `orderDirection` is the direction for that field
- *
- * Internal pagination services may support richer `orderBy` structures, but this decorator
- * documents the public HTTP query contract only.
- * @template T - Type of the DTO for paginated response data
- * @param {string} messagePath - The message path/key for internationalization
- * @param {IDocResponsePagingOptions<T>} options - Configuration for paginated response documentation
- * @param {EnumPaginationType} options.type - Pagination type (CURSOR or OFFSET) to determine which query parameters to include
- * @returns {MethodDecorator} A method decorator that applies Swagger paginated response documentation
+ * Documents a paginated response: data array plus cursor/offset queries, search, and order.
+ * Reflects the public HTTP query contract only (`orderBy` as a single field), not richer
+ * internal pagination shapes.
  */
 export function DocResponsePaging<T>(
     messagePath: string,
@@ -599,10 +530,7 @@ export function DocResponsePaging<T>(
 }
 
 /**
- * Creates an API documentation decorator for file download/response endpoints.
- * This decorator sets up the response to indicate that a file will be returned instead of JSON.
- * @param {IDocResponseFileOptions} [options] - Optional configuration for file response documentation
- * @returns {MethodDecorator} A method decorator that applies Swagger file response documentation
+ * Documents a file download response (non-JSON), defaulting to CSV.
  */
 export function DocResponseFile(
     options?: IDocResponseFileOptions

@@ -15,13 +15,6 @@ import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging } from 'firebase-admin/messaging';
 
-/**
- * Service responsible for managing Firebase Admin SDK initialization
- * and sending push notifications via Firebase Cloud Messaging (FCM).
- *
- * Supports both single-device and multicast push notification delivery.
- * The service gracefully degrades when Firebase credentials are not configured.
- */
 @Injectable()
 export class FirebaseService implements IFirebaseService, OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
@@ -59,13 +52,6 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
         }
     }
 
-    /**
-     * Initializes the Firebase Admin SDK on module startup.
-     *
-     * If any required credential (`projectId`, `clientEmail`, `privateKey`) is missing,
-     * a warning is logged and initialization is skipped.
-     * Errors during SDK initialization are caught and logged without throwing.
-     */
     async onModuleInit(): Promise<void> {
         if (!this.projectId || !this.clientEmail || !this.privateKey) {
             this.logger.warn(
@@ -92,35 +78,14 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
         }
     }
 
-    /**
-     * Checks whether the Firebase Admin SDK has been successfully initialized.
-     *
-     * @returns {boolean} `true` if both the Firebase app and messaging instances are available, otherwise `false`.
-     */
     isInitialized(): boolean {
         return !!this.app && !!this.messaging;
     }
 
-    /**
-     * Determines whether a Firebase error is caused by an invalid or expired FCM token.
-     *
-     * @param {object | null} error - The error object returned by Firebase, optionally containing a `code` string property. Accepts `null` safely.
-     * @returns {boolean} `true` if the error code matches a known invalid token code in `FirebaseInvalidTokenCodes`, otherwise `false`.
-     */
     private isInvalidTokenError(error: { code?: string } | null): boolean {
         return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
     }
 
-    /**
-     * Sends a push notification to a single device via FCM.
-     *
-     * If Firebase is not initialized, the operation is skipped and `false` is returned.
-     * Invalid token errors are logged as warnings; all other errors are logged as errors.
-     *
-     * @param {string} token - FCM registration token of the target device.
-     * @param {IFirebasePushPayload} payload - Push notification payload containing title, body, image URL, and custom data.
-     * @returns {Promise<boolean>} `true` if the notification was delivered successfully, otherwise `false`.
-     */
     async sendPush(
         token: string,
         payload: IFirebasePushPayload
@@ -158,22 +123,6 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
         }
     }
 
-    /**
-     * Sends a push notification to multiple devices via FCM using batch multicast.
-     *
-     * Tokens are split into chunks to respect FCM's batch size limit.
-     * Each chunk is sent concurrently via `Promise.allSettled`, so a failure in one chunk
-     * does not affect others. Invalid tokens are collected and returned in `failureTokens`.
-     *
-     * If Firebase is not initialized, the operation is skipped and all tokens are counted as failures.
-     * If the token list is empty, an empty result is returned immediately.
-     *
-     * @param {string[]} tokens - FCM registration tokens to send the notification to.
-     * @param {IFirebasePushPayload} payload - Push notification payload containing title, body, image URL, and custom data.
-     * @param {number} [chunkSize] - Number of tokens per batch. Must be between 1 and `FirebaseMaxSendPushBatchSize`. Defaults to `FirebaseMaxSendPushBatchSize`.
-     * @throws {Error} When `chunkSize` is outside the valid range [1, `FirebaseMaxSendPushBatchSize`].
-     * @returns {Promise<IFirebasePushResult>} Aggregated result containing `successCount`, `failureCount`, and `failureTokens`.
-     */
     async sendMulticast(
         tokens: string[],
         payload: IFirebasePushPayload,

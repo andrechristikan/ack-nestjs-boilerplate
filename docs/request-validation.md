@@ -45,7 +45,7 @@ new ValidationPipe({
   skipMissingProperties: false,
   skipNullProperties: false,
   skipUndefinedProperties: false,
-  forbidUnknownValues: false,
+  forbidUnknownValues: true,
   whitelist: true,
   forbidNonWhitelisted: true,
   transformOptions: {
@@ -536,6 +536,8 @@ defaultMessage(validationArguments?: ValidationArguments): string {
 ```json
 {
   "statusCode": 5030,
+  "statusCodeKey": "validation",
+  "module": "request",
   "message": "There are validation errors.",
   "errors": [
     {
@@ -553,7 +555,6 @@ defaultMessage(validationArguments?: ValidationArguments): string {
     "language": "en",
     "timestamp": 1660190937231,
     "timezone": "Asia/Jakarta",
-    "path": "/api/v1/users",
     "version": "1",
     "repoVersion": "1.0.0",
     "requestId": "550e8400-e29b-41d4-a716-446655440000",

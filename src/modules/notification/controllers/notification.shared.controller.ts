@@ -1,10 +1,5 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
-    RequestGeoLocation,
-    RequestIPAddress,
-    RequestUserAgent,
-} from '@common/request/decorators/request.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -15,7 +10,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -130,15 +125,8 @@ export class NotificationSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @Body()
-        body: NotificationUserSettingRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.updateUserSetting(userId, body, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.notificationService.updateUserSetting(userId, body);
     }
 }

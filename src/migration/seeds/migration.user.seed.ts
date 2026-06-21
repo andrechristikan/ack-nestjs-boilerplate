@@ -26,6 +26,9 @@ import { Command } from 'nest-commander';
 import { UAParser } from 'ua-parser-js';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
+/**
+ * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
+ */
 @Command({
     name: 'user',
     description: 'Seed/Remove Users',

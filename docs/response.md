@@ -23,7 +23,6 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
 - [Response Structure](#response-structure)
   - [Standard](#standard)
   - [Paginated](#paginated)
-  - [Activity Log Metadata](#activity-log-metadata-optional)
 - [Caching](#caching)
 - [Custom Headers](#custom-headers)
 
@@ -389,6 +388,8 @@ Controller returns { data } / { data: [] }
 ResponseInterceptor wraps into standard envelope + metadata + headers
 ```
 
+Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the four app filters call it instead of building metadata inline.
+
 ## Response Structure
 
 ### Standard
@@ -401,7 +402,6 @@ ResponseInterceptor wraps into standard envelope + metadata + headers
     language: string;
     timestamp: number;
     timezone: string;
-    path: string;
     version: string;
     repoVersion: string;
     requestId: string;
@@ -422,7 +422,6 @@ ResponseInterceptor wraps into standard envelope + metadata + headers
     language: string;
     timestamp: number;
     timezone: string;
-    path: string;
     version: string;
     repoVersion: string;
     requestId: string;
@@ -445,7 +444,6 @@ ResponseInterceptor wraps into standard envelope + metadata + headers
     totalPage?: number;
     nextPage?: number;
     previousPage?: number;
-    hasPrevious?: boolean;
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
@@ -454,21 +452,6 @@ ResponseInterceptor wraps into standard envelope + metadata + headers
   data: T[];
 }
 ```
-
-### Activity Log Metadata (Optional)
-
-All response types (`IResponseReturn`, `IResponsePagingReturn`, `IResponseFileReturn`) support optional activity log metadata for request tracking and auditing:
-
-```typescript
-return {
-  data: user,
-  metadataActivityLog: {
-    // Activity log tracking data
-  }
-};
-```
-
-See [Activity Log Documentation][ref-doc-activity-log] for complete implementation details.
 
 ## Caching
 
@@ -511,13 +494,15 @@ See [NestJS Cache Manager](https://docs.nestjs.com/techniques/caching) and [Cach
 
 All responses automatically include these headers (set by interceptors):
 
-- `x-custom-lang`: Response language
+- `x-custom-lang`: Response language (read from the request store `RequestLanguageStoreKey`, fallback config `message.language`)
 - `x-timestamp`: Response timestamp
 - `x-timezone`: Response timezone
-- `x-version`: API version
+- `x-version`: API version (read from the request store `RequestVersionStoreKey`, fallback config `app.urlVersion.version`)
 - `x-repo-version`: Repository version
-- `x-request-id`: Unique request identifier
-- `x-correlation-id`: Request correlation identifier
+- `x-request-id`: Unique request identifier (read from the request store `RequestIdStoreKey`)
+- `x-correlation-id`: Request correlation identifier (read from the request store `RequestCorrelationIdStoreKey`)
+
+The same store-sourced `language`, `version`, `requestId`, and `correlationId` feed the response `metadata`. `request.id` / `request.correlationId` are kept only for pino logging.
 
 
 
@@ -528,6 +513,5 @@ All responses automatically include these headers (set by interceptors):
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md
 [ref-doc-pagination]: pagination.md
-[ref-doc-activity-log]: activity-log.md
 [ref-doc-cache]: cache.md
 [ref-doc-request-validation]: request-validation.md

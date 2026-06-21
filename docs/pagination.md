@@ -146,7 +146,7 @@ async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
 
 **Cursor Validation:**
 - Cursor contains: cursor value, orderBy, and where conditions
-- If `orderBy` or `where` conditions change: throws `UnprocessableEntityException` (422)
+- If `orderBy` or `where` conditions change: throws `PaginationInvalidCursorPaginationParamsException` (422)
 - Client must request from beginning if conditions change
 - Prevents stale cursor navigation
 - For array-based ordering, the array order must remain exactly the same between requests
@@ -300,7 +300,7 @@ status?: Record<string, IPaginationIn>
 - To: `{ status: { in: ['ACTIVE', 'INACTIVE'] } }`
 
 **Validation:**
-- Throws `UnprocessableEntityException` (422) if value not in enum
+- Throws `PaginationFilterInvalidValueEnumException` (422) if value not in enum
 - Error code: `5021 (filterInvalidValue)`
 
 ##### @PaginationQueryFilterNinEnum\<T\>
@@ -345,7 +345,7 @@ isActive?: Record<string, IPaginationEqual>
 
 **Validation:**
 - Accepts only 'true' or 'false'
-- Throws `UnprocessableEntityException` (422) for invalid boolean
+- Throws `PaginationFilterInvalidValueException` (422) for invalid boolean
 
 ##### @PaginationQueryFilterEqualNumber
 
@@ -363,7 +363,7 @@ age?: Record<string, IPaginationEqual>
 
 **Validation:**
 - Parses as float
-- Throws `UnprocessableEntityException` (422) for non-numeric value
+- Throws `PaginationFilterInvalidValueException` (422) for non-numeric value
 
 ##### @PaginationQueryFilterEqualString
 
@@ -451,7 +451,7 @@ endDate?: Record<string, IPaginationDate>
 
 **Validation:**
 - Accepts ISO format (YYYY-MM-DD, ISO 8601 timestamps)
-- Throws `UnprocessableEntityException` (422) for invalid ISO date
+- Throws `PaginationFilterInvalidValueException` (422) for invalid ISO date
 
 #### Ordering Configuration
 
@@ -468,8 +468,8 @@ pagination: IPaginationQueryOffsetParams
 **Default Behavior:**
 - If no `orderBy` query param is sent: falls back to `[{ createdAt: 'desc' }]`
 - If `availableOrderBy` is omitted: any `orderBy` value is ignored and `[{ createdAt: 'desc' }]` is used
-- If the field part of `orderBy` is not in `availableOrderBy`: throws `UnprocessableEntityException` (422)
-- If the direction part of `orderBy` is not `asc` or `desc`: throws `UnprocessableEntityException` (422)
+- If the field part of `orderBy` is not in `availableOrderBy`: throws `PaginationOrderByNotAllowedException` (422)
+- If the direction part of `orderBy` is not `asc` or `desc`: throws `PaginationOrderDirectionNotAllowedException` (422)
 
 **Query Parameters:**
 - `orderBy`: A `field:direction` string (e.g., `name:asc`). Repeat to sort by multiple fields.
@@ -524,7 +524,7 @@ pagination: IPaginationQueryOffsetParams
 **How It Works:**
 1. Cursor encodes: cursor value, orderBy, where conditions
 2. Cursor validates conditions match on each request
-3. If conditions change: throws error (client must restart)
+3. If conditions change: throws `PaginationInvalidCursorPaginationParamsException` (client must restart)
 4. Prevents navigation with stale conditions
 
 **Characteristics:**
@@ -981,6 +981,17 @@ The `@DocResponsePaging` decorator automatically:
 For detailed Doc module documentation, see [Doc module documentation][ref-doc-doc].
 
 ## Implementation Notes
+
+### Pagination State (CLS store)
+
+Pagination pipes are singletons (not request-scoped). After parsing query parameters, each pipe writes response-metadata into the per-request CLS store via `RequestStoreService.merge(PaginationStoreKey, ...)`, merging keys individually so multiple pipes can contribute without overwriting each other.
+
+`ResponsePagingInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response. Key points:
+
+- The store carries response metadata only. Parsed values (page, limit, order, etc.) are passed directly to the handler as method parameters and never flow through the store.
+- The store never enters a service or repository layer.
+- Per-request isolation is guaranteed by the CLS store opened once per request by `ClsMiddleware`, not by DI scope.
+- Pagination metadata appears on the success path only. On error the interceptor is skipped and no pagination fields are emitted.
 
 ### Performance Considerations
 

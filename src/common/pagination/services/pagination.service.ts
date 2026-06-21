@@ -1,6 +1,5 @@
 import { PaginationDefaultCursorField, PaginationDefaultOrderBy } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import {
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -11,37 +10,16 @@ import {
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
+import { PaginationInvalidCursorPaginationParamsException } from '@common/pagination/exceptions/pagination.invalid-cursor-pagination-params.exception';
+import { PaginationInvalidCursorDataException } from '@common/pagination/exceptions/pagination.invalid-cursor-data.exception';
+import { PaginationFailedToEncodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-encode-cursor.exception';
+import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
 
-/**
- * Service for handling pagination operations with offset and cursor-based pagination.
- *
- * This service provides two pagination strategies:
- * - **Offset-based pagination**: Traditional page number and limit approach
- * - **Cursor-based pagination**: Uses cursor tokens for efficient traversal of large datasets
- *
- * **Validation Note:**
- * Input parameters are assumed to be valid as they are already validated by the respective pipes
- * (PaginationOffsetPipe, PaginationCursorPipe) before reaching this service.
- */
 @Injectable()
 export class PaginationService implements IPaginationService {
-    /**
-     * Performs offset-based pagination using page number and limit approach.
-     *
-     * **Default Values:**
-     * - orderBy: `[{ createdAt: 'desc' }]` - Results are sorted by creation date in descending order
-     * - orderBy accepts an ordered array of order objects
-     * - if orderBy is omitted, the default is always an array with a single order object
-     *
-     * **Assumptions:**
-     * Input parameters are assumed to be valid as they are validated by PaginationOffsetPipe before reaching this service.
-     *
-     * @template TReturn - The type of items being paginated
-     * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationQueryOffsetParams} args - Pagination parameters (validated by pipe).
-     * @returns {Promise<IPaginationOffsetReturn<TReturn>>} Promise that resolves to paginated result with items, metadata (count, page, totalPage, hasNext, hasPrevious, nextPage, previousPage)
-     */
     async offset<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
         repository: IPaginationRepository,
         args: IPaginationQueryOffsetParams<TArgsSelect, TArgsWhere>
@@ -85,30 +63,6 @@ export class PaginationService implements IPaginationService {
         };
     }
 
-    /**
-     * Performs cursor-based pagination using cursor tokens for efficient traversal.
-     *
-     * **Default Values:**
-     * - orderBy: `[{ createdAt: 'desc' }]` - Results are sorted by creation date in descending order
-     * - orderBy accepts an ordered array of order objects
-     * - if orderBy is omitted, the default is always an array with a single order object
-     * - cursorField: `PaginationDefaultCursorField` - Field used for cursor positioning
-     *
-     * **Cursor Behavior:**
-     * - The cursor is encoded using URL-safe base64 encoding
-     * - If cursor is invalid or conditions changed, returns error (see Point 8)
-     * - The exact orderBy payload is stored in the cursor and must match on the next request
-     * - Fetches `limit + 1` items to determine if there are more results
-     *
-     * **Assumptions:**
-     * Input parameters are assumed to be valid as they are validated by PaginationCursorPipe before reaching this service.
-     *
-     * @template TReturn - The type of items being paginated
-     * @param {IPaginationRepository} repository - Repository instance that implements IPaginationRepository
-     * @param {IPaginationQueryCursorParams} args - Cursor pagination parameters (validated by pipe)
-     * @returns {Promise<IPaginationCursorReturn<TReturn>>} Promise that resolves to cursor paginated result with items, cursor token, hasNext flag, and optional count
-     * @throws {UnprocessableEntityException} If pagination conditions have changed
-     */
     async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
         repository: IPaginationRepository,
         args: IPaginationQueryCursorParams<TArgsSelect, TArgsWhere>
@@ -125,18 +79,13 @@ export class PaginationService implements IPaginationService {
 
         const { cursor } = args;
 
-        // If cursor provided, decode and check if conditions match
         let decodedCursor: IPaginationCursorValue | undefined;
 
         if (cursor) {
             try {
                 decodedCursor = this.decodeCursor(cursor);
             } catch {
-                throw new UnprocessableEntityException({
-                    statusCode:
-                        EnumPaginationStatusCodeError.invalidCursorFormat,
-                    message: 'pagination.error.invalidCursorFormat',
-                });
+                throw new PaginationInvalidCursorFormatException();
             }
 
             if (decodedCursor) {
@@ -150,12 +99,7 @@ export class PaginationService implements IPaginationService {
                 );
 
                 if (orderByChanged || whereChanged) {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            EnumPaginationStatusCodeError.invalidCursorPaginationParams,
-                        message:
-                            'pagination.error.invalidCursorPaginationParams',
-                    });
+                    throw new PaginationInvalidCursorPaginationParamsException();
                 }
             }
         }
@@ -207,103 +151,52 @@ export class PaginationService implements IPaginationService {
         };
     }
 
-    /**
-     * Encodes cursor data to URL-safe base64 format.
-     * Same encoding method as used in pipes.
-     *
-     * @param {IPaginationCursorValue} data - Cursor data containing cursor value, orderBy, and where conditions
-     * @returns {string} URL-safe base64 encoded cursor (without padding)
-     * @throws {UnprocessableEntityException} If cursor data is invalid
-     */
     private encodeCursor(data: IPaginationCursorValue): string {
         if (!data || data.cursor === undefined || data.cursor === null) {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.invalidCursorData,
-                message: 'pagination.error.invalidCursorData',
-            });
+            throw new PaginationInvalidCursorDataException();
         }
 
         try {
-            // Standard base64 → URL-safe base64 (+ becomes -, / becomes _)
-            // Padding (=) is removed for URL safety
             return Buffer.from(JSON.stringify(data))
                 .toString('base64')
                 .replaceAll(/\+/g, '-')
                 .replaceAll(/\//g, '_')
                 .replaceAll(/=/g, '');
         } catch {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
-                message: 'pagination.error.failedToEncodeCursor',
-            });
+            throw new PaginationFailedToEncodeCursorException();
         }
     }
 
-    /**
-     * Decodes URL-safe base64 cursor data.
-     * Same decoding method as encoder, adds back padding before conversion.
-     *
-     * @param {string} cursor - URL-safe base64 encoded cursor (without padding)
-     * @returns {IPaginationCursorValue} Decoded cursor data
-     * @throws {UnprocessableEntityException} If cursor cannot be decoded
-     */
     private decodeCursor(cursor: string): IPaginationCursorValue {
         if (!cursor || typeof cursor !== 'string') {
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
-                message: 'pagination.error.invalidCursorFormat',
-            });
+            throw new PaginationInvalidCursorFormatException();
         }
 
         try {
-            // Add padding back based on length
             const padded = cursor + '='.repeat((4 - (cursor.length % 4)) % 4);
-            // Convert URL-safe characters back to standard base64 (- becomes +, _ becomes /)
             const base64 = padded.replaceAll(/-/g, '+').replaceAll(/_/g, '/');
             const decoded = JSON.parse(
                 Buffer.from(base64, 'base64').toString()
             );
 
-            // Validate decoded cursor has required fields
             if (!decoded.cursor || !decoded.orderBy) {
-                throw new UnprocessableEntityException({
-                    statusCode: EnumPaginationStatusCodeError.invalidCursorData,
-                    message: 'pagination.error.invalidCursorData',
-                });
+                throw new PaginationInvalidCursorDataException();
             }
 
             return decoded as IPaginationCursorValue;
         } catch (error) {
-            // Only re-throw if already UnprocessableEntityException
-            if (error instanceof UnprocessableEntityException) {
+            if (error instanceof AppBaseException) {
                 throw error;
             }
 
-            throw new UnprocessableEntityException({
-                statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
-                message: 'pagination.error.failedToDecodeCursor',
-            });
+            throw new PaginationFailedToDecodeCursorException();
         }
     }
 
-    /**
-     * Deep equality comparison for objects.
-     * Used to check if cursor conditions (orderBy, where) match current request.
-     *
-     * @param {unknown} obj1 - First object to compare
-     * @param {unknown} obj2 - Second object to compare
-     * @returns {boolean} True if objects are deeply equal
-     */
     private isDeepEqual(obj1: unknown, obj2: unknown): boolean {
         return JSON.stringify(obj1) === JSON.stringify(obj2);
     }
 
-    /**
-     * Resolves orderBy to a valid non-empty array.
-     * Falls back to PaginationDefaultOrderBy if orderBy is empty or undefined.
-     * @param {IPaginationOrderBy[]} [orderBy] - Optional orderBy array from the request
-     * @returns {IPaginationOrderBy[]} Resolved orderBy array
-     */
     private resolveOrderBy(
         orderBy?: IPaginationOrderBy[]
     ): IPaginationOrderBy[] {

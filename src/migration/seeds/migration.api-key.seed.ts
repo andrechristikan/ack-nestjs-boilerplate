@@ -9,6 +9,9 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
+/**
+ * Seeds environment-specific API keys; removal also clears their cache entries.
+ */
 @Command({
     name: 'apiKey',
     description: 'Seed/Remove Api Keys',

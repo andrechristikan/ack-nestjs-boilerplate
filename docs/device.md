@@ -99,7 +99,7 @@ sequenceDiagram
     participant Redis
     participant Database
 
-    Client->>API: DELETE /user/device/remove/:deviceId
+    Client->>API: DELETE /user/device/remove/:deviceOwnershipId
     API->>Database: Begin transaction
     API->>Database: Update DeviceOwnership (isRevoked=true)
     API->>Database: Update Device (clear notificationToken + notificationProvider)
@@ -121,14 +121,14 @@ sequenceDiagram
 |--------|------|-------------|
 | `GET` | `/user/device/list` | List own devices (cursor-based) with active session count for current session |
 | `POST` | `/user/device/refresh` | Update device info (name, push token, platform) |
-| `DELETE` | `/user/device/remove/:deviceId` | Remove own device — revokes all its sessions immediately |
+| `DELETE` | `/user/device/remove/:deviceOwnershipId` | Remove own device — revokes all its sessions immediately |
 
 ### Admin
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/user/:userId/device/list` | List a user's devices (offset-based) |
-| `DELETE` | `/user/:userId/device/remove/:deviceId` | Remove a user's device — revokes all its sessions immediately |
+| `DELETE` | `/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device — revokes all its sessions immediately |
 
 ## Policy Control
 

@@ -3,8 +3,7 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 
 /**
- * AWS module that provides S3 and SES services.
- * Exports AWS services for use in other modules throughout the application.
+ * Provides and exports `AwsS3Service` and `AwsSESService`.
  */
 @Module({
     exports: [AwsS3Service, AwsSESService],

@@ -8,26 +8,8 @@ import { ResponseCacheInterceptor } from '@common/response/interceptors/response
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
 
 /**
- * Applies `ResponseInterceptor` to a route handler, standardizing the HTTP response format.
- *
- * The controller method must return `IResponseReturn<T>`. The interceptor resolves
- * the i18n message from `messagePath`, applies any `metadata` overrides from the
- * return value, and emits a `{ statusCode, message, metadata, data }` response.
- *
- * Optionally enables response caching via `@nestjs/cache-manager`.
- *
- * @param messagePath - i18n message path resolved by `MessageService` (e.g. `'user.get'`)
- * @param options - Optional cache configuration
- * @returns Method decorator
- *
- * @example
- * ```typescript
- * @Response('user.get')
- * @Get('/:id')
- * async getUser(): Promise<IResponseReturn<UserResponseDto>> {
- *     return { data: await this.userService.findById(id) };
- * }
- * ```
+ * Standardizes a route's response via `ResponseInterceptor`; the handler must return
+ * `IResponseReturn<T>`. `messagePath` is the i18n key; `options.cache` optionally enables caching.
  */
 export function Response(
     messagePath: string,
@@ -56,26 +38,8 @@ export function Response(
 }
 
 /**
- * Applies `ResponsePagingInterceptor` to a route handler, standardizing the paginated HTTP response format.
- *
- * The controller method must return `IResponsePagingReturn<T>` (offset or cursor pagination result).
- * The interceptor validates the pagination shape, resolves the i18n message, and emits a
- * `{ statusCode, message, metadata, data }` response with full pagination metadata.
- *
- * Optionally enables response caching via `@nestjs/cache-manager`.
- *
- * @param messagePath - i18n message path resolved by `MessageService` (e.g. `'user.list'`)
- * @param options - Optional cache configuration
- * @returns Method decorator
- *
- * @example
- * ```typescript
- * @ResponsePaging('user.list')
- * @Get('/')
- * async list(pagination: IPaginationQueryOffsetParams): Promise<IResponsePagingReturn<UserListResponseDto>> {
- *     return this.paginationService.offset(this.userRepository, { ...pagination });
- * }
- * ```
+ * Standardizes a paginated route via `ResponsePagingInterceptor`; the handler must return
+ * `IResponsePagingReturn<T>` (offset or cursor). `options.cache` optionally enables caching.
  */
 export function ResponsePaging(
     messagePath: string,
@@ -104,22 +68,8 @@ export function ResponsePaging(
 }
 
 /**
- * Applies `ResponseFileInterceptor` to a route handler for file download responses.
- *
- * The controller method must return `IResponseFileReturn` (either `IResponseCsvReturn` or
- * `IResponsePdfReturn`). The interceptor converts the payload to a `StreamableFile` and
- * sets `Content-Type`, `Content-Disposition`, and `Content-Length` headers automatically.
- *
- * @returns Method decorator
- *
- * @example
- * ```typescript
- * @ResponseFile()
- * @Get('/export')
- * async export(): Promise<IResponseCsvReturn> {
- *     return { data: csv, extension: EnumFileExtensionDocument.csv };
- * }
- * ```
+ * Streams a file download via `ResponseFileInterceptor`; the handler must return
+ * `IResponseFileReturn` (CSV or PDF).
  */
 export function ResponseFile(): MethodDecorator {
     return applyDecorators(UseInterceptors(ResponseFileInterceptor));

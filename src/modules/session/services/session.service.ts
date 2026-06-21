@@ -3,40 +3,31 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
-/**
- * Session Management Service
- *
- * Provides session operations including retrieving active sessions with pagination,
- * revoking user sessions, and revoking sessions via admin action.
- * Manages both cache and database persistence for session data.
- */
 @Injectable()
 export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil
+        private readonly sessionUtil: SessionUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
-    /**
-     * Retrieves a paginated list of active sessions for a user using offset-based pagination.
-     *
-     * @param userId - The unique identifier of the user
-     * @param pagination - Offset pagination parameters (limit, offset, orderBy, where)
-     * @returns Paginated session data with pagination metadata (count, page, totalPage, hasNext, hasPrevious)
-     */
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
@@ -59,13 +50,6 @@ export class SessionService implements ISessionService {
         };
     }
 
-    /**
-     * Retrieves a paginated list of active sessions for a user using cursor-based pagination.
-     *
-     * @param userId - The unique identifier of the user
-     * @param pagination - Cursor pagination parameters (cursor, first/last, orderBy, where)
-     * @returns Paginated session data with pagination metadata and cursor for next page
-     */
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<
@@ -87,29 +71,19 @@ export class SessionService implements ISessionService {
         };
     }
 
-    /**
-     * Revokes a specific user session from both database and cache.
-     *
-     * @param userId - The unique identifier of the user
-     * @param sessionId - The unique identifier of the session to revoke
-     * @param requestLog - Request log information for audit trail
-     * @returns Empty response indicating successful revocation
-     * @throws {NotFoundException} If session does not exist or is not active
-     */
     async revoke(
         userId: string,
-        sessionId: string,
-        requestLog: IRequestLog
+        sessionId: string
     ): Promise<void> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
         );
         if (!checkActive) {
-            throw new NotFoundException({
-                statusCode: EnumSessionStatusCodeError.notFound,
-                message: 'session.error.notFound',
-            });
+            throw new SessionNotFoundException();
         }
 
         await Promise.all([
@@ -120,45 +94,36 @@ export class SessionService implements ISessionService {
         return;
     }
 
-    /**
-     * Revokes a user session via admin action with audit tracking.
-     *
-     * @param userId - The unique identifier of the user
-     * @param sessionId - The unique identifier of the session to revoke
-     * @param requestLog - Request log information for audit trail
-     * @param revokedBy - The identifier of admin/user who initiated the revocation
-     * @returns Response with activity log metadata for audit trail
-     * @throws {NotFoundException} If session does not exist or is not active
-     */
     async revokeByAdmin(
         userId: string,
         sessionId: string,
-        requestLog: IRequestLog,
         revokedBy: string
     ): Promise<IResponseReturn<void>> {
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
         );
         if (!checkActive) {
-            throw new NotFoundException({
-                statusCode: EnumSessionStatusCodeError.notFound,
-                message: 'session.error.notFound',
-            });
+            throw new SessionNotFoundException();
         }
 
         const [removed] = await Promise.all([
             this.sessionRepository.revokeByAdmin(
                 sessionId,
-                requestLog,
-                revokedBy
+                revokedBy,
+                requestLog
             ),
             this.sessionUtil.deleteOneLogin(userId, sessionId),
         ]);
 
-        return {
-            metadataActivityLog:
-                this.sessionUtil.mapActivityLogMetadata(removed),
-        };
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.sessionUtil.mapActivityLogMetadata(removed)
+        );
+
+        return {};
     }
 }

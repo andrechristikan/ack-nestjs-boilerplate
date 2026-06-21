@@ -54,10 +54,10 @@ import { NotificationModule } from '@modules/notification/notification.module';
         RequestModule.forRoot(),
         ResponseModule.forRoot(),
 
-        HelperModule,
-        PaginationModule,
-        FileModule,
-        FirebaseModule,
+        HelperModule.forRoot(),
+        PaginationModule.forRoot(),
+        FileModule.forRoot(),
+        FirebaseModule.forRoot(),
 
         ActivityLogModule,
         ApiKeyModule,

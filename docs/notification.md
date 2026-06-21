@@ -56,6 +56,7 @@ Defined in `EnumNotificationPriority`:
 
 | Priority | Description |
 |----------|-------------|
+| `low` | Low-priority, non-urgent notifications |
 | `normal` | Standard informational notifications |
 | `high` | Important events requiring prompt attention |
 | `critical` | Security or time-sensitive events |
@@ -140,7 +141,7 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `resetTwoFactorByAdmin` | Push alert when admin resets 2FA |
 | `temporaryPasswordByAdmin` | Push alert for temporary password |
 | `cleanupTokens` | Remove reported invalid FCM tokens |
-| `cleanupStaleTokens` | Clean up tokens inactive for ≥ 60 days |
+| `cleanupStaleTokens` | Clean up tokens inactive for ≥ 30 days |
 
 On `onModuleInit`, `NotificationPushProcessorService` automatically dispatches a `cleanupStaleTokens` job.
 
@@ -261,7 +262,7 @@ Allowed type+channel combinations are defined in `NotificationSettingUpdateAllow
 | `userActivity` | `email`, `inApp`, `push` |
 | `marketing` | `email`, `push` |
 
-`NotificationService.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw a `BadRequestException` with `EnumNotificationStatusCodeError.invalidType` or `invalidChannel`.
+`NotificationService.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw `NotificationInvalidTypeException` or `NotificationInvalidChannelException`.
 
 The request DTO (`NotificationUserSettingRequestDto`) accepts:
 - `type`: `userActivity` | `marketing`

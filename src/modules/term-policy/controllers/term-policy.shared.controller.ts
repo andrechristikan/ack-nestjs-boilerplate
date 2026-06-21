@@ -33,14 +33,9 @@ import {
     TermPolicySharedListAcceptedDoc,
 } from '@modules/term-policy/docs/term-policy.shared.doc';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
-import {
-    RequestGeoLocation,
-    RequestIPAddress,
-    RequestUserAgent,
-} from '@common/request/decorators/request.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -78,15 +73,8 @@ export class TermPolicySharedController {
     @Post('/accept')
     async accept(
         @UserCurrent() user: IUser,
-        @Body() body: TermPolicyAcceptRequestDto,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null
+        @Body() body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.userAccept(user, body, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.termPolicyService.userAccept(user, body);
     }
 }

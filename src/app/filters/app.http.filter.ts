@@ -9,19 +9,17 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { IAppException } from '@app/interfaces/app.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import Case from 'case';
 import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
-import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import * as Sentry from '@sentry/nestjs';
 
 /**
- * HTTP exception filter that handles HttpException instances.
- * Validates request paths, redirects invalid requests, and formats error responses with metadata.
+ * Handles framework `HttpException`: redirects off-prefix paths, builds the standard error
+ * envelope from the HTTP status, and reports 5xx to Sentry.
  */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
@@ -29,9 +27,6 @@ export class AppHttpFilter implements ExceptionFilter {
 
     private readonly globalPrefix: string;
     private readonly docPrefix: string;
-    private readonly defaultLanguage: EnumMessageLanguage;
-    private readonly urlVersion: string;
-    private readonly repoVersion: string;
 
     private readonly directPermanentToPath: string = '/public/hello';
     private readonly directPermanentTo: string;
@@ -39,26 +34,13 @@ export class AppHttpFilter implements ExceptionFilter {
     constructor(
         private readonly messageService: MessageService,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly responseMetadataService: ResponseMetadataService
     ) {
         this.globalPrefix = this.configService.get<string>('app.globalPrefix')!;
         this.docPrefix = this.configService.get<string>('doc.prefix')!;
-        this.defaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        this.urlVersion = this.configService.get<string>(
-            'app.urlVersion.version'
-        )!;
-        this.repoVersion = this.configService.get<string>('app.version')!;
         this.directPermanentTo = `${this.globalPrefix}${this.directPermanentToPath}`;
     }
 
-    /**
-     * Handles HTTP exceptions with path validation and response formatting.
-     * Redirects invalid paths and creates standardized error responses.
-     * @param {HttpException} exception - The HTTP exception to handle
-     * @param {ArgumentsHost} host - Arguments host containing request/response context
-     * @returns {Promise<void>}
-     */
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
@@ -77,92 +59,41 @@ export class AppHttpFilter implements ExceptionFilter {
 
         this.sendToSentry(exception);
 
-        let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-        let messagePath = `http.${statusHttp}`;
-        let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-        let messageProperties: IMessageProperties | undefined;
-        let data: unknown;
+        const statusHttp: HttpStatus = exception.getStatus();
+        const statusName: string = HttpStatus[statusHttp];
+        const responseException: unknown = exception.getResponse();
+        const extended =
+            responseException && typeof responseException === 'object'
+                ? (responseException as Record<string, unknown>)
+                : undefined;
 
-        const today = this.helperService.dateCreate();
-        const xLanguage: EnumMessageLanguage =
-            (request.__language as EnumMessageLanguage) ?? this.defaultLanguage;
-        const xTimestamp = this.helperService.dateGetTimestamp(today);
-        const xTimezone = this.helperService.dateGetZone(today);
-        const xVersion = request.__version ?? this.urlVersion;
-        const xRepoVersion = this.repoVersion;
-        const xRequestId = String(request.id);
-        const xCorrelationId = String(request.correlationId);
-        let metadata: ResponseMetadataDto = {
-            language: xLanguage,
-            timestamp: xTimestamp,
-            timezone: xTimezone,
-            path: request.path,
-            version: xVersion,
-            repoVersion: xRepoVersion,
-            requestId: xRequestId,
-            correlationId: xCorrelationId,
-        };
+        const metadata: ResponseMetadataDto =
+            this.responseMetadataService.create();
 
-        const responseException = exception.getResponse();
-        statusHttp = exception.getStatus();
-        statusCode = exception.getStatus();
-        messagePath = `http.${statusHttp}`;
-
-        if (this.isErrorException(responseException)) {
-            statusCode = responseException.statusCode;
-            messagePath = responseException.message;
-            messageProperties = responseException.messageProperties;
-            data = responseException.data;
-
-            metadata = {
-                ...responseException.metadata,
-                ...metadata,
-            };
-        }
-
-        const message: string = this.messageService.setMessage(messagePath, {
-            customLanguage: xLanguage,
-            properties: messageProperties,
-        });
+        const message: string = this.messageService.setMessage(
+            `http.${statusHttp}`,
+            {
+                customLanguage: metadata.language,
+            }
+        );
 
         const responseBody: ResponseErrorDto = {
-            statusCode,
+            statusCode: statusHttp,
+            statusCodeKey:
+                (extended?.statusCodeKey as string) ??
+                (statusName ? Case.camel(statusName) : 'unknown'),
+            module: (extended?.module as string) ?? 'http',
             message,
             metadata,
-            data,
+            data: extended?.data,
         };
 
-        response
-            .setHeader('x-custom-lang', xLanguage)
-            .setHeader('x-timestamp', xTimestamp)
-            .setHeader('x-timezone', xTimezone)
-            .setHeader('x-version', xVersion)
-            .setHeader('x-repo-version', xRepoVersion)
-            .setHeader('x-request-id', xRequestId)
-            .setHeader('x-correlation-id', xCorrelationId)
-            .status(statusHttp)
-            .json(responseBody);
+        this.responseMetadataService.setHeaders(response, metadata);
+        response.status(statusHttp).json(responseBody);
 
         return;
     }
 
-    /**
-     * Type guard to check if exception response implements IAppException interface.
-     * Validates object has required statusCode and message properties.
-     * @param {unknown} obj - The object to check
-     * @returns {boolean} True if object has statusCode and message properties
-     */
-    isErrorException(obj: unknown): obj is IAppException<unknown> {
-        return obj && typeof obj === 'object'
-            ? 'statusCode' in obj && 'message' in obj
-            : false;
-    }
-
-    /**
-     * Sends exceptions with status >= 500 to Sentry for monitoring
-     * @param {HttpException} exception - The HTTP exception to send to Sentry
-     * @returns {void}
-     */
     sendToSentry(exception: HttpException): void {
         if (exception.getStatus() < 500) {
             return;

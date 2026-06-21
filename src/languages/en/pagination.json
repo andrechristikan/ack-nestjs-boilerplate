@@ -16,6 +16,7 @@
         "perPageCannotBeLessThanOne": "The 'perPage' parameter cannot be less than {minPerPage}. Received: {receivedPerPage}.",
         "invalidCursorData": "The provided cursor data is invalid.",
         "failedToEncodeCursor": "Failed to encode cursor data.",
-        "failedToDecodeCursor": "Failed to decode cursor data."
+        "failedToDecodeCursor": "Failed to decode cursor data.",
+        "paginationConditionsChanged": "The pagination conditions have changed. The provided cursor can no longer be used."
     }
 }

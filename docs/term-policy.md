@@ -340,7 +340,7 @@ export class UserController {
 flowchart TD
     Start([User Request]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> CheckUser{request.__user and<br/>request.user exist?}
+    UserGuard --> CheckUser{RequestStoreService.get UserStoreKey<br/>resolves a user?}
     
     CheckUser -->|No| ErrorUser[Throw 403: Unauthorized<br/>JWT_ACCESS_TOKEN_INVALID]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}

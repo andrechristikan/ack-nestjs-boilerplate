@@ -43,14 +43,14 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 
 **Environment Variables:**
 ```dotenv
-AWS_S3_IAM_CREDENTIAL_KEY=your_access_key
-AWS_S3_IAM_CREDENTIAL_SECRET=your_secret_key
-AWS_S3_IAM_ARN=your_iam_arn
+AWS_S3_IAM_CREDENTIAL_KEY=<your_aws_s3_access_key>
+AWS_S3_IAM_CREDENTIAL_SECRET=<your_aws_s3_secret_key>
+AWS_S3_IAM_ARN=<your_aws_s3_iam_arn>
 AWS_S3_REGION=ap-southeast-3
-AWS_S3_PUBLIC_BUCKET=your_public_bucket
-AWS_S3_PUBLIC_CDN=https://your-cdn.cloudfront.net
-AWS_S3_PRIVATE_BUCKET=your_private_bucket
-AWS_S3_PRIVATE_CDN=https://your-private-cdn.cloudfront.net
+AWS_S3_PUBLIC_BUCKET=<your_aws_s3_public_bucket>
+AWS_S3_PUBLIC_CDN=<your_aws_s3_public_cdn>
+AWS_S3_PRIVATE_BUCKET=<your_aws_s3_private_bucket>
+AWS_S3_PRIVATE_CDN=<your_aws_s3_private_cdn>
 ```
 
 **Use Cases:**
@@ -73,9 +73,9 @@ For detailed behavior and implementation, see [File Upload][ref-doc-file-upload]
 
 **Environment Variables:**
 ```dotenv
-AWS_SES_IAM_CREDENTIAL_KEY=your_access_key
-AWS_SES_IAM_CREDENTIAL_SECRET=your_secret_key
-AWS_SES_IAM_ARN=your_iam_arn
+AWS_SES_IAM_CREDENTIAL_KEY=<your_aws_ses_access_key>
+AWS_SES_IAM_CREDENTIAL_SECRET=<your_aws_ses_secret_key>
+AWS_SES_IAM_ARN=<your_aws_ses_iam_arn>
 AWS_SES_REGION=ap-southeast-3
 ```
 
@@ -108,9 +108,9 @@ AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums
 
 **Environment Variables:**
 ```dotenv
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CLIENT_EMAIL=your_client_email
-FIREBASE_PRIVATE_KEY=your_base64_encoded_private_key
+FIREBASE_PROJECT_ID=<your_firebase_project_id>
+FIREBASE_CLIENT_EMAIL=<your_firebase_client_email>
+FIREBASE_PRIVATE_KEY=<your_firebase_private_key>
 ```
 
 **Features:**
@@ -132,7 +132,7 @@ For notification details, see [Notification Documentation][ref-doc-notification]
 
 **Environment Variables:**
 ```dotenv
-SENTRY_DSN=https://your-dsn@sentry.io/project-id
+SENTRY_DSN=<your_sentry_dsn>
 ```
 
 **Features:**
@@ -199,8 +199,8 @@ For database setup and usage, see [Database][ref-doc-database].
 
 **Environment Variables:**
 ```dotenv
-AUTH_SOCIAL_GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=your_client_secret
+AUTH_SOCIAL_GOOGLE_CLIENT_ID=<your_google_client_id>
+AUTH_SOCIAL_GOOGLE_CLIENT_SECRET=<your_google_client_secret>
 ```
 
 For authentication flow details, see [Authentication][ref-doc-authentication].
@@ -214,8 +214,8 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 
 **Environment Variables:**
 ```dotenv
-AUTH_SOCIAL_APPLE_CLIENT_ID=your_service_id
-AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=your_app_bundle_id
+AUTH_SOCIAL_APPLE_CLIENT_ID=<your_apple_client_id>
+AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=<your_apple_sign_in_client_id>
 ```
 
 For authentication flow details, see [Authentication][ref-doc-authentication].

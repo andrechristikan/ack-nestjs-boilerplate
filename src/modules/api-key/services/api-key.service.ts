@@ -1,11 +1,4 @@
-import {
-    BadRequestException,
-    ForbiddenException,
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-    UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
@@ -13,7 +6,14 @@ import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.up
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { IApiKeyService } from '@modules/api-key/interfaces/api-key.service.interface';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
-import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
+import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
+import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
+import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
+import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -29,13 +29,17 @@ import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     constructor(
         private readonly helperService: HelperService,
         private readonly apiKeyUtil: ApiKeyUtil,
-        private readonly apiKeyRepository: ApiKeyRepository
+        private readonly apiKeyRepository: ApiKeyRepository,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListByAdmin(
@@ -88,10 +92,13 @@ export class ApiKeyService implements IApiKeyService {
             hash
         );
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(created)
+        );
+
         return {
             data: this.apiKeyUtil.mapCreate(created, secret),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(created),
         };
     }
 
@@ -102,10 +109,7 @@ export class ApiKeyService implements IApiKeyService {
         const today = this.helperService.dateCreate();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
-            throw new NotFoundException({
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-                message: 'apiKey.error.notFound',
-            });
+            throw new ApiKeyNotFoundException();
         } else if (
             apiKey.startAt &&
             apiKey.endAt &&
@@ -117,10 +121,7 @@ export class ApiKeyService implements IApiKeyService {
                 today
             )
         ) {
-            throw new BadRequestException({
-                statusCode: EnumApiKeyStatusCodeError.expired,
-                message: 'apiKey.error.expired',
-            });
+            throw new ApiKeyExpiredException();
         }
 
         const [updated] = await Promise.all([
@@ -128,10 +129,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -149,10 +153,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -178,10 +185,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(updated),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -198,10 +208,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(updated)
+        );
+
         return {
             data: this.apiKeyUtil.mapCreate(updated, secret),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(updated),
         };
     }
 
@@ -210,10 +223,7 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
-            throw new NotFoundException({
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-                message: 'apiKey.error.notFound',
-            });
+            throw new ApiKeyNotFoundException();
         }
 
         const [deleted] = await Promise.all([
@@ -221,10 +231,13 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(deleted)
+        );
+
         return {
             data: this.apiKeyUtil.mapOne(deleted),
-            metadataActivityLog:
-                this.apiKeyUtil.mapActivityLogMetadata(deleted),
         };
     }
 
@@ -233,15 +246,9 @@ export class ApiKeyService implements IApiKeyService {
         includeActive: boolean = false
     ): void {
         if (!apiKey) {
-            throw new NotFoundException({
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-                message: 'apiKey.error.notFound',
-            });
+            throw new ApiKeyNotFoundException();
         } else if (includeActive && !this.apiKeyUtil.isActive(apiKey)) {
-            throw new BadRequestException({
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-                message: 'apiKey.error.inactive',
-            });
+            throw new ApiKeyInactiveException();
         }
 
         return;
@@ -266,10 +273,7 @@ export class ApiKeyService implements IApiKeyService {
             .extractKeyFromRequest(request)
             .trim();
         if (!xApiKeyHeader) {
-            throw new UnauthorizedException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                message: 'apiKey.error.xApiKey.required',
-            });
+            throw new ApiKeyXApiKeyRequiredException();
         }
 
         const xApiKey: string[] = xApiKeyHeader.split(':');
@@ -278,10 +282,7 @@ export class ApiKeyService implements IApiKeyService {
             !xApiKey[0]?.trim() ||
             !xApiKey[1]?.trim()
         ) {
-            throw new UnauthorizedException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                message: 'apiKey.error.xApiKey.invalid',
-            });
+            throw new ApiKeyXApiKeyInvalidException();
         }
 
         const [key, secret] = xApiKey;
@@ -289,10 +290,7 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey = await this.findOneActiveByKeyAndCache(key);
 
         if (!apiKey) {
-            throw new ForbiddenException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
-                message: 'apiKey.error.xApiKey.notFound',
-            });
+            throw new ApiKeyXApiKeyNotFoundException();
         } else if (
             !this.apiKeyUtil.validateCredential(key, secret, apiKey) ||
             !this.apiKeyUtil.isValid(
@@ -304,32 +302,22 @@ export class ApiKeyService implements IApiKeyService {
                 today
             )
         ) {
-            throw new UnauthorizedException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                message: 'apiKey.error.xApiKey.invalid',
-            });
+            throw new ApiKeyXApiKeyInvalidException();
         }
 
         return apiKey;
     }
 
     validateXApiKeyTypeGuard(
-        request: IRequestApp,
+        apiKey: ApiKey | null,
         apiKeyTypes: EnumApiKeyType[]
     ): boolean {
         if (apiKeyTypes.length === 0) {
-            throw new InternalServerErrorException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyPredefinedNotFound,
-                message: 'apiKey.error.xApiKey.predefinedNotFound',
-            });
+            throw new ApiKeyXApiKeyPredefinedNotFoundException();
         }
 
-        const { __apiKey } = request;
-        if (!__apiKey || !this.apiKeyUtil.validateType(__apiKey, apiKeyTypes)) {
-            throw new ForbiddenException({
-                statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
-                message: 'apiKey.error.xApiKey.forbidden',
-            });
+        if (!apiKey || !this.apiKeyUtil.validateType(apiKey, apiKeyTypes)) {
+            throw new ApiKeyXApiKeyForbiddenException();
         }
 
         return true;

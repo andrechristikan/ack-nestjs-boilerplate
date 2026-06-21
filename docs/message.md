@@ -42,12 +42,12 @@ APP_LANGUAGE=en
 Configuration structure:
 
 ```typescript
-// src/config/message.config.ts
+// src/configs/message.config.ts
 export default registerAs(
     'message',
     (): IConfigMessage => ({
         availableLanguage: Object.values(EnumMessageLanguage),
-        language: process.env.APP_LANGUAGE ?? EnumMessageLanguage.EN,
+        language: process.env.APP_LANGUAGE!,
     })
 );
 ```
@@ -68,10 +68,11 @@ Message files use JSON format with nested structure. Key paths follow the patter
 |------|-------------|
 | `activityLog.json` | Activity log messages |
 | `apiKey.json` | API key messages |
-| `app.json` | General application messages |
 | `auth.json` | Authentication messages |
+| `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
 | `device.json` | Device management messages |
+| `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
 | `file.json` | File upload messages |
 | `health.json` | Health check messages |
@@ -193,27 +194,24 @@ await axios.get('http://localhost:3000/api/users', {
 });
 ```
 
+`RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+
 ## Integration
 
 ### Exception Filters
 
-Exception filters automatically translate message paths. The exception body follows the `IAppException` interface.
+Exception filters automatically translate message paths. Application errors are dedicated `AppBaseException` subclasses; the filter resolves each exception's `messagePath` against the message system.
 
 ```typescript
-throw new BadRequestException({
-    statusCode: EnumUserStatusCodeError.emailExist,
-    message: 'user.error.emailExists', // Will be translated
-});
+throw new UserEmailExistException();
+// the class internally calls super('user.error.emailExist')
 ```
 
-With variables, pass `messageProperties` directly in the exception body:
+With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
 
 ```typescript
-throw new NotFoundException({
-    statusCode: EnumUserStatusCodeError.notFound,
-    message: 'user.error.notFoundWithId',
-    messageProperties: { id: userId },
-});
+throw new UserVerificationEmailResendLimitExceededException(resendIn);
+// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { resendIn } })
 ```
 
 ### Response Decorator
@@ -299,8 +297,10 @@ class UserDto {
 ```typescript
 // Automatic transformation
 {
-    "statusCode": 400,
-    "message": "Validation error",
+    "statusCode": 5030,
+    "statusCodeKey": "validation",
+    "module": "request",
+    "message": "There are validation errors.",
     "errors": [
         {
             "key": "isNotEmpty",

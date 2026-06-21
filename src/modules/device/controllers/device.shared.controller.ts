@@ -1,10 +1,5 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
-    RequestGeoLocation,
-    RequestIPAddress,
-    RequestUserAgent,
-} from '@common/request/decorators/request.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -12,7 +7,7 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -78,16 +73,9 @@ export class DeviceSharedController {
     async refresh(
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Body() body: DeviceRefreshRequestDto
     ): Promise<void> {
-        return this.deviceService.refresh(userId, deviceOwnershipId, body, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.deviceService.refresh(userId, deviceOwnershipId, body);
     }
 
     @DeviceSharedRemoveDoc()
@@ -100,9 +88,6 @@ export class DeviceSharedController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,
-        @RequestIPAddress() ipAddress: string,
-        @RequestUserAgent() userAgent: UserAgent,
-        @RequestGeoLocation() geoLocation: GeoLocation | null,
         @Param(
             'deviceOwnershipId',
             RequestRequiredPipe,
@@ -110,10 +95,6 @@ export class DeviceSharedController {
         )
         deviceOwnershipId: string
     ): Promise<void> {
-        return this.deviceService.remove(userId, deviceOwnershipId, {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        });
+        return this.deviceService.remove(userId, deviceOwnershipId);
     }
 }

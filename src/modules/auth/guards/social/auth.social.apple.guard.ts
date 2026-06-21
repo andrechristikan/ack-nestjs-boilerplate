@@ -3,21 +3,11 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthService } from '@modules/auth/services/auth.service';
 
-/**
- * Guard for validating Apple social authentication tokens.
- * Implements CanActivate interface to protect routes that require Apple authentication.
- */
+/** Guard validating an Apple ID token and attaching the social payload to the request. */
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
     constructor(private readonly authService: AuthService) {}
 
-    /**
-     * Validates Apple authentication token and attaches user payload to request.
-     *
-     * @param {ExecutionContext} context - The execution context containing the HTTP request
-     * @returns {Promise<boolean>} True if authentication is successful
-     * @throws {UnauthorizedException} When token is missing, malformed, or invalid
-     */
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context
             .switchToHttp()

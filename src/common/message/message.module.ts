@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import * as path from 'path';
 import { HeaderResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
@@ -6,20 +6,14 @@ import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
- * Global dynamic module providing internationalization services.
- * Configures I18n module with JSON loader, header resolver, and exports MessageService globally.
+ * Global i18n module: JSON loader plus `x-custom-lang` header resolver, exposing `MessageService`.
  */
-@Global()
 @Module({})
 export class MessageModule {
-    /**
-     * Creates and configures the message module with I18n JSON loader and header-based language resolver.
-     *
-     * @returns {DynamicModule} Configured dynamic module with I18n and MessageService
-     */
     static forRoot(): DynamicModule {
         return {
             module: MessageModule,
+            global: true,
             providers: [MessageService],
             exports: [MessageService],
             imports: [

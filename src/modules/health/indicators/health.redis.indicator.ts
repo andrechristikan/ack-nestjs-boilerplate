@@ -6,6 +6,9 @@ import {
 } from '@nestjs/terminus';
 import { Cache } from 'cache-manager';
 
+/**
+ * Reports Redis cache reachability as a Terminus health indicator.
+ */
 @Injectable()
 export class HealthRedisIndicator {
     constructor(
@@ -13,6 +16,9 @@ export class HealthRedisIndicator {
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
+    /**
+     * Down when a probe read against the cache fails or throws.
+     */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 

@@ -1,14 +1,8 @@
-import {
-    IMessageProperties,
-    IMessageValidationError,
-} from '@common/message/interfaces/message.interface';
+import { IMessageProperties } from '@common/message/interfaces/message.interface';
 
-export interface IAppException<T> {
-    statusCode: number;
-    message: string;
+export interface IAppBaseExceptionOptions {
     messageProperties?: IMessageProperties;
-    data?: T;
-    metadata?: Record<string, string | number>;
-    errors?: IMessageValidationError[];
-    _error?: unknown;
+    metadata?: Record<string, unknown>;
+    rawError?: unknown;
+    data?: unknown;
 }

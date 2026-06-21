@@ -4,14 +4,8 @@ import { QueueProcessorConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
 
 /**
- * Decorator for registering BullMQ queue processors.
- * Creates a consumer worker with dynamic naming based on app configuration.
- * Environment variables are accessed at decoration time; for runtime configuration changes,
- * consider using ConfigService injection in the processor class itself.
- *
- * @param name - Queue name from EnumQueue
- * @param options - Optional worker configuration options
- * @returns ClassDecorator for processor class
+ * Registers a BullMQ processor with an env-derived consumer worker name.
+ * Worker name is resolved from env at decoration time, not at runtime.
  */
 export function QueueProcessor(
     name: EnumQueue,

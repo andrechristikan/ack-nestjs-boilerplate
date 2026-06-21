@@ -63,6 +63,7 @@ export class FeatureFlagUtil {
         return this.responseUtil.serialize(FeatureFlagResponseDto, featureFlag);
     }
 
+    /** True only when both have identical keys and matching value types, with no empty/nullish value. */
     checkMetadataKey(
         oldMetadata: IFeatureFlagMetadata,
         newMetadata: IFeatureFlagMetadata
@@ -94,6 +95,7 @@ export class FeatureFlagUtil {
         return true;
     }
 
+    /** Deterministic per-identifier bucketing: same identifier always lands in the same 0-99 slot. */
     checkRolloutPercentage(
         rolloutPercent: number,
         identifier: string
@@ -105,18 +107,19 @@ export class FeatureFlagUtil {
         return percentage < rolloutPercent;
     }
 
+    /** Read-through cache: returns the cached flag or loads from the repository and caches it. */
     async getByKeyAndCache(key: string): Promise<FeatureFlag | null> {
         const cached = await this.getCacheByKey(key);
         if (cached) {
             return cached;
         }
 
-        const apiKey = await this.featureFlagRepository.findOneByKey(key);
-        if (apiKey) {
-            await this.setCacheByKey(key, apiKey);
+        const featureFlag = await this.featureFlagRepository.findOneByKey(key);
+        if (featureFlag) {
+            await this.setCacheByKey(key, featureFlag);
         }
 
-        return apiKey;
+        return featureFlag;
     }
 
     async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {

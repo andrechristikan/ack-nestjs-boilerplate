@@ -3,6 +3,7 @@
         "required": "This field is required and cannot be left blank.",
         "requiredParseFirst": "Please parse the data before proceeding.",
         "extensionInvalid": "The file extension is invalid.",
-        "exceedMaxDataImport": "The number of data rows exceeds the maximum allowed for import."
+        "exceedMaxDataImport": "The number of data rows exceeds the maximum allowed for import.",
+        "validationDto": "The imported data failed validation."
     }
 }

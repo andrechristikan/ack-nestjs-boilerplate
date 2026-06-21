@@ -68,11 +68,6 @@ Basic API documentation decorator that sets up common operation metadata.
 - Custom headers:
   - `x-custom-lang` - **Customizable by frontend** - Custom language header (default: EN)
   - `x-correlation-id` - **Customizable by frontend** - Correlation identifier for tracking requests across services
-  - `x-timestamp` - Auto-included - Timestamp in milliseconds
-  - `x-timezone` - Auto-included - Timezone (e.g., Asia/Jakarta)
-  - `x-version` - Auto-included - API version
-  - `x-repo-version` - Auto-included - Repository version
-  - `x-request-id` - Auto-included - Unique request identifier (UUID)
 - Standard error responses:
   - Internal server error (500)
   - Request timeout (408)
@@ -296,7 +291,7 @@ Documents file download/response endpoints.
 
 ```typescript
 @DocResponseFile({
-    extension: EnumFileExtension.XLSX
+    extension: EnumFileExtensionDocument.pdf
 })
 @Get('/export')
 async exportData() {

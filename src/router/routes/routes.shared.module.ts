@@ -11,9 +11,8 @@ import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Shared routes module providing endpoints accessible by multiple user types.
- * Includes controllers for user management, notifications, sessions, password history,
- * activity logs, term policies, and device management shared across different access levels.
+ * Mounts controllers shared across access levels: user, password history, activity log,
+ * session, term policy, device, and notification.
  */
 @Module({
     controllers: [

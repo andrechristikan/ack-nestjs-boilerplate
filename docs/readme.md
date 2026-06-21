@@ -42,7 +42,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | Encryption at Rest | AES-256-CBC (2FA secrets), AES-CBC + PKCS7 (general data) |
 | HTTP Security Headers | [Helmet][ref-helmet] v8 — CSP, Strict-Transport-Security, X-Frame-Options, etc. |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
-| Rate Limiting | 10 requests / 500ms window — global guard via [@nestjs/throttler][ref-throttler] |
+| Rate Limiting | 100 requests / 60s window — global guard via [@nestjs/throttler][ref-throttler] |
 | Authorization | [CASL][ref-casl] — fine-grained ability-based access control (subject + action) |
 | API Key Auth | Machine-to-machine via `x-api-key` header |
 | Sensitive Data | Auto-redacted in logs (password, token, apiKey) via Pino serializers |

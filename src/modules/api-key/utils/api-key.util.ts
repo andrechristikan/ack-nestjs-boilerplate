@@ -68,11 +68,17 @@ export class ApiKeyUtil {
         return;
     }
 
+    /**
+     * Builds a public key prefixed with the current environment for traceability.
+     */
     createKey(key?: string): string {
         const random: string = this.helperService.randomString(25);
         return `${this.env}_${key ?? random}`;
     }
 
+    /**
+     * Derives the SHA-256 hash stored for credential verification.
+     */
     createHash(key: string, secret: string): string {
         return this.helperService.sha256Hash(`${key}:${secret}`);
     }
@@ -81,6 +87,9 @@ export class ApiKeyUtil {
         return this.helperService.randomString(50);
     }
 
+    /**
+     * Verifies the supplied key/secret by re-deriving the hash and comparing it to the stored one.
+     */
     validateCredential(
         key: string,
         secret: string,
@@ -126,6 +135,9 @@ export class ApiKeyUtil {
         return apiKey.isActive;
     }
 
+    /**
+     * True when the key is active, not expired, and already within its start date.
+     */
     isValid(
         apiKey: {
             startAt?: Date | null;
@@ -157,6 +169,9 @@ export class ApiKeyUtil {
         return apiKey && allowed.includes(apiKey.type);
     }
 
+    /**
+     * Generates a fresh key/secret pair plus the hash to persist.
+     */
     generateCredential(key?: string): IApiKeyGenerateCredential {
         key = key ?? this.createKey();
         const secret = this.createSecret();

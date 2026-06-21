@@ -59,9 +59,9 @@ class JwtKeysGenerator {
     }
 
     /**
-     * Generates an EC key pair (PEM/SPKI + PKCS8), writes both files, and
+     * Generates an EC key pair (PEM/SPKI + PKCS8) for the given curve
+     * (`prime256v1` for ES256, `secp521r1` for ES512), writes both files, and
      * locks the private key to owner read/write only.
-     * @param namedCurve `prime256v1` for ES256, `secp521r1` for ES512
      */
     generateKeyPair(
         namedCurve: 'prime256v1' | 'secp521r1',
@@ -199,9 +199,9 @@ class JwtKeysGenerator {
     }
 
     /**
-     * Generates both key pairs, the JWKS files, prints them, and optionally
-     * writes them into `.env`.
-     * @param updateEnv when true, inject keys/KIDs into `.env` (`--direct-insert`)
+     * Generates both key pairs and the JWKS files, prints the output paths, and
+     * when `updateEnv` is true injects the keys/KIDs into `.env`
+     * (`--direct-insert`).
      */
     generateKeys(updateEnv: boolean = false): void {
         try {
@@ -348,7 +348,7 @@ class JwtKeysGenerator {
     }
 }
 
-function main() {
+function main(): void {
     const argv = process.argv.slice(2);
 
     const directInsertIndex = argv.indexOf('--direct-insert');

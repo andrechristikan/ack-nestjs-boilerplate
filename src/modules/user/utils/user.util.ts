@@ -26,6 +26,7 @@ import { Profanity } from '@2toad/profanity';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
+/** Username/verification/forgot-password token generation, response mapping, and profanity checks. */
 @Injectable()
 export class UserUtil {
     private readonly usernamePrefix: string;
@@ -58,42 +59,54 @@ export class UserUtil {
         private readonly responseUtil: ResponseUtil
     ) {
         this.usernamePrefix =
-            this.configService.get<string>('user.usernamePrefix') ?? '';
+            this.configService.get<string>('user.usernamePrefix')!;
         this.usernamePattern =
-            this.configService.get<RegExp>('user.usernamePattern') ??
-            /^[a-zA-Z0-9_-]+$/;
+            this.configService.get<RegExp>('user.usernamePattern')!;
         this.uploadPhotoProfilePath =
-            this.configService.get<string>('user.uploadPhotoProfilePath') ?? '';
+            this.configService.get<string>('user.uploadPhotoProfilePath')!;
 
-        this.homeUrl = this.configService.get('home.url') ?? '';
+        this.homeUrl = this.configService.get<string>('home.url')!;
 
-        this.forgotPasswordReferencePrefix =
-            this.configService.get('forgotPassword.reference.prefix') ?? '';
-        this.forgotPasswordReferenceLength =
-            this.configService.get('forgotPassword.reference.length') ?? 10;
-        this.forgotExpiredInMinutes =
-            this.configService.get('forgotPassword.expiredInMinutes') ?? 30;
-        this.forgotTokenLength =
-            this.configService.get('forgotPassword.tokenLength') ?? 20;
-        this.forgotResendInMinutes =
-            this.configService.get('forgotPassword.resendInMinutes') ?? 5;
-        this.forgotLinkBaseUrl =
-            this.configService.get('forgotPassword.linkBaseUrl') ?? '';
+        this.forgotPasswordReferencePrefix = this.configService.get<string>(
+            'forgotPassword.reference.prefix'
+        )!;
+        this.forgotPasswordReferenceLength = this.configService.get<number>(
+            'forgotPassword.reference.length'
+        )!;
+        this.forgotExpiredInMinutes = this.configService.get<number>(
+            'forgotPassword.expiredInMinutes'
+        )!;
+        this.forgotTokenLength = this.configService.get<number>(
+            'forgotPassword.tokenLength'
+        )!;
+        this.forgotResendInMinutes = this.configService.get<number>(
+            'forgotPassword.resendInMinutes'
+        )!;
+        this.forgotLinkBaseUrl = this.configService.get<string>(
+            'forgotPassword.linkBaseUrl'
+        )!;
 
-        this.verificationReferencePrefix =
-            this.configService.get('verification.reference.prefix') ?? '';
-        this.verificationReferenceLength =
-            this.configService.get('verification.reference.length') ?? 10;
-        this.verificationOtpLength =
-            this.configService.get('verification.otpLength') ?? 6;
-        this.verificationExpiredInMinutes =
-            this.configService.get('verification.expiredInMinutes') ?? 30;
-        this.verificationTokenLength =
-            this.configService.get('verification.tokenLength') ?? 20;
-        this.verificationResendInMinutes =
-            this.configService.get('verification.resendInMinutes') ?? 5;
-        this.verificationLinkBaseUrl =
-            this.configService.get('verification.linkBaseUrl') ?? '';
+        this.verificationReferencePrefix = this.configService.get<string>(
+            'verification.reference.prefix'
+        )!;
+        this.verificationReferenceLength = this.configService.get<number>(
+            'verification.reference.length'
+        )!;
+        this.verificationOtpLength = this.configService.get<number>(
+            'verification.otpLength'
+        )!;
+        this.verificationExpiredInMinutes = this.configService.get<number>(
+            'verification.expiredInMinutes'
+        )!;
+        this.verificationTokenLength = this.configService.get<number>(
+            'verification.tokenLength'
+        )!;
+        this.verificationResendInMinutes = this.configService.get<number>(
+            'verification.resendInMinutes'
+        )!;
+        this.verificationLinkBaseUrl = this.configService.get<string>(
+            'verification.linkBaseUrl'
+        )!;
 
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguage'
@@ -127,6 +140,7 @@ export class UserUtil {
         return `${this.usernamePrefix}-${suffix}`.toLowerCase();
     }
 
+    /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
     checkUsernamePattern(username: string): boolean {
         return !!username.search(this.usernamePattern);
     }
@@ -160,6 +174,7 @@ export class UserUtil {
         );
     }
 
+    /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
     mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {
         return {
             isEnabled: twoFactor.enabled,
@@ -250,6 +265,7 @@ export class UserUtil {
         );
     }
 
+    /** Builds an OTP verification for mobile numbers or a tokenized link verification for email. */
     verificationCreateVerification(
         userId: string,
         type: EnumVerificationType
@@ -291,10 +307,12 @@ export class UserUtil {
         return this.helperService.sha256Hash(token);
     }
 
+    /** Encrypts a verification link using the userId as the key. */
     encryptedLink(userId: string, token: string): string {
         return this.helperService.aes256EncryptSimple(token, userId);
     }
 
+    /** Decrypts a verification link encrypted with the userId as the key. */
     decryptedLink(userId: string, encoded: string): string {
         return this.helperService.aes256DecryptSimple(encoded, userId);
     }

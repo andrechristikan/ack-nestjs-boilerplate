@@ -8,20 +8,13 @@ import {
 } from 'class-validator';
 
 /**
- * Validator constraint that checks if a date value is after the current date and time.
- * Supports Date objects, ISO strings, and timestamps.
+ * Validates a date (Date, ISO string, or timestamp) is in the future.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsAfterNowConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperService: HelperService) {}
 
-    /**
-     * Validates that the current value is after the current date and time.
-     *
-     * @param value - The value to validate (Date objects, ISO strings, timestamps)
-     * @returns True if value is after current date and time
-     */
     validate(value: unknown): boolean {
         if (value === null || value === undefined) {
             return false;
@@ -37,22 +30,10 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
         return dateValue.getTime() > now.getTime();
     }
 
-    /**
-     * Generates a default error message for validation failures.
-     *
-     * @returns Error message string
-     */
     defaultMessage(): string {
         return `request.error.isAfterNow.invalid`;
     }
 
-    /**
-     * Converts a value to Date if possible, returns null if conversion fails.
-     * Supports Date objects, ISO date strings, and numeric timestamps.
-     *
-     * @param value - Value to convert (Date object, ISO string, timestamp)
-     * @returns Converted Date or null if conversion fails or invalid
-     */
     private convertToDate(value: unknown): Date | null {
         if (value instanceof Date) {
             return !Number.isNaN(value.getTime()) ? value : null;
@@ -72,12 +53,6 @@ export class IsAfterNowConstraint implements ValidatorConstraintInterface {
     }
 }
 
-/**
- * Decorator that validates a property is a date after the current date and time.
- *
- * @param validationOptions - Standard class-validator validation options
- * @returns Property decorator function
- */
 export function IsAfterNow(validationOptions?: ValidationOptions) {
     return function (object: object, propertyName: string): void {
         registerDecorator({

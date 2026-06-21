@@ -106,17 +106,25 @@ export class NotificationPushUtil {
 
 ### Job Options
 
-Default job options (configured in `queue.register.module.ts`):
+Each queue sets its own default job options in `queue.register.module.ts`. They share `attempts: 3`, `removeOnComplete: 50`, and `removeOnFail: 100`, but differ in the exponential backoff `delay`:
+
+| Queue | backoff delay |
+|-------|---------------|
+| `EnumQueue.notificationEmail` | `10000` |
+| `EnumQueue.notificationPush` | `5000` |
+| `EnumQueue.notification` | `3000` |
+
+For example, the `notificationEmail` queue:
 
 ```typescript
 {
     attempts: 3,
     backoff: {
         type: 'exponential',
-        delay: 5000,
+        delay: 10000,
     },
-    removeOnComplete: 20,
-    removeOnFail: 50,
+    removeOnComplete: 50,
+    removeOnFail: 100,
 }
 ```
 
@@ -150,8 +158,8 @@ static forRoot(): DynamicModule {
                     type: 'exponential',
                     delay: 5000,
                 },
-                removeOnComplete: 20,
-                removeOnFail: 50,
+                removeOnComplete: 50,
+                removeOnFail: 100,
             },
         }),
     ];
@@ -220,7 +228,7 @@ Location: `src/queues/bases/queue.processor.base.ts`
 ```typescript
 export abstract class QueueProcessorBase extends WorkerHost {
     @OnWorkerEvent('failed')
-    onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
+    onFailed(job: Job<unknown, null, string>, error: Error): void {
         const maxAttempts = job.opts.attempts ?? 1;
         const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
 

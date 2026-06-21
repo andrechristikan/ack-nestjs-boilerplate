@@ -1,10 +1,9 @@
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -12,17 +11,18 @@ import {
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import {
-    Injectable,
-    InternalServerErrorException,
-    NotFoundException,
-} from '@nestjs/common';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceService implements IDeviceService {
@@ -30,7 +30,8 @@ export class DeviceService implements IDeviceService {
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
-        private readonly deviceUtil: DeviceUtil
+        private readonly deviceUtil: DeviceUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListOffsetByAdmin(
@@ -83,8 +84,7 @@ export class DeviceService implements IDeviceService {
     async refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto,
-        requestLog: IRequestLog
+        { name, notificationToken, platform }: DeviceRefreshRequestDto
     ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
@@ -92,11 +92,11 @@ export class DeviceService implements IDeviceService {
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             await this.deviceOwnershipRepository.refresh(
@@ -112,30 +112,22 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
-    async remove(
-        userId: string,
-        deviceOwnershipId: string,
-        requestLog: IRequestLog
-    ): Promise<void> {
+    async remove(userId: string, deviceOwnershipId: string): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
                 userId,
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             const sessions =
@@ -156,18 +148,13 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
-        requestLog: IRequestLog,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
         const existDeviceOwnership =
@@ -176,11 +163,11 @@ export class DeviceService implements IDeviceService {
                 deviceOwnershipId
             );
         if (!existDeviceOwnership) {
-            throw new NotFoundException({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-                message: 'device.error.notFound',
-            });
+            throw new DeviceNotFoundException();
         }
+
+        const requestLog: IRequestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             const sessions =
@@ -199,16 +186,14 @@ export class DeviceService implements IDeviceService {
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
-            return {
-                metadataActivityLog:
-                    this.deviceUtil.mapActivityLogMetadata(removed),
-            };
+            this.requestStoreService.merge<IActivityLogMetadata>(
+                ActivityLogMetadataStoreKey,
+                this.deviceUtil.mapActivityLogMetadata(removed)
+            );
+
+            return {};
         } catch (err: unknown) {
-            throw new InternalServerErrorException({
-                statusCode: EnumAppStatusCodeError.unknown,
-                message: 'http.serverError.internalServerError',
-                _error: err,
-            });
+            throw new AppUnknownException(err);
         }
     }
 }

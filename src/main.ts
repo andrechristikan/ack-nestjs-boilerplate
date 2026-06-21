@@ -12,7 +12,7 @@ import { MessageService } from '@common/message/services/message.service';
 import { Logger as PinoLogger } from 'nestjs-pino';
 
 async function bootstrap(): Promise<void> {
-    const app: NestApplication = await NestFactory.create(AppModule, {
+    let app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: true,
         bufferLogs: true,
     });
@@ -44,6 +44,8 @@ async function bootstrap(): Promise<void> {
 
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
+
+    app = app.enableShutdownHooks();
 
     app.setGlobalPrefix(globalPrefix);
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
@@ -79,8 +81,6 @@ async function bootstrap(): Promise<void> {
     }
 
     await swaggerInit(app);
-
-    app.enableShutdownHooks();
 
     await app.listen(port, host);
 

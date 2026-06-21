@@ -97,16 +97,6 @@ import {
 } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
 
-/**
- * Service for AWS S3 file operations across public and private S3 buckets.
- *
- * Handles file management (upload, download, delete, move, list), multipart uploads
- * for large files, presigned URL generation, and bucket configuration (policy, CORS, lifecycle).
- *
- * The service is initialized lazily on module init. If IAM credentials or region are not
- * configured, the S3 client will not be created and all methods will return default
- * empty responses instead of throwing errors.
- */
 @Injectable()
 export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     private readonly logger: Logger = new Logger(AwsS3Service.name);
@@ -171,11 +161,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         )!;
     }
 
-    /**
-     * Initializes the S3 client using configured IAM credentials, region, and timeout settings.
-     * If any required credential is missing, the client will not be created
-     * and the service will operate in a no-op mode.
-     */
     onModuleInit(): void {
         if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
@@ -198,19 +183,10 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         });
     }
 
-    /**
-     * Returns whether the S3 client has been successfully initialized.
-     * @returns {boolean} `true` if the S3 client is ready to use, `false` otherwise
-     */
     isInitialized(): boolean {
         return !!this.s3Client;
     }
 
-    /**
-     * Extracts file information (path, filename, extension, mime) from an S3 key.
-     * @param {string} key - The S3 object key
-     * @returns {IAwsS3FileInfo} File info object
-     */
     private getFileInfoFromKey(key: string): IAwsS3FileInfo {
         const pathWithFilename: string = `/${key}`;
         const filename: string = key.substring(
@@ -227,13 +203,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return { pathWithFilename, filename, extension, mime };
     }
 
-    /**
-     * Resolves the bucket configuration for the given access level.
-     * Defaults to `public` if no access level is provided.
-     * @param {EnumAwsS3Accessibility} [access] - The bucket access level to look up
-     * @returns {IAwsS3ConfigBucket} The matching bucket configuration
-     * @throws {Error} If no configuration exists for the given access level
-     */
     private getConfig(access?: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
         const config = this.config.get(access ?? EnumAwsS3Accessibility.public);
 
@@ -246,11 +215,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return config;
     }
 
-    /**
-     * Verifies connectivity to AWS S3 by listing buckets.
-     * Returns `false` immediately if the service is not initialized.
-     * @returns {Promise<boolean>} `true` if connected successfully, `false` if not initialized or request fails
-     */
     async checkConnection(): Promise<boolean> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -268,12 +232,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         }
     }
 
-    /**
-     * Checks if the configured S3 bucket exists and is accessible.
-     * Returns `false` immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<boolean>} `true` if the bucket exists and is reachable, `false` if not initialized
-     */
     async checkBucket(options?: IAwsS3Options): Promise<boolean> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -296,14 +254,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return true;
     }
 
-    /**
-     * Checks if an object exists in S3 and returns its metadata.
-     * Returns `null` immediately if the service is not initialized.
-     * @param {string} key - The S3 object key to check (must not start with "/")
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<IAwsS3>} Object metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/"
-     */
     async checkItem(
         key: string,
         options?: IAwsS3Options
@@ -349,14 +299,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Retrieves all objects from S3 under the given path prefix, paginating automatically.
-     * Returns an empty array immediately if the service is not initialized.
-     * @param {string} path - The path prefix to search (must not start with "/")
-     * @param {IAwsS3GetItemsOptions} [options] - Optional configuration including access level and continuation token
-     * @returns {Promise<IAwsS3[]>} List of matching objects, or `[]` if not initialized
-     * @throws {Error} If the path starts with "/"
-     */
     async getItems(
         path: string,
         options?: IAwsS3GetItemsOptions
@@ -425,14 +367,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return allItems;
     }
 
-    /**
-     * Retrieves a single object from S3 including its content body.
-     * Returns `null` immediately if the service is not initialized.
-     * @param {string} key - The S3 object key to retrieve (must not start with "/")
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<IAwsS3>} Object with content data, or `null` if not initialized
-     * @throws {Error} If the key starts with "/"
-     */
     async getItem(
         key: string,
         options?: IAwsS3Options
@@ -478,15 +412,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Uploads a file to S3 using a single PUT operation.
-     * Returns `null` immediately if the service is not initialized.
-     * By default throws if the key already exists; pass `forceUpdate: true` to overwrite.
-     * @param {IAwsS3PutItem} file - File object containing the key, buffer, and optional size
-     * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
-     * @returns {Promise<IAwsS3>} Uploaded object metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/", file is missing, path traversal is detected, or key already exists
-     */
     async putItem(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
@@ -566,14 +491,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Deletes a single object from S3.
-     * Returns immediately if the service is not initialized.
-     * @param {string} key - The S3 object key to delete (must not start with "/")
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     * @throws {Error} If the key starts with "/"
-     */
     async deleteItem(key: string, options?: IAwsS3Options): Promise<void> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -599,14 +516,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         >(command);
     }
 
-    /**
-     * Deletes multiple objects from S3 in a single batch request.
-     * Returns immediately if the service is not initialized.
-     * @param {string[]} keys - Array of S3 object keys to delete (none may start with "/")
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     * @throws {Error} If any key starts with "/"
-     */
     async deleteItems(keys: string[], options?: IAwsS3Options): Promise<void> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -635,15 +544,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         >(command);
     }
 
-    /**
-     * Deletes all objects under a directory prefix from S3, paginating automatically.
-     * Returns immediately if the service is not initialized.
-     * Throws if deletion exceeds 100 pagination iterations (too many objects).
-     * @param {string} path - The directory prefix to delete (must not start with "/")
-     * @param {IAwsS3DeleteDirOptions} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     * @throws {Error} If the path starts with "/" or max iterations are exceeded
-     */
     async deleteDir(
         path: string,
         options?: IAwsS3DeleteDirOptions
@@ -708,16 +608,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         } while (continuationToken);
     }
 
-    /**
-     * Initiates a multipart upload session for a large file in S3.
-     * Returns `null` immediately if the service is not initialized.
-     * By default throws if the key already exists; pass `forceUpdate: true` to overwrite.
-     * @param {IAwsS3CreateMultiplePart} file - File descriptor containing the key and optional size
-     * @param {number} maxPartNumber - Total number of parts planned for this upload (max: `AwsS3MaxPartNumber`)
-     * @param {IAwsS3PutItemOptions} [options] - Optional configuration including force update and access level
-     * @returns {Promise<IAwsS3Multipart>} Multipart upload metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/", max part number is exceeded, or key already exists
-     */
     async createMultiPart(
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
@@ -800,15 +690,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Uploads a single part within an active multipart upload session.
-     * Returns the unmodified `multipart` object if the service is not initialized.
-     * @param {IAwsS3Multipart} multipart - Active multipart upload metadata
-     * @param {number} partNumber - 1-based part number for this chunk
-     * @param {Buffer} file - Raw file buffer for this part
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<IAwsS3Multipart>} Updated multipart with the new part appended
-     */
     async putItemMultiPart(
         multipart: IAwsS3Multipart,
         partNumber: number,
@@ -850,15 +731,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return multipart;
     }
 
-    /**
-     * Finalizes a multipart upload by assembling all uploaded parts into a single S3 object.
-     * Returns immediately if the service is not initialized.
-     * @param {string} key - The S3 object key for the multipart upload
-     * @param {string} uploadId - The upload session ID returned by `createMultiPart`
-     * @param {IAwsS3MultipartPart[]} parts - Ordered list of uploaded parts with ETags
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async completeMultipart(
         key: string,
         uploadId: string,
@@ -898,14 +770,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return;
     }
 
-    /**
-     * Aborts an active multipart upload and discards all uploaded parts.
-     * Returns immediately if the service is not initialized.
-     * @param {string} key - The S3 object key for the multipart upload
-     * @param {string} uploadId - The upload session ID to abort
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async abortMultipart(
         key: string,
         uploadId: string,
@@ -936,14 +800,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return;
     }
 
-    /**
-     * Generates a presigned URL that allows temporary read access to an S3 object.
-     * Returns `null` immediately if the service is not initialized.
-     * @param {string} key - The S3 object key to generate a download URL for (must not start with "/")
-     * @param {IAwsS3PresignGetItemOptions} [options] - Optional expiration time and access level
-     * @returns {Promise<IAwsS3Presign>} Presigned URL with expiry and file metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/"
-     */
     async presignGetItem(
         key: string,
         options?: IAwsS3PresignGetItemOptions
@@ -999,15 +855,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Generates a presigned URL that allows temporary write access to upload a file directly to S3.
-     * Returns `null` immediately if the service is not initialized.
-     * By default throws if the key already exists; pass `forceUpdate: true` to overwrite.
-     * @param {AwsS3PresignRequestDto} dto - DTO containing the target key and expected file size
-     * @param {IAwsS3PresignPutItemOptions} [options] - Optional expiration time, force update, and access level
-     * @returns {Promise<IAwsS3Presign>} Presigned URL with expiry and file metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/" or key already exists
-     */
     async presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3PresignPutItemOptions
@@ -1072,14 +919,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Generates a presigned URL for uploading a single part within a multipart upload session.
-     * Returns `null` immediately if the service is not initialized.
-     * @param {AwsS3PresignPartRequestDto} dto - DTO containing the key, size, upload ID, and part number
-     * @param {IAwsS3PresignPutItemPartOptions} [options] - Optional expiration time and access level
-     * @returns {Promise<IAwsS3PresignPart>} Presigned URL with part metadata, or `null` if not initialized
-     * @throws {Error} If the key starts with "/"
-     */
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
         options?: IAwsS3PresignPutItemPartOptions
@@ -1127,15 +966,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Builds an `IAwsS3` from a presign request without making any S3 API calls.
-     * Useful for constructing object metadata from a known key before the file is actually uploaded.
-     * Does not require the S3 client to be initialized.
-     * @param {AwsS3PresignRequestDto} dto - DTO containing the target key and optional size
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {IAwsS3} Object metadata derived from the key and bucket configuration
-     * @throws {Error} If the key starts with "/"
-     */
     mapPresign(
         { key, size }: AwsS3PresignRequestDto,
         options?: IAwsS3Options
@@ -1164,17 +994,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Copies an S3 object to a new destination path and returns the new object's metadata.
-     * The source object is **not deleted** after the copy.
-     * Supports cross-bucket copies by specifying different source and destination access levels via `options.accessFrom` and `options.accessTo`.
-     * Returns `null` immediately if the service is not initialized.
-     * @param {IAwsS3} source - Source object metadata (must have a key not starting with "/")
-     * @param {string} destination - Destination path prefix (must not start with "/")
-     * @param {IAwsS3MoveItemOptions} [options] - Optional source and destination bucket access levels
-     * @returns {Promise<IAwsS3>} New object metadata at the destination, or `null` if not initialized
-     * @throws {Error} If the source key or destination starts with "/"
-     */
     async moveItem(
         source: IAwsS3,
         destination: string,
@@ -1231,18 +1050,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         };
     }
 
-    /**
-     * Copies multiple S3 objects to a new destination path in parallel.
-     * Source objects are **not deleted** after the copy.
-     * Each source's `access` level is used as its `accessFrom`; the destination access level is taken from `options.access`.
-     * Parts that fail to copy are silently excluded from the result.
-     * Returns an empty array immediately if the service is not initialized.
-     * @param {IAwsS3[]} sources - Source objects to copy (none may have a key starting with "/")
-     * @param {string} destination - Destination path prefix (must not start with "/")
-     * @param {IAwsS3Options} [options] - Optional configuration for destination bucket access level
-     * @returns {Promise<IAwsS3[]>} New object metadata for all successfully copied files, or `[]` if not initialized
-     * @throws {Error} If any source key or the destination starts with "/"
-     */
     async moveItems(
         sources: IAwsS3[],
         destination: string,
@@ -1282,13 +1089,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             .map(item => (item as PromiseFulfilledResult<IAwsS3>).value!);
     }
 
-    /**
-     * Applies a lifecycle rule to the bucket that auto-deletes incomplete multipart uploads
-     * after the configured expiry period and removes expired object delete markers.
-     * Returns immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async settingBucketExpiredObjectLifecycle(
         options?: IAwsS3Options
     ): Promise<void> {
@@ -1311,7 +1111,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                             ID: 'delete-incomplete-multipart',
                             Status: ExpirationStatus.Enabled,
                             Filter: {
-                                Prefix: '', // Apply to all objects
+                                Prefix: '',
                             },
                             AbortIncompleteMultipartUpload: {
                                 DaysAfterInitiation: this.multipartExpiredInDay,
@@ -1330,14 +1130,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         >(command);
     }
 
-    /**
-     * Configures the S3 bucket policy based on accessibility level.
-     * For public buckets: grants `s3:GetObject` to everyone and full access to the configured IAM user.
-     * For private buckets: removes any existing bucket policy.
-     * Returns immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration to specify the bucket access level (public or private)
-     * @returns {Promise<void>}
-     */
     async settingBucketPolicy(options?: IAwsS3Options): Promise<void> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -1357,7 +1149,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             const bucketPolicy = {
                 Version: '2012-10-17',
                 Statement: [
-                    // Allow public read access to specified folders
                     {
                         Sid: 'PublicReadForSpecificFolder',
                         Effect: 'Allow',
@@ -1365,7 +1156,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                         Action: 's3:GetObject',
                         Resource: resources,
                     },
-                    // Keep full access for IAM user
                     {
                         Sid: 'IAMUserFullAccess',
                         Effect: 'Allow',
@@ -1401,13 +1191,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         }
     }
 
-    /**
-     * Applies CORS rules to the S3 bucket based on its access level.
-     * Public buckets allow GET/HEAD from all origins; private buckets restrict to configured allowed origins.
-     * Returns immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async settingCorsConfiguration(options?: IAwsS3Options): Promise<void> {
         if (!this.isInitialized()) {
             this.logger.warn(
@@ -1492,12 +1275,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         >(command);
     }
 
-    /**
-     * Disables ACLs on the bucket by setting ownership controls to `BucketOwnerEnforced`.
-     * Returns immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async settingDisableAclConfiguration(
         options?: IAwsS3Options
     ): Promise<void> {
@@ -1531,13 +1308,6 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         >(command);
     }
 
-    /**
-     * Configures public access blocking on the S3 bucket.
-     * Public buckets allow policy-based access but block ACLs; private buckets block all public access.
-     * Returns immediately if the service is not initialized.
-     * @param {IAwsS3Options} [options] - Optional configuration for bucket access level
-     * @returns {Promise<void>}
-     */
     async settingBlockPublicAccessConfiguration(
         options?: IAwsS3Options
     ): Promise<void> {

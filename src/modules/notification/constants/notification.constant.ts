@@ -4,9 +4,7 @@ import {
 } from '@generated/prisma-client';
 
 /**
- * Defines allowed notification type and channel combinations for user preferences.
- * Restricts which delivery channels (email, push, in-app) are available for each notification type.
- * For example, marketing notifications can only be sent via email and push, not in-app.
+ * Channels a user is allowed to toggle per notification type. Types not listed are not user-configurable.
  */
 export const NotificationSettingUpdateAllowedCombinations: {
     type: EnumNotificationType;

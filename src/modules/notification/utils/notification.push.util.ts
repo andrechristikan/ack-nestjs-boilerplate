@@ -13,8 +13,7 @@ import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
- * Utility for queueing push notification jobs to Firebase Cloud Messaging.
- * Enqueues various push notification types (alerts, resets, device login) with rate limiting.
+ * Enqueues push notification jobs (FCM) onto the push queue, deduplicated per user.
  */
 @Injectable()
 export class NotificationPushUtil {
@@ -28,13 +27,7 @@ export class NotificationPushUtil {
         this.defTz = this.configService.get<string>('app.timezone')!;
     }
 
-    /**
-     * Enqueues a temporary password push notification sent by admin.
-     *
-     * @param sendPayload - User to notify (userId, fcmTokens, username)
-     * @param data - Temporary password data (password, created/expiry dates)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the admin-issued temporary password push. */
     async sendTemporaryPasswordByAdmin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPayload
@@ -57,12 +50,7 @@ export class NotificationPushUtil {
         );
     }
 
-    /**
-     * Enqueues a password reset push notification.
-     *
-     * @param sendPayload - User to notify (userId, fcmTokens, username)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the password reset confirmation push. */
     async sendResetPassword(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -83,12 +71,7 @@ export class NotificationPushUtil {
         );
     }
 
-    /**
-     * Enqueues a 2FA reset push notification sent by admin.
-     *
-     * @param sendPayload - User to notify (userId, fcmTokens, username)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the admin-triggered two-factor reset push. */
     async sendResetTwoFactorByAdmin(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -109,13 +92,7 @@ export class NotificationPushUtil {
         );
     }
 
-    /**
-     * Enqueues a new device login alert push notification.
-     *
-     * @param sendPayload - User to notify (userId, fcmTokens, username)
-     * @param data - Login details (device, IP, location, time)
-     * @returns Promise resolving when job is enqueued
-     */
+    /** Enqueues the new-device login alert push. */
     async sendNewDeviceLogin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload
@@ -139,14 +116,7 @@ export class NotificationPushUtil {
         );
     }
 
-    /**
-     * Enqueues a cleanup job for invalid FCM tokens.
-     * Only enqueues if there are failure tokens to cleanup.
-     *
-     * @param userId - The user whose tokens failed
-     * @param failureTokens - Array of invalid FCM tokens to remove
-     * @returns Promise resolving when job is enqueued or if no tokens to cleanup
-     */
+    /** Enqueues removal of invalid FCM tokens; no-op when there are no failures, deduplicated for 1 hour per user. */
     async sendCleanupTokens(
         userId: string,
         failureTokens: string[]
@@ -163,19 +133,14 @@ export class NotificationPushUtil {
                     priority: EnumQueuePriority.low,
                     deduplication: {
                         id: `${EnumNotificationPushProcess.cleanupTokens}-${userId}`,
-                        ttl: 1000 * 60 * 60, // 1 hour
+                        ttl: 1000 * 60 * 60,
                     },
                 }
             );
         }
     }
 
-    /**
-     * Enqueues a daily cleanup job for stale/expired FCM tokens.
-     * Runs as a cron job daily at midnight in the configured timezone.
-     *
-     * @returns Promise resolving when recurring job is scheduled
-     */
+    /** Schedules the recurring stale-token cleanup (daily at midnight in the configured timezone). */
     async sendCleanupStaleTokens(): Promise<void> {
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.cleanupStaleTokens,
