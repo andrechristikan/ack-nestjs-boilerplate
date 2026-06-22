@@ -81,7 +81,7 @@ export class AppHttpFilter implements ExceptionFilter {
             statusCode: statusHttp,
             statusCodeKey:
                 (extended?.statusCodeKey as string) ??
-                (statusName ? Case.camel(statusName) : 'unknown'),
+                (statusName ? Case.camel(statusName) : statusHttp.toString()),
             module: (extended?.module as string) ?? 'http',
             message,
             metadata,
