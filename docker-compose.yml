@@ -12,7 +12,7 @@ services:
             - ./src:/app/src
             - ./prisma:/app/prisma
         env_file:
-            - .env.docker
+            - .env
         restart: on-failure
         networks:
             - app-network
