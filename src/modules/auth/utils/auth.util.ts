@@ -424,6 +424,19 @@ export class AuthUtil {
 
         const payload = login.getPayload();
 
+        if (!payload) {
+            throw new Error('Unable to extract payload from Google token');
+        }
+        if (!payload.email) {
+            throw new Error('Google token payload does not contain email');
+        }
+
+        if (!payload.email_verified) {
+            throw new Error(
+                'Google token payload does not contain email_verified'
+            );
+        }
+
         return payload as TokenPayload;
     }
 
