@@ -9,7 +9,9 @@ services:
         ports:
             - 3000:3000
         volumes:
-            - ./:/app/
+            - ./src:/app/src
+            - ./prisma:/app/prisma
+            - ./.env:/app/.env
         restart: on-failure
         networks:
             - app-network
