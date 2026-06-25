@@ -93,52 +93,22 @@ export class AuthUtil {
                 'auth.jwt.refreshToken.expirationTimeInSeconds'
             )!;
 
-        const jwtAccessTokenPrivateKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.accessToken.privateKey')!,
-            'base64'
+        this.jwtAccessTokenPrivateKey = this.parseRequiredBase64DerPrivateKey(
+            'auth.jwt.accessToken.privateKey'
         );
-        this.jwtAccessTokenPrivateKey = createPrivateKey({
-            key: jwtAccessTokenPrivateKeyBuffer,
-            format: 'der',
-            type: 'pkcs8',
-        }).export({ type: 'pkcs8', format: 'pem' }) as string;
-        const jwtAccessTokenPublicKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.accessToken.publicKey')!,
-            'base64'
+        this.jwtAccessTokenPublicKey = this.parseRequiredBase64DerPublicKey(
+            'auth.jwt.accessToken.publicKey'
         );
-        this.jwtAccessTokenPublicKey = createPublicKey({
-            key: jwtAccessTokenPublicKeyBuffer,
-            format: 'der',
-            type: 'spki',
-        }).export({
-            type: 'spki',
-            format: 'pem',
-        }) as string;
         this.jwtAccessTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.accessToken.algorithm'
         )!;
 
-        const jwtRefreshTokenPrivateKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.refreshToken.privateKey')!,
-            'base64'
+        this.jwtRefreshTokenPrivateKey = this.parseRequiredBase64DerPrivateKey(
+            'auth.jwt.refreshToken.privateKey'
         );
-        this.jwtRefreshTokenPrivateKey = createPrivateKey({
-            key: jwtRefreshTokenPrivateKeyBuffer,
-            format: 'der',
-            type: 'pkcs8',
-        }).export({ type: 'pkcs8', format: 'pem' }) as string;
-        const jwtRefreshTokenPublicKeyBuffer = Buffer.from(
-            this.configService.get<string>('auth.jwt.refreshToken.publicKey')!,
-            'base64'
+        this.jwtRefreshTokenPublicKey = this.parseRequiredBase64DerPublicKey(
+            'auth.jwt.refreshToken.publicKey'
         );
-        this.jwtRefreshTokenPublicKey = createPublicKey({
-            key: jwtRefreshTokenPublicKeyBuffer,
-            format: 'der',
-            type: 'spki',
-        }).export({
-            type: 'spki',
-            format: 'pem',
-        }) as string;
         this.jwtRefreshTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.refreshToken.algorithm'
         )!;
@@ -189,6 +159,58 @@ export class AuthUtil {
             this.configService.get<string>('auth.google.clientId')!,
             this.configService.get<string>('auth.google.clientSecret')!
         );
+    }
+
+    private parseRequiredBase64DerPrivateKey(configKey: string): string {
+        const raw = this.configService.get<string>(configKey)?.trim();
+
+        if (!raw) {
+            throw new Error(
+                `Invalid JWT configuration: ${configKey} is missing.`
+            );
+        }
+
+        try {
+            return createPrivateKey({
+                key: Buffer.from(raw, 'base64'),
+                format: 'der',
+                type: 'pkcs8',
+            }).export({
+                type: 'pkcs8',
+                format: 'pem',
+            }) as string;
+        } catch (error) {
+            throw new Error(
+                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded PKCS#8 DER private key.`,
+                { cause: error }
+            );
+        }
+    }
+
+    private parseRequiredBase64DerPublicKey(configKey: string): string {
+        const raw = this.configService.get<string>(configKey)?.trim();
+
+        if (!raw) {
+            throw new Error(
+                `Invalid JWT configuration: ${configKey} is missing.`
+            );
+        }
+
+        try {
+            return createPublicKey({
+                key: Buffer.from(raw, 'base64'),
+                format: 'der',
+                type: 'spki',
+            }).export({
+                type: 'spki',
+                format: 'pem',
+            }) as string;
+        } catch (error) {
+            throw new Error(
+                `Invalid JWT configuration: ${configKey} must be a valid base64-encoded SPKI DER public key.`,
+                { cause: error }
+            );
+        }
     }
 
     /** Signs an access token with the access private key and configured algorithm. */
