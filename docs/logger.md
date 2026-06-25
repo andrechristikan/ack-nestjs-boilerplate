@@ -390,8 +390,8 @@ Routes excluded from auto-logging (defined in `logger.constant.ts`):
 
 ```typescript
 export const LoggerExcludedRoutes: string[] = [
-    '/api/hello',
-    '/api/hello/*',
+    '/api/public/hello',
+    '/api/public/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',
@@ -416,8 +416,8 @@ To exclude additional routes, modify the constant in `src/common/logger/constant
 
 ```typescript
 export const LoggerExcludedRoutes: string[] = [
-    '/api/hello',
-    '/api/hello/*',
+    '/api/public/hello',
+    '/api/public/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',
