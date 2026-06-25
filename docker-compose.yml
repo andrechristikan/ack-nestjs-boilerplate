@@ -11,8 +11,7 @@ services:
         volumes:
             - ./src:/app/src
             - ./prisma:/app/prisma
-        env_file:
-            - .env
+            - ./.env:/app/.env
         restart: on-failure
         networks:
             - app-network
