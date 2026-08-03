@@ -22,6 +22,7 @@ import {
 } from '@generated/prisma-client';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { Duration } from 'luxon';
+import ms from 'ms';
 import { Profanity } from '@2toad/profanity';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
@@ -58,12 +59,15 @@ export class UserUtil {
         private readonly fileService: FileService,
         private readonly responseUtil: ResponseUtil
     ) {
-        this.usernamePrefix =
-            this.configService.get<string>('user.usernamePrefix')!;
-        this.usernamePattern =
-            this.configService.get<RegExp>('user.usernamePattern')!;
-        this.uploadPhotoProfilePath =
-            this.configService.get<string>('user.uploadPhotoProfilePath')!;
+        this.usernamePrefix = this.configService.get<string>(
+            'user.usernamePrefix'
+        )!;
+        this.usernamePattern = this.configService.get<RegExp>(
+            'user.usernamePattern'
+        )!;
+        this.uploadPhotoProfilePath = this.configService.get<string>(
+            'user.uploadPhotoProfilePath'
+        )!;
 
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -73,15 +77,15 @@ export class UserUtil {
         this.forgotPasswordReferenceLength = this.configService.get<number>(
             'forgotPassword.reference.length'
         )!;
-        this.forgotExpiredInMinutes = this.configService.get<number>(
-            'forgotPassword.expiredInMinutes'
-        )!;
+        this.forgotExpiredInMinutes =
+            this.configService.get<number>('forgotPassword.expiredInMs')! /
+            ms('1m');
         this.forgotTokenLength = this.configService.get<number>(
             'forgotPassword.tokenLength'
         )!;
-        this.forgotResendInMinutes = this.configService.get<number>(
-            'forgotPassword.resendInMinutes'
-        )!;
+        this.forgotResendInMinutes =
+            this.configService.get<number>('forgotPassword.resendInMs')! /
+            ms('1m');
         this.forgotLinkBaseUrl = this.configService.get<string>(
             'forgotPassword.linkBaseUrl'
         )!;
@@ -95,15 +99,15 @@ export class UserUtil {
         this.verificationOtpLength = this.configService.get<number>(
             'verification.otpLength'
         )!;
-        this.verificationExpiredInMinutes = this.configService.get<number>(
-            'verification.expiredInMinutes'
-        )!;
+        this.verificationExpiredInMinutes =
+            this.configService.get<number>('verification.expiredInMs')! /
+            ms('1m');
         this.verificationTokenLength = this.configService.get<number>(
             'verification.tokenLength'
         )!;
-        this.verificationResendInMinutes = this.configService.get<number>(
-            'verification.resendInMinutes'
-        )!;
+        this.verificationResendInMinutes =
+            this.configService.get<number>('verification.resendInMs')! /
+            ms('1m');
         this.verificationLinkBaseUrl = this.configService.get<string>(
             'verification.linkBaseUrl'
         )!;

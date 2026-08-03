@@ -11,6 +11,8 @@ export class FeatureFlagUpdateMetadataRequestDto {
             betaUserAccess: false,
             maxRetries: 3,
             apiEndpoint: 'https://api.example.com',
+            allowedRegions: ['sg', 'id'],
+            rolloutWeights: [10, 20, 70],
         },
         required: false,
     })

@@ -38,6 +38,10 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [Feature Flag Configuration](#feature-flag-configuration)
 - [Response Configuration](#response-configuration)
 - [Firebase Configuration](#firebase-configuration)
+- [Queue Configuration](#queue-configuration)
+- [Health Configuration](#health-configuration)
+- [Notification Configuration](#notification-configuration)
+- [File Configuration](#file-configuration)
 
 ## Configuration Structure
 
@@ -152,7 +156,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm (ES256, ES512, etc.)
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInSeconds: number; // Token expiration in seconds
+    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
   };
   refreshToken: {
     jwksUri: string;              // JWKS URI for refresh token
@@ -160,7 +164,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInSeconds: number; // Token expiration in seconds
+    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
   };
   audience: string;               // JWT audience claim
   issuer: string;                 // JWT issuer claim
@@ -175,9 +179,9 @@ password: {
   attempt: boolean;               // Enable login attempt tracking
   maxAttempt: number;             // Maximum failed login attempts
   saltLength: number;             // Salt length for password hashing
-  expiredInSeconds: number;       // Password expiration time
-  expiredTemporaryInSeconds: number; // Temporary password expiration
-  periodInSeconds: number;        // Password renewal period
+  expiredInMs: number;            // Password expiration time (ms)
+  expiredTemporaryInMs: number;   // Temporary password expiration (ms)
+  periodInMs: number;             // Password renewal period (ms)
 }
 ```
 
@@ -188,17 +192,18 @@ twoFactor: {
   strategy: string;               // OTP strategy (default: 'totp')
   algorithm: string;              // Hash algorithm for OTP (default: 'sha1')
   digits: number;                 // Number of digits in OTP
-  periodInSeconds: number;        // Time period in seconds for OTP validity
+  periodInMs: number;             // OTP validity window (ms); otplib receives seconds
   window: number;                 // Allowed window for OTP validation
   secretLength: number;           // Length of OTP secret
   challengeTtlInMs: number;       // Challenge TTL in milliseconds
-  cachePrefixKey: string;         // Cache prefix for two-factor data
+  challengeKeyPattern: string;    // Cache key pattern for challenge ('TwoFactor:Challenge:{token}')
+  lockKeyPattern: string;         // Cache key pattern for lockout ('TwoFactor:Lock:{userId}')
   backupCodes: {
     count: number;                // Number of backup codes
     length: number;               // Length of each backup code
   };
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
-  lockAttemptDuration: number;    // Lock duration after max failed attempts (milliseconds)
+  lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
     key: string;                  // Encryption key for backup codes
   };
@@ -210,8 +215,8 @@ twoFactor: {
 apple: {
   header: string;                 // HTTP header for Apple auth
   prefix: string;                 // Token prefix for Apple auth
-  clientId?: string;              // Apple OAuth client ID
-  signInClientId?: string;        // Apple Sign In client ID
+  clientId: string | null;        // Apple OAuth client ID
+  signInClientId: string | null;  // Apple Sign In client ID
 }
 ```
 
@@ -220,8 +225,8 @@ apple: {
 google: {
   header: string;                 // HTTP header for Google auth
   prefix: string;                 // Token prefix for Google auth
-  clientId?: string;              // Google OAuth client ID
-  clientSecret?: string;          // Google OAuth client secret
+  clientId: string | null;        // Google OAuth client ID
+  clientSecret: string | null;    // Google OAuth client secret
 }
 ```
 
@@ -229,7 +234,7 @@ google: {
 ```typescript
 xApiKey: {
   header: string;                 // HTTP header for API key
-  cachePrefixKey: string;         // Cache prefix for API keys
+  keyPattern: string;             // Cache key pattern for API keys ('ApiKey:{key}')
 }
 ```
 
@@ -268,28 +273,30 @@ This configuration handles AWS service integration including S3 and SES services
 **`s3`** - S3 service configuration
 ```typescript
 s3: {
-  multipartExpiredInDay: number;  // Multipart upload expiration in days (default: 3)
-  presignExpiredInSeconds: number; // Presigned URL expiration time in seconds (default: 1800)
+  multipartExpiredInMs: number;   // Multipart upload expiration (ms('3d')); lifecycle rule receives days
+  presignExpiredInMs: number;     // Presigned URL expiration (ms('30m')); signer receives seconds
+  corsMaxAgeLongInMs: number;     // CORS preflight max-age, long (ms('1d')); S3 receives seconds
+  corsMaxAgeShortInMs: number;    // CORS preflight max-age, short (ms('1h')); S3 receives seconds
   maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
   timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
-  region?: string;                // AWS region for S3
+  region: string | null;          // AWS region for S3
   iam: {
-    key?: string;                 // AWS IAM access key ID
-    secret?: string;              // AWS IAM secret access key
-    arn?: string;                 // AWS IAM Role ARN for role-based access
+    key: string | null;           // AWS IAM access key ID
+    secret: string | null;        // AWS IAM secret access key
+    arn: string | null;           // AWS IAM Role ARN for role-based access
   };
   config: {
     public: {
-      bucket?: string;            // Public S3 bucket name
-      arn?: string;               // Public S3 bucket ARN
-      baseUrl?: string;           // S3 base URL (auto-generated)
-      cdnUrl?: string;            // CDN URL if available
+      bucket: string | null;      // Public S3 bucket name
+      arn: string | null;         // Public S3 bucket ARN
+      baseUrl: string | null;     // S3 base URL (auto-generated)
+      cdnUrl: string | null;      // CDN URL if available
     };
     private: {
-      bucket?: string;            // Private S3 bucket name
-      arn?: string;               // Private S3 bucket ARN
-      baseUrl?: string;           // S3 base URL (auto-generated)
-      cdnUrl?: string;            // CDN URL if available
+      bucket: string | null;      // Private S3 bucket name
+      arn: string | null;         // Private S3 bucket ARN
+      baseUrl: string | null;     // S3 base URL (auto-generated)
+      cdnUrl: string | null;      // CDN URL if available
     };
   };
 }
@@ -307,11 +314,11 @@ s3: {
 ```typescript
 ses: {
   iam: {
-    key?: string;                 // AWS IAM access key ID for SES
-    secret?: string;              // AWS IAM secret access key for SES
-    arn?: string;                 // AWS IAM Role ARN for SES operations
+    key: string | null;           // AWS IAM access key ID for SES
+    secret: string | null;        // AWS IAM secret access key for SES
+    arn: string | null;           // AWS IAM Role ARN for SES operations
   };
-  region?: string;                // AWS region for SES
+  region: string | null;          // AWS region for SES
 }
 ```
 
@@ -366,7 +373,7 @@ prettier: boolean               // Format logs for better readability
 ```typescript
 sentry: {
   dsn?: string;                 // Sentry DSN for error tracking
-  timeout: number;              // Sentry timeout in milliseconds
+  timeoutInMs: number;          // Sentry timeout in milliseconds
 }
 ```
 
@@ -423,13 +430,17 @@ cors: {
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
 > - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, `x-request-id`, etc.
 
-**`throttle`** - Rate limiting configuration
+**`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
 throttle: {
   ttlInMs: number;                // Time window in milliseconds (default: 60000ms / 60s)
   limit: number;                  // Maximum requests per time window (default: 100)
+  keyPattern: string;             // Counter key (default: 'Request:Throttler:{name}:{tracker}')
+  blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
 }
 ```
+
+> `{name}` is the throttler name (default `default`); `{tracker}` is the client IP, or the authenticated user id when `@RequestThrottleByUser()` is applied. See [Security and Middleware](security-and-middleware.md).
 
 ### Redis Configuration
 
@@ -552,17 +563,17 @@ This configuration manages default email addresses for system communications. Em
 
 **`noreply`** - No-reply email address
 ```typescript
-noreply: string                 // No-reply email address for system emails
+noreply: string | null          // No-reply email address for system emails
 ```
 
 **`support`** - Support email address
 ```typescript
-support: string                 // Support/contact email address
+support: string | null          // Support/contact email address
 ```
 
 **`admin`** - Admin email address
 ```typescript
-admin: string                   // Administrator email address
+admin: string | null            // Administrator email address
 ```
 
 **`batchSize`** - Email batch size
@@ -579,9 +590,9 @@ This configuration handles user verification processes including email verificat
 
 #### Configuration Keys:
 
-**`expiredInMinutes`** - Verification expiration time
+**`expiredInMs`** - Verification expiration time
 ```typescript
-expiredInMinutes: number        // Verification expiration time in minutes
+expiredInMs: number             // Verification expiration (ms('5m')); consumer converts to minutes
 ```
 
 **`otpLength`** - OTP code length
@@ -599,9 +610,9 @@ tokenLength: number             // Length of verification token
 linkBaseUrl: string             // Base URL for verification links
 ```
 
-**`resendInMinutes`** - Resend cooldown period
+**`resendInMs`** - Resend cooldown period
 ```typescript
-resendInMinutes: number         // Minimum time between resend attempts
+resendInMs: number              // Minimum time between resend attempts (ms('2m')); consumer converts to minutes
 ```
 
 **`reference`** - Verification reference configuration
@@ -621,9 +632,9 @@ This configuration manages password reset functionality and security policies.
 
 #### Configuration Keys:
 
-**`expiredInMinutes`** - Reset link expiration
+**`expiredInMs`** - Reset link expiration
 ```typescript
-expiredInMinutes: number        // Password reset expiration in minutes
+expiredInMs: number             // Password reset expiration (ms('5m')); consumer converts to minutes
 ```
 
 **`tokenLength`** - Reset token length
@@ -636,9 +647,9 @@ tokenLength: number             // Length of password reset token
 linkBaseUrl: string             // Base URL for password reset links
 ```
 
-**`resendInMinutes`** - Resend cooldown period
+**`resendInMs`** - Resend cooldown period
 ```typescript
-resendInMinutes: number         // Minimum time between resend attempts
+resendInMs: number              // Minimum time between resend attempts (ms('2m')); consumer converts to minutes
 ```
 
 **`reference`** - Reset reference configuration
@@ -712,14 +723,14 @@ This configuration manages feature flag caching settings.
 
 #### Configuration Keys:
 
-**`cachePrefixKey`** - Cache prefix for feature flags
+**`keyPattern`** - Cache key pattern for feature flags
 ```typescript
-cachePrefixKey: string          // Redis cache prefix for feature flag data
+keyPattern: string              // Redis cache key pattern for feature flag data ('FeatureFlag:{key}')
 ```
 
-**`cacheTtlMs`** - Cache TTL for feature flags
+**`cacheTtlInMs`** - Cache TTL for feature flags
 ```typescript
-cacheTtlMs: number              // Cache TTL in milliseconds for feature flag data
+cacheTtlInMs: number            // Cache TTL in milliseconds for feature flag data
 ```
 
 ### Response Configuration
@@ -731,9 +742,9 @@ This configuration handles API response caching and file-export settings.
 
 #### Configuration Keys:
 
-**`cachePrefix`** - Cache prefix for API responses
+**`keyPattern`** - Cache key pattern for API responses
 ```typescript
-cachePrefix: string             // Cache prefix for API response data
+keyPattern: string              // Cache key pattern for API response data ('Apis:{key}')
 ```
 
 **`filenameExportPattern`** - Default filename pattern for file exports (`ResponseFileInterceptor`); `{timestamp}` / `{extension}` placeholders are replaced at runtime
@@ -754,21 +765,102 @@ This configuration manages Firebase integration settings for push notification d
 
 **`projectId`** - Firebase project ID
 ```typescript
-projectId?: string              // Firebase project ID from Firebase console
+projectId: string | null        // Firebase project ID from Firebase console
 ```
 
 **`clientEmail`** - Firebase service account email
 ```typescript
-clientEmail?: string            // Firebase service account client email
+clientEmail: string | null      // Firebase service account client email
 ```
 
 **`privateKey`** - Firebase service account private key
 ```typescript
-privateKey?: string             // Service account private key (PEM); escaped `\n` sequences are converted to real newlines at load
+privateKey: string | null       // Service account private key (PEM); escaped `\n` sequences are converted to real newlines at load
 ```
 
 > [!NOTE]
 > All Firebase config fields are optional. They are required only when push notification features are enabled. The `FirebaseConfig` is registered in `src/configs/index.ts` alongside other config modules.
+
+### Queue Configuration
+
+**File**: `src/configs/queue.config.ts`
+**Interface**: `IConfigQueue`
+
+This configuration holds the BullMQ default job options applied by `queue.register.module.ts` to every registered queue.
+
+#### Configuration Keys:
+
+**`job`** - Default job options
+```typescript
+job: {
+  attempts: number;                    // Retry attempts per job (default: 3)
+  removeOnComplete: number;            // Completed jobs retained (default: 50)
+  removeOnFail: number;                // Failed jobs retained (default: 100)
+  emailBackoffDelayInMs: number;       // Email queue exponential backoff delay (ms('10s'))
+  pushBackoffDelayInMs: number;        // Push queue exponential backoff delay (ms('5s'))
+  notificationBackoffDelayInMs: number; // Notification queue exponential backoff delay (ms('3s'))
+}
+```
+
+### Health Configuration
+
+**File**: `src/configs/health.config.ts`
+**Interface**: `IConfigHealth`
+
+This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check.
+
+#### Configuration Keys:
+
+**`memoryRssThresholdInBytes`** - RSS memory threshold
+```typescript
+memoryRssThresholdInBytes: number    // RSS memory alert threshold in bytes (bytes('300mb'))
+```
+
+**`memoryHeapThresholdInBytes`** - Heap memory threshold
+```typescript
+memoryHeapThresholdInBytes: number   // Heap memory alert threshold in bytes (bytes('300mb'))
+```
+
+**`diskThresholdPercent`** - Disk usage threshold
+```typescript
+diskThresholdPercent: number         // Disk usage alert threshold as a fraction (default: 0.75)
+```
+
+**`diskPath`** - Disk path checked
+```typescript
+diskPath: string                     // Filesystem path checked for storage (default: '/')
+```
+
+### Notification Configuration
+
+**File**: `src/configs/notification.config.ts`
+**Interface**: `IConfigNotification`
+
+This configuration holds push-notification cleanup settings consumed by `NotificationPushUtil`.
+
+#### Configuration Keys:
+
+**`push`** - Push cleanup settings
+```typescript
+push: {
+  cleanupDedupTtlInMs: number;   // Deduplication TTL for the cleanup job (ms('1h'))
+  cleanupStaleTokensCron: string; // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
+}
+```
+
+### File Configuration
+
+**File**: `src/configs/file.config.ts`
+**Interface**: `IConfigFile`
+
+This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
+
+#### Configuration Keys:
+
+**`maxDataImport`** - CSV import row cap
+```typescript
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 1000)
+```
 
 
 <!-- REFERENCES -->

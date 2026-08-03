@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import {
     AbortMultipartUploadCommand,
     AbortMultipartUploadCommandInput,
@@ -107,8 +108,10 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
 
-    private readonly presignExpiredInSeconds: number;
-    private readonly multipartExpiredInDay: number;
+    private readonly presignExpiredInMs: number;
+    private readonly multipartExpiredInMs: number;
+    private readonly corsMaxAgeLongInMs: number;
+    private readonly corsMaxAgeShortInMs: number;
 
     private readonly iamArn: string | null;
     private readonly corsAllowedOrigin: string[];
@@ -148,11 +151,17 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             access: EnumAwsS3Accessibility.private,
         } as IAwsS3ConfigBucket);
 
-        this.presignExpiredInSeconds = this.configService.get<number>(
-            'aws.s3.presignExpiredInSeconds'
+        this.presignExpiredInMs = this.configService.get<number>(
+            'aws.s3.presignExpiredInMs'
         )!;
-        this.multipartExpiredInDay = this.configService.get<number>(
-            'aws.s3.multipartExpiredInDay'
+        this.multipartExpiredInMs = this.configService.get<number>(
+            'aws.s3.multipartExpiredInMs'
+        )!;
+        this.corsMaxAgeLongInMs = this.configService.get<number>(
+            'aws.s3.corsMaxAgeLongInMs'
+        )!;
+        this.corsMaxAgeShortInMs = this.configService.get<number>(
+            'aws.s3.corsMaxAgeShortInMs'
         )!;
 
         this.iamArn = this.configService.get<string | null>('aws.s3.iam.arn')!;
@@ -840,7 +849,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             Key: key,
         });
         const expiresIn =
-            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ??
+            Math.floor(this.presignExpiredInMs / 1000);
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -904,7 +914,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             ContentDisposition: 'inline',
         });
         const expiresIn =
-            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ??
+            Math.floor(this.presignExpiredInMs / 1000);
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -946,7 +957,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn =
-            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ??
+            Math.floor(this.presignExpiredInMs / 1000);
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -1114,7 +1126,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 Prefix: '',
                             },
                             AbortIncompleteMultipartUpload: {
-                                DaysAfterInitiation: this.multipartExpiredInDay,
+                                DaysAfterInitiation:
+                                    this.multipartExpiredInMs / ms('1d'),
                             },
                             Expiration: {
                                 ExpiredObjectDeleteMarker: true,
@@ -1218,7 +1231,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'Content-Length',
                                 'Content-Type',
                             ],
-                            MaxAgeSeconds: 86400,
+                            MaxAgeSeconds: Math.floor(
+                                this.corsMaxAgeLongInMs / 1000
+                            ),
                         },
                         {
                             AllowedOrigins: this.corsAllowedOrigin,
@@ -1229,7 +1244,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'Content-Length',
                                 'x-amz-version-id',
                             ],
-                            MaxAgeSeconds: 3600,
+                            MaxAgeSeconds: Math.floor(
+                                this.corsMaxAgeShortInMs / 1000
+                            ),
                         },
                     ],
                 },
@@ -1262,7 +1279,9 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'x-amz-version-id',
                                 'x-amz-delete-marker',
                             ],
-                            MaxAgeSeconds: 3600,
+                            MaxAgeSeconds: Math.floor(
+                                this.corsMaxAgeShortInMs / 1000
+                            ),
                         },
                     ],
                 },

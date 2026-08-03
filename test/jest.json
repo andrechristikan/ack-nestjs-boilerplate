@@ -4,7 +4,7 @@
     "modulePaths": ["."],
     "testEnvironment": "node",
     "testMatch": ["<rootDir>/test/**/*.spec.ts"],
-    "collectCoverage": true,
+    "collectCoverage": false,
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
         "<rootDir>/src/{modules,common}/**/services/**/*.service.ts",

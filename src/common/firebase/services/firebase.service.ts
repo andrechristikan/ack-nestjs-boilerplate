@@ -13,7 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
-import { Messaging } from 'firebase-admin/messaging';
+import { Messaging, getMessaging } from 'firebase-admin/messaging';
 
 @Injectable()
 export class FirebaseService implements IFirebaseService, OnModuleInit {
@@ -63,14 +63,14 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
 
         try {
             this.app = firebaseAdmin.initializeApp({
-                credential: firebaseAdmin.credential.cert({
+                credential: firebaseAdmin.cert({
                     projectId: this.projectId,
                     clientEmail: this.clientEmail,
                     privateKey: this.privateKey,
                 }),
             });
 
-            this.messaging = firebaseAdmin.messaging(this.app);
+            this.messaging = getMessaging(this.app);
 
             this.logger.log('Firebase Admin SDK initialized successfully');
         } catch (error: unknown) {

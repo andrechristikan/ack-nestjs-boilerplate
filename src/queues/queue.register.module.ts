@@ -2,6 +2,7 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import queueConfig from '@configs/queue.config';
 import {
     QueueConfigKey,
     QueueProcessorConfigKey,
@@ -15,44 +16,46 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 @Module({})
 export class QueueRegisterModule {
     static forRoot(): DynamicModule {
+        const { job } = queueConfig();
+
         const queues = [
             BullModule.registerQueue({
                 name: EnumQueue.notificationEmail,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
-                    attempts: 3,
+                    attempts: job.attempts,
                     backoff: {
                         type: 'exponential',
-                        delay: 10000,
+                        delay: job.emailBackoffDelayInMs,
                     },
-                    removeOnComplete: 50,
-                    removeOnFail: 100,
+                    removeOnComplete: job.removeOnComplete,
+                    removeOnFail: job.removeOnFail,
                 },
             }),
             BullModule.registerQueue({
                 name: EnumQueue.notificationPush,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
-                    attempts: 3,
+                    attempts: job.attempts,
                     backoff: {
                         type: 'exponential',
-                        delay: 5000,
+                        delay: job.pushBackoffDelayInMs,
                     },
-                    removeOnComplete: 50,
-                    removeOnFail: 100,
+                    removeOnComplete: job.removeOnComplete,
+                    removeOnFail: job.removeOnFail,
                 },
             }),
             BullModule.registerQueue({
                 name: EnumQueue.notification,
                 configKey: QueueConfigKey,
                 defaultJobOptions: {
-                    attempts: 3,
+                    attempts: job.attempts,
                     backoff: {
                         type: 'exponential',
-                        delay: 3000,
+                        delay: job.notificationBackoffDelayInMs,
                     },
-                    removeOnComplete: 50,
-                    removeOnFail: 100,
+                    removeOnComplete: job.removeOnComplete,
+                    removeOnFail: job.removeOnFail,
                 },
             }),
         ];
@@ -78,11 +81,19 @@ export class QueueRegisterModule {
                         defaultJobOptions: {
                             backoff: {
                                 type: 'exponential',
-                                delay: 3000,
+                                delay: configService.get<number>(
+                                    'queue.job.notificationBackoffDelayInMs'
+                                ),
                             },
-                            attempts: 3,
-                            removeOnComplete: 50,
-                            removeOnFail: 100,
+                            attempts: configService.get<number>(
+                                'queue.job.attempts'
+                            ),
+                            removeOnComplete: configService.get<number>(
+                                'queue.job.removeOnComplete'
+                            ),
+                            removeOnFail: configService.get<number>(
+                                'queue.job.removeOnFail'
+                            ),
                         },
                     }),
                 }),
@@ -102,11 +113,19 @@ export class QueueRegisterModule {
                         defaultJobOptions: {
                             backoff: {
                                 type: 'exponential',
-                                delay: 3000,
+                                delay: configService.get<number>(
+                                    'queue.job.notificationBackoffDelayInMs'
+                                ),
                             },
-                            attempts: 3,
-                            removeOnComplete: 50,
-                            removeOnFail: 100,
+                            attempts: configService.get<number>(
+                                'queue.job.attempts'
+                            ),
+                            removeOnComplete: configService.get<number>(
+                                'queue.job.removeOnComplete'
+                            ),
+                            removeOnFail: configService.get<number>(
+                                'queue.job.removeOnFail'
+                            ),
                         },
                     }),
                 }),

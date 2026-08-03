@@ -1,4 +1,7 @@
-import { UserGuardIsVerifiedMetaKey, UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    UserGuardIsVerifiedMetaKey,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import {
@@ -21,6 +24,9 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
 /** Extracts the current user that `UserGuard` stored in the request context. */
 export const UserCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): IUser | undefined => {
-        return ClsServiceManager.getClsService().get<IUser>(UserStoreKey) ?? undefined;
+        return (
+            ClsServiceManager.getClsService().get<IUser>(UserStoreKey) ??
+            undefined
+        );
     }
 );

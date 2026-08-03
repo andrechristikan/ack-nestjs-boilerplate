@@ -4,7 +4,8 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 
 export class PaginationInvalidOffsetPaginationParamsException extends AppBaseException {
     readonly module = 'pagination';
-    readonly statusCode = EnumPaginationStatusCodeError.invalidOffsetPaginationParams;
+    readonly statusCode =
+        EnumPaginationStatusCodeError.invalidOffsetPaginationParams;
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 

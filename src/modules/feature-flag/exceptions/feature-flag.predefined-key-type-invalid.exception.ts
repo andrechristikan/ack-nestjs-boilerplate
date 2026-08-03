@@ -4,7 +4,8 @@ import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feat
 
 export class FeatureFlagPredefinedKeyTypeInvalidException extends AppBaseException {
     readonly module = 'featureFlag';
-    readonly statusCode = EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid;
+    readonly statusCode =
+        EnumFeatureFlagStatusCodeError.predefinedKeyTypeInvalid;
     readonly statusCodeKey = EnumFeatureFlagStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 

@@ -49,7 +49,7 @@ export class NotificationRepository {
             Notification,
             Prisma.NotificationSelect,
             Prisma.NotificationWhereInput
-        >(this.databaseService.notification, {
+        >(this.databaseService.client.notification, {
             ...params,
             where: {
                 ...where,
@@ -62,7 +62,7 @@ export class NotificationRepository {
         userId: string,
         notificationId: string
     ): Promise<{ id: string; isRead: boolean } | null> {
-        return this.databaseService.notification.findFirst({
+        return this.databaseService.client.notification.findFirst({
             where: {
                 id: notificationId,
                 userId,
@@ -78,7 +78,7 @@ export class NotificationRepository {
         createdBy: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.userActivity,
@@ -120,8 +120,8 @@ export class NotificationRepository {
     ): Promise<Notification[]> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.$transaction([
-            this.databaseService.notification.create({
+        return this.databaseService.client.$transaction([
+            this.databaseService.client.notification.create({
                 data: {
                     id: welcomeNotificationId,
                     type: EnumNotificationType.userActivity,
@@ -153,7 +153,7 @@ export class NotificationRepository {
                     },
                 },
             }),
-            this.databaseService.notification.create({
+            this.databaseService.client.notification.create({
                 data: {
                     id: verificationEmailNotificationId,
                     type: EnumNotificationType.userActivity,
@@ -189,7 +189,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.userActivity,
@@ -231,7 +231,7 @@ export class NotificationRepository {
         createdBy: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -265,7 +265,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -298,7 +298,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.userActivity,
@@ -333,7 +333,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.userActivity,
@@ -369,7 +369,7 @@ export class NotificationRepository {
         mobileNumber: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.userActivity,
@@ -407,7 +407,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -441,7 +441,7 @@ export class NotificationRepository {
         username: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -476,7 +476,7 @@ export class NotificationRepository {
         updatedBy: string
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -515,7 +515,7 @@ export class NotificationRepository {
         loginAt: Date
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.securityAlert,
@@ -558,7 +558,7 @@ export class NotificationRepository {
         const today = this.helperService.dateCreate();
         await Promise.all(
             payloads.map(payload =>
-                this.databaseService.notification.create({
+                this.databaseService.client.notification.create({
                     data: {
                         id: payload.notificationId,
                         userId: payload.userId,
@@ -591,7 +591,7 @@ export class NotificationRepository {
         userId: string,
         notificationId: string
     ): Promise<Notification> {
-        return this.databaseService.notification.update({
+        return this.databaseService.client.notification.update({
             where: {
                 id: notificationId,
                 userId,
@@ -612,7 +612,7 @@ export class NotificationRepository {
         version: number
     ): Promise<Notification> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.create({
+        return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
                 type: EnumNotificationType.transactional,
@@ -640,7 +640,7 @@ export class NotificationRepository {
     }
 
     async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
-        return this.databaseService.notification.updateMany({
+        return this.databaseService.client.notification.updateMany({
             where: {
                 userId,
                 isRead: false,
@@ -653,7 +653,7 @@ export class NotificationRepository {
     }
 
     async findUserSetting(userId: string): Promise<NotificationUserSetting[]> {
-        return this.databaseService.notificationUserSetting.findMany({
+        return this.databaseService.client.notificationUserSetting.findMany({
             where: { userId },
         });
     }
@@ -663,7 +663,7 @@ export class NotificationRepository {
         type: EnumNotificationType,
         channels: EnumNotificationChannel[]
     ): Promise<NotificationUserSetting[]> {
-        return this.databaseService.notificationUserSetting.findMany({
+        return this.databaseService.client.notificationUserSetting.findMany({
             where: {
                 userId: {
                     in: userIds,
@@ -683,7 +683,7 @@ export class NotificationRepository {
         channel: EnumNotificationChannel
     ): Promise<{ title: string; body: string } | null> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.notification.update({
+        return this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
             data: {
                 deliveries: {
@@ -711,7 +711,7 @@ export class NotificationRepository {
         failureTokens: string[]
     ): Promise<void> {
         const today = this.helperService.dateCreate();
-        await this.databaseService.notification.update({
+        await this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
             data: {
                 deliveries: {
@@ -737,8 +737,8 @@ export class NotificationRepository {
         { channel, type, isActive }: NotificationUserSettingRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
-        await this.databaseService.$transaction([
-            this.databaseService.user.update({
+        await this.databaseService.client.$transaction([
+            this.databaseService.client.user.update({
                 where: { id: userId, deletedAt: null },
                 data: {
                     updatedBy: userId,
@@ -759,7 +759,7 @@ export class NotificationRepository {
                     },
                 },
             }),
-            this.databaseService.notificationUserSetting.update({
+            this.databaseService.client.notificationUserSetting.update({
                 where: {
                     userId_channel_type: { userId, channel, type },
                 },

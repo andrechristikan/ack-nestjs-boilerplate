@@ -4,7 +4,10 @@ import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtRefreshGuardKey, AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
+import {
+    AuthJwtRefreshGuardKey,
+    AuthPayloadStoreKey,
+} from '@modules/auth/constants/auth.constant';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 

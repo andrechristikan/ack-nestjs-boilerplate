@@ -11,7 +11,7 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInSeconds: number;
+            expirationTimeInMs: number;
         };
         refreshToken: {
             jwksUri: string;
@@ -19,7 +19,7 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInSeconds: number;
+            expirationTimeInMs: number;
         };
         audience: string;
         issuer: string;
@@ -30,9 +30,9 @@ export interface IConfigAuth {
         attempt: boolean;
         maxAttempt: number;
         saltLength: number;
-        expiredInSeconds: number;
-        expiredTemporaryInSeconds: number;
-        periodInSeconds: number;
+        expiredInMs: number;
+        expiredTemporaryInMs: number;
+        periodInMs: number;
     };
     apple: {
         header: string;
@@ -48,20 +48,21 @@ export interface IConfigAuth {
     };
     xApiKey: {
         header: string;
-        cachePrefixKey: string;
+        keyPattern: string;
     };
     twoFactor: {
         strategy: OTPStrategy;
         algorithm: HashAlgorithm;
         issuer: string;
         digits: number;
-        periodInSeconds: number;
+        periodInMs: number;
         window: number;
         secretLength: number;
         challengeTtlInMs: number;
-        cachePrefixKey: string;
+        challengeKeyPattern: string;
+        lockKeyPattern: string;
         maxAttempt: number;
-        lockAttemptDuration: number;
+        lockAttemptDurationInMs: number;
         backupCodes: {
             count: number;
             length: number;
@@ -82,11 +83,9 @@ export default registerAs(
                 algorithm: 'ES256',
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
-                expirationTimeInSeconds:
-                    ms(
-                        process.env
-                            .AUTH_JWT_ACCESS_TOKEN_EXPIRED! as ms.StringValue
-                    ) / 1000,
+                expirationTimeInMs: ms(
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED! as ms.StringValue
+                ),
             },
 
             refreshToken: {
@@ -95,11 +94,10 @@ export default registerAs(
                 algorithm: 'ES512',
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
-                expirationTimeInSeconds:
-                    ms(
-                        process.env
-                            .AUTH_JWT_REFRESH_TOKEN_EXPIRED! as ms.StringValue
-                    ) / 1000,
+                expirationTimeInMs: ms(
+                    process.env
+                        .AUTH_JWT_REFRESH_TOKEN_EXPIRED! as ms.StringValue
+                ),
             },
 
             audience: process.env.AUTH_JWT_AUDIENCE!,
@@ -112,9 +110,9 @@ export default registerAs(
             attempt: true,
             maxAttempt: 5,
             saltLength: 12,
-            expiredInSeconds: ms('182d') / 1000,
-            expiredTemporaryInSeconds: ms('3d') / 1000,
-            periodInSeconds: ms('90d') / 1000,
+            expiredInMs: ms('182d'),
+            expiredTemporaryInMs: ms('3d'),
+            periodInMs: ms('90d'),
         },
 
         apple: {
@@ -132,24 +130,25 @@ export default registerAs(
         },
         xApiKey: {
             header: 'x-api-key',
-            cachePrefixKey: 'ApiKey',
+            keyPattern: 'ApiKey:{key}',
         },
         twoFactor: {
             strategy: 'totp',
             algorithm: 'sha1',
             issuer: process.env.AUTH_TWO_FACTOR_ISSUER!,
             digits: 6,
-            periodInSeconds: 30,
+            periodInMs: ms('30s'),
             window: 1,
             secretLength: 32,
             challengeTtlInMs: ms('5m'),
-            cachePrefixKey: 'TwoFactor',
+            challengeKeyPattern: 'TwoFactor:Challenge:{token}',
+            lockKeyPattern: 'TwoFactor:Lock:{userId}',
             backupCodes: {
                 count: 8,
                 length: 10,
             },
             maxAttempt: 5,
-            lockAttemptDuration: ms('2m'),
+            lockAttemptDurationInMs: ms('2m'),
             encryption: {
                 key: process.env.AUTH_TWO_FACTOR_ENCRYPTION_KEY!,
             },

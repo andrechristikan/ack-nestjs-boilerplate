@@ -419,7 +419,7 @@ Once your application is successfully running, you can access various endpoints 
 
 To verify everything is working correctly:
 
-1. **Test API**: Visit `http://localhost:3000/api/hello` for a simple API test
+1. **Test API**: Visit `http://localhost:3000/api/public/hello` for a simple API test
 2. **API Docs**: Ensure `http://localhost:3000/docs` loads the Swagger interface
 3. **Database Connection**: Check application logs for successful database connection
 4. **Redis Connection**: Verify Redis connection in the application logs

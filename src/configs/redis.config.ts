@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IConfigRedis {
     cache: {
@@ -18,7 +19,7 @@ export default registerAs(
         cache: {
             url: process.env.CACHE_REDIS_URL!,
             namespace: 'Cache',
-            ttlInMs: 5 * 60 * 1000,
+            ttlInMs: ms('5m'),
         },
         queue: {
             url: process.env.QUEUE_REDIS_URL!,

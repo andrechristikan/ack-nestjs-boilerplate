@@ -4,11 +4,14 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 
 export class PaginationPerPageCannotBeLessThanOneException extends AppBaseException {
     readonly module = 'pagination';
-    readonly statusCode = EnumPaginationStatusCodeError.perPageCannotBeLessThanOne;
+    readonly statusCode =
+        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne;
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(receivedPerPage: number) {
-        super('pagination.error.perPageCannotBeLessThanOne', { messageProperties: { minPerPage: 1, receivedPerPage } });
+        super('pagination.error.perPageCannotBeLessThanOne', {
+            messageProperties: { minPerPage: 1, receivedPerPage },
+        });
     }
 }

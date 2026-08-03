@@ -26,10 +26,7 @@ export interface ISessionService {
             Prisma.SessionWhereInput
         >
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
-    revoke(
-        userId: string,
-        sessionId: string
-    ): Promise<void>;
+    revoke(userId: string, sessionId: string): Promise<void>;
     revokeByAdmin(
         userId: string,
         sessionId: string,

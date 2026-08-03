@@ -50,7 +50,11 @@ export class FileService implements IFileService {
     }
 
     extractMimeFromFilename(filename: string): string | null {
-        return Mime.getType(filename.slice(filename.lastIndexOf('.')))?.toLowerCase() ?? null;
+        return (
+            Mime.getType(
+                filename.slice(filename.lastIndexOf('.'))
+            )?.toLowerCase() ?? null
+        );
     }
 
     extractFilenameFromPath(filePath: string): string {

@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-The documentation in this directory was written with the assistance of **GitHub Copilot** (powered by **Claude Sonnet 4.6**).
+The documentation in this directory was written with the assistance of **GitHub Copilot**.
 
 Every document has been **manually reviewed and verified** against the actual implementation to ensure accuracy and correctness.
 If you find any discrepancies, please open an issue or submit a pull request.
@@ -24,7 +24,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | Backing Services | MongoDB, Redis, AWS S3/SES, Firebase — treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
 | Processes | Stateless app processes — session and cache state stored in Redis, not in-memory |
-| Port Binding | App self-contained via NestJS HTTP server, port exposed via `APP_PORT` env |
+| Port Binding | App self-contained via NestJS HTTP server, port exposed via `HTTP_PORT` env |
 | Concurrency | Horizontal scaling supported — stateless processes, shared Redis for sessions |
 | Disposability | Fast startup, graceful shutdown — no sticky sessions or local state |
 | Dev/Prod Parity | Same stack (Docker Compose) for local dev and production |
@@ -38,7 +38,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | JWT Access Token | ES256 — ECDSA + SHA-256 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | JWT Refresh Token | ES512 — ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | Two-Factor Auth | TOTP — SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
-| Password Hashing | bcrypt — 8 salt rounds |
+| Password Hashing | bcrypt — 12 salt rounds |
 | Encryption at Rest | AES-256-CBC (2FA secrets), AES-CBC + PKCS7 (general data) |
 | HTTP Security Headers | [Helmet][ref-helmet] v8 — CSP, Strict-Transport-Security, X-Frame-Options, etc. |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
@@ -69,27 +69,28 @@ Essential systems that power every feature in the project.
 9. [Response][ref-doc-response] — Standardized response decorators, pagination response, file download
 10. [Request Validation][ref-doc-request-validation] — `ValidationPipe`, `class-validator`, body/query/path validation
 11. [Handling Error][ref-doc-handling-error] — Exception filters, standardized HTTP error responses, i18n errors
-12. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
-13. [Cache][ref-doc-cache] — Redis caching with shared `RedisCacheModule`, TTL strategy
-14. [Queue][ref-doc-queue] — BullMQ background jobs, `QueueProcessorBase`, retry/backoff
-15. [Logger][ref-doc-logger] — Pino logging, file rotation, sensitive data redaction, Sentry integration
-16. [Security and Middleware][ref-doc-security-and-middleware] — HTTP middleware layer, headers, rate limiting
+12. [Status Codes][ref-doc-status-codes] — Full catalog of application statusCode values by module
+13. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
+14. [Cache][ref-doc-cache] — Redis caching with shared `RedisCacheModule`, TTL strategy
+15. [Queue][ref-doc-queue] — BullMQ background jobs, `QueueProcessorBase`, retry/backoff
+16. [Logger][ref-doc-logger] — Pino logging, file rotation, sensitive data redaction, Sentry integration
+17. [Security and Middleware][ref-doc-security-and-middleware] — HTTP middleware layer, headers, rate limiting
 
 ### Advanced
 Additional features and integrations for production-grade deployments.
 
-17. [Pagination][ref-doc-pagination] — Offset-based, cursor-based pagination, advanced filtering
-18. [Notification][ref-doc-notification] — Multi-channel notifications (email, push, inApp, silent) via BullMQ
-19. [Two Factor][ref-doc-two-factor] — TOTP 2FA with authenticator apps and backup codes
-20. [Feature Flag][ref-doc-feature-flag] — Dynamic feature management, gradual rollouts, A/B testing
-21. [Activity Log][ref-doc-activity-log] — Recording successful user activities with `@ActivityLog`
-22. [Term Policy][ref-doc-term-policy] — Legal agreements, versioning, and user consent enforcement
-23. [File Upload][ref-doc-file-upload] — Single/multiple file uploads, CSV processing, upload decorators
-24. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
-25. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
-26. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
-27. [Analytics][ref-doc-analytics] — Planned analytics design using MongoDB aggregation pipelines
-28. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
+18. [Pagination][ref-doc-pagination] — Offset-based, cursor-based pagination, advanced filtering
+19. [Notification][ref-doc-notification] — Multi-channel notifications (email, push, inApp, silent) via BullMQ
+20. [Two Factor][ref-doc-two-factor] — TOTP 2FA with authenticator apps and backup codes
+21. [Feature Flag][ref-doc-feature-flag] — Dynamic feature management, gradual rollouts, A/B testing
+22. [Activity Log][ref-doc-activity-log] — Recording successful user activities with `@ActivityLog`
+23. [Term Policy][ref-doc-term-policy] — Legal agreements, versioning, and user consent enforcement
+24. [File Upload][ref-doc-file-upload] — Single/multiple file uploads, CSV processing, upload decorators
+25. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
+26. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
+27. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
+28. [Analytics][ref-doc-analytics] — Planned analytics design using MongoDB aggregation pipelines
+29. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
 
 
 
@@ -104,6 +105,7 @@ Additional features and integrations for production-grade deployments.
 [ref-doc-response]: response.md
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-handling-error]: handling-error.md
+[ref-doc-status-codes]: status-codes.md
 [ref-doc-message]: message.md
 [ref-doc-cache]: cache.md
 [ref-doc-queue]: queue.md

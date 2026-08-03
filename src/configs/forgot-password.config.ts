@@ -1,10 +1,11 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IConfigForgotPassword {
-    expiredInMinutes: number;
+    expiredInMs: number;
     tokenLength: number;
     linkBaseUrl: string;
-    resendInMinutes: number;
+    resendInMs: number;
     reference: {
         prefix: string;
         length: number;
@@ -14,10 +15,10 @@ export interface IConfigForgotPassword {
 export default registerAs(
     'forgotPassword',
     (): IConfigForgotPassword => ({
-        expiredInMinutes: 5,
+        expiredInMs: ms('5m'),
         tokenLength: 100,
         linkBaseUrl: 'forgot-password',
-        resendInMinutes: 2,
+        resendInMs: ms('2m'),
         reference: {
             prefix: 'FG',
             length: 25,

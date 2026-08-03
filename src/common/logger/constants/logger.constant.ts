@@ -7,8 +7,8 @@ export const LoggerAutoContext = 'LoggerAutoContext';
  * Routes excluded from auto-logging (health, docs, metrics). Supports wildcards.
  */
 export const LoggerExcludedRoutes: string[] = [
-    '/api/hello',
-    '/api/hello/*',
+    '/api/public/hello',
+    '/api/public/hello/*',
     '/api/health',
     '/api/health/*',
     '/metrics',

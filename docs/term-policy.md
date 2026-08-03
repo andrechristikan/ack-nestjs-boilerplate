@@ -66,7 +66,7 @@ Term policies follow a two-stage status:
 - Content files stored in **private S3 bucket**
 - Can be edited, updated, or deleted
 - Not visible to users
-- Path: `{uploadContentPath}/{type}/{version}/{language}.hbs`
+- Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.uploadContentPath`)
 
 ### Published Status
 - Policy published by admin
@@ -75,9 +75,11 @@ Term policies follow a two-stage status:
 - Visible to all users
 - **Invalidates all existing user acceptances** for that policy type
 - All active users must re-accept the new version
-- Path: `{contentPublicPath}/{type}/{version}/{language}.hbs`
+- Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
-**Important**: When a new version is published, all users `termPolicy[type]` flags are set to `false`, requiring them to accept the new version before accessing protected endpoints.
+Both paths resolve to the same key. Publishing changes the bucket, not the key.
+
+**Important**: When a new version is published, `termPolicy[type]` is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
 
 ## Flow
 
@@ -114,7 +116,7 @@ sequenceDiagram
     API->>Database: Check policy has content
     API->>S3 Public: Move all content files
     API->>Database: Update status to published
-    API->>Database: Set all users termPolicy[type]=false
+    API->>Database: Set active users termPolicy[type]=false
     API->>S3 Private: Delete private content
     API->>Admin: Policy published
     
@@ -169,7 +171,7 @@ Users interact with term policies through acceptance and viewing their acceptanc
 Users can view all published policies available for acceptance:
 
 ```typescript
-GET /term-policy/list
+GET /public/term-policy/list
 ```
 
 Returns policies with cursor pagination, optionally filtered by type.
@@ -179,18 +181,20 @@ Returns policies with cursor pagination, optionally filtered by type.
 To accept a specific policy type:
 
 ```typescript
-POST /user/term-policy/accept
+POST /shared/user/term-policy/accept
 {
   "type": "termsOfService"
 }
 ```
+
+Accepting the same policy twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
 
 ### View Acceptance History
 
 Users can view their acceptance history:
 
 ```typescript
-GET /user/term-policy/list/accepted
+GET /shared/user/term-policy/list/accepted
 ```
 
 Returns all policies the user has accepted with timestamps and policy details.
@@ -204,15 +208,23 @@ Admins manage the complete lifecycle of term policies from creation to publishin
 Generate presigned URL for uploading content to S3:
 
 ```typescript
-POST /term-policy/generate/content/presign
+POST /admin/term-policy/generate/content/presign
+{
+  "type": "termsOfService",
+  "version": 1,
+  "language": "en",
+  "size": 1024
+}
 ```
+
+The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredIn`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
 
 ### Create Policy
 
 Create new policy with initial content:
 
 ```typescript
-POST /term-policy/create
+POST /admin/term-policy/create
 ```
 
 ### Add Content
@@ -220,7 +232,7 @@ POST /term-policy/create
 Add new language variant to draft policy:
 
 ```typescript
-PUT /term-policy/update/:termPolicyId/content/add
+PUT /admin/term-policy/update/:termPolicyId/content/add
 ```
 
 ### Update Content
@@ -228,7 +240,7 @@ PUT /term-policy/update/:termPolicyId/content/add
 Replace existing language content in draft policy:
 
 ```typescript
-PUT /term-policy/update/:termPolicyId/content/update
+PUT /admin/term-policy/update/:termPolicyId/content/update
 ```
 
 ### Remove Content
@@ -236,7 +248,7 @@ PUT /term-policy/update/:termPolicyId/content/update
 Remove specific language variant from draft policy:
 
 ```typescript
-DELETE /term-policy/update/:termPolicyId/content/remove
+DELETE /admin/term-policy/update/:termPolicyId/content/remove
 ```
 
 ### Get Content
@@ -244,40 +256,44 @@ DELETE /term-policy/update/:termPolicyId/content/remove
 Get presigned URL to download policy content:
 
 ```typescript
-POST /term-policy/get/:termPolicyId/content/:language
+POST /admin/term-policy/get/:termPolicyId/content/:language
 ```
+
+Works on draft and published policies alike, and always signs against the private bucket.
 
 ### Publish Policy
 
 Publish policy and invalidate all user acceptances:
 
 ```typescript
-PATCH /term-policy/publish/:termPolicyId
+PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets `termPolicy[type]` to `false` for all users, requiring re-acceptance. Once published, policy cannot be edited or deleted.
+**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing a policy with no content returns `400` (`contentEmpty`). Once published, policy cannot be edited or deleted.
 
 ### List Policies
 
 List all policies with optional filters:
 
 ```typescript
-GET /term-policy/list?type=termsOfService&status=draft
+GET /admin/term-policy/list?type=termsOfService&status=draft
 ```
+
+Offset pagination, unlike the public list. `type` and `status` each accept a comma-delimited set of values.
 
 ### Delete Policy
 
 Delete draft policy and remove S3 content:
 
 ```typescript
-DELETE /term-policy/delete/:termPolicyId
+DELETE /admin/term-policy/delete/:termPolicyId
 ```
-Only draft policies can be deleted.
+Only draft policies can be deleted; anything else returns `400` (`statusInvalid`). The record is hard deleted.
 
 ## TermPolicyAcceptanceProtected
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-**Important**: This decorator **requires** both `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied. Without these decorators, the endpoint will return a 403 Forbidden error.
+**Important**: This decorator **requires** both `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied. They are what put the user into the request store; without them the guard resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
 
 **Decorator order** (from top to bottom):
 
@@ -342,7 +358,7 @@ flowchart TD
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> CheckUser{RequestStoreService.get UserStoreKey<br/>resolves a user?}
     
-    CheckUser -->|No| ErrorUser[Throw 403: Unauthorized<br/>JWT_ACCESS_TOKEN_INVALID]
+    CheckUser -->|No| ErrorUser[Throw 401: Unauthorized<br/>jwtAccessTokenInvalid]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
     
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
@@ -353,7 +369,7 @@ flowchart TD
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
     
-    CheckAcceptance -->|No| ErrorRequired[Throw 403: Policy Required<br/>REQUIRED_INVALID]
+    CheckAcceptance -->|No| ErrorRequired[Throw 403: Policy Required<br/>requiredInvalid]
     CheckAcceptance -->|Yes| GrantAccess[Grant Access]
     
     GrantAccess --> Success([Access Granted])
@@ -372,23 +388,23 @@ flowchart TD
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
-- Without the required decorators, the endpoint will throw a 403 Forbidden error
+- Without the required decorators, the guard finds no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - All specified term policies must be accepted by the user for access to be granted
-- Incorrect decorator ordering will result in runtime errors
+- A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)
+- Incorrect decorator ordering fails the same way as a missing decorator: the guard runs before the user is in the store, so the request is rejected with `401`
 
 ## Migration & Seeding
 
-Template migration seed available at:
+Two seeds cover term policies:
 
 ```
-src/migration/seeds/migration.template-term-policy.seed.ts
+src/migration/seeds/migration.term-policy.seed.ts           # command: termPolicy
+src/migration/seeds/migration.template-term-policy.seed.ts  # command: template-termPolicy
 ```
 
-This seed file provides:
-- Sample term policies for all types
-- Multi-language content examples
-- Published policy setup
+- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
+- `template-termPolicy` is run on its own. It uploads the bundled `.hbs` documents to S3 and upserts a published version 1 record per type with a single `en` content entry. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
 For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
 

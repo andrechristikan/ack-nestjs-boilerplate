@@ -4,11 +4,14 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 
 export class PaginationOrderDirectionNotAllowedException extends AppBaseException {
     readonly module = 'pagination';
-    readonly statusCode = EnumPaginationStatusCodeError.orderDirectionNotAllowed;
+    readonly statusCode =
+        EnumPaginationStatusCodeError.orderDirectionNotAllowed;
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(allowedDirections: string) {
-        super('pagination.error.orderDirectionNotAllowed', { messageProperties: { allowedDirections } });
+        super('pagination.error.orderDirectionNotAllowed', {
+            messageProperties: { allowedDirections },
+        });
     }
 }

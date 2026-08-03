@@ -64,9 +64,10 @@ This boilerplate is perfect for:
 
 ## Important
 
-- Stateful Authorization, using `redis-session` and `JWT`.
+- Stateful Authorization, using Redis-backed sessions and `JWT`.
 - Must run MongoDB as a `replication set` for `database transactions`.
 - If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
+- In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
 - When using multiple protection decorators, they must be applied in the correct order:
     ```typescript
     @ExampleDoc()
@@ -81,9 +82,9 @@ This boilerplate is perfect for:
     @HttpCode(HttpStatus.OK)
     @Get('/some-endpoint')
     ```
-- Since version `8.0.0`, the project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
-- Since version `8.0.0`, the project uses prisma `6.19` for handle database.
-- Since version `8.0.0`, the project uses pnpm for package manager.
+- The project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
+- The project uses Prisma `6.19` to handle the database.
+- The project uses pnpm as the package manager.
 - **Strict null convention** — `undefined` is only allowed in Request DTO optional fields; all other layers use `T | null`.
 
 ## TODO
@@ -189,7 +190,7 @@ Production-ready authentication system with multiple strategies and security lay
 ### 📊 Database & Storage
 Modern ORM with NoSQL database and file storage capabilities.
 
-- **Prisma ORM** - Type-safe database toolkit with migrations
+- **Prisma ORM** - Type-safe database toolkit with schema-driven queries
 - **MongoDB** - NoSQL database with transaction support (replica set required)
 - **Redis Caching** - Multi-level caching strategies for performance
 - **AWS S3 Integration** - File storage with presigned URLs
@@ -219,7 +220,7 @@ Developer-friendly tooling and best practices.
 ### 📡 Integrations & Monitoring
 Enterprise-grade integrations for production readiness.
 
-- **Sentry** - Error tracking and performance monitoring
+- **Sentry** - Error tracking, performance monitoring, and Pino log forwarding to Sentry Logs (environment-scoped levels)
 - **AWS SES** - Transactional email delivery
 - **Activity Logging** - Comprehensive audit trail
 - **Health Checks** - System monitoring endpoints
@@ -240,7 +241,7 @@ Multi-channel notification system for user engagement.
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
-- **Jest Testing** - Unit, integration, and e2e test setup
+- **Jest Testing** - Unit test setup mirroring `src/` under `test/`
 - **Swagger UI** - Auto-generated API documentation
 - **Detailed Docs** - 20+ documentation files covering all features
 - **Docker Support** - Complete containerization with docker-compose
@@ -279,8 +280,8 @@ Thanks to **Repository Pattern** and **Prisma ORM**, switching databases require
 
 **Migration typically requires:**
 - Updating `prisma/schema.prisma` provider
-- Adjusting ID strategy (ObjectId → UUID). Update DatabaseService Code.
-- Running `npx prisma migrate dev`
+- Adjusting ID strategy (ObjectId → UUID). Update the `DatabaseUtil` helpers.
+- Running `pnpm prisma migrate dev`
 - Running `pnpm migration:seed`
 
 **Business logic stays unchanged** - services, controllers, and authentication work as-is.

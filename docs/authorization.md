@@ -25,6 +25,7 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
+- [Decorator Order](#decorator-order)
 - [User Protected](#user-protected)
   - [Decorators](#decorators)
     - [UserProtected() Decorator](#userprotected-decorator)
@@ -58,6 +59,31 @@ The system is built using NestJS guards and decorators, making it easy to apply 
   - [Role Configuration](#role-configuration)
   - [Assigning Roles to Users](#assigning-roles-to-users)
   - [Important Notes](#important-notes-4)
+
+## Decorator Order
+
+NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so reshuffling it changes the error a caller sees even when the application still boots. Keep this exact order, top to bottom in source:
+
+```typescript
+@ExampleDoc()                              // 1.  Swagger doc factory
+@Response('example.action')                // 2.  @Response / @ResponsePaging / @ResponseFile
+@TermPolicyAcceptanceProtected()           // 3.  Term policy acceptance
+@PolicyAbilityProtected({ ... })           // 4.  CASL policy ability
+@RoleProtected(EnumRoleType.admin)         // 5.  Role type
+@ActivityLog(EnumActivityLogAction.login)  // 6.  Activity log
+@UserProtected()                           // 7.  User status
+@AuthJwtAccessProtected()                  // 8.  JWT access or refresh
+@FeatureFlagProtected('exampleKey')        // 9.  Feature flag
+@ApiKeyProtected()                         // 10. API key
+@HttpCode(HttpStatus.OK)                   // 11. HTTP status, only when it differs from the default
+@Get('/endpoint')                          // 12. HTTP method, always last
+```
+
+A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@FeatureFlagProtected()` → `@AuthJwtAccessProtected()` → `@UserProtected()` → `@RoleProtected()` → `@PolicyAbilityProtected()` → `@TermPolicyAcceptanceProtected()`.
+
+- A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
+- `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies slot 6 in source and requires `@AuthJwtAccessProtected()`.
+- A guard that depends on state an earlier guard sets must sit ABOVE that guard in source, so it runs after it.
 
 ## User Protected
 
@@ -123,9 +149,10 @@ The `UserProtected` decorator follows this validation sequence:
 1. **Authentication Check**: Verifies that `request.user` exists (populated by JWT strategy)
 2. **User Lookup**: Retrieves user from database with role information
 3. **User Existence**: Ensures user record exists
-4. **Status Validation**: Confirms user status is `active`
-5. **Password Expiry**: Checks if password has expired
-6. **Email Verification**: Validates email verification if required
+4. **Blocked Check**: Rejects a user whose status is `blocked`
+5. **Status Validation**: Confirms user status is `active`
+6. **Password Expiry**: Checks if password has expired
+7. **Email Verification**: Validates email verification if required
 
 **Flow Diagram:**
 
@@ -138,7 +165,10 @@ flowchart TD
     
     LookupUser --> UserExists{User exists<br/>in database?}
     UserExists -->|No| ErrorNotFound[Throw UserNotFoundForbiddenException<br/>403 Forbidden]
-    UserExists -->|Yes| CheckStatus{User status<br/>is active?}
+    UserExists -->|Yes| CheckBlocked{User status<br/>is blocked?}
+    
+    CheckBlocked -->|Yes| ErrorBlocked[Throw UserBlockedForbiddenException<br/>403 Forbidden]
+    CheckBlocked -->|No| CheckStatus{User status<br/>is active?}
     
     CheckStatus -->|No| ErrorInactive[Throw UserInactiveForbiddenException<br/>403 Forbidden]
     CheckStatus -->|Yes| CheckPassword{Password<br/>expired?}
@@ -153,6 +183,7 @@ flowchart TD
     
     ErrorAuth --> End([Request Rejected])
     ErrorNotFound --> End
+    ErrorBlocked --> End
     ErrorInactive --> End
     ErrorPassword --> End
     ErrorVerified --> End
@@ -230,7 +261,7 @@ The guard implementation that validates user roles and populates role abilities.
 
 The `RoleProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access with empty abilities array
 3. **Required Roles Check**: Validates that required roles are defined
 4. **Role Match**: Confirms user's role type matches one of the required roles
@@ -242,7 +273,7 @@ The `RoleProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
+    UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
     
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
@@ -362,7 +393,7 @@ The guard implementation that validates user abilities using CASL library.
 
 The `PolicyAbilityProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Super Admin Bypass**: If user role is `superAdmin`, grants immediate access
 3. **Required Abilities Check**: Validates that required abilities are defined
 4. **Ability Creation**: Creates CASL ability rules from user's role abilities (`RequestStoreService.get(RoleAbilityStoreKey)`)
@@ -376,7 +407,7 @@ flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
     UserGuard --> RoleGuard[ @RoleProtected<br/>Validate role and load abilities]
-    RoleGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
+    RoleGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
     
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckSuperAdmin{User role is<br/>superAdmin?}
@@ -419,7 +450,7 @@ The factory creates a CASL ability instance that can check if a user can perform
 - Decorators must be stacked in this order from top to bottom: `@PolicyAbilityProtected()` → `@RoleProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`. See [Authentication Documentation][ref-doc-authentication] for `@AuthJwtAccessProtected()` details
 - Incorrect ordering will result in runtime errors
 - Users with `superAdmin` role type have unrestricted access to all `@PolicyAbilityProtected` routes, bypassing all ability checks.
-- All actions in a required ability must be present in the user's abilities. For example, if you require `[UPDATE, DELETE]` on `USER` subject, the user must have both actions, not just one.
+- All actions in a required ability must be present in the user's abilities. For example, if you require `[EnumPolicyAction.update, EnumPolicyAction.delete]` on the `EnumPolicySubject.user` subject, the user must have both actions, not just one.
 
 ## Term Policy Acceptance Protected
 
@@ -485,7 +516,7 @@ The guard implementation that validates user term policy acceptance.
 
 The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 
-1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) and `request.user` exist
+1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
 3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from the stored user's `termPolicy`
 4. **Acceptance Validation**: Checks if all required term policies are accepted
@@ -497,7 +528,7 @@ The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT token]
     JwtGuard --> UserGuard[ @UserProtected<br/>Validate and load user]
-    UserGuard --> CheckUser{Stored user UserStoreKey and<br/>request.user exist?}
+    UserGuard --> CheckUser{Stored user UserStoreKey<br/>exists?}
     
     CheckUser -->|No| ErrorUser[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
     CheckUser -->|Yes| CheckRequired{Required term policies<br/>specified?}
@@ -524,7 +555,7 @@ flowchart TD
 - `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
-- Without the required decorators, the endpoint will throw a 403 Forbidden error
+- Without the required decorators the stored user is never populated, so the guard throws `AuthJwtAccessTokenInvalidException` (401 Unauthorized)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
 - All specified term policies must be accepted by the user for access to be granted
 - Incorrect decorator ordering will result in runtime errors

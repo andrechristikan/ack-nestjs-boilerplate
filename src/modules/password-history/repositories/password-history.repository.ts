@@ -32,7 +32,7 @@ export class PasswordHistoryRepository {
             IPasswordHistory,
             Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
-        >(this.databaseService.passwordHistory, {
+        >(this.databaseService.client.passwordHistory, {
             ...others,
             where: {
                 ...where,
@@ -58,7 +58,7 @@ export class PasswordHistoryRepository {
             IPasswordHistory,
             Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
-        >(this.databaseService.passwordHistory, {
+        >(this.databaseService.client.passwordHistory, {
             ...others,
             where: {
                 ...where,
@@ -72,7 +72,7 @@ export class PasswordHistoryRepository {
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.passwordHistory.findMany({
+        return this.databaseService.client.passwordHistory.findMany({
             where: {
                 userId,
                 expiredAt: {

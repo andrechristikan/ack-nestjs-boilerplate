@@ -6,8 +6,8 @@ Only the latest minor release line receives security updates. Please upgrade bef
 
 | Version | Supported |
 |---------|-----------|
-| 8.2.x   | ✅        |
-| < 8.2   | ❌        |
+| 8.3.x   | ✅        |
+| < 8.3   | ❌        |
 
 ## Reporting a Vulnerability
 
@@ -30,8 +30,6 @@ Please include:
 
 ## What to Expect
 
-- **Acknowledgement** within 7 business days.
-- **Initial assessment** within 14 business days.
 - A fix or mitigation plan communicated once the report is validated.
 - Public disclosure coordinated with you after a patch is released.
 

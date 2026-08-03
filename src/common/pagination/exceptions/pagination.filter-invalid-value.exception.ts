@@ -9,6 +9,8 @@ export class PaginationFilterInvalidValueException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(property: string) {
-        super('pagination.error.filterInvalidValue', { messageProperties: { property } });
+        super('pagination.error.filterInvalidValue', {
+            messageProperties: { property },
+        });
     }
 }

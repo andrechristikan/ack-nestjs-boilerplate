@@ -21,8 +21,9 @@ This is a critical security mechanism. It allows users (and admins) to forcibly 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Device Model](#device-model)
+- [DeviceOwnership Model](#deviceownership-model)
 - [Device-Session Relationship](#device-session-relationship)
-- [What Happens When a Device is Removed](#what-happens-when-a-device-is-removed)
+- [What Happens When a Device Ownership is Removed](#what-happens-when-a-device-ownership-is-removed)
 - [Endpoints](#endpoints)
   - [Shared (User Self-Service)](#shared-user-self-service)
   - [Admin](#admin)
@@ -33,10 +34,10 @@ This is a critical security mechanism. It allows users (and admins) to forcibly 
 A Device represents a physical or virtual client. It is identified by a globally unique `fingerprint` that can be owned by multiple users.
 
 **Fields:**
-- `fingerprint` — Globally unique identifier for the device. This value should be generated on the frontend and sent with every login/refresh request. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
+- `fingerprint` — Globally unique identifier for the device. This value should be generated on the frontend and sent with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
 - `name` — Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
 - `platform` — Platform of the device. See `EnumDevicePlatform` below
-- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Globally unique per device. Populated via `POST /user/device/refresh`
+- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /user/device/refresh`, cleared on device removal and by the stale-token cleanup
 - `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
 
 ### Enums
@@ -86,11 +87,13 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 Removing a device ownership (device per user) triggers a transaction that:
 
-1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById: userId`), updates `updatedBy`. The ownership record is retained for audit trail.
-2. **Updates the `Device` record** — clears the `notificationToken` and `notificationProvider` for this specific ownership (push token is invalidated), updates `updatedBy`.
+1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user), updates `updatedBy` and `lastActiveAt`. The ownership record is retained for audit trail.
+2. **Updates the `Device` record** — clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`. These fields live on the shared `Device` row, not on the ownership, so the push token is invalidated for every user owning that device.
 3. **Revokes the active session** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`)
-4. **Deletes the session key from Redis** — causing immediate 401 on any subsequent request using those tokens
-5. **Creates an activity log** entry with action `userRemoveDevice` or `adminDeviceRemove`
+4. **Creates an activity log** entry with action `userRemoveDevice`, inside the same transaction
+5. **Deletes the session key from Redis** — causing immediate 401 on any subsequent request using those tokens
+
+The admin endpoint records a second log with action `adminDeviceRemove`. That one is written by `ActivityLogInterceptor` after the handler returns, outside the transaction.
 
 ```mermaid
 sequenceDiagram
@@ -110,7 +113,7 @@ sequenceDiagram
     Note over Redis: Tokens for this device-user pair are now invalid
     API-->>Client: 200 OK
     Note over Client: Client using this device gets 401 on next request
-    Note over Client: Other users owning the same device are unaffected
+    Note over Client: Sessions of other users owning the same device are unaffected
 ```
 
 ## Endpoints
@@ -119,7 +122,7 @@ sequenceDiagram
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/user/device/list` | List own devices (cursor-based) with active session count for current session |
+| `GET` | `/user/device/list` | List own active devices (cursor-based); each entry carries `activeSessionCount` and an `isCurrentDevice` flag |
 | `POST` | `/user/device/refresh` | Update device info (name, push token, platform) |
 | `DELETE` | `/user/device/remove/:deviceOwnershipId` | Remove own device — revokes all its sessions immediately |
 
@@ -127,7 +130,7 @@ sequenceDiagram
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/user/:userId/device/list` | List a user's devices (offset-based) |
+| `GET` | `/user/:userId/device/list` | List a user's devices (offset-based), filterable by `isRevoked` |
 | `DELETE` | `/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device — revokes all its sessions immediately |
 
 ## Policy Control
@@ -144,11 +147,11 @@ Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints
 // Admin remove device
 @PolicyAbilityProtected(
     { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
-    { subject: EnumPolicySubject.device, action: [EnumPolicyAction.delete] }
+    { subject: EnumPolicySubject.device, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
 )
 ```
 
-Shared (user self-service) endpoints only require `@UserProtected()` and `@AuthJwtAccessProtected()` — no policy subject check since users can only manage their own devices.
+Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`, but no policy subject check since users can only manage their own devices. The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities, and `DELETE /user/:userId/device/remove/:deviceOwnershipId` also carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`.
 
 
 <!-- REFERENCES -->

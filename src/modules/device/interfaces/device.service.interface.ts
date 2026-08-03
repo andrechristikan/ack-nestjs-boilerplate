@@ -33,10 +33,7 @@ export interface IDeviceService {
         deviceOwnershipId: string,
         { name, notificationToken, platform }: DeviceRefreshRequestDto
     ): Promise<void>;
-    remove(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<void>;
+    remove(userId: string, deviceOwnershipId: string): Promise<void>;
     removeByAdmin(
         userId: string,
         deviceOwnershipId: string,

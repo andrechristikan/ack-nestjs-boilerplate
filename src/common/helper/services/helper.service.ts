@@ -453,7 +453,10 @@ export class HelperService implements IHelperService {
     }
 
     dateGetZoneOffset(date: Date): string {
-        return DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort ?? 'UTC';
+        return (
+            DateTime.fromJSDate(date).setZone(this.defTz).offsetNameShort ??
+            'UTC'
+        );
     }
 
     dateGetTimestamp(date: Date): number {

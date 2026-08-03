@@ -97,6 +97,36 @@ export default [
         },
     },
     {
+        name: 'ts/database-inferred-client',
+        files: [
+            'src/common/database/utils/database.extension.util.ts',
+            'src/common/database/factories/database.client.factory.ts',
+        ],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            parser: tsParser,
+            parserOptions: {
+                project: 'tsconfig.json',
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        linterOptions: {
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: true,
+        },
+        plugins: {
+            '@typescript-eslint': tsEsLintPlugin,
+        },
+        rules: {
+            ...rules,
+            ...codeQualityRules,
+            ...importOrderRules,
+            '@typescript-eslint/explicit-function-return-type': 'off',
+            '@typescript-eslint/explicit-module-boundary-types': 'off',
+        },
+    },
+    {
         name: 'ts/scripts',
         files: ['scripts/**/*.ts'],
         languageOptions: {

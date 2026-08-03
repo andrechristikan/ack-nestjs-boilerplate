@@ -22,11 +22,11 @@ export class CountryRepository {
             Country,
             Prisma.CountrySelect,
             Prisma.CountryWhereInput
-        >(this.databaseService.country, pagination);
+        >(this.databaseService.client.country, pagination);
     }
 
     async existById(id: string): Promise<{ id: string } | null> {
-        return this.databaseService.country.findUnique({
+        return this.databaseService.client.country.findUnique({
             where: { id },
             select: { id: true },
         });
@@ -35,14 +35,14 @@ export class CountryRepository {
     async existByAlpha2Code(
         alpha2Code: string
     ): Promise<{ id: string } | null> {
-        return this.databaseService.country.findUnique({
+        return this.databaseService.client.country.findUnique({
             where: { alpha2Code },
             select: { id: true },
         });
     }
 
     async findOneById(id: string): Promise<Country | null> {
-        return this.databaseService.country.findUnique({
+        return this.databaseService.client.country.findUnique({
             where: { id },
         });
     }

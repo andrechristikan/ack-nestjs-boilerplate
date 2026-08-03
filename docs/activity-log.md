@@ -4,17 +4,17 @@ This documentation explains the features and usage of **Activity Log Module**: L
 
 ## Overview
 
-> [!NOTE]
-> `Future Plan:` Will support decorator-based logging for bidirectional activity and self activity. The `user*` actions in `EnumActivityLogAction` are reserved for this and are not wired yet.
+Activity Log records audited user actions. There are two recording paths:
 
-Activity Log records audited user actions. Recording is decorator-driven: `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method, the interceptor persists one log for the authenticated actor after the handler runs.
+1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method, and the interceptor persists one log for the authenticated actor after the handler runs. This document covers that path.
+2. **Repository-written** - a repository nests an `activityLogs.create` inside the Prisma write it already performs, so the log lands in the same transaction as the mutation. All `user*` actions in `EnumActivityLogAction` are recorded this way (`userLoginCredential`, `userChangePassword`, `userRemoveDevice`, and the rest), built with the same `ActivityLogUtil.getDescription`.
 
 **Notes:**
 
 - Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` and `errorStack` are merged into `metadata`, and ` - Error: <message>` is appended to `description`.
-- Saving is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response.
-- `@ActivityLog` is currently applied to **admin endpoints only** (all `admin*` actions).
-- `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs.
+- Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
+- `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
+- `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
 - Never log secrets (password, token, apiKey) or large objects in metadata.
 
 ## Related Documents
@@ -101,7 +101,7 @@ Place it per the decorator order rules (see [Authorization Documentation][ref-do
 @AuthJwtAccessProtected() // required
 @Post('/create')
 async create(@Body() dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    return this.roleService.create(dto);
+    return this.roleService.createByAdmin(dto);
 }
 ```
 
@@ -124,7 +124,7 @@ Build the metadata shape in the module's util, then merge it in the service:
 
 ```typescript
 // Service - inject RequestStoreService, merge metadata after the mutation
-async create(dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
+async createByAdmin(dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
     const created = await this.roleRepository.create(dto);
 
     this.requestStoreService.merge<IActivityLogMetadata>(

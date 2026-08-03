@@ -4,7 +4,8 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 
 export class UserVerificationEmailResendLimitExceededException extends AppBaseException {
     readonly module = 'user';
-    readonly statusCode = EnumUserStatusCodeError.verificationEmailResendLimitExceeded;
+    readonly statusCode =
+        EnumUserStatusCodeError.verificationEmailResendLimitExceeded;
     readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 

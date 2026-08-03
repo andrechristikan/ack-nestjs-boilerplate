@@ -1,11 +1,12 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IConfigVerification {
-    expiredInMinutes: number;
+    expiredInMs: number;
     otpLength: number;
     tokenLength: number;
     linkBaseUrl: string;
-    resendInMinutes: number;
+    resendInMs: number;
     reference: {
         prefix: string;
         length: number;
@@ -15,11 +16,11 @@ export interface IConfigVerification {
 export default registerAs(
     'verification',
     (): IConfigVerification => ({
-        expiredInMinutes: 5,
+        expiredInMs: ms('5m'),
         otpLength: 6,
         tokenLength: 100,
         linkBaseUrl: 'verify-email',
-        resendInMinutes: 2,
+        resendInMs: ms('2m'),
         reference: {
             prefix: 'VER',
             length: 25,

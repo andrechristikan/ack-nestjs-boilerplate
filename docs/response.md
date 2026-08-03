@@ -358,17 +358,21 @@ device: DeviceResponseDto;
 
 ### Hiding Fields
 
-Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` is still required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s.
+Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` plus `@ApiHideProperty()` is required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s, both are needed so the JSON and the Swagger schema agree.
 
 ```typescript
-// Parent exposes name/type/key; create response hides them, shows only `secret`.
+// Parent exposes isActive/startAt/endAt/name/type/key; create response hides isActive/startAt, keeps the rest, and adds `secret`.
 export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
   @Expose()
   secret: string;
 
-  @Exclude() name: string;
-  @Exclude() type: EnumApiKeyType;
-  @Exclude() key: string;
+  @ApiHideProperty()
+  @Exclude()
+  isActive: boolean;
+
+  @ApiHideProperty()
+  @Exclude()
+  startAt?: Date;
 }
 ```
 
@@ -479,7 +483,7 @@ Apis:*
 @Response('user.get', {
   cache: {
     key: 'user-detail',
-    ttl: 3600 // seconds
+    ttl: 3600000 // milliseconds (1 hour)
   }
 })
 @Get('/:id')

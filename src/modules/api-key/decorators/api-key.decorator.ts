@@ -5,7 +5,10 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
-import { ApiKeyStoreKey, ApiKeyXTypeMetaKey } from '@modules/api-key/constants/api-key.constant';
+import {
+    ApiKeyStoreKey,
+    ApiKeyXTypeMetaKey,
+} from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
@@ -17,7 +20,8 @@ import { ClsServiceManager } from 'nestjs-cls';
  */
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     <T = ApiKey>(data: string, _ctx: ExecutionContext): T => {
-        const apiKey = ClsServiceManager.getClsService().get<ApiKey>(ApiKeyStoreKey);
+        const apiKey =
+            ClsServiceManager.getClsService().get<ApiKey>(ApiKeyStoreKey);
         return data ? (apiKey?.[data as keyof ApiKey] as T) : (apiKey as T);
     }
 );

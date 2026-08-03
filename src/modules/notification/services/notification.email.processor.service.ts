@@ -3,8 +3,8 @@ import { HelperService } from '@common/helper/services/helper.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { INotificationEmailProcessorService } from '@modules/notification/interfaces/notification.email.processor.service.interface';
 import {
-    INotificationEmailWorkerBulkPayload,
-    INotificationEmailWorkerPayload,
+    INotificationEmailBulkQueuePayload,
+    INotificationEmailQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -64,7 +64,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processWelcome(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -93,7 +93,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processWelcomeSocial(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -122,7 +122,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processWelcomeByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload>,
+            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -163,7 +163,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processTemporaryPasswordByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -212,7 +212,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processChangePassword(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -241,7 +241,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processResetPassword(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -270,7 +270,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processVerificationEmail(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerificationEmailPayload>,
+            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -315,7 +315,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processVerifiedEmail(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload>,
+            INotificationEmailQueuePayload<INotificationVerifiedEmailPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -346,7 +346,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processForgotPassword(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationForgotPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -389,7 +389,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processVerifiedMobileNumber(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -427,7 +427,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processResetTwoFactorByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -462,7 +462,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processNewDeviceLogin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload>,
+            INotificationEmailQueuePayload<INotificationNewDeviceLoginPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -504,7 +504,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     async processPublishTermPolicy(
         job: Job<
-            INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

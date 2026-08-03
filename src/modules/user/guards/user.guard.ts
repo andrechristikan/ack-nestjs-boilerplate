@@ -2,7 +2,10 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
-import { UserGuardIsVerifiedMetaKey, UserStoreKey } from '@modules/user/constants/user.constant';
+import {
+    UserGuardIsVerifiedMetaKey,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /** Validates the authenticated user and stores it in the request context for `UserCurrent`. */

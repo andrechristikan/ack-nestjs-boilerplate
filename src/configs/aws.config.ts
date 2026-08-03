@@ -3,8 +3,10 @@ import ms from 'ms';
 
 export interface IConfigAws {
     s3: {
-        multipartExpiredInDay: number;
-        presignExpiredInSeconds: number;
+        multipartExpiredInMs: number;
+        presignExpiredInMs: number;
+        corsMaxAgeLongInMs: number;
+        corsMaxAgeShortInMs: number;
         maxAttempts: number;
         timeoutInMs: number;
         region: string | null;
@@ -42,8 +44,10 @@ export default registerAs(
     'aws',
     (): IConfigAws => ({
         s3: {
-            multipartExpiredInDay: 3,
-            presignExpiredInSeconds: 30 * 60,
+            multipartExpiredInMs: ms('3d'),
+            presignExpiredInMs: ms('30m'),
+            corsMaxAgeLongInMs: ms('1d'),
+            corsMaxAgeShortInMs: ms('1h'),
             maxAttempts: 3,
             timeoutInMs: ms('30s'),
             region: process.env.AWS_S3_REGION ?? null,

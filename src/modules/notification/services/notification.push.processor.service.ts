@@ -6,8 +6,8 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
-    INotificationPushWorkerCleanupTokenPayload,
-    INotificationPushWorkerPayload,
+    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
@@ -40,7 +40,7 @@ export class NotificationPushProcessorService
             data,
         },
     }: Job<
-        INotificationPushWorkerPayload<INotificationNewDeviceLoginPayload>,
+        INotificationPushQueuePayload<INotificationNewDeviceLoginPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -109,7 +109,7 @@ export class NotificationPushProcessorService
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -170,7 +170,7 @@ export class NotificationPushProcessorService
             data,
         },
     }: Job<
-        INotificationPushWorkerPayload<INotificationTemporaryPasswordPayload>,
+        INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -234,7 +234,7 @@ export class NotificationPushProcessorService
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -294,7 +294,7 @@ export class NotificationPushProcessorService
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -354,7 +354,7 @@ export class NotificationPushProcessorService
             data: { userId, failureTokens },
         },
     }: Job<
-        INotificationPushWorkerCleanupTokenPayload,
+        INotificationPushCleanupTokenQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {

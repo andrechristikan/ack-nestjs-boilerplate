@@ -4,7 +4,8 @@ import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feat
 
 export class FeatureFlagPredefinedKeyLengthExceededException extends AppBaseException {
     readonly module = 'featureFlag';
-    readonly statusCode = EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded;
+    readonly statusCode =
+        EnumFeatureFlagStatusCodeError.predefinedKeyLengthExceeded;
     readonly statusCodeKey = EnumFeatureFlagStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 

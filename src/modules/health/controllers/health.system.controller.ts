@@ -1,11 +1,6 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-    DiskHealthIndicator,
-    HealthCheck,
-    HealthCheckService,
-    MemoryHealthIndicator,
-} from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
@@ -22,6 +17,7 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
+import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.sentry.response.dto';
@@ -34,8 +30,7 @@ import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/healt
 export class HealthSystemController {
     constructor(
         private readonly health: HealthCheckService,
-        private readonly memoryHealthIndicator: MemoryHealthIndicator,
-        private readonly diskHealthIndicator: DiskHealthIndicator,
+        private readonly healthInstanceIndicator: HealthInstanceIndicator,
         private readonly awsS3BucketIndicator: HealthAwsS3BucketIndicator,
         private readonly awsSESIndicator: HealthAwsSESIndicator,
         private readonly databaseIndicator: HealthDatabaseIndicator,
@@ -106,21 +101,10 @@ export class HealthSystemController {
     @Get('/instance')
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
         const data = await this.health.check([
+            () => this.healthInstanceIndicator.isHealthyMemoryRss('memoryRss'),
             () =>
-                this.memoryHealthIndicator.checkRSS(
-                    'memoryRss',
-                    300 * 1024 * 1024
-                ),
-            () =>
-                this.memoryHealthIndicator.checkHeap(
-                    'memoryHeap',
-                    300 * 1024 * 1024
-                ),
-            () =>
-                this.diskHealthIndicator.checkStorage('storage', {
-                    thresholdPercent: 0.75,
-                    path: '/',
-                }),
+                this.healthInstanceIndicator.isHealthyMemoryHeap('memoryHeap'),
+            () => this.healthInstanceIndicator.isHealthyStorage('storage'),
         ]);
 
         return {

@@ -44,18 +44,22 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 Environment variables are validated using the `AppEnvDto` class with `class-validator` decorators. This validation occurs in `src/main.ts` during application bootstrap:
 
 ```typescript
-// Validate environment variables
 const classEnv = plainToInstance(AppEnvDto, process.env);
-const errors = await validate(classEnv);
+const errors = await validate(classEnv, {
+    skipMissingProperties: false,
+    skipNullProperties: false,
+    skipUndefinedProperties: false,
+    validationError: {
+        target: false,
+        value: true,
+    },
+});
 if (errors.length > 0) {
     const messageService = app.get(MessageService);
     const errorsMessage = messageService.setValidationMessage(errors);
-    
-    logger.error(
-        `Env Variable Invalid: ${JSON.stringify(errorsMessage)}`,
-        'NestApplication'
-    );
-    
+
+    logger.error(errorsMessage, 'Env Variable Invalid');
+
     throw new Error('Env Variable Invalid', {
         cause: errorsMessage,
     });
@@ -125,7 +129,7 @@ AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY=<your_jwt_refresh_token_public_key>
 AUTH_JWT_REFRESH_TOKEN_EXPIRED=30d
 
 # Two-Factor Authentication
-AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
+AUTH_TWO_FACTOR_ISSUER=
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 
 # Social Authentication (Optional)
@@ -138,7 +142,7 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 AWS_S3_IAM_CREDENTIAL_KEY=
 AWS_S3_IAM_CREDENTIAL_SECRET=
 AWS_S3_IAM_ARN=
-AWS_S3_REGION=ap-southeast-3
+AWS_S3_REGION=
 AWS_S3_PUBLIC_BUCKET=
 AWS_S3_PUBLIC_CDN=
 AWS_S3_PRIVATE_BUCKET=
@@ -148,10 +152,10 @@ AWS_S3_PRIVATE_CDN=
 AWS_SES_IAM_CREDENTIAL_KEY=
 AWS_SES_IAM_CREDENTIAL_SECRET=
 AWS_SES_IAM_ARN=
-AWS_SES_REGION=ap-southeast-3
+AWS_SES_REGION=
 
 # Email
-EMAIL_NO_REPLY=no-reply@mail.com
+EMAIL_NO_REPLY=noreply@mail.com
 EMAIL_SUPPORT=support@mail.com
 EMAIL_ADMIN=admin@mail.com
 
@@ -505,7 +509,7 @@ AWS_S3_IAM_ARN=
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
 ```bash
-AWS_S3_REGION=ap-southeast-3
+AWS_S3_REGION=
 ```
 
 **`AWS_S3_PUBLIC_BUCKET`** *(optional/required for file uploads)*  
@@ -564,7 +568,7 @@ AWS_SES_IAM_ARN=
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.
 ```bash
-AWS_SES_REGION=ap-southeast-3
+AWS_SES_REGION=
 ```
 
 ### Email Settings
@@ -575,7 +579,7 @@ AWS_SES_REGION=ap-southeast-3
 **`EMAIL_NO_REPLY`** *(optional/required for email features)*  
 Sender email address used for no-reply emails (e.g., transactional, notifications).
 ```bash
-EMAIL_NO_REPLY=no-reply@mail.com
+EMAIL_NO_REPLY=noreply@mail.com
 ```
 
 **`EMAIL_SUPPORT`** *(optional/required for email features)*  

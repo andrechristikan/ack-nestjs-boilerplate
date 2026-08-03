@@ -6,7 +6,7 @@ import {
     registerDecorator,
 } from 'class-validator';
 
-/** Accepts only a flat object whose values are string, number, or boolean. */
+/** Accepts only a flat object with camelCase keys whose values are a string, number, boolean, or a homogeneous string[] / number[]. */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsFeatureFlagMetadataConstraint implements ValidatorConstraintInterface {
@@ -14,31 +14,43 @@ export class IsFeatureFlagMetadataConstraint implements ValidatorConstraintInter
         if (
             value === null ||
             value === undefined ||
-            typeof value !== 'object'
+            typeof value !== 'object' ||
+            Array.isArray(value)
         ) {
             return false;
         }
 
         const setting = value as Record<string, unknown>;
+        const keyPattern = /^[a-z][a-zA-Z0-9]*$/;
 
         for (const key in setting) {
-            if (typeof key !== 'string') {
+            if (!keyPattern.test(key)) {
                 return false;
             }
 
-            const val = setting[key];
-            const valType = typeof val;
-
-            if (
-                valType !== 'string' &&
-                valType !== 'number' &&
-                valType !== 'boolean'
-            ) {
+            if (!this.isValidValue(setting[key])) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private isValidValue(val: unknown): boolean {
+        if (Array.isArray(val)) {
+            return (
+                val.every(item => typeof item === 'string') ||
+                val.every(item => typeof item === 'number')
+            );
+        }
+
+        const valType = typeof val;
+
+        return (
+            valType === 'string' ||
+            valType === 'number' ||
+            valType === 'boolean'
+        );
     }
 
     defaultMessage(): string {

@@ -10,7 +10,7 @@ export interface IConfigDebug {
     prettier: boolean;
     sentry: {
         dsn: string | null;
-        timeout: number; // in milliseconds
+        timeoutInMs: number;
     };
 }
 
@@ -25,7 +25,7 @@ export default registerAs(
         prettier: process.env.LOGGER_PRETTIER === 'true',
         sentry: {
             dsn: process.env.SENTRY_DSN ?? null,
-            timeout: ms('10s'),
+            timeoutInMs: ms('10s'),
         },
     })
 );

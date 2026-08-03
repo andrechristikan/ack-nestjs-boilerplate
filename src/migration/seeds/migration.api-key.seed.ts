@@ -42,7 +42,7 @@ export class MigrationApiKeySeed
         this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
 
         try {
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.apiKeys.map(apiKey => {
                     const key = this.apiKeyUtil.createKey(apiKey.key);
                     const hashed = this.apiKeyUtil.createHash(
@@ -50,7 +50,7 @@ export class MigrationApiKeySeed
                         apiKey.secret
                     );
 
-                    return this.databaseService.apiKey.upsert({
+                    return this.databaseService.client.apiKey.upsert({
                         where: {
                             key: apiKey.key,
                         },
@@ -89,7 +89,7 @@ export class MigrationApiKeySeed
                         ];
                     })
                     .flat(),
-                this.databaseService.apiKey.deleteMany({}),
+                this.databaseService.client.apiKey.deleteMany({}),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing Api Keys');

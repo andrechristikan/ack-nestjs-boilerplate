@@ -40,9 +40,9 @@ export class MigrationCountrySeed
         this.logger.log(`Found ${this.countries.length} Countries to seed.`);
 
         try {
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.countries.map(country =>
-                    this.databaseService.country.upsert({
+                    this.databaseService.client.country.upsert({
                         where: {
                             alpha2Code: country.alpha2Code,
                         },
@@ -65,7 +65,7 @@ export class MigrationCountrySeed
         this.logger.log('Removing back Countries...');
 
         try {
-            await this.databaseService.country.deleteMany({
+            await this.databaseService.client.country.deleteMany({
                 where: {},
             });
         } catch (error: unknown) {

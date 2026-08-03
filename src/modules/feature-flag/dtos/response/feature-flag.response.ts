@@ -17,6 +17,13 @@ export class FeatureFlagResponseDto extends DatabaseResponseDto {
     isEnable: boolean;
 
     @ApiProperty({
+        description: 'Target user ids allow-list that bypasses rollout',
+        type: [String],
+    })
+    @Expose()
+    targetUserIds: string[];
+
+    @ApiProperty({
         description: 'Feature flag metadata in JSON format',
     })
     @Expose()

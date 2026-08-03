@@ -39,7 +39,9 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
                 )!,
             }),
             algorithms: [
-                configService.get<Algorithm>('auth.jwt.refreshToken.algorithm')!,
+                configService.get<Algorithm>(
+                    'auth.jwt.refreshToken.algorithm'
+                )!,
             ],
         });
     }

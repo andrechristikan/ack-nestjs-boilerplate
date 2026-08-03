@@ -117,10 +117,6 @@ export class SessionAdminController {
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionService.revokeByAdmin(
-            userId,
-            sessionId,
-            revokedBy
-        );
+        return this.sessionService.revokeByAdmin(userId, sessionId, revokedBy);
     }
 }

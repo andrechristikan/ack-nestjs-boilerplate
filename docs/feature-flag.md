@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Feature Flag Module**: L
 
 ## Overview
 
-Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, A/B testing, and metadata-based feature configuration with caching for optimal performance.
+Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, per-user targeting, A/B testing, and metadata-based feature configuration with caching for optimal performance.
 
 ## Related Documents
 
@@ -19,6 +19,7 @@ Feature flag module provides dynamic feature management for controlling applicat
   - [With Decorators](#with-decorators)
   - [With Service](#with-service)
 - [Metadata](#metadata)
+- [Targeting](#targeting)
 - [Rollout Percentage](#rollout-percentage)
 - [Caching](#caching)
 - [Restrictions](#restrictions)
@@ -45,25 +46,27 @@ flowchart TD
     B --> C[Extract keyPath from metadata]
     C --> D{Split keyPath by '.'}
     D --> E{Keys length = 0?}
-    E -->|Yes| F[Throw: PREDEFINED_KEY_EMPTY]
+    E -->|Yes| F[Throw: predefinedKeyEmpty]
     E -->|No| G{Keys length > 2?}
-    G -->|Yes| H[Throw: PREDEFINED_KEY_LENGTH_EXCEEDED]
+    G -->|Yes| H[Throw: predefinedKeyLengthExceeded]
     G -->|No| I[Get feature flag by key with cache]
     I --> J{Feature flag exists?}
-    J -->|No| K[Throw: SERVICE_UNAVAILABLE]
+    J -->|No| K[Throw: serviceUnavailable]
     J -->|Yes| L{isEnable = true?}
     L -->|No| K
     L -->|Yes| M{Keys length > 1?}
-    M -->|No| N[Check rollout percentage]
+    M -->|No| N[Per-user resolution]
     M -->|Yes| O[Get metadata value by key]
     O --> P{Metadata type = boolean?}
-    P -->|No| Q[Throw: PREDEFINED_KEY_TYPE_INVALID]
+    P -->|No| Q[Throw: predefinedKeyTypeInvalid]
     P -->|Yes| R{Metadata value = true?}
     R -->|No| K
     R -->|Yes| N
     N --> S{User exists in request?}
     S -->|No| T[Allow access]
-    S -->|Yes| U[Hash userId with MD5]
+    S -->|Yes| S1{userId in targetUserIds?}
+    S1 -->|Yes| T
+    S1 -->|No| U[Hash 'key:userId' with MD5]
     U --> V[Calculate percentage from hash]
     V --> W{Percentage < rolloutPercent?}
     W -->|No| K
@@ -140,9 +143,12 @@ Metadata provides granular control within a single feature flag:
 
 **Constraints:**
 - No nested objects allowed
-- Supports types: `boolean`, `number`, `string`
+- Supported value types: `boolean`, `number`, `string`, and homogeneous `string[]` or `number[]`
+- Arrays must be homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
+- An array value is data only, never a gate value. A nested-key gate (below) must resolve to a boolean
+- Metadata keys must be camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
 - Metadata keys cannot be added/removed (schema consistency)
-- Only values can be modified
+- Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected), and an empty array counts as an empty value and is rejected
 
 **Nested Key Access:**
 ```typescript
@@ -151,6 +157,28 @@ Metadata provides granular control within a single feature flag:
 ```
 
 When using nested keys, metadata value **must** be boolean.
+
+Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
+
+## Targeting
+
+`targetUserIds` is an allow-list of user ids that always receive the feature, bypassing the rollout percentage.
+
+```typescript
+{
+  key: 'newFeature',
+  targetUserIds: ['userIdA', 'userIdB'],
+  rolloutPercent: 30
+}
+```
+
+**How it works:**
+1. Only evaluated when the request has an authenticated user.
+2. If `userId` is in `targetUserIds`, access is granted and rollout is skipped.
+3. Otherwise the user falls back to rollout percentage.
+4. Anonymous requests (no user) skip targeting and rollout, and are allowed.
+
+`targetUserIds` is admin-editable via the status update endpoint and defaults to empty.
 
 ## Rollout Percentage
 
@@ -163,10 +191,13 @@ Controls gradual feature deployment using deterministic hashing:
 ```
 
 **How it works:**
-1. User identifier (userId) is hashed using MD5
+1. The flag key and userId are combined then hashed using MD5 (`key:userId`)
 2. Hash converted to percentage (0-99)
 3. Compared against `rolloutPercent`
-4. Same user always gets same result (deterministic)
+4. Same user always gets the same result per flag (deterministic)
+5. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%)
+
+Runs only when the request has a user who is not in `targetUserIds`.
 
 **Use cases:**
 - A/B testing
@@ -178,8 +209,8 @@ Controls gradual feature deployment using deterministic hashing:
 Feature flags are cached for performance. Configuration in `src/configs/feature-flag.config.ts`:
 ```typescript
 {
-  cachePrefixKey: 'FeatureFlag',
-  cacheTtlMs: 3600000  // 1 hour
+  keyPattern: 'FeatureFlag:{key}',
+  cacheTtlInMs: ms('1h')
 }
 ```
 
@@ -187,6 +218,7 @@ Feature flags are cached for performance. Configuration in `src/configs/feature-
 - Automatic cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
+- Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. Unknown or disabled flags still return 503 (no fail-open).
 
 See [Cache Documentation][ref-doc-cache] for cache system details.
 
@@ -195,7 +227,7 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Feature flags cannot be added via admin API
 - Feature flags cannot be deleted
 - Metadata keys cannot be modified (add/remove)
-- Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
+- Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
 
 
 ## Contribution

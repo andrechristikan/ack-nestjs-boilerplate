@@ -24,8 +24,10 @@ export interface IAwsSESSend {
     bcc?: string[];
 }
 
-export interface IAwsSESSendBulk
-    extends Omit<IAwsSESSend, 'recipients' | 'templateData'> {
+export interface IAwsSESSendBulk extends Omit<
+    IAwsSESSend,
+    'recipients' | 'templateData'
+> {
     recipients: IAwsSESSendBulkRecipient[];
     defaultTemplateData?: Record<string, string>;
 }

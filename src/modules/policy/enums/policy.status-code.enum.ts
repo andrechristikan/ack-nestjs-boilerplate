@@ -1,4 +1,4 @@
 export enum EnumPolicyStatusCodeError {
-    forbidden = 5180,
-    predefinedNotFound = 5182,
+    forbidden = 51100,
+    predefinedNotFound = 51101,
 }

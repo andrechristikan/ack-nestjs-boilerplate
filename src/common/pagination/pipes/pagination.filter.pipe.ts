@@ -1,8 +1,4 @@
-import {
-    Injectable,
-    Type,
-    mixin,
-} from '@nestjs/common';
+import { Injectable, Type, mixin } from '@nestjs/common';
 import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
@@ -64,7 +60,10 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new PaginationFilterInvalidValueEnumException(metadata.data!, defaultEnum.join(', '));
+                throw new PaginationFilterInvalidValueEnumException(
+                    metadata.data!,
+                    defaultEnum.join(', ')
+                );
             }
 
             const field = metadata.data!;
@@ -135,7 +134,10 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 defaultEnum.includes(v as T)
             );
             if (!validated) {
-                throw new PaginationFilterInvalidValueEnumException(metadata.data!, defaultEnum.join(', '));
+                throw new PaginationFilterInvalidValueEnumException(
+                    metadata.data!,
+                    defaultEnum.join(', ')
+                );
             }
 
             const field = metadata.data!;
@@ -188,7 +190,9 @@ export function PaginationQueryFilterEqualPipe<T>(
             if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new PaginationFilterInvalidValueException(metadata.data!);
+                    throw new PaginationFilterInvalidValueException(
+                        metadata.data!
+                    );
                 }
 
                 finalValue = (booleanString === 'true') as T;
@@ -196,7 +200,9 @@ export function PaginationQueryFilterEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new PaginationFilterInvalidValueException(metadata.data!);
+                    throw new PaginationFilterInvalidValueException(
+                        metadata.data!
+                    );
                 }
             } else {
                 finalValue = value.trim() as T;
@@ -256,7 +262,9 @@ export function PaginationQueryFilterNotEqualPipe<T>(
             if (options && 'isBoolean' in options && options.isBoolean) {
                 const booleanString = value.trim();
                 if (booleanString !== 'true' && booleanString !== 'false') {
-                    throw new PaginationFilterInvalidValueException(metadata.data!);
+                    throw new PaginationFilterInvalidValueException(
+                        metadata.data!
+                    );
                 }
 
                 finalValue = (booleanString === 'true') as T;
@@ -264,7 +272,9 @@ export function PaginationQueryFilterNotEqualPipe<T>(
                 finalValue = Number.parseFloat(value.trim()) as T;
 
                 if (Number.isNaN(finalValue as number)) {
-                    throw new PaginationFilterInvalidValueException(metadata.data!);
+                    throw new PaginationFilterInvalidValueException(
+                        metadata.data!
+                    );
                 }
             } else {
                 finalValue = value.trim() as T;
@@ -322,9 +332,7 @@ export function PaginationQueryFilterDatePipe(
             }
 
             if (!this.helperService.dateCheckIso(value)) {
-                throw new PaginationFilterInvalidValueException(
-                    metadata.data!
-                );
+                throw new PaginationFilterInvalidValueException(metadata.data!);
             }
 
             const finalValue = this.helperService.dateCreateFromIso(value, {

@@ -35,7 +35,7 @@ export class RoleRepository {
             Role,
             Prisma.RoleSelect,
             Prisma.RoleWhereInput
-        >(this.databaseService.role, {
+        >(this.databaseService.client.role, {
             ...params,
             where: {
                 ...where,
@@ -58,7 +58,7 @@ export class RoleRepository {
             Role,
             Prisma.RoleSelect,
             Prisma.RoleWhereInput
-        >(this.databaseService.role, {
+        >(this.databaseService.client.role, {
             ...params,
             where: {
                 ...where,
@@ -68,13 +68,13 @@ export class RoleRepository {
     }
 
     async findOneById(id: string): Promise<Role | null> {
-        return this.databaseService.role.findUnique({
+        return this.databaseService.client.role.findUnique({
             where: { id },
         });
     }
 
     async existByName(name: string): Promise<IRole | null> {
-        return this.databaseService.role.findFirst({
+        return this.databaseService.client.role.findFirst({
             where: {
                 name: name,
             },
@@ -83,7 +83,7 @@ export class RoleRepository {
     }
 
     async existById(id: string): Promise<IRole | null> {
-        return this.databaseService.role.findUnique({
+        return this.databaseService.client.role.findUnique({
             where: {
                 id,
             },
@@ -92,7 +92,7 @@ export class RoleRepository {
     }
 
     async used(id: string): Promise<{ id: string } | null> {
-        return this.databaseService.role.findFirst({
+        return this.databaseService.client.role.findFirst({
             where: {
                 users: {
                     some: {
@@ -109,7 +109,7 @@ export class RoleRepository {
         abilities,
         ...others
     }: RoleCreateRequestDto): Promise<Role> {
-        return this.databaseService.role.create({
+        return this.databaseService.client.role.create({
             data: {
                 name: name,
                 abilities: this.databaseUtil.toPlainArray(abilities),
@@ -122,7 +122,7 @@ export class RoleRepository {
         id: string,
         { abilities, ...others }: RoleUpdateRequestDto
     ): Promise<Role> {
-        return this.databaseService.role.update({
+        return this.databaseService.client.role.update({
             where: { id },
             data: {
                 abilities: this.databaseUtil.toPlainArray(abilities),
@@ -132,6 +132,6 @@ export class RoleRepository {
     }
 
     async delete(id: string): Promise<Role> {
-        return this.databaseService.role.delete({ where: { id } });
+        return this.databaseService.client.role.delete({ where: { id } });
     }
 }

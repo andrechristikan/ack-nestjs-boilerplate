@@ -1,9 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+    IsArray,
     IsBoolean,
     IsInt,
+    IsMongoId,
     IsNotEmpty,
     IsNumber,
+    IsOptional,
     Max,
     Min,
 } from 'class-validator';
@@ -27,4 +30,15 @@ export class FeatureFlagUpdateStatusRequestDto {
     @Min(0)
     @Max(100)
     rolloutPercent: number;
+
+    @ApiProperty({
+        description: 'Target user ids allow-list; omit to keep, [] to clear',
+        example: [],
+        type: [String],
+        required: false,
+    })
+    @IsOptional()
+    @IsArray()
+    @IsMongoId({ each: true })
+    targetUserIds?: string[];
 }

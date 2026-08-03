@@ -1,7 +1,4 @@
-import {
-    Injectable,
-    mixin,
-} from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
 import { PipeTransform, Type } from '@nestjs/common/interfaces';
 import {
     PaginationDefaultCursorField,
@@ -76,15 +73,22 @@ export function PaginationCursorPipe(
                 !Number.isFinite(finalPerPage) ||
                 !Number.isInteger(finalPerPage)
             ) {
-                throw new PaginationInvalidPerPageException(PaginationDefaultMaxPerPage);
+                throw new PaginationInvalidPerPageException(
+                    PaginationDefaultMaxPerPage
+                );
             }
 
             if (finalPerPage > PaginationDefaultMaxPerPage) {
-                throw new PaginationPerPageExceedsMaximumException(PaginationDefaultMaxPerPage, finalPerPage);
+                throw new PaginationPerPageExceedsMaximumException(
+                    PaginationDefaultMaxPerPage,
+                    finalPerPage
+                );
             }
 
             if (finalPerPage < 1) {
-                throw new PaginationPerPageCannotBeLessThanOneException(finalPerPage);
+                throw new PaginationPerPageCannotBeLessThanOneException(
+                    finalPerPage
+                );
             }
 
             return finalPerPage;
@@ -105,12 +109,16 @@ export function PaginationCursorPipe(
             }
 
             if (trimmed.length > PaginationMaxCursorLength) {
-                throw new PaginationCursorTooLongException(PaginationMaxCursorLength);
+                throw new PaginationCursorTooLongException(
+                    PaginationMaxCursorLength
+                );
             }
 
             const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
             if (!urlSafeBase64Regex.test(trimmed)) {
-                throw new PaginationInvalidCursorFormatException('URL-safe base64 (A-Za-z0-9_-)');
+                throw new PaginationInvalidCursorFormatException(
+                    'URL-safe base64 (A-Za-z0-9_-)'
+                );
             }
 
             return trimmed;

@@ -841,9 +841,11 @@ export class UserService implements IUserService {
                 newPassword
             );
             if (passwordCheck) {
-                throw new UserPasswordMustNewException(this.helperService.dateFormatToRFC2822(
-                            passwordCheck.expiredAt
-                        ));
+                throw new UserPasswordMustNewException(
+                    this.helperService.dateFormatToRFC2822(
+                        passwordCheck.expiredAt
+                    )
+                );
             }
         }
 
@@ -1174,10 +1176,9 @@ export class UserService implements IUserService {
             );
 
             if (today < canResendAt) {
-                throw new UserVerificationEmailResendLimitExceededException(this.helperService.dateDiff(
-                            today,
-                            canResendAt
-                        ).minutes);
+                throw new UserVerificationEmailResendLimitExceededException(
+                    this.helperService.dateDiff(today, canResendAt).minutes
+                );
             }
         }
 
@@ -1233,10 +1234,9 @@ export class UserService implements IUserService {
             );
 
             if (today < canResendAt) {
-                throw new UserForgotPasswordRequestLimitExceededException(this.helperService.dateDiff(
-                            today,
-                            canResendAt
-                        ).minutes);
+                throw new UserForgotPasswordRequestLimitExceededException(
+                    this.helperService.dateDiff(today, canResendAt).minutes
+                );
             }
         }
 
@@ -1294,7 +1294,9 @@ export class UserService implements IUserService {
             newPassword
         );
         if (passwordCheck) {
-            throw new UserPasswordMustNewException(this.authUtil.getPasswordPeriodInDays());
+            throw new UserPasswordMustNewException(
+                this.authUtil.getPasswordPeriodInDays()
+            );
         }
 
         let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
@@ -1365,7 +1367,7 @@ export class UserService implements IUserService {
         const expiredAt = this.helperService.dateForward(
             loginAt,
             Duration.fromObject({
-                seconds: this.authUtil.jwtRefreshTokenExpirationTimeInSeconds,
+                milliseconds: this.authUtil.jwtRefreshTokenExpirationTimeInMs,
             })
         );
 
@@ -1520,7 +1522,9 @@ export class UserService implements IUserService {
         const retryAfterMs =
             await this.authTwoFactorUtil.getLockTwoFactorAttempt(user);
         if (retryAfterMs > 0) {
-            throw new AuthTwoFactorAttemptTemporaryLockException(retryAfterMs / 1000);
+            throw new AuthTwoFactorAttemptTemporaryLockException(
+                retryAfterMs / 1000
+            );
         } else if (!method) {
             throw new AuthTwoFactorMethodRequiredException();
         }
@@ -1876,7 +1880,9 @@ export class UserService implements IUserService {
         ]);
 
         if (existingUsers.length > 0) {
-            throw new UserImportEmailExistException(existingUsers.map(user => user.email).join(', '));
+            throw new UserImportEmailExistException(
+                existingUsers.map(user => user.email).join(', ')
+            );
         } else if (!checkRole) {
             throw new RoleNotFoundException();
         } else if (!checkCountry) {

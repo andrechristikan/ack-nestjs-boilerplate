@@ -1,6 +1,6 @@
 export enum EnumFileStatusCodeError {
-    required = 5010,
-    extensionInvalid = 5011,
-    requiredExtractFirst = 5012,
-    exceedMaxDataImport = 5013,
+    required = 50100,
+    extensionInvalid = 50101,
+    requiredExtractFirst = 50102,
+    exceedMaxDataImport = 50103,
 }

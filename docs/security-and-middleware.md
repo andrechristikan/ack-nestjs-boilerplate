@@ -49,6 +49,7 @@ consumer
 - [Decorators](#decorators)
   - [@RequestTimeout](#requesttimeout)
   - [@RequestEnvProtected](#requestenvprotected)
+  - [@RequestThrottleByUser](#requestthrottlebyuser)
 
 
 ## Authentication & Authorization
@@ -68,19 +69,45 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 
 ## Rate Limiting
 
-Prevents abuse using [Throttler][ref-throttler].
+Prevents abuse using [Throttler][ref-throttler], backed by Redis so counters and blocks are shared across every instance.
 
-**Implementation:**
+**Storage:** `RequestThrottlerStorageService` (`implements ThrottlerStorage`) is the store. It runs a single atomic Lua script (increment, TTL, and block check in one round-trip) against the **shared cache Redis connection** through `RedisClientCachedProvider`. It does not open a second connection. Cache lives on Redis `db:0`, and the throttler reuses that same connection.
+
+**Registration:** the storage service is provided by `RequestThrottlerModule` and injected into `ThrottlerModule.forRootAsync`:
 ```typescript
 ThrottlerModule.forRootAsync({
-  useFactory: (config: ConfigService) => ({
+  imports: [ConfigModule, RequestThrottlerModule],
+  inject: [ConfigService, RequestThrottlerStorageService],
+  useFactory: (config, storage) => ({
     throttlers: [{
       ttl: config.get<number>('request.throttle.ttlInMs'),
       limit: config.get<number>('request.throttle.limit'),
     }],
+    storage,
   }),
 })
 ```
+
+**Default (per IP, global):** `RequestThrottlerGuard` is registered as the global `APP_GUARD`, so every route is throttled by client IP with no per-route opt-in. The tracker is the client IP (`req.ips[0]`, falling back to `req.ip`).
+
+**Opt-in (per user):** `@RequestThrottleByUser()` adds `RequestThrottleByUserGuard`, which tracks by `req.user.userId` (falling back to client IP when there is no authenticated user).
+
+```typescript
+@RequestThrottleByUser()
+@AuthJwtAccessProtected()
+@Get('/me')
+async endpoint() {}
+```
+
+`@RequestThrottleByUser()` MUST sit ABOVE `@AuthJwtAccessProtected()`. Guards execute bottom-up, so the user guard runs after JWT verification and sees the verified `req.user`; place it below and `req.user` is not yet populated, silently degrading it to IP tracking. An authenticated request carrying this decorator is counted against BOTH its IP bucket (global guard) and its user bucket (defense in depth).
+
+**Redis keys** follow the configured patterns, with `{name}` the throttler name (default `default`) and `{tracker}` the IP or userId:
+```
+Request:Throttler:{name}:{tracker}         # counter
+Request:Throttler:Block:{name}:{tracker}   # active block
+```
+
+**Fail-open (uniform):** any Redis trouble (connection failure, a malformed or non-array reply, a non-numeric value, or any caught error) is logged and the request is ALLOWED. Throttling never returns a 500. Availability wins over enforcement when Redis is unreachable.
 
 **Skip Rate Limiting:**
 ```typescript
@@ -245,9 +272,12 @@ Prevents long-running requests.
 
 **Implementation:** `RequestTimeoutInterceptor`
 
-**Global Registration:**
+**Global Registration:** provided as an `APP_INTERCEPTOR` by `RequestModule.forRoot()`, alongside `RequestActorInterceptor` and the global `ValidationPipe`.
 ```typescript
-app.useGlobalInterceptors(new RequestTimeoutInterceptor(configService, reflector));
+{
+  provide: APP_INTERCEPTOR,
+  useClass: RequestTimeoutInterceptor,
+}
 ```
 
 **Custom Timeout:**
@@ -274,6 +304,7 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 | `RequestVersionStoreKey` | `RequestUrlVersionMiddleware` | resolved API version |
 | `RequestIdStoreKey` | `RequestRequestIdMiddleware` | `req.id` (dual-write) |
 | `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
+| `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
 
 **Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators still exist, but are now thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`.
 
@@ -314,6 +345,25 @@ RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 @Get('/admin/clear-cache')
 async clearCache() {}
 ```
+
+### @RequestThrottleByUser
+
+Throttles an endpoint by authenticated user instead of only by IP.
+
+**Signature:**
+```typescript
+RequestThrottleByUser(): MethodDecorator
+```
+
+**Example:**
+```typescript
+@RequestThrottleByUser()
+@AuthJwtAccessProtected()
+@Get('/me')
+async endpoint() {}
+```
+
+Place it ABOVE `@AuthJwtAccessProtected()` so it runs after JWT verification and sees the verified `req.user`. See [Rate Limiting](#rate-limiting).
 
 > Client IP, geolocation, and user-agent are exposed via the `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators, which now just read the value resolved once per request into the request store under `RequestLogStoreKey`. See [Request Store](#request-store).
 

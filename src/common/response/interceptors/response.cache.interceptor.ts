@@ -6,11 +6,11 @@ import { Reflector } from '@nestjs/core';
 import { Cache } from 'cache-manager';
 
 /**
- * Cache interceptor that namespaces response cache keys with a configured prefix.
+ * Cache interceptor that namespaces response cache keys with a configured key pattern.
  */
 @Injectable()
 export class ResponseCacheInterceptor extends CacheBaseInterceptor {
-    private readonly cachePrefix: string;
+    private readonly keyPattern: string;
 
     constructor(
         @Inject(CacheMainProvider) readonly cache: Cache,
@@ -19,18 +19,18 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
     ) {
         super(cache, reflector);
 
-        this.cachePrefix = this.configService.get<string>(
-            'response.cachePrefix'
+        this.keyPattern = this.configService.get<string>(
+            'response.keyPattern'
         )!;
     }
 
     protected trackBy(context: ExecutionContext): string | undefined {
         const key = super.trackBy(context);
 
-        if (!key) {
+        if (!key || typeof key !== 'string') {
             return undefined;
         }
 
-        return `${this.cachePrefix}:${key}`;
+        return this.keyPattern.replace('{key}', key);
     }
 }

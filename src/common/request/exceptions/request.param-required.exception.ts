@@ -9,6 +9,8 @@ export class RequestParamRequiredException extends AppBaseException {
     readonly httpStatus = HttpStatus.BAD_REQUEST;
 
     constructor(property: string) {
-        super('request.error.paramRequired', { messageProperties: { property } });
+        super('request.error.paramRequired', {
+            messageProperties: { property },
+        });
     }
 }

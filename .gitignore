@@ -2,6 +2,7 @@
 dist/
 node_modules/
 .warmup/
+# Prisma client, swagger, vault init, and agent reports under generated/docs/
 generated/
 swagger.json
 /src/metadata.ts
@@ -82,7 +83,12 @@ tmp/
 .claude/worktrees/
 .claude/todos.json
 .claude/scheduled-tasks/
-docs/superpowers
+
+## Superpowers skill output (specs, plans, sdd notes) — never docs/
+.superpowers/
+
+## Graphify knowledge graph
+graphify-out/
 
 ## Cursor
 .cursorignore

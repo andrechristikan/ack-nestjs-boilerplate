@@ -1,6 +1,6 @@
 export enum EnumCountryStatusCodeError {
-    notFound = 5140,
-    isActive = 5141,
-    inactive = 5142,
-    exist = 5143,
+    notFound = 50900,
+    isActive = 50901,
+    inactive = 50902,
+    exist = 50903,
 }

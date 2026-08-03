@@ -130,10 +130,7 @@ export interface IUserService {
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<void>;
-    uploadPhotoProfile(
-        userId: string,
-        file: IFile
-    ): Promise<void>;
+    uploadPhotoProfile(userId: string, file: IFile): Promise<void>;
     updatePasswordByAdmin(
         userId: string,
         updatedBy: string
@@ -142,9 +139,11 @@ export interface IUserService {
         user: IUser,
         { newPassword, oldPassword }: UserChangePasswordRequestDto
     ): Promise<void>;
-    loginCredential(
-        { email, password, from }: UserLoginRequestDto
-    ): Promise<IResponseReturn<UserLoginResponseDto>>;
+    loginCredential({
+        email,
+        password,
+        from,
+    }: UserLoginRequestDto): Promise<IResponseReturn<UserLoginResponseDto>>;
     loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
@@ -154,32 +153,35 @@ export interface IUserService {
         user: IUser,
         refreshToken: string
     ): Promise<IResponseReturn<AuthTokenResponseDto>>;
-    signUp(
-        { countryId, email, password, ...others }: UserSignUpRequestDto
-    ): Promise<void>;
-    verifyEmail(
-        { token }: UserVerifyEmailRequestDto
-    ): Promise<void>;
-    sendVerificationEmail(
-        { email }: UserSendEmailVerificationRequestDto
-    ): Promise<void>;
-    forgotPassword(
-        { email }: UserForgotPasswordRequestDto
-    ): Promise<void>;
-    resetPassword(
-        { newPassword, token }: UserForgotPasswordResetRequestDto
-    ): Promise<void>;
-    loginVerifyTwoFactor(
-        {
-            challengeToken,
-            code,
-            backupCode,
-            method,
-        }: UserLoginVerifyTwoFactorRequestDto
-    ): Promise<IResponseReturn<AuthTokenResponseDto>>;
-    loginSetupTwoFactor(
-        { code, challengeToken }: UserLoginSetupTwoFactorRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
+    signUp({
+        countryId,
+        email,
+        password,
+        ...others
+    }: UserSignUpRequestDto): Promise<void>;
+    verifyEmail({ token }: UserVerifyEmailRequestDto): Promise<void>;
+    sendVerificationEmail({
+        email,
+    }: UserSendEmailVerificationRequestDto): Promise<void>;
+    forgotPassword({ email }: UserForgotPasswordRequestDto): Promise<void>;
+    resetPassword({
+        newPassword,
+        token,
+    }: UserForgotPasswordResetRequestDto): Promise<void>;
+    loginVerifyTwoFactor({
+        challengeToken,
+        code,
+        backupCode,
+        method,
+    }: UserLoginVerifyTwoFactorRequestDto): Promise<
+        IResponseReturn<AuthTokenResponseDto>
+    >;
+    loginSetupTwoFactor({
+        code,
+        challengeToken,
+    }: UserLoginSetupTwoFactorRequestDto): Promise<
+        IResponseReturn<UserTwoFactorEnableResponseDto>
+    >;
     getTwoFactorStatus(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>>;
@@ -197,10 +199,7 @@ export interface IUserService {
     regenerateTwoFactorBackupCodes(
         user: IUser
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
-    resetTwoFactorByAdmin(
-        userId: string,
-        updatedBy: string
-    ): Promise<void>;
+    resetTwoFactorByAdmin(userId: string, updatedBy: string): Promise<void>;
     importByAdmin(
         data: UserImportRequestDto[],
         createdBy: string

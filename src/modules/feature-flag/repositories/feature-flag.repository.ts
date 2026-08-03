@@ -27,7 +27,7 @@ export class FeatureFlagRepository {
             FeatureFlag,
             Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
-        >(this.databaseService.featureFlag, pagination);
+        >(this.databaseService.client.featureFlag, pagination);
     }
 
     async findWithPaginationCursor(
@@ -40,11 +40,11 @@ export class FeatureFlagRepository {
             FeatureFlag,
             Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
-        >(this.databaseService.featureFlag, pagination);
+        >(this.databaseService.client.featureFlag, pagination);
     }
 
     async findOneByKey(key: string): Promise<FeatureFlag | null> {
-        return this.databaseService.featureFlag.findUnique({
+        return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
             },
@@ -52,7 +52,7 @@ export class FeatureFlagRepository {
     }
 
     async findOneById(id: string): Promise<FeatureFlag | null> {
-        return this.databaseService.featureFlag.findFirst({
+        return this.databaseService.client.featureFlag.findFirst({
             where: {
                 id,
             },
@@ -61,15 +61,20 @@ export class FeatureFlagRepository {
 
     async updateStatus(
         id: string,
-        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
+        {
+            isEnable,
+            rolloutPercent,
+            targetUserIds,
+        }: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag> {
-        return this.databaseService.featureFlag.update({
+        return this.databaseService.client.featureFlag.update({
             where: {
                 id,
             },
             data: {
                 isEnable,
                 rolloutPercent,
+                targetUserIds,
             },
         });
     }
@@ -78,7 +83,7 @@ export class FeatureFlagRepository {
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
     ): Promise<FeatureFlag> {
-        return this.databaseService.featureFlag.update({
+        return this.databaseService.client.featureFlag.update({
             where: {
                 id,
             },

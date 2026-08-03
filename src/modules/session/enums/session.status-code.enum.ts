@@ -1,4 +1,4 @@
 export enum EnumSessionStatusCodeError {
-    notFound = 5040,
-    forbidden = 5041,
+    notFound = 50400,
+    forbidden = 50401,
 }

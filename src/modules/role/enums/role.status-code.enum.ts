@@ -1,7 +1,7 @@
 export enum EnumRoleStatusCodeError {
-    notFound = 5060,
-    exist = 5061,
-    predefinedNotFound = 5062,
-    forbidden = 5063,
-    used = 5064,
+    notFound = 50500,
+    exist = 50501,
+    predefinedNotFound = 50502,
+    forbidden = 50503,
+    used = 50504,
 }

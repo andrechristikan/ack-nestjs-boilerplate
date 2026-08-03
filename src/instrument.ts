@@ -1,13 +1,20 @@
 import 'dotenv/config';
 import * as Sentry from '@sentry/nestjs';
+import { LogSeverityLevel } from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import appConfigFunction from '@configs/app.config';
 import loggerConfigFunction from '@configs/logger.config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { LoggerExcludedRoutes } from '@common/logger/constants/logger.constant';
+import { QueueException } from '@queues/exceptions/queue.exception';
 
 const appConfigs = appConfigFunction();
 const loggerConfigs = loggerConfigFunction();
+
+const sentryLogLevels: LogSeverityLevel[] =
+    appConfigs.env === EnumAppEnvironment.production
+        ? ['warn', 'error', 'fatal']
+        : ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
 function isExcludedUrl(url: string | undefined, patterns: string[]): boolean {
     if (!url || !patterns.length) {
@@ -49,7 +56,11 @@ if (loggerConfigs.sentry.dsn) {
         debug: false,
         environment: appConfigs.env,
         release: appConfigs.version,
-        integrations: [nodeProfilingIntegration()],
+        enableLogs: true,
+        integrations: [
+            nodeProfilingIntegration(),
+            Sentry.pinoIntegration({ log: { levels: sentryLogLevels } }),
+        ],
         tracesSampleRate:
             appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0,
         profilesSampleRate:
@@ -60,17 +71,13 @@ if (loggerConfigs.sentry.dsn) {
         sendDefaultPii: false,
         maxBreadcrumbs: 30,
         beforeSend(event, hint) {
-            if (event.exception?.values) {
-                const exception = event.exception.values[0];
-                const isWorkerException = exception?.type === 'WorkerException';
-
-                if (
-                    isWorkerException &&
-                    exception.mechanism?.data?.fatal === false
-                ) {
-                    // Don't send non-fatal WorkerExceptions to Sentry
-                    return null;
-                }
+            const originalException = hint?.originalException;
+            if (
+                originalException instanceof QueueException &&
+                !originalException.isFatal
+            ) {
+                // Don't send non-fatal QueueExceptions to Sentry
+                return null;
             }
 
             if (event.request) {

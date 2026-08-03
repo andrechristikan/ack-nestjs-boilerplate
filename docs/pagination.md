@@ -45,7 +45,7 @@ The module uses a pipe-based architecture with factory functions for maximum fle
             - [@PaginationQueryFilterEqualBoolean](#paginationqueryfilterequalboolean)
             - [@PaginationQueryFilterEqualNumber](#paginationqueryfilterequalnumber)
             - [@PaginationQueryFilterEqualString](#paginationqueryfilterequalstring)
-            - [@PaginationQueryFilterNotEqual<T>](#paginationqueryfilternotequalt)
+            - [@PaginationQueryFilterNotEqual](#paginationqueryfilternotequal)
             - [@PaginationQueryFilterDate](#paginationqueryfilterdate)
         - [Ordering Configuration](#ordering-configuration)
 - [Pagination Strategies](#pagination-strategies)
@@ -290,18 +290,18 @@ PaginationQueryFilterInEnum<T>(
 ```typescript
 @PaginationQueryFilterInEnum(
     'status',
-    [EnumUserStatus.ACTIVE, EnumUserStatus.INACTIVE]
+    [EnumUserStatus.active, EnumUserStatus.inactive]
 )
 status?: Record<string, IPaginationIn>
 ```
 
 **Transforms:**
-- Query: `?status=ACTIVE,INACTIVE`
-- To: `{ status: { in: ['ACTIVE', 'INACTIVE'] } }`
+- Query: `?status=active,inactive`
+- To: `{ status: { in: ['active', 'inactive'] } }`
 
 **Validation:**
 - Throws `PaginationFilterInvalidValueEnumException` (422) if value not in enum
-- Error code: `5021 (filterInvalidValue)`
+- Error code: `50201 (filterInvalidValue)`
 
 ##### @PaginationQueryFilterNinEnum\<T\>
 
@@ -320,14 +320,14 @@ PaginationQueryFilterNinEnum<T>(
 ```typescript
 @PaginationQueryFilterNinEnum(
     'status',
-    [EnumUserStatus.BANNED, EnumUserStatus.INACTIVE]
+    [EnumUserStatus.blocked, EnumUserStatus.inactive]
 )
 status?: Record<string, IPaginationNin>
 ```
 
 **Transforms:**
-- Query: `?status=BANNED,INACTIVE`
-- To: `{ status: { notIn: ['BANNED', 'INACTIVE'] } }`
+- Query: `?status=blocked,inactive`
+- To: `{ status: { notIn: ['blocked', 'inactive'] } }`
 
 ##### @PaginationQueryFilterEqualBoolean
 
@@ -379,13 +379,13 @@ role?: Record<string, IPaginationEqual>
 - Query: `?role=admin`
 - To: `{ role: { equals: 'admin' } }`
 
-##### @PaginationQueryFilterNotEqual\<T\>
+##### @PaginationQueryFilterNotEqual
 
 Filters by inequality (not equal).
 
 **Factory Function:**
 ```typescript
-PaginationQueryFilterNotEqual<T>(
+PaginationQueryFilterNotEqual(
     field: string,
     options?: { customField?: string, isBoolean?: boolean, isNumber?: boolean }
 )
@@ -479,14 +479,13 @@ pagination: IPaginationQueryOffsetParams
 - To: `[{ name: 'asc' }]`
 
 **Internal Service Support:**
-- Query helpers only produce a single order object
-- `PaginationService` also accepts manual multi-field ordering in internal code
+- `PaginationOrderPipe` parses repeated `orderBy` query params into a multi-entry array; `PaginationService` accepts that same array format directly, so a handler can also build a multi-field `orderBy` manually without going through the decorator
 - Example: `[{ createdAt: 'desc' }, { name: 'asc' }]`
 
 **Validation:**
 - Field must be in allowed list
-- Invalid field throws error code: `5020 (orderByNotAllowed)`
-- Invalid direction throws error code: `5035 (orderDirectionNotAllowed)`
+- Invalid field throws error code: `50200 (orderByNotAllowed)`
+- Invalid direction throws error code: `50215 (orderDirectionNotAllowed)`
 
 ## Pagination Strategies
 
@@ -505,16 +504,28 @@ pagination: IPaginationQueryOffsetParams
 - Min perPage: 1
 
 **Response Example:**
+
+The pagination fields ride inside the `metadata` block of the standard response envelope, not at the top level:
+
 ```json
 {
-    "type": "offset",
-    "count": 250,
-    "perPage": 20,
-    "page": 1,
-    "totalPage": 13,
-    "hasNext": true,
-    "hasPrevious": false,
-    "nextPage": 2,
+    "statusCode": 200,
+    "message": "...",
+    "metadata": {
+        "type": "offset",
+        "count": 250,
+        "perPage": 20,
+        "page": 1,
+        "totalPage": 13,
+        "hasNext": true,
+        "hasPrevious": false,
+        "nextPage": 2,
+        "search": "...",
+        "filters": { ... },
+        "orderBy": [{ "createdAt": "desc" }],
+        "availableSearch": ["name", "email"],
+        "availableOrderBy": ["createdAt", "name"]
+    },
     "data": [...]
 }
 ```
@@ -541,12 +552,23 @@ pagination: IPaginationQueryOffsetParams
 - Min perPage: 1
 
 **Response Example:**
+
+The pagination fields ride inside the `metadata` block of the standard response envelope. The wire field for the encoded cursor is `nextCursor`, not `cursor`; `hasPrevious` is always `false` for this strategy:
+
 ```json
 {
-    "type": "cursor",
-    "cursor": "eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsidGltZXN0YW1wIjoiZGVzIn0sIndoZXJlIjp7fX0=",
-    "perPage": 20,
-    "hasNext": true,
+    "statusCode": 200,
+    "message": "...",
+    "metadata": {
+        "type": "cursor",
+        "nextCursor": "eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsidGltZXN0YW1wIjoiZGVzIn0sIndoZXJlIjp7fX0",
+        "perPage": 20,
+        "hasNext": true,
+        "hasPrevious": false,
+        "orderBy": [{ "name": "asc" }],
+        "availableSearch": ["name", "email"],
+        "availableOrderBy": []
+    },
     "data": [...]
 }
 ```
@@ -572,20 +594,20 @@ return this.paginationService.offset(repository, {
 
 **In (inclusion):**
 ```typescript
-@PaginationQueryFilterInEnum('status', [ACTIVE, INACTIVE])
+@PaginationQueryFilterInEnum('status', [EnumUserStatus.active, EnumUserStatus.inactive])
 status?: Record<string, IPaginationIn>
 
-// Query: ?status=ACTIVE,INACTIVE
-// Database: WHERE status IN ('ACTIVE', 'INACTIVE')
+// Query: ?status=active,inactive
+// Database: WHERE status IN ('active', 'inactive')
 ```
 
 **Nin (exclusion):**
 ```typescript
-@PaginationQueryFilterNinEnum('status', [BANNED, DELETED])
+@PaginationQueryFilterNinEnum('status', [EnumUserStatus.blocked])
 status?: Record<string, IPaginationNin>
 
-// Query: ?status=BANNED,DELETED
-// Database: WHERE status NOT IN ('BANNED', 'DELETED')
+// Query: ?status=blocked
+// Database: WHERE status NOT IN ('blocked')
 ```
 
 ### Equality Filters
@@ -717,7 +739,7 @@ async findWithPaginationOffset(
     pagination: IPaginationQueryOffsetParams
 ): Promise<IResponsePagingReturn<IUser>> {
     return this.paginationService.offset<IUser>(
-        this.databaseService.user,
+        this.databaseService.client.user,
         {
             ...pagination,
             where: {
@@ -772,7 +794,7 @@ async findWithPaginationCursor(
     pagination: IPaginationQueryCursorParams
 ): Promise<IPaginationCursorReturn<IUser>> {
     return this.paginationService.cursor<IUser>(
-        this.databaseService.user,
+        this.databaseService.client.user,
         {
             ...pagination,
             where: {
@@ -808,7 +830,7 @@ async listUsers(
     pagination: IPaginationQueryOffsetParams,
     @PaginationQueryFilterInEnum(
         'status',
-        [EnumUserStatus.ACTIVE, EnumUserStatus.INACTIVE]
+        [EnumUserStatus.active, EnumUserStatus.inactive]
     )
     status?: Record<string, IPaginationIn>,
     @PaginationQueryFilterEqualString('role')
@@ -864,7 +886,7 @@ async findWithPaginationOffset(
     startDate?: Record<string, IPaginationDate>
 ): Promise<IResponsePagingReturn<IUser>> {
     return this.paginationService.offset<IUser>(
-        this.databaseService.user,
+        this.databaseService.client.user,
         {
             ...pagination,
             where: {
@@ -883,7 +905,7 @@ async findWithPaginationOffset(
 
 **API Request:**
 ```
-GET /users?page=1&perPage=20&status=ACTIVE,INACTIVE&role=admin&isActive=true&createdAt=2024-01-01
+GET /users?page=1&perPage=20&status=active,inactive&role=admin&isActive=true&createdAt=2024-01-01
 ```
 
 ### Complete Example
@@ -908,12 +930,12 @@ export class UserAdminController {
         pagination: IPaginationQueryOffsetParams,
         @PaginationQueryFilterInEnum(
             'status',
-            [EnumUserStatus.ACTIVE, EnumUserStatus.INACTIVE]
+            [EnumUserStatus.active, EnumUserStatus.inactive]
         )
         status?: Record<string, IPaginationIn>,
         @PaginationQueryFilterNinEnum(
             'blockedStatus',
-            [EnumUserStatus.BANNED]
+            [EnumUserStatus.blocked]
         )
         blockedStatus?: Record<string, IPaginationNin>,
         @PaginationQueryFilterEqualBoolean('isActive')
@@ -988,7 +1010,7 @@ Pagination pipes are singletons (not request-scoped). After parsing query parame
 
 `ResponsePagingInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response. Key points:
 
-- The store carries response metadata only. Parsed values (page, limit, order, etc.) are passed directly to the handler as method parameters and never flow through the store.
+- Each pipe merges its parsed values (page, perPage, orderBy, availableOrderBy, search, availableSearch, filters) into the store for the response metadata, in addition to passing them to the handler as method parameters.
 - The store never enters a service or repository layer.
 - Per-request isolation is guaranteed by the CLS store opened once per request by `ClsMiddleware`, not by DI scope.
 - Pagination metadata appears on the success path only. On error the interceptor is skipped and no pagination fields are emitted.

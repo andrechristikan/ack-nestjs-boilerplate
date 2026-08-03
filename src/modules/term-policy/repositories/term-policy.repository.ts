@@ -50,7 +50,7 @@ export class TermPolicyRepository {
             TermPolicy,
             Prisma.TermPolicySelect,
             Prisma.TermPolicyWhereInput
-        >(this.databaseService.termPolicy, {
+        >(this.databaseService.client.termPolicy, {
             ...others,
             where: {
                 ...where,
@@ -74,7 +74,7 @@ export class TermPolicyRepository {
             TermPolicy,
             Prisma.TermPolicySelect,
             Prisma.TermPolicyWhereInput
-        >(this.databaseService.termPolicy, {
+        >(this.databaseService.client.termPolicy, {
             ...others,
             where: {
                 ...where,
@@ -98,7 +98,7 @@ export class TermPolicyRepository {
             ITermPolicyUserAcceptance,
             Prisma.TermPolicyUserAcceptanceSelect,
             Prisma.TermPolicyUserAcceptanceWhereInput
-        >(this.databaseService.termPolicyUserAcceptance, {
+        >(this.databaseService.client.termPolicyUserAcceptance, {
             ...others,
             where: {
                 userId,
@@ -108,7 +108,7 @@ export class TermPolicyRepository {
     }
 
     async findOneById(termPolicyId: string): Promise<TermPolicy | null> {
-        return this.databaseService.termPolicy.findUnique({
+        return this.databaseService.client.termPolicy.findUnique({
             where: {
                 id: termPolicyId,
             },
@@ -120,7 +120,7 @@ export class TermPolicyRepository {
         type: EnumTermPolicyType;
         version: number;
     } | null> {
-        return this.databaseService.termPolicy.findFirst({
+        return this.databaseService.client.termPolicy.findFirst({
             where: {
                 type,
                 status: EnumTermPolicyStatus.published,
@@ -140,7 +140,7 @@ export class TermPolicyRepository {
         userId: string,
         termPolicyId: string
     ): Promise<{ id: string } | null> {
-        return this.databaseService.termPolicyUserAcceptance.findFirst({
+        return this.databaseService.client.termPolicyUserAcceptance.findFirst({
             where: {
                 userId,
                 termPolicyId,
@@ -159,7 +159,7 @@ export class TermPolicyRepository {
         contents: Prisma.JsonArray;
         status: EnumTermPolicyStatus;
     } | null> {
-        return this.databaseService.termPolicy.findFirst({
+        return this.databaseService.client.termPolicy.findFirst({
             where: {
                 version,
                 type,
@@ -179,52 +179,57 @@ export class TermPolicyRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
         const acceptedAt = this.helperService.dateCreate();
-        const [userAcceptance] = await this.databaseService.$transaction([
-            this.databaseService.termPolicyUserAcceptance.create({
-                data: {
-                    acceptedAt,
-                    userId: user.id,
-                    termPolicyId,
-                    createdBy: user.id,
-                },
-                include: {
-                    termPolicy: true,
-                    user: true,
-                },
-            }),
-            this.databaseService.user.update({
-                where: {
-                    id: user.id,
-                    deletedAt: null,
-                    status: EnumUserStatus.active,
-                },
-                data: {
-                    termPolicy: {
-                        [type]: true,
+        const [userAcceptance] = await this.databaseService.client.$transaction(
+            [
+                this.databaseService.client.termPolicyUserAcceptance.create({
+                    data: {
+                        acceptedAt,
+                        userId: user.id,
+                        termPolicyId,
+                        createdBy: user.id,
                     },
-                    activityLogs: {
-                        create: {
-                            action: EnumActivityLogAction.userAcceptTermPolicy,
-                            description: this.activityLogUtil.getDescription(
-                                EnumActivityLogAction.userAcceptTermPolicy,
-                                {
-                                    type,
-                                }
-                            ),
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            geoLocation:
-                                this.databaseUtil.toPlainObject(geoLocation),
-                            createdBy: user.id,
-                            metadata: {
-                                termPolicyType: type,
+                    include: {
+                        termPolicy: true,
+                        user: true,
+                    },
+                }),
+                this.databaseService.client.user.update({
+                    where: {
+                        id: user.id,
+                        deletedAt: null,
+                        status: EnumUserStatus.active,
+                    },
+                    data: {
+                        termPolicy: {
+                            [type]: true,
+                        },
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userAcceptTermPolicy,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userAcceptTermPolicy,
+                                        {
+                                            type,
+                                        }
+                                    ),
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: user.id,
+                                metadata: {
+                                    termPolicyType: type,
+                                },
                             },
                         },
                     },
-                },
-            }),
-        ]);
+                }),
+            ]
+        );
 
         return userAcceptance;
     }
@@ -234,7 +239,7 @@ export class TermPolicyRepository {
         contents: TermContentDto[],
         createdBy: string
     ): Promise<TermPolicy> {
-        return this.databaseService.termPolicy.create({
+        return this.databaseService.client.termPolicy.create({
             data: {
                 type,
                 version,
@@ -246,7 +251,7 @@ export class TermPolicyRepository {
     }
 
     async delete(termPolicyId: string): Promise<TermPolicy> {
-        return this.databaseService.termPolicy.delete({
+        return this.databaseService.client.termPolicy.delete({
             where: {
                 id: termPolicyId,
             },
@@ -266,7 +271,7 @@ export class TermPolicyRepository {
             contents[contentIndex] = content;
         }
 
-        return this.databaseService.termPolicy.update({
+        return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
@@ -282,7 +287,7 @@ export class TermPolicyRepository {
         newContent: TermContentDto,
         updatedBy: string
     ): Promise<TermPolicy> {
-        return this.databaseService.termPolicy.update({
+        return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
@@ -309,7 +314,7 @@ export class TermPolicyRepository {
             contents.splice(contentIndex, 1);
         }
 
-        return this.databaseService.termPolicy.update({
+        return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
@@ -326,8 +331,8 @@ export class TermPolicyRepository {
         contents: TermContentDto[],
         updatedBy: string
     ): Promise<TermPolicy> {
-        const [termPolicy] = await this.databaseService.$transaction([
-            this.databaseService.termPolicy.update({
+        const [termPolicy] = await this.databaseService.client.$transaction([
+            this.databaseService.client.termPolicy.update({
                 where: {
                     id: termPolicyId,
                 },
@@ -338,7 +343,7 @@ export class TermPolicyRepository {
                     updatedBy,
                 },
             }),
-            this.databaseService.user.updateMany({
+            this.databaseService.client.user.updateMany({
                 where: {
                     deletedAt: null,
                     status: EnumUserStatus.active,

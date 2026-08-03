@@ -10,3 +10,4 @@ export const RequestLanguageStoreKey = 'RequestLanguageStore';
 export const RequestVersionStoreKey = 'RequestVersionStore';
 export const RequestCorrelationIdStoreKey = 'RequestCorrelationIdStore';
 export const RequestIdStoreKey = 'RequestIdStore';
+export const RequestActorStoreKey = 'RequestActorStore';

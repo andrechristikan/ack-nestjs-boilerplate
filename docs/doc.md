@@ -244,7 +244,7 @@ Documents paginated response with automatic pagination parameters.
 - Optional ordering query when `availableOrder` provided:
     - `orderBy` - Field and direction in `field:direction` format (e.g., `name:asc`, `createdAt:desc`). Repeat to sort by multiple fields.
 - Shared error responses (422) for both types:
-    - `orderByNotAllowed` (5020), `orderDirectionNotAllowed` (5035), `filterInvalidValue` (5021)
+    - `orderByNotAllowed` (50200), `orderDirectionNotAllowed` (50215), `filterInvalidValue` (50201)
     - `invalidPerPage`, `perPageExceedsMaximum`, `perPageCannotBeLessThanOne`
 - Type-specific error responses (422):
     - **Offset**: `invalidOffsetPaginationParams`, `invalidPage`, `pageExceedsMaximum`, `pageCannotBeLessThanOne`
@@ -497,18 +497,20 @@ DocAllOf(
 
 The ACK NestJS Boilerplate automatically generates the OpenAPI Swagger JSON documentation for your API. This file describes all endpoints, schemas, and metadata for integration, testing, or external documentation tools.
 
+The Swagger document is built only when `app.env` is not `production`. In a production environment neither the `/docs` UI, the JSON endpoint, nor `generated/swagger.json` is produced.
+
 ### How to Get swagger.json
 
-There are two ways to obtain the Swagger JSON file:
+There are two ways to obtain the Swagger JSON file, both available outside production only:
 
 1. **Via URL (API Docs Endpoint):**
     - After starting the server, access: `/docs/json`
     - Example: `http://localhost:3000/docs/json`
-    - This endpoint always serves the latest Swagger spec for the running app.
+    - This endpoint serves the latest Swagger spec for the running app.
 
 2. **Via Generated File:**
     - The file is auto-generated at: `generated/swagger.json`
-    - This file is written every time the app starts.
+    - This file is written every time the app starts in a non-production environment.
     - You can use this file for CI/CD, external tools, or static documentation.
 
 Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
@@ -673,7 +675,13 @@ export function UserAdminListDoc(): MethodDecorator {
 
 @UserAdminListDoc()
 @Get('/list')
-async listUsers(@Query() query: PaginationQuery) {
+async list(
+    @PaginationOffsetQuery({ availableSearch: UserDefaultAvailableSearch })
+    pagination: IPaginationQueryOffsetParams<
+        Prisma.UserSelect,
+        Prisma.UserWhereInput
+    >
+) {
     // implementation
 }
 ```
@@ -681,24 +689,36 @@ async listUsers(@Query() query: PaginationQuery) {
 ### File Upload Endpoint
 
 ```typescript
-export function UserUploadAvatarDoc(): MethodDecorator {
+export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'Upload user avatar',
+            summary: 'upload photo profile',
         }),
-        DocRequestFile({
-            dto: FileUploadDto,
-        }),
+        DocGuard({ termPolicy: true }),
         DocAuth({
+            xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.uploadAvatar')
+        DocRequestFile({
+            dto: FileUploadSingleRequestDto,
+        }),
+        DocResponse('user.uploadPhotoProfile')
     );
 }
 
-@UserUploadAvatarDoc()
-@Post('/avatar')
-async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
+@UserSharedUploadPhotoProfileDoc()
+@Post('/profile/upload/photo')
+async uploadPhotoProfile(
+    @UploadedFile(
+        RequestRequiredPipe,
+        FileExtensionPipe([
+            EnumFileExtensionImage.jpeg,
+            EnumFileExtensionImage.png,
+            EnumFileExtensionImage.jpg,
+        ])
+    )
+    file: IFile
+) {
     // implementation
 }
 ```

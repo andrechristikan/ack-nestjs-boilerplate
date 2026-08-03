@@ -1,6 +1,6 @@
 import {
-    INotificationEmailWorkerBulkPayload,
-    INotificationEmailWorkerPayload,
+    INotificationEmailBulkQueuePayload,
+    INotificationEmailQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -17,91 +17,91 @@ import { IQueueResponse } from '@queues/interfaces/queue.interface';
 export interface INotificationEmailProcessorService {
     processChangePassword(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processWelcome(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processWelcomeSocial(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processWelcomeByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload>,
+            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processTemporaryPasswordByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processForgotPassword(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationForgotPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processVerificationEmail(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerificationEmailPayload>,
+            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processVerifiedEmail(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload>,
+            INotificationEmailQueuePayload<INotificationVerifiedEmailPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processVerifiedMobileNumber(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processNewDeviceLogin(
         job: Job<
-            INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload>,
+            INotificationEmailQueuePayload<INotificationNewDeviceLoginPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processResetPassword(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processResetTwoFactorByAdmin(
         job: Job<
-            INotificationEmailWorkerPayload,
+            INotificationEmailQueuePayload,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse>;
     processPublishTermPolicy(
         job: Job<
-            INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

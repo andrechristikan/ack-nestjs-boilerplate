@@ -9,6 +9,8 @@ export class PaginationFilterInvalidValueEnumException extends AppBaseException 
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(property: string, allowedValues: string) {
-        super('pagination.error.filterInvalidValueEnum', { messageProperties: { property, allowedValues } });
+        super('pagination.error.filterInvalidValueEnum', {
+            messageProperties: { property, allowedValues },
+        });
     }
 }

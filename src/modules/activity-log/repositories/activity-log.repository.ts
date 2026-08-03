@@ -41,7 +41,7 @@ export class ActivityLogRepository {
             IActivityLog,
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
-        >(this.databaseService.activityLog, {
+        >(this.databaseService.client.activityLog, {
             ...params,
             where: {
                 ...where,
@@ -67,7 +67,7 @@ export class ActivityLogRepository {
             IActivityLog,
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
-        >(this.databaseService.activityLog, {
+        >(this.databaseService.client.activityLog, {
             ...params,
             where: {
                 ...where,
@@ -86,7 +86,7 @@ export class ActivityLogRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog,
         metadata?: IActivityLogMetadata
     ): Promise<ActivityLog> {
-        return this.databaseService.activityLog.create({
+        return this.databaseService.client.activityLog.create({
             data: {
                 userId,
                 action,

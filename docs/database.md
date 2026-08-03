@@ -36,6 +36,10 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [UserPhoto](#userphoto)
 	- [RoleAbility](#roleability)
 	- [TermPolicyContent](#termpolicycontent)
+- [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
+	- [Client Access Surface](#client-access-surface)
+	- [Automatic Actor Stamping](#automatic-actor-stamping)
+	- [Soft Delete and Restore](#soft-delete-and-restore)
 - [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
@@ -89,6 +93,13 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 - `pnpm migration:seed` — runs all seed commands to populate initial data.
 - `pnpm migration:remove` — removes all seeded data from the database.
 - `pnpm migration:fresh` — force-resets the database schema (`prisma db push --force-reset`) then immediately re-seeds all data. Useful during development when you need a clean slate.
+
+**Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
+
+- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `termPolicy` → `user`. A seed that references another's rows runs after it, so `user` is last: it needs both `role` and `country`.
+- `migration:remove` runs `user` → `apiKey` → `featureFlag` → `country` → `role` → `termPolicy`, removing the referrer before anything it references.
+- Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
+- Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
 
 **How to Seed/Remove a Specific Module:**
 Run the command:
@@ -190,7 +201,7 @@ When you run `pnpm migration:seed`, the following initial data will be created i
 > [!WARNING]
 > These are development keys. Always regenerate API keys for production environments.
 
-Two API keys are created for authentication and service access:
+Two API keys are created for authentication and service access. They are seeded in the `local` environment only; `development`, `staging`, and `production` seed no api key.
 
 | Name | Type | Key | Secret | Usage |
 |------|------|-----|--------|-------|
@@ -272,7 +283,7 @@ Four term policy documents are created:
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
 
-The actual content for these policies is stored as file references in `src/migration/data/term-policy/*`. The files are not automatically linked to the database records. You must run the term policy migration script to link the files and update the content keys in the database.
+The `termPolicy` seed creates each record with an empty `contents` array. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are not linked automatically: run the term policy template seed to upload them to S3 and write the resulting `TermPolicyContent` entries onto the records.
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
@@ -485,6 +496,51 @@ type TermPolicyContent {
 - `TermPolicy.contents`
 
 
+## Audit Fields and Soft Delete
+
+Audit fields are stamped automatically by a Prisma Client Extension named `audit-actor`. `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers; `DatabaseClientFactory.create()` applies it with `$extends`. Repositories do not set `createdBy` / `updatedBy` by hand; the extension fills them from the authenticated request actor.
+
+### Client Access Surface
+
+Three roles, wired together in `src/common/database/database.module.ts`:
+
+- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`.
+- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the DMMF `modelFields` / `modelRelations` maps and the stamping methods, and builds the extension in `build()`.
+- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes one public member: `client`.
+
+The extension carries the `create` / `createMany` / `update` / `updateMany` / `upsert` query hooks and the `softDelete` / `restore` model methods, all registered against `$allModels`. `IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically; the leaf types the extension needs (`IDatabaseRow`, `IDatabaseSoftDeleteArgs`, `IDatabaseRestoreArgs`, and their data shapes) live in `interfaces/database.extension.interface.ts`.
+
+`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token, the factory, and the extension util stay unexported; `DatabaseModule` exports only `DatabaseService` and `DatabaseUtil`.
+
+What that means for callers:
+
+- Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
+- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
+- `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes or must branch on an intermediate result. Both run on `client`, so audit stamping still fires inside them. In the callback form use the `tx` client for every operation; a call back to `databaseService.client` escapes the transaction.
+- The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
+
+### Automatic Actor Stamping
+
+- On `create`, `createMany`, `update`, `updateMany`, and `upsert`, the extension fills `createdBy` and `updatedBy` from the current request actor.
+- The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user carries no actor, and nothing is stamped.
+- A field is filled only when the model actually has that column and the caller left it null. An explicit value the caller passes always wins.
+- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.ObjectId`; they store the actor's user id.
+
+**Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved from the Prisma DMMF rather than the parent's field set, and the recursion continues to any deeper level.
+
+For a caller this means a nested write needs no hand-written `createdBy` / `updatedBy`. Keep one only where the value is deliberately not the acting user.
+
+### Soft Delete and Restore
+
+The extension adds two methods to every model. They are meaningful only on models that carry the soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model.
+
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status, and write the nested activity log in one call.
+- `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
+- A hard delete (`delete` / `deleteMany`) writes no audit fields.
+
+**Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
+
+
 ## Docker
 
 Running database commands inside Docker containers from your host machine:
@@ -571,9 +627,10 @@ pnpm prisma migrate dev --name init  # PostgreSQL
 pnpm db:generate                      # Regenerate client
 ```
 
-**4. Update DatabaseService Code:**
+**4. Update Database Module Code:**
 
-- **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection management, health checks, and database-specific features
+- **DatabaseClientFactory** (`src/common/database/factories/database.client.factory.ts`) - May require updates for connection options and database-specific features
+- **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection lifecycle and log event handling
 - **DatabaseUtil** (`src/common/database/utils/database.util.ts`) - Replace MongoDB `ObjectId` helpers with UUID validators
 
 **5. Re-seed Database:**

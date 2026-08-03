@@ -9,6 +9,8 @@ export class PaginationCursorTooLongException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(maxCursorLength: number) {
-        super('pagination.error.cursorTooLong', { messageProperties: { maxCursorLength } });
+        super('pagination.error.cursorTooLong', {
+            messageProperties: { maxCursorLength },
+        });
     }
 }

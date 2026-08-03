@@ -5,8 +5,8 @@ import {
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
-    INotificationPushWorkerCleanupTokenPayload,
-    INotificationPushWorkerPayload,
+    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
@@ -44,7 +44,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.newDeviceLogin:
                     return this.notificationPushProcessorService.processNewDeviceLogin(
                         job as Job<
-                            INotificationPushWorkerPayload<INotificationNewDeviceLoginPayload>,
+                            INotificationPushQueuePayload<INotificationNewDeviceLoginPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -52,7 +52,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.resetTwoFactorByAdmin:
                     return this.notificationPushProcessorService.processResetTwoFactorByAdmin(
                         job as Job<
-                            INotificationPushWorkerPayload,
+                            INotificationPushQueuePayload,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -60,7 +60,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.temporaryPasswordByAdmin:
                     return this.notificationPushProcessorService.processTemporaryPasswordByAdmin(
                         job as Job<
-                            INotificationPushWorkerPayload<INotificationTemporaryPasswordPayload>,
+                            INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -68,7 +68,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.resetPassword:
                     return this.notificationPushProcessorService.processResetPassword(
                         job as Job<
-                            INotificationPushWorkerPayload,
+                            INotificationPushQueuePayload,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -76,7 +76,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.cleanupTokens:
                     return this.notificationPushProcessorService.processCleanupTokens(
                         job as Job<
-                            INotificationPushWorkerCleanupTokenPayload,
+                            INotificationPushCleanupTokenQueuePayload,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >

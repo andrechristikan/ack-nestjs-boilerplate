@@ -61,9 +61,10 @@ export class FeatureFlagService implements IFeatureFlagService {
         }
 
         const { user } = request;
-        if (user) {
+        if (user && !featureFlag.targetUserIds.includes(user.userId)) {
             const checkRollout = this.featureFlagUtil.checkRolloutPercentage(
                 featureFlag.rolloutPercent,
+                keys[0],
                 user.userId
             );
             if (!checkRollout) {

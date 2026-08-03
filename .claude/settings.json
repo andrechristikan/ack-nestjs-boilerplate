@@ -1,0 +1,49 @@
+{
+    "permissions": {
+        "allow": [],
+        "additionalDirectories": [
+            "/tmp"
+        ]
+    },
+    "enabledPlugins": {
+        "superpowers@claude-plugins-official": true,
+        "document-skills@anthropic-agent-skills": false,
+        "taste-skill@taste-skill": false,
+        "ui-ux-pro-max@ui-ux-pro-max-skill": false,
+        "impeccable@impeccable": false,
+        "frontend-design@claude-plugins-official": false
+    },
+    "claudeMdExcludes": [
+        "**/.claude/rules/architecture.md",
+        "**/.claude/rules/authoring.md",
+        "**/.claude/rules/database.md",
+        "**/.claude/rules/exceptions.md",
+        "**/.claude/rules/feature-flag.md",
+        "**/.claude/rules/file.md",
+        "**/.claude/rules/http.md",
+        "**/.claude/rules/migration.md",
+        "**/.claude/rules/naming.md",
+        "**/.claude/rules/notification.md",
+        "**/.claude/rules/null-safety.md",
+        "**/.claude/rules/operational.md",
+        "**/.claude/rules/pagination.md",
+        "**/.claude/rules/queue.md",
+        "**/.claude/rules/security.md",
+        "**/.claude/rules/status-code.md",
+        "**/.claude/rules/testing.md",
+        "**/.claude/rules/validation.md"
+    ],
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/deny-docs-superpowers.sh"
+                    }
+                ]
+            }
+        ]
+    }
+}

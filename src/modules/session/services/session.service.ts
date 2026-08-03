@@ -71,10 +71,7 @@ export class SessionService implements ISessionService {
         };
     }
 
-    async revoke(
-        userId: string,
-        sessionId: string
-    ): Promise<void> {
+    async revoke(userId: string, sessionId: string): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 

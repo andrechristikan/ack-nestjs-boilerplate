@@ -144,7 +144,7 @@ export class UserListDto {
   @Type(() => Number)
   @Min(10)
   @Max(100)
-  limit?: number = 20;
+  perPage?: number = 20;
 }
 ```
 
@@ -429,14 +429,14 @@ findOne(@Param('userId', RequestIsValidObjectIdPipe) userId: string) {
 ```
 
 **File validation pipes**
-See [File Upload][ref-doc-file-upload] for file extension and Csv validation pipes.
+`FileExtensionPipe` validates the upload extension. A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe` validates every row against the import DTO, caps the row count at `FileMaxDataImport` (1000), and collects all per-row failures into a `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
 
 ## Error Message Mapping
 
 When validation fails, `MessageService` processes errors through `setValidationMessage()`:
 
 **Process**:
-1. Extract constraint keys from `ValidationError` using `extractConstraints()`
+1. Read the constraint keys off each `ValidationError.constraints`
 2. Handle nested validation errors by traversing children with `processNestedValidationError()`
 3. Reconstruct full property path for nested objects (e.g., `address.street`)
 4. Create localized message for each constraint with fallback mechanism
@@ -535,7 +535,7 @@ defaultMessage(validationArguments?: ValidationArguments): string {
 **Final response** (handled by `AppValidationFilter`):
 ```json
 {
-  "statusCode": 5030,
+  "statusCode": 50300,
   "statusCodeKey": "validation",
   "module": "request",
   "message": "There are validation errors.",

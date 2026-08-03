@@ -23,6 +23,8 @@ The `MessageModule` is imported globally via `CommonModule` in `src/common/commo
 - [Message Files](#message-files)
 - [Usage](#usage)
   - [Basic Translation](#basic-translation)
+  - [Filter Language](#filter-language)
+  - [Bulk Import Validation Messages](#bulk-import-validation-messages)
   - [Translation with Variables](#translation-with-variables)
   - [Custom Language](#custom-language)
 - [Integration](#integration)
@@ -91,14 +93,11 @@ Message files use JSON format with nested structure. Key paths follow the patter
 Example structure:
 
 ```json
-// src/languages/en/auth.json
+// src/languages/en/user.json
 {
-    "login": {
-        "success": "Login successful",
-        "error": {
-            "notFound": "Email not found",
-            "passwordNotMatch": "Password does not match"
-        }
+    "updateProfile": "User profile updated successfully.",
+    "error": {
+        "notFound": "Sorry, we couldn't find the user you requested."
     }
 }
 ```
@@ -106,11 +105,11 @@ Example structure:
 Access pattern:
 
 ```typescript
-// Key path: auth.login.success
-// Output: "Login successful"
+// Key path: user.updateProfile
+// Output: "User profile updated successfully."
 
-// Key path: auth.login.error.notFound
-// Output: "Email not found"
+// Key path: user.error.notFound
+// Output: "Sorry, we couldn't find the user you requested."
 ```
 
 ## Usage
@@ -124,8 +123,8 @@ Inject `MessageService` and use `setMessage` method:
 export class UserService {
     constructor(private readonly messageService: MessageService) {}
 
-    getWelcomeMessage(): string {
-        return this.messageService.setMessage('user.welcome');
+    getUpdateProfileMessage(): string {
+        return this.messageService.setMessage('user.updateProfile');
     }
 }
 ```
@@ -179,7 +178,7 @@ const itemCount = this.messageService.setMessage('user.itemCount', {
 Override default language using the `customLanguage` option:
 
 ```typescript
-const message = this.messageService.setMessage('user.welcome', {
+const message = this.messageService.setMessage('user.updateProfile', {
     customLanguage: 'id' // Indonesian
 });
 ```
@@ -220,27 +219,31 @@ The `@Response` decorator translates success message paths. See [Response Docume
 
 ```typescript
 @Response('user.create')
-@Post('/')
-async create(@Body() dto: CreateUserRequestDto): Promise<IResponseReturn<UserResponseDto>> {
-    const user = await this.userService.create(dto);
-    return { data: user };
+@Post('/create')
+async create(
+    @Body() body: UserCreateRequestDto,
+    @AuthJwtPayload('userId') createdBy: string
+): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    return this.userService.createByAdmin(body, createdBy);
 }
 ```
 
 With variables, pass `messageProperties` via the `metadata` field on `IResponseReturn`:
 
 ```typescript
-@Response('user.update')
-@Patch('/:id')
-async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto
-): Promise<IResponseReturn<UserResponseDto>> {
-    const user = await this.userService.update(id, dto);
+@Response('user.updateStatus')
+@Patch('/update/:userId/status')
+async updateStatus(
+    @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+    userId: string,
+    @AuthJwtPayload('userId') updatedBy: string,
+    @Body() body: UserUpdateStatusRequestDto
+): Promise<IResponseReturn<void>> {
+    await this.userService.updateStatusByAdmin(userId, body, updatedBy);
+
     return {
-        data: user,
         metadata: {
-            messageProperties: { name: user.name },
+            messageProperties: { status: body.status },
         },
     };
 }
@@ -261,9 +264,9 @@ Validation errors are automatically translated by `MessageService`. The service 
 // src/languages/en/request.json
 {
     "error": {
-        "isNotEmpty": "{property} should not be empty",
-        "isEmail": "{property} must be a valid email",
-        "minLength": "{property} must be at least {min} characters"
+        "isNotEmpty": "{property} cannot be empty.",
+        "isEmail": "{property} should be a valid email address.",
+        "minLength": "{property} is shorter than the minimum length allowed."
     }
 }
 ```
@@ -288,7 +291,7 @@ class UserDto {
 {
     "key": "isNotEmpty",
     "property": "address.street",
-    "message": "street should not be empty"
+    "message": "street cannot be empty."
 }
 ```
 
@@ -297,7 +300,7 @@ class UserDto {
 ```typescript
 // Automatic transformation
 {
-    "statusCode": 5030,
+    "statusCode": 50300,
     "statusCodeKey": "validation",
     "module": "request",
     "message": "There are validation errors.",
@@ -305,12 +308,12 @@ class UserDto {
         {
             "key": "isNotEmpty",
             "property": "email",
-            "message": "email should not be empty"
+            "message": "email cannot be empty."
         },
         {
             "key": "isEmail",
             "property": "email",
-            "message": "email must be a valid email"
+            "message": "email should be a valid email address."
         }
     ]
 }

@@ -45,9 +45,9 @@ export class MigrationTermPolicySeed
         );
 
         try {
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.termPolicies.map(termPolicy =>
-                    this.databaseService.termPolicy.upsert({
+                    this.databaseService.client.termPolicy.upsert({
                         where: {
                             type_version: {
                                 type: termPolicy.type,
@@ -78,7 +78,7 @@ export class MigrationTermPolicySeed
     async remove(): Promise<void> {
         this.logger.log('Removing back TermPolicies...');
 
-        await this.databaseService.termPolicy.deleteMany({});
+        await this.databaseService.client.termPolicy.deleteMany({});
 
         this.logger.log('TermPolicies removed successfully.');
 

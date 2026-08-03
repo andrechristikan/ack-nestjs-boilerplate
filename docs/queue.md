@@ -88,7 +88,7 @@ export class NotificationPushUtil {
         private readonly notificationPushQueue: Queue
     ) {}
 
-    async sendNewDeviceLogin(payload: INotificationPushWorkerPayload): Promise<void> {
+    async sendNewDeviceLogin(payload: INotificationPushQueuePayload): Promise<void> {
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
@@ -106,7 +106,7 @@ export class NotificationPushUtil {
 
 ### Job Options
 
-Each queue sets its own default job options in `queue.register.module.ts`. They share `attempts: 3`, `removeOnComplete: 50`, and `removeOnFail: 100`, but differ in the exponential backoff `delay`:
+Default job options come from `queue.config.ts` (interface `IConfigQueue`) and are applied by `queue.register.module.ts`. Every queue shares `attempts: 3`, `removeOnComplete: 50`, and `removeOnFail: 100`, but differs in the exponential backoff `delay`:
 
 | Queue | backoff delay |
 |-------|---------------|
@@ -189,7 +189,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
             switch (job.name) {
                 case EnumNotificationPushProcess.newDeviceLogin:
                     return this.notificationPushProcessorService.processNewDeviceLogin(
-                        job as Job<INotificationPushWorkerPayload, IQueueResponse>
+                        job as Job<INotificationPushQueuePayload, IQueueResponse>
                     );
                 default:
                     return { message: `No processor found for job ${job.name}` };

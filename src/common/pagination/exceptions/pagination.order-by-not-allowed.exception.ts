@@ -9,6 +9,8 @@ export class PaginationOrderByNotAllowedException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(allowedFields: string) {
-        super('pagination.error.orderByNotAllowed', { messageProperties: { allowedFields } });
+        super('pagination.error.orderByNotAllowed', {
+            messageProperties: { allowedFields },
+        });
     }
 }

@@ -88,7 +88,7 @@ export class UserRepository {
             IUser,
             Prisma.UserSelect,
             Prisma.UserWhereInput
-        >(this.databaseService.user, {
+        >(this.databaseService.client.user, {
             ...params,
             where: {
                 ...where,
@@ -120,7 +120,7 @@ export class UserRepository {
             IUser,
             Prisma.UserSelect,
             Prisma.UserWhereInput
-        >(this.databaseService.user, {
+        >(this.databaseService.client.user, {
             ...params,
             where: {
                 ...where,
@@ -137,7 +137,7 @@ export class UserRepository {
     }
 
     async findByEmails(emails: string[]): Promise<IUser[]> {
-        return this.databaseService.user.findMany({
+        return this.databaseService.client.user.findMany({
             where: {
                 email: { in: emails },
             },
@@ -153,7 +153,7 @@ export class UserRepository {
         role?: Record<string, IPaginationEqual>,
         country?: Record<string, IPaginationEqual>
     ): Promise<IUser[]> {
-        return this.databaseService.user.findMany({
+        return this.databaseService.client.user.findMany({
             where: {
                 ...status,
                 ...country,
@@ -174,7 +174,7 @@ export class UserRepository {
             username: string;
         }[]
     > {
-        return this.databaseService.user.findMany({
+        return this.databaseService.client.user.findMany({
             where: {
                 status: EnumUserStatus.active,
                 deletedAt: null,
@@ -188,25 +188,25 @@ export class UserRepository {
     }
 
     async findOneById(id: string): Promise<User | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
         });
     }
 
     async findOneActiveById(id: string): Promise<User | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
         });
     }
 
     async findOneActiveByEmail(email: string): Promise<User | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null, status: EnumUserStatus.active },
         });
     }
 
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
             include: {
                 role: true,
@@ -216,7 +216,7 @@ export class UserRepository {
     }
 
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
                 role: true,
@@ -232,7 +232,7 @@ export class UserRepository {
     }
 
     async findOneActiveProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
                 role: true,
@@ -248,7 +248,7 @@ export class UserRepository {
     }
 
     async findOneWithRoleById(id: string): Promise<IUser | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
                 role: true,
@@ -262,7 +262,7 @@ export class UserRepository {
     ): Promise<(ForgotPassword & { user: IUser }) | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.forgotPassword.findFirst({
+        return this.databaseService.client.forgotPassword.findFirst({
             where: {
                 token,
                 isUsed: false,
@@ -288,7 +288,7 @@ export class UserRepository {
     async findOneLatestByForgotPassword(
         userId: string
     ): Promise<ForgotPassword | null> {
-        return this.databaseService.forgotPassword.findFirst({
+        return this.databaseService.client.forgotPassword.findFirst({
             where: {
                 userId,
                 user: {
@@ -307,7 +307,7 @@ export class UserRepository {
     ): Promise<Verification | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.verification.findFirst({
+        return this.databaseService.client.verification.findFirst({
             where: {
                 token,
                 isUsed: false,
@@ -326,7 +326,7 @@ export class UserRepository {
     async findOneLatestByVerificationEmail(
         userId: string
     ): Promise<Verification | null> {
-        return this.databaseService.verification.findFirst({
+        return this.databaseService.client.verification.findFirst({
             where: {
                 userId,
                 type: EnumVerificationType.email,
@@ -350,7 +350,7 @@ export class UserRepository {
         phoneCode: string;
         isVerified: boolean;
     } | null> {
-        return this.databaseService.userMobileNumber.findFirst({
+        return this.databaseService.client.userMobileNumber.findFirst({
             where: {
                 id: mobileNumberId,
                 user: {
@@ -367,14 +367,14 @@ export class UserRepository {
     }
 
     async existByEmail(email: string): Promise<{ id: string } | null> {
-        return this.databaseService.user.findFirst({
+        return this.databaseService.client.user.findFirst({
             where: { email: email },
             select: { id: true },
         });
     }
 
     async existByUsername(username: string): Promise<{ id: string } | null> {
-        return this.databaseService.user.findUnique({
+        return this.databaseService.client.user.findUnique({
             where: { username },
             select: { id: true },
         });
@@ -394,23 +394,24 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog,
         createdBy: string
     ): Promise<User> {
-        const termPolicies = await this.databaseService.termPolicy.findMany({
-            where: {
-                type: {
-                    in: [
-                        EnumTermPolicyType.termsOfService,
-                        EnumTermPolicyType.privacy,
-                    ],
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                    },
+                    status: EnumTermPolicyStatus.published,
                 },
-                status: EnumTermPolicyStatus.published,
-            },
-            select: {
-                id: true,
-            },
-        });
+                select: {
+                    id: true,
+                },
+            });
 
-        const [user] = await this.databaseService.$transaction([
-            this.databaseService.user.create({
+        const [user] = await this.databaseService.client.$transaction([
+            this.databaseService.client.user.create({
                 data: {
                     id: userId,
                     email,
@@ -508,7 +509,7 @@ export class UserRepository {
                 },
             }),
             ...termPolicies.map(termPolicy =>
-                this.databaseService.termPolicyUserAcceptance.create({
+                this.databaseService.client.termPolicyUserAcceptance.create({
                     data: {
                         userId,
                         termPolicyId: termPolicy.id,
@@ -531,7 +532,7 @@ export class UserRepository {
             status === EnumUserStatus.blocked
                 ? EnumActivityLogAction.userBlocked
                 : EnumActivityLogAction.userUpdateStatus;
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id, deletedAt: null },
             data: {
                 status,
@@ -557,7 +558,7 @@ export class UserRepository {
         { countryId, ...data }: UserUpdateProfileRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 ...data,
@@ -585,7 +586,7 @@ export class UserRepository {
         photo: IAwsS3,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 photo: this.databaseUtil.toPlainObject(photo),
@@ -612,12 +613,10 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const deletedAt = this.helperService.dateCreate();
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
                 deletedAt,
-                deletedBy: userId,
-                updatedBy: userId,
                 status: EnumUserStatus.inactive,
                 activityLogs: {
                     create: {
@@ -648,7 +647,7 @@ export class UserRepository {
                     },
                 },
             },
-        });
+        }) as Promise<User>;
     }
 
     async existMobileNumber(
@@ -656,7 +655,7 @@ export class UserRepository {
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         excludeId?: string
     ): Promise<{ id: string } | null> {
-        return this.databaseService.userMobileNumber.findFirst({
+        return this.databaseService.client.userMobileNumber.findFirst({
             where: {
                 number,
                 countryId,
@@ -681,7 +680,7 @@ export class UserRepository {
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
-        const updated = await this.databaseService.user.update({
+        const updated = await this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 mobileNumbers: {
@@ -736,7 +735,7 @@ export class UserRepository {
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
-        const updated = await this.databaseService.user.update({
+        const updated = await this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 mobileNumbers: {
@@ -791,7 +790,7 @@ export class UserRepository {
         mobileNumberId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<UserMobileNumber & { country: Country }> {
-        const user = await this.databaseService.user.update({
+        const user = await this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 mobileNumbers: {
@@ -833,7 +832,7 @@ export class UserRepository {
         { username }: UserClaimUsernameRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 username,
@@ -866,7 +865,7 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog,
         updatedBy: string
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 password: passwordHash,
@@ -915,7 +914,7 @@ export class UserRepository {
     }
 
     async increasePasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 passwordAttempt: {
@@ -926,7 +925,7 @@ export class UserRepository {
     }
 
     async resetPasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 passwordAttempt: 0,
@@ -944,7 +943,7 @@ export class UserRepository {
         }: IAuthPassword,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 password: passwordHash,
@@ -1031,140 +1030,134 @@ export class UserRepository {
                 break;
         }
 
-        return this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                const device = await tx.device.upsert({
-                    where: {
-                        fingerprint,
-                    },
-                    update: {
-                        name,
-                        platform,
-                        notificationToken,
-                        lastActiveAt: today,
-                        notificationProvider,
-                        updatedBy: userId,
-                    },
-                    create: {
-                        fingerprint,
-                        name,
-                        platform,
-                        notificationToken,
-                        lastActiveAt: today,
-                        notificationProvider,
-                        createdBy: userId,
-                    },
-                });
+        return this.databaseService.client.$transaction(async tx => {
+            const device = await tx.device.upsert({
+                where: {
+                    fingerprint,
+                },
+                update: {
+                    name,
+                    platform,
+                    notificationToken,
+                    lastActiveAt: today,
+                    notificationProvider,
+                    updatedBy: userId,
+                },
+                create: {
+                    fingerprint,
+                    name,
+                    platform,
+                    notificationToken,
+                    lastActiveAt: today,
+                    notificationProvider,
+                    createdBy: userId,
+                },
+            });
 
-                let isNewDevice = false;
-                let sessionShouldBeInactive: { id: string }[] = [];
-                let deviceOwnership = await tx.deviceOwnership.findFirst({
-                    where: {
-                        deviceId: device.id,
-                        userId,
-                        isRevoked: false,
-                    },
-                });
-                if (!deviceOwnership) {
-                    isNewDevice = true;
-                    deviceOwnership = await tx.deviceOwnership.create({
-                        data: {
-                            userId,
-                            createdBy: userId,
-                            lastActiveAt: today,
-                            isRevoked: false,
-                            deviceId: device.id,
-                        },
-                    });
-                } else {
-                    const activeSessions = await tx.session.findMany({
-                        where: {
-                            deviceOwnershipId: deviceOwnership.id,
-                            isRevoked: false,
-                            expiredAt: { gte: today },
-                        },
-                    });
-
-                    sessionShouldBeInactive = activeSessions.map(session => ({
-                        id: session.id,
-                    }));
-
-                    [deviceOwnership] = await Promise.all([
-                        tx.deviceOwnership.update({
-                            where: { id: deviceOwnership.id },
-                            data: {
-                                lastActiveAt: today,
-                                updatedBy: userId,
-                            },
-                        }),
-                        tx.session.updateMany({
-                            where: {
-                                id: { in: activeSessions.map(s => s.id) },
-                            },
-                            data: {
-                                isRevoked: true,
-                                revokedAt: today,
-                                revokedById: userId,
-                                updatedBy: userId,
-                            },
-                        }),
-                    ]);
-                }
-
-                const user = await tx.user.update({
-                    where: { id: userId, deletedAt: null },
+            let isNewDevice = false;
+            let sessionShouldBeInactive: { id: string }[] = [];
+            let deviceOwnership = await tx.deviceOwnership.findFirst({
+                where: {
+                    deviceId: device.id,
+                    userId,
+                    isRevoked: false,
+                },
+            });
+            if (!deviceOwnership) {
+                isNewDevice = true;
+                deviceOwnership = await tx.deviceOwnership.create({
                     data: {
-                        lastLoginAt: today,
-                        lastIPAddress: ipAddress,
-                        lastLoginFrom: loginFrom,
-                        lastLoginWith: loginWith,
-                        updatedBy: userId,
-                        activityLogs: {
-                            create: {
-                                action,
-                                description:
-                                    this.activityLogUtil.getDescription(action),
-                                ipAddress,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
-                                geoLocation:
-                                    this.databaseUtil.toPlainObject(
-                                        geoLocation
-                                    ),
-                                createdBy: userId,
-                            },
-                        },
-                        sessions: {
-                            create: {
-                                id: sessionId,
-                                jti,
-                                expiredAt,
-                                isRevoked: false,
-                                ipAddress,
-                                deviceOwnershipId: deviceOwnership.id,
-                                userAgent:
-                                    this.databaseUtil.toPlainObject(userAgent),
-                                geoLocation:
-                                    this.databaseUtil.toPlainObject(
-                                        geoLocation
-                                    ),
-                                createdBy: userId,
-                            },
-                        },
+                        userId,
+                        createdBy: userId,
+                        lastActiveAt: today,
+                        isRevoked: false,
+                        deviceId: device.id,
+                    },
+                });
+            } else {
+                const activeSessions = await tx.session.findMany({
+                    where: {
+                        deviceOwnershipId: deviceOwnership.id,
+                        isRevoked: false,
+                        expiredAt: { gte: today },
                     },
                 });
 
-                const result: IUserLoginResult = {
-                    device,
-                    deviceOwnership,
-                    isNewDevice,
-                    user,
-                    sessionShouldBeInactive,
-                };
+                sessionShouldBeInactive = activeSessions.map(session => ({
+                    id: session.id,
+                }));
 
-                return result;
+                [deviceOwnership] = await Promise.all([
+                    tx.deviceOwnership.update({
+                        where: { id: deviceOwnership.id },
+                        data: {
+                            lastActiveAt: today,
+                            updatedBy: userId,
+                        },
+                    }),
+                    tx.session.updateMany({
+                        where: {
+                            id: { in: activeSessions.map(s => s.id) },
+                        },
+                        data: {
+                            isRevoked: true,
+                            revokedAt: today,
+                            revokedById: userId,
+                            updatedBy: userId,
+                        },
+                    }),
+                ]);
             }
-        );
+
+            const user = await tx.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    lastLoginAt: today,
+                    lastIPAddress: ipAddress,
+                    lastLoginFrom: loginFrom,
+                    lastLoginWith: loginWith,
+                    updatedBy: userId,
+                    activityLogs: {
+                        create: {
+                            action,
+                            description:
+                                this.activityLogUtil.getDescription(action),
+                            ipAddress,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
+                            createdBy: userId,
+                        },
+                    },
+                    sessions: {
+                        create: {
+                            id: sessionId,
+                            jti,
+                            expiredAt,
+                            isRevoked: false,
+                            ipAddress,
+                            deviceOwnershipId: deviceOwnership.id,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
+                            createdBy: userId,
+                        },
+                    },
+                },
+            });
+
+            const result: IUserLoginResult = {
+                device,
+                deviceOwnership,
+                isNewDevice,
+                user,
+                sessionShouldBeInactive,
+            };
+
+            return result;
+        });
     }
 
     async createBySocial(
@@ -1187,25 +1180,26 @@ export class UserRepository {
                 ? EnumUserSignUpWith.socialApple
                 : EnumUserSignUpWith.socialGoogle;
 
-        const termPolicies = await this.databaseService.termPolicy.findMany({
-            where: {
-                type: {
-                    in: [
-                        EnumTermPolicyType.termsOfService,
-                        EnumTermPolicyType.privacy,
-                        cookies ? EnumTermPolicyType.cookies : null,
-                        marketing ? EnumTermPolicyType.marketing : null,
-                    ].filter(Boolean) as EnumTermPolicyType[],
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            cookies ? EnumTermPolicyType.cookies : null,
+                            marketing ? EnumTermPolicyType.marketing : null,
+                        ].filter(Boolean) as EnumTermPolicyType[],
+                    },
+                    status: EnumTermPolicyStatus.published,
                 },
-                status: EnumTermPolicyStatus.published,
-            },
-            select: {
-                id: true,
-            },
-        });
+                select: {
+                    id: true,
+                },
+            });
 
-        const [user] = await this.databaseService.$transaction([
-            this.databaseService.user.create({
+        const [user] = await this.databaseService.client.$transaction([
+            this.databaseService.client.user.create({
                 data: {
                     id: userId,
                     email,
@@ -1268,7 +1262,7 @@ export class UserRepository {
                 },
             }),
             ...termPolicies.map(termPolicy =>
-                this.databaseService.termPolicyUserAcceptance.create({
+                this.databaseService.client.termPolicyUserAcceptance.create({
                     data: {
                         userId,
                         termPolicyId: termPolicy.id,
@@ -1285,7 +1279,7 @@ export class UserRepository {
         userId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 isVerified: true,
@@ -1328,25 +1322,26 @@ export class UserRepository {
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        const termPolicies = await this.databaseService.termPolicy.findMany({
-            where: {
-                type: {
-                    in: [
-                        EnumTermPolicyType.termsOfService,
-                        EnumTermPolicyType.privacy,
-                        cookies ? EnumTermPolicyType.cookies : null,
-                        marketing ? EnumTermPolicyType.marketing : null,
-                    ].filter(Boolean) as EnumTermPolicyType[],
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            cookies ? EnumTermPolicyType.cookies : null,
+                            marketing ? EnumTermPolicyType.marketing : null,
+                        ].filter(Boolean) as EnumTermPolicyType[],
+                    },
+                    status: EnumTermPolicyStatus.published,
                 },
-                status: EnumTermPolicyStatus.published,
-            },
-            select: {
-                id: true,
-            },
-        });
+                select: {
+                    id: true,
+                },
+            });
 
-        const [user] = await this.databaseService.$transaction([
-            this.databaseService.user.create({
+        const [user] = await this.databaseService.client.$transaction([
+            this.databaseService.client.user.create({
                 data: {
                     id: userId,
                     email,
@@ -1457,7 +1452,7 @@ export class UserRepository {
                 },
             }),
             ...termPolicies.map(termPolicy =>
-                this.databaseService.termPolicyUserAcceptance.create({
+                this.databaseService.client.termPolicyUserAcceptance.create({
                     data: {
                         userId,
                         termPolicyId: termPolicy.id,
@@ -1476,7 +1471,7 @@ export class UserRepository {
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
-        await this.databaseService.user.update({
+        await this.databaseService.client.user.update({
             where: {
                 id: userId,
                 deletedAt: null,
@@ -1529,7 +1524,7 @@ export class UserRepository {
         }: IAuthPassword,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 password: passwordHash,
@@ -1595,7 +1590,7 @@ export class UserRepository {
     ): Promise<Verification> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.verification.update({
+        return this.databaseService.client.verification.update({
             where: {
                 id,
             },
@@ -1637,64 +1632,60 @@ export class UserRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
-                const [_, newVerification] = await Promise.all([
-                    tx.verification.updateMany({
-                        where: {
-                            userId,
-                            type,
-                            isUsed: false,
-                            expiredAt: {
-                                gt: today,
+        return this.databaseService.client.$transaction(async tx => {
+            const [_, newVerification] = await Promise.all([
+                tx.verification.updateMany({
+                    where: {
+                        userId,
+                        type,
+                        isUsed: false,
+                        expiredAt: {
+                            gt: today,
+                        },
+                    },
+                    data: {
+                        expiredAt: today,
+                    },
+                }),
+                tx.user.update({
+                    where: {
+                        id: userId,
+                    },
+                    data: {
+                        verifications: {
+                            create: {
+                                expiredAt,
+                                reference,
+                                token: hashedToken,
+                                type,
+                                to: userEmail,
+                                createdBy: userId,
+                                createdAt: today,
                             },
                         },
-                        data: {
-                            expiredAt: today,
-                        },
-                    }),
-                    tx.user.update({
-                        where: {
-                            id: userId,
-                        },
-                        data: {
-                            verifications: {
-                                create: {
-                                    expiredAt,
-                                    reference,
-                                    token: hashedToken,
-                                    type,
-                                    to: userEmail,
-                                    createdBy: userId,
-                                    createdAt: today,
-                                },
-                            },
-                            activityLogs: {
-                                create: {
-                                    action: EnumActivityLogAction.userSendVerificationEmail,
-                                    description:
-                                        this.activityLogUtil.getDescription(
-                                            EnumActivityLogAction.userSendVerificationEmail
-                                        ),
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy: userId,
-                                },
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userSendVerificationEmail,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userSendVerificationEmail
+                                    ),
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: userId,
                             },
                         },
-                    }),
-                ]);
+                    },
+                }),
+            ]);
 
-                return newVerification;
-            }
-        );
+            return newVerification;
+        });
     }
 
     async refresh(
@@ -1704,7 +1695,7 @@ export class UserRepository {
     ): Promise<User> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 lastLoginAt: today,
@@ -1743,7 +1734,7 @@ export class UserRepository {
         userId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 status: EnumUserStatus.inactive,
@@ -1771,7 +1762,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -1812,7 +1803,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -1852,7 +1843,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.$transaction<IUser>(async tx => {
+        return this.databaseService.client.$transaction<IUser>(async tx => {
             const twoFactor = await tx.twoFactor.findUnique({
                 where: { userId },
                 select: {
@@ -1903,7 +1894,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -1961,7 +1952,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -2000,7 +1991,7 @@ export class UserRepository {
     ): Promise<IUser> {
         const now = this.helperService.dateCreate();
 
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -2047,7 +2038,7 @@ export class UserRepository {
     }
 
     async increaseTwoFactorAttempt(userId: string): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -2062,7 +2053,7 @@ export class UserRepository {
     }
 
     async resetTwoFactorAttempt(userId: string): Promise<User> {
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
@@ -2083,23 +2074,24 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog,
         createdBy: string
     ): Promise<User[]> {
-        const termPolicies = await this.databaseService.termPolicy.findMany({
-            where: {
-                type: {
-                    in: [
-                        EnumTermPolicyType.termsOfService,
-                        EnumTermPolicyType.privacy,
-                    ],
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                    },
+                    status: EnumTermPolicyStatus.published,
                 },
-                status: EnumTermPolicyStatus.published,
-            },
-            select: {
-                id: true,
-            },
-        });
+                select: {
+                    id: true,
+                },
+            });
 
-        const users = await this.databaseService.$transaction(
-            async (tx: Prisma.TransactionClient) => {
+        const users = await this.databaseService.client.$transaction(
+            async tx => {
                 const usersToCreate: Prisma.PrismaPromise<User>[] = [];
                 const termPolicyUserAcceptancesToCreate: Prisma.PrismaPromise<TermPolicyUserAcceptance>[] =
                     [];
@@ -2248,7 +2240,7 @@ export class UserRepository {
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
         const today = this.helperService.dateCreate();
-        return this.databaseService.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 activityLogs: {

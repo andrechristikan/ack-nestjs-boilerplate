@@ -42,9 +42,9 @@ export class MigrationRoleSeed
         this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
         try {
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.roles.map(role =>
-                    this.databaseService.role.upsert({
+                    this.databaseService.client.role.upsert({
                         where: {
                             name: role.name.toLowerCase(),
                         },
@@ -73,7 +73,7 @@ export class MigrationRoleSeed
         this.logger.log('Removing back Roles...');
 
         try {
-            await this.databaseService.role.deleteMany({});
+            await this.databaseService.client.role.deleteMany({});
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing roles');
             throw error;

@@ -1,8 +1,8 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
-    INotificationPushWorkerCleanupTokenPayload,
-    INotificationPushWorkerPayload,
+    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushQueuePayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
@@ -18,6 +18,8 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 @Injectable()
 export class NotificationPushUtil {
     private readonly defTz: string;
+    private readonly cleanupDedupTtlInMs: number;
+    private readonly cleanupStaleTokensCron: string;
 
     constructor(
         @InjectQueue(EnumQueue.notificationPush)
@@ -25,6 +27,12 @@ export class NotificationPushUtil {
         private readonly configService: ConfigService
     ) {
         this.defTz = this.configService.get<string>('app.timezone')!;
+        this.cleanupDedupTtlInMs = this.configService.get<number>(
+            'notification.push.cleanupDedupTtlInMs'
+        )!;
+        this.cleanupStaleTokensCron = this.configService.get<string>(
+            'notification.push.cleanupStaleTokensCron'
+        )!;
     }
 
     /** Enqueues the admin-issued temporary password push. */
@@ -32,7 +40,7 @@ export class NotificationPushUtil {
         sendPayload: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPayload
     ): Promise<void> {
-        const payload: INotificationPushWorkerPayload = {
+        const payload: INotificationPushQueuePayload = {
             send: sendPayload,
             data,
         };
@@ -54,7 +62,7 @@ export class NotificationPushUtil {
     async sendResetPassword(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
-        const payload: INotificationPushWorkerPayload = {
+        const payload: INotificationPushQueuePayload = {
             send: sendPayload,
         };
 
@@ -75,7 +83,7 @@ export class NotificationPushUtil {
     async sendResetTwoFactorByAdmin(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
-        const payload: INotificationPushWorkerPayload = {
+        const payload: INotificationPushQueuePayload = {
             send: sendPayload,
         };
 
@@ -97,7 +105,7 @@ export class NotificationPushUtil {
         sendPayload: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload
     ): Promise<void> {
-        const payload: INotificationPushWorkerPayload<INotificationNewDeviceLoginPayload> =
+        const payload: INotificationPushQueuePayload<INotificationNewDeviceLoginPayload> =
             {
                 send: sendPayload,
                 data,
@@ -122,7 +130,7 @@ export class NotificationPushUtil {
         failureTokens: string[]
     ): Promise<void> {
         if (failureTokens.length > 0) {
-            const payload: INotificationPushWorkerCleanupTokenPayload = {
+            const payload: INotificationPushCleanupTokenQueuePayload = {
                 data: { failureTokens, userId },
             };
 
@@ -133,7 +141,7 @@ export class NotificationPushUtil {
                     priority: EnumQueuePriority.low,
                     deduplication: {
                         id: `${EnumNotificationPushProcess.cleanupTokens}-${userId}`,
-                        ttl: 1000 * 60 * 60,
+                        ttl: this.cleanupDedupTtlInMs,
                     },
                 }
             );
@@ -142,14 +150,17 @@ export class NotificationPushUtil {
 
     /** Schedules the recurring stale-token cleanup (daily at midnight in the configured timezone). */
     async sendCleanupStaleTokens(): Promise<void> {
-        await this.notificationPushQueue.add(
+        await this.notificationPushQueue.upsertJobScheduler(
             EnumNotificationPushProcess.cleanupStaleTokens,
-            {},
             {
-                priority: EnumQueuePriority.low,
-                repeat: {
-                    pattern: '0 0 * * *',
-                    tz: this.defTz,
+                pattern: this.cleanupStaleTokensCron,
+                tz: this.defTz,
+            },
+            {
+                name: EnumNotificationPushProcess.cleanupStaleTokens,
+                data: {},
+                opts: {
+                    priority: EnumQueuePriority.low,
                 },
             }
         );

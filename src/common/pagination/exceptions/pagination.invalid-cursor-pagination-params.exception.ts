@@ -4,7 +4,8 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 
 export class PaginationInvalidCursorPaginationParamsException extends AppBaseException {
     readonly module = 'pagination';
-    readonly statusCode = EnumPaginationStatusCodeError.invalidCursorPaginationParams;
+    readonly statusCode =
+        EnumPaginationStatusCodeError.invalidCursorPaginationParams;
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 

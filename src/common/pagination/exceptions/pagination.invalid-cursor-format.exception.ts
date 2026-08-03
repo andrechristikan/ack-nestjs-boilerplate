@@ -9,6 +9,9 @@ export class PaginationInvalidCursorFormatException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(format?: string) {
-        super('pagination.error.invalidCursorFormat', format !== undefined ? { messageProperties: { format } } : undefined);
+        super(
+            'pagination.error.invalidCursorFormat',
+            format !== undefined ? { messageProperties: { format } } : undefined
+        );
     }
 }

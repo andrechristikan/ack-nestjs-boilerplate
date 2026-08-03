@@ -2,17 +2,21 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
-import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import {
+    IFeatureFlagMetadata,
+    IFeatureFlagMetadataValue,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FeatureFlag } from '@generated/prisma-client';
 import { Cache } from 'cache-manager';
 
 @Injectable()
 export class FeatureFlagUtil {
-    private readonly cachePrefixKey: string;
-    private readonly cacheTtlMs: number;
+    private readonly logger = new Logger(FeatureFlagUtil.name);
+    private readonly keyPattern: string;
+    private readonly cacheTtlInMs: number;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
@@ -21,35 +25,46 @@ export class FeatureFlagUtil {
         private readonly helperService: HelperService,
         private readonly responseUtil: ResponseUtil
     ) {
-        this.cachePrefixKey = this.configService.get<string>(
-            'featureFlag.cachePrefixKey'
+        this.keyPattern = this.configService.get<string>(
+            'featureFlag.keyPattern'
         )!;
-        this.cacheTtlMs = this.configService.get<number>(
-            'featureFlag.cacheTtlMs'
+        this.cacheTtlInMs = this.configService.get<number>(
+            'featureFlag.cacheTtlInMs'
         )!;
     }
 
     async getCacheByKey(key: string): Promise<FeatureFlag | null> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
-        const cachedFeatureFlag =
-            await this.cacheManager.get<FeatureFlag>(cacheKey);
-        if (cachedFeatureFlag) {
-            return cachedFeatureFlag;
+        const cacheKey = this.keyPattern.replace('{key}', key);
+        try {
+            const cachedFeatureFlag =
+                await this.cacheManager.get<FeatureFlag>(cacheKey);
+            return cachedFeatureFlag ?? null;
+        } catch (error: unknown) {
+            this.logger.error(error, 'Feature flag cache read failed');
+            return null;
         }
-
-        return null;
     }
 
     async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
-        await this.cacheManager.set(cacheKey, featureFlag, this.cacheTtlMs);
-        return;
+        const cacheKey = this.keyPattern.replace('{key}', key);
+        try {
+            await this.cacheManager.set(
+                cacheKey,
+                featureFlag,
+                this.cacheTtlInMs
+            );
+        } catch (error: unknown) {
+            this.logger.error(error, 'Feature flag cache write failed');
+        }
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
-        await this.cacheManager.del(cacheKey);
-        return;
+        const cacheKey = this.keyPattern.replace('{key}', key);
+        try {
+            await this.cacheManager.del(cacheKey);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Feature flag cache delete failed');
+        }
     }
 
     mapList(featureFlags: FeatureFlag[]): FeatureFlagResponseDto[] {
@@ -81,12 +96,16 @@ export class FeatureFlagUtil {
             const newVal = newMetadata[key];
             const oldVal = oldMetadata[key];
 
-            if (typeof newVal !== typeof oldVal) {
+            if (
+                this.metadataValueType(newVal) !==
+                this.metadataValueType(oldVal)
+            ) {
                 return false;
             } else if (
                 newVal === undefined ||
                 newVal === null ||
-                newVal === ''
+                newVal === '' ||
+                (Array.isArray(newVal) && newVal.length === 0)
             ) {
                 return false;
             }
@@ -95,12 +114,22 @@ export class FeatureFlagUtil {
         return true;
     }
 
-    /** Deterministic per-identifier bucketing: same identifier always lands in the same 0-99 slot. */
+    /** Distinguishes string[] from number[] so an array value cannot silently change element type on update. */
+    private metadataValueType(value: IFeatureFlagMetadataValue): string {
+        if (Array.isArray(value)) {
+            return value.length > 0 ? `array:${typeof value[0]}` : 'array';
+        }
+
+        return typeof value;
+    }
+
+    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
     checkRolloutPercentage(
         rolloutPercent: number,
+        key: string,
         identifier: string
     ): boolean {
-        const hash = this.helperService.md5Hash(identifier);
+        const hash = this.helperService.md5Hash(`${key}:${identifier}`);
         const num = Number.parseInt(hash.slice(0, 8), 16);
         const percentage = num % 100;
 

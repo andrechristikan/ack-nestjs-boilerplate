@@ -359,8 +359,9 @@ model FeatureFlag {
   id             String  @id @default(auto()) @map("_id") @db.ObjectId
   key            String
   description    String
-  isEnable       Boolean @default(true)
-  rolloutPercent Int     @default(100)
+  isEnable       Boolean  @default(true)
+  rolloutPercent Int      @default(100)
+  targetUserIds  String[] @default([]) @db.ObjectId
   metadata       Json?
 
   createdAt DateTime @default(now())

@@ -103,9 +103,12 @@ export function UserSharedGeneratePhotoProfilePresignDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: UserGeneratePhotoProfileRequestDto,
         }),
-        DocResponse<AwsS3PresignResponseDto>('user.generatePhotoProfilePresign', {
-            dto: AwsS3PresignResponseDto,
-        })
+        DocResponse<AwsS3PresignResponseDto>(
+            'user.generatePhotoProfilePresign',
+            {
+                dto: AwsS3PresignResponseDto,
+            }
+        )
     );
 }
 

@@ -49,8 +49,7 @@ export class ResponseMetadataService implements IResponseMetadataService {
                 this.requestStoreService.get<string>(RequestVersionStoreKey) ??
                 this.urlVersion,
             repoVersion: this.repoVersion,
-            requestId:
-                this.requestStoreService.get<string>(RequestIdStoreKey)!,
+            requestId: this.requestStoreService.get<string>(RequestIdStoreKey)!,
             correlationId: this.requestStoreService.get<string>(
                 RequestCorrelationIdStoreKey
             )!,

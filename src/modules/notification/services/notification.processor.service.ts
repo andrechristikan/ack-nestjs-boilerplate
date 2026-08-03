@@ -8,18 +8,18 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationAcceptTermPolicyPayload,
+    INotificationBulkQueuePayload,
     INotificationEmailSendPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
+    INotificationQueuePayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
-    INotificationWorkerBulkPayload,
-    INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationProcessorService } from '@modules/notification/interfaces/notification.processor.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -52,7 +52,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processWelcomeByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
+        INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -89,7 +89,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processWelcome({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -135,7 +135,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processWelcomeSocial({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -170,7 +170,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processVerifiedEmail({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerifiedEmailPayload>,
+        INotificationQueuePayload<INotificationVerifiedEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -205,7 +205,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processVerificationEmail({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -247,7 +247,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processVerifiedMobileNumber({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+        INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -290,7 +290,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processTemporaryPasswordByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationTemporaryPasswordPayload>,
+        INotificationQueuePayload<INotificationTemporaryPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -357,7 +357,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processChangePassword({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -393,7 +393,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processForgotPassword({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+        INotificationQueuePayload<INotificationForgotPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -429,7 +429,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processResetPassword({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -484,7 +484,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processResetTwoFactorByAdmin({
         data: { userId, proceedBy },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -544,7 +544,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processNewDeviceLogin({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+        INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -611,7 +611,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processPublishTermPolicy({
         data: { data, proceedBy },
     }: Job<
-        INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+        INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
@@ -676,7 +676,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
     async processUserAcceptTermPolicy({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationAcceptTermPolicyPayload>,
+        INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {

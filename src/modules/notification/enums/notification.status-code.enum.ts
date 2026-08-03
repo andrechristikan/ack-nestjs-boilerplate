@@ -1,6 +1,6 @@
 export enum EnumNotificationStatusCodeError {
-    notFound = 5200,
-    alreadyRead = 5201,
-    invalidType = 5202,
-    invalidChannel = 5203,
+    notFound = 51200,
+    alreadyRead = 51201,
+    invalidType = 51202,
+    invalidChannel = 51203,
 }

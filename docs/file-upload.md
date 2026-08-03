@@ -43,13 +43,20 @@ The module supports:
 
 ## Decorators
 
+The defaults come from `src/common/file/constants/file.constant.ts`:
+
+- `FileSizeInBytes` is `bytes('10mb')`
+- `FileMaxMultiple` is `3`
+
+The `options` argument on every decorator is itself optional, but `IFileUploadSingle` and `IFileUploadMultiple` declare their fields as required. Pass the whole object or none of it.
+
 ### FileUploadSingle
 
-Handles single file upload with configurable field name and size limits.
+Handles single file upload with configurable field name and size limits. It also caps the request at one file.
 
 **Parameters:**
-- `options.field` (optional): Field name in form-data (default: `'file'`)
-- `options.fileSize` (optional): Maximum file size in bytes (default: `FileSizeInBytes`)
+- `options.field`: Field name in form-data (default when `options` is omitted: `'file'`)
+- `options.fileSize`: Maximum file size in bytes (default when `options` is omitted: `FileSizeInBytes`)
 
 **Example:**
 ```typescript
@@ -61,13 +68,13 @@ Handles single file upload with configurable field name and size limits.
 Handles multiple files upload with the same field name.
 
 **Parameters:**
-- `options.field` (optional): Field name in form-data (default: `'files'`)
-- `options.maxFiles` (optional): Maximum number of files (default: `3`)
-- `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
+- `options.field`: Field name in form-data (default when `options` is omitted: `'files'`)
+- `options.maxFiles`: Maximum number of files (default when `options` is omitted: `FileMaxMultiple`)
+- `options.fileSize`: Maximum file size per file in bytes (default when `options` is omitted: `FileSizeInBytes`)
 
 **Example:**
 ```typescript
-@FileUploadMultiple({ field: 'documents', maxFiles: 5 })
+@FileUploadMultiple({ field: 'documents', maxFiles: 5, fileSize: bytes('5mb') })
 ```
 
 ### FileUploadMultipleFields
@@ -80,12 +87,14 @@ Handles multiple files from different form fields.
   - `maxFiles`: Maximum files for this field
 - `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
+The total number of files across all fields is capped at `FileMaxMultiple` (3), regardless of what the per-field `maxFiles` values add up to.
+
 **Example:**
 ```typescript
 @FileUploadMultipleFields(
   [
     { field: 'avatar', maxFiles: 1 },
-    { field: 'documents', maxFiles: 3 }
+    { field: 'documents', maxFiles: 2 }
   ],
   { fileSize: bytes('15mb') }
 )
@@ -112,7 +121,7 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 - `EnumFileExtensionTemplate`: Template files
   - `hbs`
 
-- `EnumFileExtension`: Combined type of all file extensions
+- `EnumFileExtension`: both a const object merging every group above and a union type of the five enums
 
 **When to Use:**
 - Combine multiple enums for flexible validation: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`
@@ -123,29 +132,34 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 
 ### FileExtensionPipe
 
-Validates uploaded file extensions against allowed types. This pipe checks the file extension and throws an error if the file type is not in the allowed list.
+A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. It reads the extension off `file.originalname` via `FileService.extractExtensionFromFilename` and throws when it is not in the allow-list. The pipe returns the file untouched; it never rewrites the value.
 
 **Usage:**
-Pass an array of allowed file extensions from the enum constants. Works with both single file and multiple files uploads.
+Pass an array of allowed file extensions from the enum constants. It validates the single uploaded file.
+
+**Passes through without validating:**
+- A falsy value
+- An empty object or an empty array
 
 **Throws:**
-- `FileExtensionInvalidException`: When file extension is not in the allowed list
+- `FileExtensionInvalidException`: When `originalname` is missing, or the extension is not in the allowed list
 
 ### FileCsvParsePipe
 
 Parses CSV (.csv) files into structured data array with rows and columns. This pipe converts raw file buffer into usable JavaScript objects using semicolon (;) as delimiter.
 
 **Returns:**
-Array of parsed row objects `T[]`
+Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
 
 **Supports:**
 - CSV files (.csv) with semicolon delimiter
 - Headers in first row become object property names
 - Empty lines are automatically skipped
+- Empty cells are parsed as `null`
 
 **Throws:**
-- `FileRequiredException`: Empty buffer or missing file
-- `FileExtensionInvalidException`: Invalid file extension
+- `FileRequiredException`: Buffer is missing or zero-length
+- `FileExtensionInvalidException`: Missing `originalname`, or an extension other than `csv`
 
 ### FileCsvValidationPipe
 
@@ -153,15 +167,18 @@ Transforms and validates CSV data using DTO classes with class-validator decorat
 
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
-2. Transforms each row into the specified DTO class
-3. Validates using class-validator decorators
-4. Collects all validation errors with row context
-5. Throws `FileImportException` if validation fails
+2. Rejects an empty row set, and a row set larger than `FileMaxDataImport` (1000)
+3. Transforms each row into the specified DTO class
+4. Validates using class-validator with `whitelist: true` and `forbidNonWhitelisted: true`, so an unknown column fails the row
+5. Collects all validation errors with row context, never failing fast on the first bad row
+6. Throws `FileImportException` if any row failed
 
 **Parameters:**
 - DTO class for row validation
 
 **Throws:**
+- `FileRequiredExtractFirstException`: No rows were passed in
+- `FileExceedMaxDataImportException`: Row count exceeds `FileMaxDataImport` (1000)
 - `FileImportException`: Contains detailed validation errors with row context
 
 ## CSV Import Flow
@@ -171,18 +188,23 @@ Understanding the flow of CSV file processing helps you implement robust data im
 ```mermaid
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
-    B --> C{FileExtensionPipe}
+    B --> B2{RequestRequiredPipe}
+    
+    B2 -->|Missing File| B3[Throw RequestParamRequiredException]
+    B2 -->|Present| C{FileExtensionPipe}
     
     C -->|Invalid Extension| D[Throw FileExtensionInvalidException]
     C -->|Valid Extension| E{FileCsvParsePipe}
     
     E -->|Empty Buffer| F[Throw FileRequiredException]
-    E -->|Invalid Format| G[Throw FileExtensionInvalidException]
+    E -->|Not a .csv| G[Throw FileExtensionInvalidException]
     E -->|Success| H[Parse CSV to Array]
     
     H --> I{FileCsvValidationPipe}
     
-    I --> J[Transform Each Row to DTO Class]
+    I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
+    I -->|Rows > FileMaxDataImport| I3[Throw FileExceedMaxDataImportException]
+    I -->|Within Cap| J[Transform Each Row to DTO Class]
     J --> K[Validate with class-validator]
     
     K -->|Validation Errors| L[Collect Errors with Row Context]
@@ -196,9 +218,12 @@ flowchart TD
     Q --> R[Return Success Response]
     
     style A fill:#e1f5ff
+    style B3 fill:#ffe1e1
     style D fill:#ffe1e1
     style F fill:#ffe1e1
     style G fill:#ffe1e1
+    style I2 fill:#ffe1e1
+    style I3 fill:#ffe1e1
     style M fill:#ffe1e1
     style N fill:#e1ffe1
     style R fill:#e1ffe1
@@ -212,129 +237,136 @@ Single and multiple file uploads with extension validation.
 
 **Single File Upload:**
 
+The live example is `POST /shared/user/profile/upload/photo` on `UserSharedController`. The controller only dispatches; the S3 write happens in `UserService.uploadPhotoProfile`.
+
 ```typescript
-@Controller('users')
-export class UserController {
-  @Post('/profile/upload/photo')
-  @FileUploadSingle()
-  @HttpCode(HttpStatus.OK)
-  async uploadPhotoProfile(
-    @UploadedFile(
-      FileExtensionPipe([
-        EnumFileExtensionImage.jpeg,
-        EnumFileExtensionImage.png,
-        EnumFileExtensionImage.jpg
-      ])
-    )
-    file: IFile
-  ) {
-    const filename = this.fileService.createRandomFilename({
-      path: 'profiles',
-      prefix: 'photo',
-      extension: this.fileService.extractExtensionFromFilename(file.originalname)
-    });
-    
-    await this.storageService.upload(file.buffer, filename);
-    
-    return { filename };
-  }
+@UserSharedUploadPhotoProfileDoc()
+@Response('user.uploadPhotoProfile')
+@TermPolicyAcceptanceProtected()
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
+@FileUploadSingle()
+@RequestTimeout('1m')
+@HttpCode(HttpStatus.OK)
+@Post('/profile/upload/photo')
+async uploadPhotoProfile(
+  @AuthJwtPayload('userId') userId: string,
+  @UploadedFile(
+    RequestRequiredPipe,
+    FileExtensionPipe([
+      EnumFileExtensionImage.jpeg,
+      EnumFileExtensionImage.png,
+      EnumFileExtensionImage.jpg
+    ])
+  )
+  file: IFile
+): Promise<void> {
+  return this.userService.uploadPhotoProfile(userId, file);
 }
 ```
 
+The service derives the extension, builds the key, and writes the object:
+
+```typescript
+const extension = this.fileService.extractExtensionFromFilename(
+  file.originalname
+) as EnumFileExtensionImage;
+
+const key: string = this.userUtil.createRandomFilenamePhotoProfileWithPath(
+  userId,
+  { extension }
+);
+
+const aws: IAwsS3 | null = await this.awsS3Service.putItem({
+  key,
+  size: file.size,
+  file: file.buffer,
+});
+```
+
+`putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case.
+
 **Multiple Files Upload:**
+
+`@FileUploadMultiple` wires the interceptor for an array of files. `FileExtensionPipe` validates a single file, so validate each entry inside the handler.
 
 ```typescript
 @Post('/documents/upload')
-@FileUploadMultiple({ maxFiles: 5 })
-async uploadDocuments(
-  @UploadedFiles(
-    FileExtensionPipe([
-      EnumFileExtensionDocument.pdf,
-      EnumFileExtensionDocument.csv
-    ])
-  )
-  files: IFile[]
-) {
+@FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
+async uploadDocuments(@UploadedFiles() files: IFile[]) {
   const uploadedFiles = [];
-  
+
   for (const file of files) {
-    const filename = this.fileService.createRandomFilename({
+    const extension = this.fileService.extractExtensionFromFilename(
+      file.originalname
+    ) as EnumFileExtension;
+
+    const key = this.fileService.createRandomFilename({
       path: 'documents',
       prefix: 'doc',
-      extension: this.fileService.extractExtensionFromFilename(file.originalname)
+      extension,
     });
-    
-    await this.storageService.upload(file.buffer, filename);
-    uploadedFiles.push(filename);
+
+    await this.awsS3Service.putItem({
+      key,
+      size: file.size,
+      file: file.buffer,
+    });
+    uploadedFiles.push(key);
   }
-  
+
   return { files: uploadedFiles };
 }
 ```
 
 ### CSV Import
 
-Import and validate data from CSV files.
+Import and validate data from CSV files. The live example is `POST /admin/user/import` on `UserAdminController`.
 
-**Basic Parsing:**
+The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
+
+The row DTO is an ordinary request DTO. `UserImportRequestDto` picks `email` and `name` off `UserCreateRequestDto`, so the import reuses the same validators as user creation:
 
 ```typescript
-interface UserImportDto {
-  name: string;
-  email: string;
-  age: number;
-}
-
-@Post('/users/import/parse')
-@FileUploadSingle()
-async parseUsers(
-  @UploadedFile(
-    FileCsvParsePipe<UserImportDto>
-  )
-  data: UserImportDto[]
-) {
-  // data contains parsed rows as plain objects
-  return {
-    totalRows: data.length,
-    preview: data.slice(0, 5) // First 5 rows
-  };
-}
+export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
+  'email',
+  'name',
+]) {}
 ```
 
-**With Validation:**
-
 ```typescript
-class UserImportDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsEmail()
-  email: string;
-
-  @IsInt()
-  @Min(18)
-  @Max(100)
-  age: number;
-}
-
-@Post('/users/import')
+@UserAdminImportDoc()
+@Response('user.import')
+@TermPolicyAcceptanceProtected()
+@PolicyAbilityProtected({
+  subject: EnumPolicySubject.user,
+  action: [EnumPolicyAction.read, EnumPolicyAction.create],
+})
+@RoleProtected(EnumRoleType.admin)
+@ActivityLog(EnumActivityLogAction.adminUserImport)
+@UserProtected()
+@AuthJwtAccessProtected()
+@ApiKeyProtected()
 @FileUploadSingle()
-async importUsers(
+@RequestTimeout('1m')
+@HttpCode(HttpStatus.OK)
+@Post('/import')
+async import(
+  @AuthJwtPayload('userId') createdBy: string,
   @UploadedFile(
+    RequestRequiredPipe,
+    FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
-    new FileCsvValidationPipe(UserImportDto)
+    FileCsvValidationPipe(UserImportRequestDto)
   )
-  data: UserImportDto[]
-) {
-  // Data is already validated, safe to use
-  await this.userRepository.createMany(data);
-  
-  return {
-    imported: data.length
-  };
+  data: UserImportRequestDto[]
+): Promise<void> {
+  return this.userService.importByAdmin(data, createdBy);
 }
 ```
+
+`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no DTO validation applied.
 
 ### Multiple Field Upload
 
@@ -344,8 +376,8 @@ Upload files from different form fields simultaneously.
 @Post('/profile/complete')
 @FileUploadMultipleFields([
   { field: 'avatar', maxFiles: 1 },
-  { field: 'documents', maxFiles: 3 },
-  { field: 'certificates', maxFiles: 2 }
+  { field: 'documents', maxFiles: 1 },
+  { field: 'certificates', maxFiles: 1 }
 ])
 async uploadCompleteProfile(
   @UploadedFiles() files: {
@@ -361,9 +393,15 @@ async uploadCompleteProfile(
     const filename = this.fileService.createRandomFilename({
       path: 'avatars',
       prefix: 'avatar',
-      extension: this.fileService.extractExtensionFromFilename(avatar.originalname)
+      extension: this.fileService.extractExtensionFromFilename(
+        avatar.originalname
+      ) as EnumFileExtension
     });
-    await this.storageService.upload(avatar.buffer, filename);
+    await this.awsS3Service.putItem({
+      key: filename,
+      size: avatar.size,
+      file: avatar.buffer,
+    });
     result.avatar = filename;
   }
   
@@ -373,9 +411,15 @@ async uploadCompleteProfile(
       const filename = this.fileService.createRandomFilename({
         path: 'documents',
         prefix: 'doc',
-        extension: this.fileService.extractExtensionFromFilename(doc.originalname)
+        extension: this.fileService.extractExtensionFromFilename(
+          doc.originalname
+        ) as EnumFileExtension
       });
-      await this.storageService.upload(doc.buffer, filename);
+      await this.awsS3Service.putItem({
+        key: filename,
+        size: doc.size,
+        file: doc.buffer,
+      });
       result.documents.push(filename);
     }
   }
@@ -392,7 +436,7 @@ Thrown during CSV validation with detailed error context. This exception provide
 
 **Exception Structure:**
 
-`FileImportException` extends `AppBaseException`. The filter formats it into `ResponseErrorDto`:
+`FileImportException` extends `AppBaseException` and maps to HTTP 422. `AppValidationImportFilter` catches it and formats it into `ResponseErrorDto`:
 
 ```typescript
 {
@@ -400,6 +444,7 @@ Thrown during CSV validation with detailed error context. This exception provide
   statusCodeKey: string;    // 'validation'
   module: string;           // 'file'
   message: string;
+  metadata: object;         // standard response metadata
   errors: Array<{
     row: number;            // Row index (0-based)
     errors: Array<{
@@ -413,27 +458,31 @@ Thrown during CSV validation with detailed error context. This exception provide
 
 ### Common Errors
 
-| Error Type | Status Code | Message | Description |
-|------------|-------------|---------|-------------|
-| Invalid Extension | 5011 | `file.error.extensionInvalid` | File extension not in allowed list |
-| Empty File | 5010 | `file.error.required` | File buffer is empty or missing |
-| Invalid Format | 5011 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
-| Validation Failed | 5030 | `file.error.validationDto` | DTO validation failed with details |
+| Error Type | Status Code | HTTP | Message | Description |
+|------------|-------------|------|---------|-------------|
+| Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | File extension not in allowed list |
+| Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
+| Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
+| Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
+| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds `FileMaxDataImport` (1000) |
+| Validation Failed | 50300 | 422 | `file.error.validationDto` | DTO validation failed with details |
+
+Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.
 
 **Error Response Examples:**
 
 ```json
 // Invalid Extension
 {
-  "statusCode": 5011,
+  "statusCode": 50101,
   "statusCodeKey": "extensionInvalid",
   "module": "file",
-  "message": "File extension is invalid"
+  "message": "The file extension is invalid."
 }
 
 // Validation Errors
 {
-  "statusCode": 5030,
+  "statusCode": 50300,
   "statusCodeKey": "validation",
   "module": "file",
   "message": "The imported data failed validation.",
@@ -466,11 +515,12 @@ File validation errors are automatically translated using the i18n system. The `
 1. Validation errors are captured from class-validator
 2. Errors are passed to `MessageService.setValidationImportMessage()`
 3. Each constraint is translated using i18n keys: `request.error.{constraint}`
-4. Localized messages are returned in the error response
+4. When that key does not resolve, the raw class-validator message is used instead
+5. Localized messages are returned in the error response, each carrying `key`, `property`, and `message`
 
 **Custom Error Messages:**
 
-Add custom validation messages in your i18n language files for any class-validator constraint:
+Add custom validation messages in `src/languages/<lang>/request.json` for any class-validator constraint:
 
 ```json
 {

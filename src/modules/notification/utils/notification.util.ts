@@ -13,16 +13,16 @@ import { NotificationInvalidChannelException } from '@modules/notification/excep
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import {
     INotificationAcceptTermPolicyPayload,
+    INotificationBulkQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
+    INotificationQueuePayload,
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
-    INotificationWorkerBulkPayload,
-    INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -60,7 +60,7 @@ export class NotificationUtil {
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
-            } as INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
+            } as INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -92,7 +92,7 @@ export class NotificationUtil {
                     reference,
                 },
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+            } as INotificationQueuePayload<INotificationVerificationEmailPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -110,7 +110,7 @@ export class NotificationUtil {
             {
                 userId,
                 proceedBy: userId,
-            } as INotificationWorkerPayload,
+            } as INotificationQueuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -141,7 +141,7 @@ export class NotificationUtil {
                     passwordExpiredAt,
                 },
                 proceedBy: createdBy,
-            } as INotificationWorkerPayload,
+            } as INotificationQueuePayload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -159,7 +159,7 @@ export class NotificationUtil {
             {
                 userId,
                 proceedBy: userId,
-            } as INotificationWorkerPayload,
+            } as INotificationQueuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -181,7 +181,7 @@ export class NotificationUtil {
                 userId,
                 data: verified,
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationVerifiedEmailPayload>,
+            } as INotificationQueuePayload<INotificationVerifiedEmailPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -213,7 +213,7 @@ export class NotificationUtil {
                     reference,
                 },
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+            } as INotificationQueuePayload<INotificationVerificationEmailPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -247,7 +247,7 @@ export class NotificationUtil {
                     resendInMinutes,
                 },
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+            } as INotificationQueuePayload<INotificationForgotPasswordPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -265,7 +265,7 @@ export class NotificationUtil {
             {
                 userId,
                 proceedBy: userId,
-            } as INotificationWorkerPayload,
+            } as INotificationQueuePayload,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -286,7 +286,7 @@ export class NotificationUtil {
             {
                 userId,
                 proceedBy: createdBy,
-            } as INotificationWorkerPayload,
+            } as INotificationQueuePayload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -308,7 +308,7 @@ export class NotificationUtil {
                 userId,
                 data: newDevice,
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+            } as INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
@@ -329,7 +329,7 @@ export class NotificationUtil {
             {
                 proceedBy: publishedBy,
                 data: payload,
-            } as INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+            } as INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -351,7 +351,7 @@ export class NotificationUtil {
                 userId,
                 data: verifiedMobile,
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+            } as INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
@@ -373,7 +373,7 @@ export class NotificationUtil {
                 userId,
                 data: payload,
                 proceedBy: userId,
-            } as INotificationWorkerPayload<INotificationAcceptTermPolicyPayload>,
+            } as INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
             {
                 priority: EnumQueuePriority.low,
                 deduplication: {

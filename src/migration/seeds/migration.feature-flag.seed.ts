@@ -42,9 +42,9 @@ export class MigrationFeatureFlagSeed
         );
 
         try {
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.featureFlags.map(featureFlag =>
-                    this.databaseService.featureFlag.upsert({
+                    this.databaseService.client.featureFlag.upsert({
                         where: {
                             key: featureFlag.key,
                         },
@@ -67,7 +67,7 @@ export class MigrationFeatureFlagSeed
         this.logger.log('Removing back Feature Flags...');
 
         try {
-            await this.databaseService.featureFlag.deleteMany({});
+            await this.databaseService.client.featureFlag.deleteMany({});
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing feature flags');
             throw error;

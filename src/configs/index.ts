@@ -17,6 +17,10 @@ import TermPolicyConfig from '@configs/term-policy.config';
 import FeatureFlagConfig from '@configs/feature-flag.config';
 import ResponseConfig from '@configs/response.config';
 import FirebaseConfig from '@configs/firebase.config';
+import QueueConfig from '@configs/queue.config';
+import HealthConfig from '@configs/health.config';
+import NotificationConfig from '@configs/notification.config';
+import FileConfig from '@configs/file.config';
 
 export default [
     AppConfig,
@@ -38,4 +42,8 @@ export default [
     FeatureFlagConfig,
     ResponseConfig,
     FirebaseConfig,
+    QueueConfig,
+    HealthConfig,
+    NotificationConfig,
+    FileConfig,
 ];

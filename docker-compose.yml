@@ -9,7 +9,9 @@ services:
         ports:
             - 3000:3000
         volumes:
-            - ./:/app/
+            - ./src:/app/src
+            - ./prisma:/app/prisma
+            - ./.env:/app/.env
         restart: on-failure
         networks:
             - app-network
@@ -23,29 +25,29 @@ services:
         healthcheck:
             test:
                 [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:3000/api/hello",
+                    'CMD',
+                    'wget',
+                    '--no-verbose',
+                    '--tries=1',
+                    '--spider',
+                    'http://localhost:3000/api/public/hello',
                 ]
             interval: 30s
             timeout: 10s
             retries: 3
             start_period: 30s
-        profiles: ["apis"]
+        profiles: ['apis']
         deploy:
             resources:
                 limits:
-                    cpus: "1"
+                    cpus: '1'
                     memory: 2G
 
     jwks-server:
         image: nginx:alpine
         hostname: jwks-server
         ports:
-            - "3011:80"
+            - '3011:80'
         volumes:
             - ./keys/access-jwks.json:/usr/share/nginx/html/.well-known/access-jwks.json:ro
             - ./keys/refresh-jwks.json:/usr/share/nginx/html/.well-known/refresh-jwks.json:ro
@@ -55,17 +57,17 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "0.3"
+                    cpus: '0.3'
                     memory: 128M
         healthcheck:
             test:
                 [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:80/.well-known/access-jwks.json",
+                    'CMD',
+                    'wget',
+                    '--no-verbose',
+                    '--tries=1',
+                    '--spider',
+                    'http://localhost:80/.well-known/access-jwks.json',
                 ]
             interval: 30s
             timeout: 10s
@@ -75,12 +77,12 @@ services:
     vault:
         image: hashicorp/vault:latest
         hostname: vault
-        profiles: ["vault"]
+        profiles: ['vault']
         cap_add:
             - IPC_LOCK
         ports:
-            - "8200:8200"
-        entrypoint: ["/bin/sh", "/vault/entrypoint.sh"]
+            - '8200:8200'
+        entrypoint: ['/bin/sh', '/vault/entrypoint.sh']
         volumes:
             - ./ci/vault/entrypoint.sh:/vault/entrypoint.sh:ro
             - ./ci/vault/config.hcl:/vault/config.hcl:ro
@@ -93,7 +95,7 @@ services:
         healthcheck:
             test:
                 [
-                    "CMD-SHELL",
+                    'CMD-SHELL',
                     "wget -q -O- 'http://127.0.0.1:8200/v1/sys/health?standbycode=200' >/dev/null 2>&1 || exit 1",
                 ]
             interval: 5s
@@ -103,8 +105,8 @@ services:
 
     vault-bootstrap:
         image: hashicorp/vault:latest
-        profiles: ["vault"]
-        entrypoint: ["/bin/sh", "/bootstrap.sh"]
+        profiles: ['vault']
+        entrypoint: ['/bin/sh', '/bootstrap.sh']
         environment:
             VAULT_ADDR: http://vault:8200
             KV_MOUNT: ack-nestjs-boilerplate
@@ -123,7 +125,7 @@ services:
         image: redis:latest
         hostname: redis
         ports:
-            - "6379:6379"
+            - '6379:6379'
         volumes:
             - redis_data:/data
         networks:
@@ -131,10 +133,10 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "0.5"
+                    cpus: '0.5'
                     memory: 256M
         healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
+            test: ['CMD', 'redis-cli', 'ping']
             interval: 10s
             timeout: 30s
             retries: 5
@@ -159,25 +161,25 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "0.3"
+                    cpus: '0.3'
                     memory: 128M
 
     mongo:
         image: mongo:latest
         hostname: mongo
         ports:
-            - "27017:27017"
+            - '27017:27017'
         networks:
             - app-network
         volumes:
             - mongo_data:/data/db
         command: mongod --bind_ip_all --replSet rs0 --port 27017
         extra_hosts:
-            - "host.docker.internal:host-gateway"
+            - 'host.docker.internal:host-gateway'
         deploy:
             resources:
                 limits:
-                    cpus: "1"
+                    cpus: '1'
                     memory: 1GB
         healthcheck:
             test: mongosh --eval "db.adminCommand('ping')" --quiet
@@ -188,7 +190,7 @@ services:
 
     mongo-bootstrap:
         image: mongo:latest
-        restart: "no"
+        restart: 'no'
         depends_on:
             mongo:
                 condition: service_healthy

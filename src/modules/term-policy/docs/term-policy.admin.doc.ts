@@ -109,9 +109,12 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
             dto: TermPolicyContentPresignRequestDto,
         }),
-        DocResponse<AwsS3PresignResponseDto>('termPolicy.generateContentPresign', {
-            dto: AwsS3PresignResponseDto,
-        })
+        DocResponse<AwsS3PresignResponseDto>(
+            'termPolicy.generateContentPresign',
+            {
+                dto: AwsS3PresignResponseDto,
+            }
+        )
     );
 }
 

@@ -97,7 +97,7 @@ AWS service errors use `EnumAwsStatusCodeError` located at `src/common/aws/enums
 
 | Enum | Code | i18n Key | Description |
 |---|---|---|---|
-| `EnumAwsStatusCodeError.serviceUnavailable` | `5240` | `aws.error.serviceUnavailable` | AWS service is unavailable |
+| `EnumAwsStatusCodeError.serviceUnavailable` | `51400` | `aws.error.serviceUnavailable` | AWS service is unavailable |
 
 ## Firebase
 
@@ -162,7 +162,6 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 **Use Cases:**
 - Application caching (DB 0)
 - Background job queues (DB 1)
-- Session storage
 - Rate limiting data
 
 For cache implementation, see [Cache][ref-doc-cache]. For queue details, see [Queue][ref-doc-queue].

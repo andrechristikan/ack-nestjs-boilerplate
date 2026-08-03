@@ -43,7 +43,7 @@ export class SessionRepository {
             ISession,
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >(this.databaseService.session, {
+        >(this.databaseService.client.session, {
             ...others,
             where: {
                 ...where,
@@ -70,7 +70,7 @@ export class SessionRepository {
             ISession,
             Prisma.SessionSelect,
             Prisma.SessionWhereInput
-        >(this.databaseService.session, {
+        >(this.databaseService.client.session, {
             ...others,
             where: {
                 ...where,
@@ -88,7 +88,7 @@ export class SessionRepository {
             id: string;
         }[]
     > {
-        return this.databaseService.session.findMany({
+        return this.databaseService.client.session.findMany({
             where: {
                 userId,
                 isRevoked: false,
@@ -110,7 +110,7 @@ export class SessionRepository {
             id: string;
         }[]
     > {
-        return this.databaseService.session.findMany({
+        return this.databaseService.client.session.findMany({
             where: {
                 userId,
                 isRevoked: false,
@@ -131,7 +131,7 @@ export class SessionRepository {
     ): Promise<Session | null> {
         const today = this.helperService.dateCreate();
 
-        return this.databaseService.session.findFirst({
+        return this.databaseService.client.session.findFirst({
             where: {
                 id: sessionId,
                 userId,
@@ -148,7 +148,7 @@ export class SessionRepository {
         sessionId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session> {
-        return this.databaseService.session.update({
+        return this.databaseService.client.session.update({
             where: {
                 id: sessionId,
                 userId,
@@ -194,7 +194,7 @@ export class SessionRepository {
     ): Promise<ISession> {
         const { ipAddress, userAgent, geoLocation } = requestLog;
 
-        return this.databaseService.session.update({
+        return this.databaseService.client.session.update({
             where: {
                 id: sessionId,
             },

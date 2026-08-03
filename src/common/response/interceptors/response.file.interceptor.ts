@@ -139,5 +139,4 @@ export class ResponseFileInterceptor implements NestInterceptor {
             )
             .setHeader('Content-Length', file.length);
     }
-
 }

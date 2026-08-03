@@ -60,8 +60,8 @@ export class MigrationTemplateTermPolicySeed
                 this.termPolicyTemplateService.importMarketing(),
             ]);
 
-            await this.databaseService.$transaction([
-                this.databaseService.termPolicy.upsert({
+            await this.databaseService.client.$transaction([
+                this.databaseService.client.termPolicy.upsert({
                     where: {
                         type_version: {
                             type: EnumTermPolicyType.termsOfService,
@@ -88,7 +88,7 @@ export class MigrationTemplateTermPolicySeed
                         ]),
                     },
                 }),
-                this.databaseService.termPolicy.upsert({
+                this.databaseService.client.termPolicy.upsert({
                     where: {
                         type_version: {
                             type: EnumTermPolicyType.privacy,
@@ -115,7 +115,7 @@ export class MigrationTemplateTermPolicySeed
                         ]),
                     },
                 }),
-                this.databaseService.termPolicy.upsert({
+                this.databaseService.client.termPolicy.upsert({
                     where: {
                         type_version: {
                             type: EnumTermPolicyType.cookies,
@@ -142,7 +142,7 @@ export class MigrationTemplateTermPolicySeed
                         ]),
                     },
                 }),
-                this.databaseService.termPolicy.upsert({
+                this.databaseService.client.termPolicy.upsert({
                     where: {
                         type_version: {
                             type: EnumTermPolicyType.marketing,

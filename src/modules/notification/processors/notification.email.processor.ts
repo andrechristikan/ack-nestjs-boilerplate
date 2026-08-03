@@ -5,8 +5,8 @@ import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 import {
-    INotificationEmailWorkerBulkPayload,
-    INotificationEmailWorkerPayload,
+    INotificationEmailBulkQueuePayload,
+    INotificationEmailQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -51,7 +51,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.changePassword:
                     return this.notificationEmailProcessorService.processChangePassword(
                         job as Job<
-                            INotificationEmailWorkerPayload,
+                            INotificationEmailQueuePayload,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -60,7 +60,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcome:
                     return this.notificationEmailProcessorService.processWelcome(
                         job as Job<
-                            INotificationEmailWorkerPayload,
+                            INotificationEmailQueuePayload,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -69,7 +69,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcomeSocial:
                     return this.notificationEmailProcessorService.processWelcomeSocial(
                         job as Job<
-                            INotificationEmailWorkerPayload,
+                            INotificationEmailQueuePayload,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -78,7 +78,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.welcomeByAdmin:
                     return this.notificationEmailProcessorService.processWelcomeByAdmin(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload>,
+                            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -87,7 +87,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.temporaryPasswordByAdmin:
                     return this.notificationEmailProcessorService.processTemporaryPasswordByAdmin(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload>,
+                            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -96,7 +96,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.forgotPassword:
                     return this.notificationEmailProcessorService.processForgotPassword(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationForgotPasswordPayload>,
+                            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -105,7 +105,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.verificationEmail:
                     return this.notificationEmailProcessorService.processVerificationEmail(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationVerificationEmailPayload>,
+                            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -114,7 +114,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.verifiedEmail:
                     return this.notificationEmailProcessorService.processVerifiedEmail(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload>,
+                            INotificationEmailQueuePayload<INotificationVerifiedEmailPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -123,7 +123,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.verifiedMobileNumber:
                     return this.notificationEmailProcessorService.processVerifiedMobileNumber(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+                            INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -132,7 +132,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.newDeviceLogin:
                     return this.notificationEmailProcessorService.processNewDeviceLogin(
                         job as Job<
-                            INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload>,
+                            INotificationEmailQueuePayload<INotificationNewDeviceLoginPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -140,7 +140,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.resetPassword:
                     return this.notificationEmailProcessorService.processResetPassword(
                         job as Job<
-                            INotificationEmailWorkerPayload,
+                            INotificationEmailQueuePayload,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -149,7 +149,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.resetTwoFactorByAdmin:
                     return this.notificationEmailProcessorService.processResetTwoFactorByAdmin(
                         job as Job<
-                            INotificationEmailWorkerPayload,
+                            INotificationEmailQueuePayload,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
@@ -158,7 +158,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                 case EnumNotificationProcess.publishTermPolicy:
                     return this.notificationEmailProcessorService.processPublishTermPolicy(
                         job as Job<
-                            INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+                            INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

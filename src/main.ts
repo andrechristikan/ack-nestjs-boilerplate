@@ -15,6 +15,7 @@ async function bootstrap(): Promise<void> {
     let app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: true,
         bufferLogs: true,
+        bodyParser: false,
     });
 
     app.useLogger(app.get(PinoLogger));

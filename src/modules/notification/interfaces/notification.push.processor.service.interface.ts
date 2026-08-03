@@ -1,8 +1,8 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
-    INotificationPushWorkerCleanupTokenPayload,
-    INotificationPushWorkerPayload,
+    INotificationPushCleanupTokenQueuePayload,
+    INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
@@ -15,7 +15,7 @@ export interface INotificationPushProcessorService {
             data,
         },
     }: Job<
-        INotificationPushWorkerPayload<INotificationNewDeviceLoginPayload>,
+        INotificationPushQueuePayload<INotificationNewDeviceLoginPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;
@@ -24,7 +24,7 @@ export interface INotificationPushProcessorService {
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;
@@ -34,7 +34,7 @@ export interface INotificationPushProcessorService {
             data,
         },
     }: Job<
-        INotificationPushWorkerPayload<INotificationTemporaryPasswordPayload>,
+        INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;
@@ -43,7 +43,7 @@ export interface INotificationPushProcessorService {
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;
@@ -52,7 +52,7 @@ export interface INotificationPushProcessorService {
             send: { notificationTokens, username, notificationId, userId },
         },
     }: Job<
-        INotificationPushWorkerPayload,
+        INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;
@@ -61,7 +61,7 @@ export interface INotificationPushProcessorService {
             data: { failureTokens, userId },
         },
     }: Job<
-        INotificationPushWorkerCleanupTokenPayload,
+        INotificationPushCleanupTokenQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;

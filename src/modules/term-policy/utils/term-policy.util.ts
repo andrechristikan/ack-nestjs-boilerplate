@@ -38,10 +38,7 @@ export class TermPolicyUtil {
     }
 
     mapList(termPolicies: TermPolicy[]): TermPolicyResponseDto[] {
-        return this.responseUtil.serialize(
-            TermPolicyResponseDto,
-            termPolicies
-        );
+        return this.responseUtil.serialize(TermPolicyResponseDto, termPolicies);
     }
 
     mapOne(termPolicy: TermPolicy): TermPolicyResponseDto {

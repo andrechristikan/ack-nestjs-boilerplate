@@ -1,3 +1,3 @@
 export enum EnumDeviceStatusCodeError {
-    notFound = 5220,
+    notFound = 51300,
 }

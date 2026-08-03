@@ -51,11 +51,8 @@ export class ActivityLogInterceptor implements NestInterceptor {
         const { metadataActivityLogStore, rawError } = payload;
 
         const { userId } = user!;
-        const {
-            ipAddress,
-            userAgent,
-            geoLocation,
-        } = this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const { ipAddress, userAgent, geoLocation } =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const action: EnumActivityLogAction =
             this.reflector.get<EnumActivityLogAction>(

@@ -1,8 +1,8 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
+    INotificationEmailBulkQueuePayload,
+    INotificationEmailQueuePayload,
     INotificationEmailSendPayload,
-    INotificationEmailWorkerBulkPayload,
-    INotificationEmailWorkerPayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -41,7 +41,7 @@ export class NotificationEmailUtil {
             password,
         }: INotificationWelcomeByAdminPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationWelcomeByAdminPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload> =
             {
                 send: {
                     userId,
@@ -84,7 +84,7 @@ export class NotificationEmailUtil {
             passwordExpiredAt,
         }: INotificationTemporaryPasswordPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationTemporaryPasswordPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload> =
             {
                 send: {
                     userId,
@@ -119,7 +119,7 @@ export class NotificationEmailUtil {
         userId,
         notificationId,
     }: INotificationEmailSendPayload): Promise<void> {
-        const payload: INotificationEmailWorkerPayload = {
+        const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
                 email,
@@ -148,7 +148,7 @@ export class NotificationEmailUtil {
         userId,
         notificationId,
     }: INotificationEmailSendPayload): Promise<void> {
-        const payload: INotificationEmailWorkerPayload = {
+        const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
                 email,
@@ -185,7 +185,7 @@ export class NotificationEmailUtil {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationVerificationEmailPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationVerificationEmailPayload> =
             {
                 send: {
                     userId,
@@ -221,7 +221,7 @@ export class NotificationEmailUtil {
         userId,
         notificationId,
     }: INotificationEmailSendPayload): Promise<void> {
-        const payload: INotificationEmailWorkerPayload = {
+        const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
                 email,
@@ -247,7 +247,7 @@ export class NotificationEmailUtil {
         userId,
         notificationId,
     }: INotificationEmailSendPayload): Promise<void> {
-        const payload: INotificationEmailWorkerPayload = {
+        const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
                 email,
@@ -280,7 +280,7 @@ export class NotificationEmailUtil {
         }: INotificationEmailSendPayload,
         { reference }: INotificationVerifiedEmailPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationVerifiedEmailPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationVerifiedEmailPayload> =
             {
                 send: {
                     userId,
@@ -323,7 +323,7 @@ export class NotificationEmailUtil {
             resendInMinutes,
         }: INotificationForgotPasswordPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationForgotPasswordPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationForgotPasswordPayload> =
             {
                 send: {
                     userId,
@@ -367,7 +367,7 @@ export class NotificationEmailUtil {
             resendInMinutes,
         }: INotificationVerifiedMobileNumberPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationVerifiedMobileNumberPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload> =
             {
                 send: {
                     userId,
@@ -403,7 +403,7 @@ export class NotificationEmailUtil {
         userId,
         notificationId,
     }: INotificationEmailSendPayload): Promise<void> {
-        const payload: INotificationEmailWorkerPayload = {
+        const payload: INotificationEmailQueuePayload = {
             send: {
                 userId,
                 email,
@@ -440,7 +440,7 @@ export class NotificationEmailUtil {
             requestLog,
         }: INotificationNewDeviceLoginPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerPayload<INotificationNewDeviceLoginPayload> =
+        const payload: INotificationEmailQueuePayload<INotificationNewDeviceLoginPayload> =
             {
                 send: {
                     userId,
@@ -474,7 +474,7 @@ export class NotificationEmailUtil {
         sendPayload: INotificationEmailSendPayload[],
         publishTermPolicy: INotificationPublishTermPolicyPayload
     ): Promise<void> {
-        const payload: INotificationEmailWorkerBulkPayload<INotificationPublishTermPolicyPayload> =
+        const payload: INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload> =
             {
                 send: sendPayload,
                 data: publishTermPolicy,

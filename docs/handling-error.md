@@ -10,6 +10,7 @@ The error handling system provides comprehensive exception management using Nest
 
 - [Response Documentation][ref-doc-response] - For standardized response structure
 - [Request Validation Documentation][ref-doc-request-validation] - For validation error handling
+- [Status Codes Documentation][ref-doc-status-codes] - Full catalog of application `statusCode` values by module
 - [Message Documentation][ref-doc-message] - For error message internationalization
 - [Logger Documentation][ref-doc-logger] - For error logging and monitoring
 
@@ -34,13 +35,23 @@ The error handling system provides comprehensive exception management using Nest
 
 ## Exception Filters
 
-ACK NestJS Boilerplate uses 5 specialized exception filters registered globally in hierarchical order:
+ACK NestJS Boilerplate uses 5 specialized exception filters, registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
+
+1. `AppGeneralFilter`
+2. `AppBaseExceptionFilter`
+3. `AppHttpFilter`
+4. `AppValidationFilter`
+5. `AppValidationImportFilter`
+
+NestJS evaluates global filters in reverse of the registration array, so the most specific catch runs first. Effective matching order:
 
 1. **AppValidationImportFilter** - Handles `FileImportException`
 2. **AppValidationFilter** - Handles `RequestValidationException`
-3. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
-4. **AppHttpFilter** - Handles framework `HttpException` (route 404s, throttler, etc.)
+3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, throttler, etc.)
+4. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
 5. **AppGeneralFilter** - Catches all unhandled exceptions
+
+`AppBaseException` does not extend `HttpException`, so the relative position of those two filters does not change which one catches a given error.
 
 **Processing flow**:
 ```
@@ -150,10 +161,10 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 **Response example**:
 ```json
 {
-  "statusCode": 5150,
+  "statusCode": 51000,
   "statusCodeKey": "notFound",
   "module": "user",
-  "message": "User not found",
+  "message": "Sorry, we couldn't find the user you requested.",
   "metadata": { ... }
 }
 ```
@@ -188,11 +199,13 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 
 **Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, throttler 429, payload limits, etc.)
 
-**Use case**: NestJS/framework `HttpException`s. Application code no longer throws `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
+**Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 
-**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308
+**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308. The redirect returns before Sentry reporting and before the error envelope is built.
 
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
+
+**statusCodeKey and module**: Taken from the `HttpException` response object when it carries those fields; otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`
 
 **Sentry integration**: Only sends exceptions with HTTP status ≥ 500
 
@@ -223,7 +236,7 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 **Response example**:
 ```json
 {
-  "statusCode": 5030,
+  "statusCode": 50300,
   "statusCodeKey": "validation",
   "module": "request",
   "message": "There are validation errors.",
@@ -231,7 +244,7 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
     {
       "key": "isEmail",
       "property": "email",
-      "message": "Email must be a valid email address"
+      "message": "email should be a valid email address."
     }
   ],
   "metadata": { ... }
@@ -256,7 +269,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 **Response example**:
 ```json
 {
-  "statusCode": 5030,
+  "statusCode": 50300,
   "statusCodeKey": "validation",
   "module": "file",
   "message": "The imported data failed validation.",
@@ -267,7 +280,7 @@ See [Request Validation][ref-doc-request-validation] for details.
         {
           "key": "isEmail",
           "property": "email",
-          "message": "Email must be a valid email address"
+          "message": "email should be a valid email address."
         }
       ]
     }
@@ -280,7 +293,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 ## Usage
 
-Application code throws a dedicated exception class per error, each extending `AppBaseException`. Inline `HttpException` plus an object is no longer used. Each class fixes its own `statusCode`, `httpStatus`, `messagePath`, and `statusCodeKey`, and lives in the `exceptions/` folder of the module that owns its status-code enum.
+Application code throws a dedicated exception class per error, each extending `AppBaseException`. Each class fixes its own `module`, `statusCode`, `statusCodeKey`, and `httpStatus`, and lives in the `exceptions/` folder of the module that owns its status-code enum.
 
 ### Throwing an error
 
@@ -305,7 +318,7 @@ super('auth.error.passwordMustNew', { messageProperties: { period } });
 ```json
 {
   "error": {
-    "passwordMustNew": "Password must be different; last changed {period}"
+    "passwordMustNew": "New password must be different from previous passwords within the past {period} days."
   }
 }
 ```
@@ -348,5 +361,6 @@ export class ExampleSomethingException extends AppBaseException {
 
 [ref-doc-response]: response.md
 [ref-doc-request-validation]: request-validation.md
+[ref-doc-status-codes]: status-codes.md
 [ref-doc-message]: message.md
 [ref-doc-logger]: logger.md

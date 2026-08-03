@@ -35,7 +35,7 @@ export class ApiKeyRepository {
             ApiKey,
             Prisma.ApiKeySelect,
             Prisma.ApiKeyWhereInput
-        >(this.databaseService.apiKey, {
+        >(this.databaseService.client.apiKey, {
             ...params,
             where: {
                 ...where,
@@ -55,7 +55,7 @@ export class ApiKeyRepository {
         key: string,
         hash: string
     ): Promise<ApiKey> {
-        return this.databaseService.apiKey.create({
+        return this.databaseService.client.apiKey.create({
             data: {
                 name,
                 key,
@@ -69,7 +69,7 @@ export class ApiKeyRepository {
     }
 
     async findOneById(id: string): Promise<ApiKey | null> {
-        return this.databaseService.apiKey.findUnique({
+        return this.databaseService.client.apiKey.findUnique({
             where: {
                 id,
             },
@@ -80,7 +80,7 @@ export class ApiKeyRepository {
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
     ): Promise<ApiKey> {
-        return this.databaseService.apiKey.update({
+        return this.databaseService.client.apiKey.update({
             where: {
                 id,
             },
@@ -91,7 +91,7 @@ export class ApiKeyRepository {
     }
 
     async updateName(id: string, name: string): Promise<ApiKey> {
-        return this.databaseService.apiKey.update({
+        return this.databaseService.client.apiKey.update({
             where: {
                 id,
             },
@@ -105,7 +105,7 @@ export class ApiKeyRepository {
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<ApiKey> {
-        return this.databaseService.apiKey.update({
+        return this.databaseService.client.apiKey.update({
             where: {
                 id,
             },
@@ -117,7 +117,7 @@ export class ApiKeyRepository {
     }
 
     async updateHash(id: string, hash: string): Promise<ApiKey> {
-        return this.databaseService.apiKey.update({
+        return this.databaseService.client.apiKey.update({
             where: {
                 id,
             },
@@ -128,7 +128,7 @@ export class ApiKeyRepository {
     }
 
     async delete(id: string): Promise<ApiKey> {
-        return this.databaseService.apiKey.delete({
+        return this.databaseService.client.apiKey.delete({
             where: {
                 id,
             },
@@ -136,7 +136,7 @@ export class ApiKeyRepository {
     }
 
     async findOneByKey(key: string): Promise<ApiKey | null> {
-        return this.databaseService.apiKey.findUnique({
+        return this.databaseService.client.apiKey.findUnique({
             where: {
                 key,
             },

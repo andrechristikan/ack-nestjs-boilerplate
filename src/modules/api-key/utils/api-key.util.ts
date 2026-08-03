@@ -14,7 +14,7 @@ import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.respon
 
 @Injectable()
 export class ApiKeyUtil {
-    private readonly cachePrefixKey: string;
+    private readonly keyPattern: string;
     private readonly env: EnumAppEnvironment;
     private readonly header: string;
 
@@ -24,8 +24,8 @@ export class ApiKeyUtil {
         private readonly helperService: HelperService,
         private readonly responseUtil: ResponseUtil
     ) {
-        this.cachePrefixKey = this.configService.get<string>(
-            'auth.xApiKey.cachePrefixKey'
+        this.keyPattern = this.configService.get<string>(
+            'auth.xApiKey.keyPattern'
         )!;
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.header = this.configService.get<string>('auth.xApiKey.header')!;
@@ -47,7 +47,7 @@ export class ApiKeyUtil {
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
+        const cacheKey = this.keyPattern.replace('{key}', key);
         const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
         if (cachedApiKey) {
             return cachedApiKey;
@@ -57,13 +57,13 @@ export class ApiKeyUtil {
     }
 
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
+        const cacheKey = this.keyPattern.replace('{key}', key);
         await this.cacheManager.set(cacheKey, apiKey);
         return;
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = `${this.cachePrefixKey}:${key}`;
+        const cacheKey = this.keyPattern.replace('{key}', key);
         await this.cacheManager.del(cacheKey);
         return;
     }

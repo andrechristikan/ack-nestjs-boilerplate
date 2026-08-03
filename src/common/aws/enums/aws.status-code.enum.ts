@@ -1,3 +1,3 @@
 export enum EnumAwsStatusCodeError {
-    serviceUnavailable = 5240,
+    serviceUnavailable = 51400,
 }

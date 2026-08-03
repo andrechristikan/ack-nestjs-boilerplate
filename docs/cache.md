@@ -8,7 +8,7 @@ This documentation explains the features and usage of:
 
 This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
 
-This application uses **cache-manager v6** which migrated to **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
+This application uses **cache-manager v7**, which uses **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
 
 ## Related Documents
 
@@ -152,7 +152,7 @@ export class SessionService {
     cache: {
         url: process.env.CACHE_REDIS_URL!,
         namespace: 'Cache',
-        ttlInMs: 5 * 60 * 1000  // Default TTL: 5 minutes
+        ttlInMs: ms('5m')  // Default TTL: 5 minutes
     }
 }
 ```

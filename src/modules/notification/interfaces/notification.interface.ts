@@ -51,14 +51,14 @@ export interface INotificationAcceptTermPolicyPayload extends INotificationPubli
     termPolicyId: string;
 }
 
-export interface INotificationWorkerBulkPayload<T = unknown> {
+export interface INotificationBulkQueuePayload<T = unknown> {
     proceedBy: string;
     data?: T;
 }
 
-export interface INotificationWorkerPayload<
+export interface INotificationQueuePayload<
     T = unknown,
-> extends INotificationWorkerBulkPayload<T> {
+> extends INotificationBulkQueuePayload<T> {
     userId: string;
 }
 
@@ -71,12 +71,12 @@ export interface INotificationSendPushPayload {
     username: string;
 }
 
-export interface INotificationPushWorkerPayload<T = unknown> {
+export interface INotificationPushQueuePayload<T = unknown> {
     send: INotificationSendPushPayload;
     data?: T;
 }
 
-export interface INotificationPushWorkerCleanupTokenPayload {
+export interface INotificationPushCleanupTokenQueuePayload {
     data: {
         userId: string;
         failureTokens: string[];
@@ -93,12 +93,12 @@ export interface INotificationEmailSendPayload {
     bcc?: string[];
 }
 
-export interface INotificationEmailWorkerPayload<T = unknown> {
+export interface INotificationEmailQueuePayload<T = unknown> {
     send: INotificationEmailSendPayload;
     data?: T;
 }
 
-export interface INotificationEmailWorkerBulkPayload<T = unknown> {
+export interface INotificationEmailBulkQueuePayload<T = unknown> {
     send: INotificationEmailSendPayload[];
     data?: T;
 }

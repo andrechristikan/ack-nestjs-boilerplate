@@ -71,7 +71,7 @@ export class MigrationUserSeed
         const uniqueRoles = this.helperService.arrayUnique(
             this.users.map(user => user.role)
         );
-        const roles = await this.databaseService.role.findMany({
+        const roles = await this.databaseService.client.role.findMany({
             where: {
                 name: {
                     in: uniqueRoles,
@@ -91,7 +91,7 @@ export class MigrationUserSeed
         const uniqueCountries = this.helperService.arrayUnique(
             this.users.map(user => user.country)
         );
-        const countries = await this.databaseService.country.findMany({
+        const countries = await this.databaseService.client.country.findMany({
             where: {
                 alpha2Code: {
                     in: uniqueCountries,
@@ -108,21 +108,22 @@ export class MigrationUserSeed
             return;
         }
 
-        const termPolicies = await this.databaseService.termPolicy.findMany({
-            where: {
-                type: {
-                    in: [
-                        EnumTermPolicyType.termsOfService,
-                        EnumTermPolicyType.privacy,
-                    ],
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                    },
+                    status: EnumTermPolicyStatus.published,
                 },
-                status: EnumTermPolicyStatus.published,
-            },
-            select: {
-                id: true,
-                type: true,
-            },
-        });
+                select: {
+                    id: true,
+                    type: true,
+                },
+            });
 
         if (termPolicies.length !== 2) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
@@ -135,7 +136,7 @@ export class MigrationUserSeed
             const userAgent = UAParser(faker.internet.userAgent());
             const ip = faker.internet.ip();
 
-            await this.databaseService.$transaction(
+            await this.databaseService.client.$transaction(
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
@@ -146,7 +147,7 @@ export class MigrationUserSeed
                             EnumVerificationType.email
                         );
 
-                    return this.databaseService.user.upsert({
+                    return this.databaseService.client.user.upsert({
                         where: {
                             email: user.email.toLowerCase(),
                         },
@@ -157,9 +158,8 @@ export class MigrationUserSeed
                             countryId: countries.find(
                                 country => country.alpha2Code === user.country
                             )!.id,
-                            roleId: roles.find(
-                                role => role.name === user.role
-                            )!.id,
+                            roleId: roles.find(role => role.name === user.role)!
+                                .id,
                             password: passwordHash,
                             passwordCreated,
                             passwordExpired,
@@ -300,17 +300,21 @@ export class MigrationUserSeed
         this.logger.log('Removing back Users...');
 
         try {
-            await this.databaseService.$transaction([
-                this.databaseService.twoFactor.deleteMany({}),
-                this.databaseService.session.deleteMany({}),
-                this.databaseService.userMobileNumber.deleteMany({}),
-                this.databaseService.verification.deleteMany({}),
-                this.databaseService.passwordHistory.deleteMany({}),
-                this.databaseService.forgotPassword.deleteMany({}),
-                this.databaseService.activityLog.deleteMany({}),
-                this.databaseService.termPolicyUserAcceptance.deleteMany({}),
-                this.databaseService.notificationUserSetting.deleteMany({}),
-                this.databaseService.user.deleteMany({}),
+            await this.databaseService.client.$transaction([
+                this.databaseService.client.twoFactor.deleteMany({}),
+                this.databaseService.client.session.deleteMany({}),
+                this.databaseService.client.userMobileNumber.deleteMany({}),
+                this.databaseService.client.verification.deleteMany({}),
+                this.databaseService.client.passwordHistory.deleteMany({}),
+                this.databaseService.client.forgotPassword.deleteMany({}),
+                this.databaseService.client.activityLog.deleteMany({}),
+                this.databaseService.client.termPolicyUserAcceptance.deleteMany(
+                    {}
+                ),
+                this.databaseService.client.notificationUserSetting.deleteMany(
+                    {}
+                ),
+                this.databaseService.client.user.deleteMany({}),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing users');

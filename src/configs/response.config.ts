@@ -1,14 +1,14 @@
 import { registerAs } from '@nestjs/config';
 
 export interface IConfigResponse {
-    cachePrefix: string;
+    keyPattern: string;
     filenameExportPattern: string;
 }
 
 export default registerAs(
     'response',
     (): IConfigResponse => ({
-        cachePrefix: 'Apis',
+        keyPattern: 'Apis:{key}',
         filenameExportPattern: 'export-{timestamp}.{extension}',
     })
 );

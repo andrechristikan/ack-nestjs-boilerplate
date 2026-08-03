@@ -2,7 +2,10 @@ import { DatabaseResponseDto } from '@common/database/dtos/response/database.res
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { EnumNotificationPriority, EnumNotificationType } from '@generated/prisma-client';
+import {
+    EnumNotificationPriority,
+    EnumNotificationType,
+} from '@generated/prisma-client';
 
 export class NotificationResponseDto extends DatabaseResponseDto {
     @ApiProperty({

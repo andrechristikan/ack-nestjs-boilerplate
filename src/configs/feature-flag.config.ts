@@ -2,14 +2,14 @@ import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 
 export interface IConfigFeatureFlag {
-    cachePrefixKey: string;
-    cacheTtlMs: number;
+    keyPattern: string;
+    cacheTtlInMs: number;
 }
 
 export default registerAs(
     'featureFlag',
     (): IConfigFeatureFlag => ({
-        cachePrefixKey: 'FeatureFlag',
-        cacheTtlMs: ms('1h'),
+        keyPattern: 'FeatureFlag:{key}',
+        cacheTtlInMs: ms('1h'),
     })
 );

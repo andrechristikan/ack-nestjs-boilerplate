@@ -40,7 +40,7 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
             })(req, res, next);
         } else if (contentType.includes('application/x-www-form-urlencoded')) {
             bodyParser.urlencoded({
-                extended: false,
+                extended: true,
                 limit: this.urlencodedLimitInBytes,
                 type: 'application/x-www-form-urlencoded',
             })(req, res, next);

@@ -1,1 +1,8 @@
-export type IFeatureFlagMetadata = Record<string, string | number | boolean>;
+export type IFeatureFlagMetadataValue =
+    | string
+    | number
+    | boolean
+    | string[]
+    | number[];
+
+export type IFeatureFlagMetadata = Record<string, IFeatureFlagMetadataValue>;

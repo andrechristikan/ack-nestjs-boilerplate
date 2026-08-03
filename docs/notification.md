@@ -124,7 +124,7 @@ Rate-limited to match the AWS SES sending quota (`AwsSESRateLimitPerDuration` pe
 
 Each job calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event, with `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) merged automatically.
 
-Jobs are dispatched via `NotificationEmailUtil`, which uses `jobId`-based deduplication per `userId`.
+Jobs are dispatched via `NotificationEmailUtil`, deduplicated per `userId` through BullMQ's `deduplication` option. Most templates use a 1-second TTL; a template carrying a time-limited link (`verificationEmail`, `forgotPassword`, `verifiedMobileNumber`) uses a TTL matching that link's expiry or resend window instead.
 
 ### Push Queue
 
@@ -143,13 +143,13 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `cleanupTokens` | Remove reported invalid FCM tokens |
 | `cleanupStaleTokens` | Clean up tokens inactive for ≥ 30 days |
 
-On `onModuleInit`, `NotificationPushProcessorService` automatically dispatches a `cleanupStaleTokens` job.
+On `onModuleInit`, `NotificationPushProcessorService` registers a recurring `cleanupStaleTokens` job (BullMQ `repeat`, cron `0 0 * * *`, in the app's configured timezone) rather than running the cleanup immediately.
 
 ## Push Notifications
 
 ### Push Token Management
 
-Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. `NotificationPushProcessorService` retrieves active tokens from `DeviceRepository` before dispatching FCM calls.
+Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. `NotificationProcessorService` reads them through `DeviceOwnershipRepository.findTokensByUserId()` and places them on the push job payload as `notificationTokens`; `NotificationPushProcessorService` sends to the tokens it receives on the job.
 
 For push token registration, revocation, and session-linking details, see the [Device documentation][ref-doc-device].
 
@@ -160,18 +160,18 @@ After each multicast send, `FirebaseService.sendMulticast()` returns `failureTok
 1. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field)
 2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush`, handled by `NotificationPushProcessorService.processCleanupTokens()`
 
-Stale tokens — those with no activity for `FirebaseStaleTokenThresholdInDays` (30 days) — are pruned at startup via `cleanupStaleTokens`.
+Stale tokens — those with no activity for `FirebaseStaleTokenThresholdInDays` (30 days) — are pruned daily by the recurring `cleanupStaleTokens` job registered at startup.
 
 ```mermaid
 graph TD
     A[FCM Multicast Send] --> B{Any failureTokens?}
     B -->|Yes| C[Store failureTokens <br/> on delivery record]
     C --> D[Enqueue cleanupTokens job]
-    D --> E[DeviceRepository removes <br/> invalid tokens]
+    D --> E[DeviceOwnershipRepository removes <br/> invalid tokens]
     B -->|No| F[Record sentAt only]
     
-    G[Module Init] --> H[Enqueue <br/> cleanupStaleTokens]
-    H --> I[Remove tokens inactive <br/> >= 30 days]
+    G[Module Init] --> H[Register daily <br/> cleanupStaleTokens job]
+    H --> I[Job runs at midnight; removes <br/> tokens inactive >= 30 days]
 ```
 
 ### FCM Rate Limiting

@@ -1,8 +1,4 @@
-import {
-    Injectable,
-    Type,
-    mixin,
-} from '@nestjs/common';
+import { Injectable, Type, mixin } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -146,9 +142,13 @@ export function PaginationOrderPipe(
             );
 
             if (invalidField) {
-                throw new PaginationOrderByNotAllowedException(availableOrderBy.join(', '));
+                throw new PaginationOrderByNotAllowedException(
+                    availableOrderBy.join(', ')
+                );
             } else if (invalidDirection) {
-                throw new PaginationOrderDirectionNotAllowedException(PaginationAllowedOrderDirections.join(', '));
+                throw new PaginationOrderDirectionNotAllowedException(
+                    PaginationAllowedOrderDirections.join(', ')
+                );
             }
 
             return this.parseOrderBy(orderByExtractFromRequest);

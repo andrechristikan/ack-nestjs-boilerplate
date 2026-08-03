@@ -1,16 +1,16 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationAcceptTermPolicyPayload,
+    INotificationBulkQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
+    INotificationQueuePayload,
     INotificationTemporaryPasswordPayload,
     INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
-    INotificationWorkerBulkPayload,
-    INotificationWorkerPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -19,98 +19,98 @@ export interface INotificationProcessorService {
     processWelcomeByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationWelcomeByAdminPayload>,
+        INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processTemporaryPasswordByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationTemporaryPasswordPayload>,
+        INotificationQueuePayload<INotificationTemporaryPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processWelcome({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processWelcomeSocial({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processChangePassword({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processVerifiedEmail({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerifiedEmailPayload>,
+        INotificationQueuePayload<INotificationVerifiedEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processVerificationEmail({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerificationEmailPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processVerifiedMobileNumber({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationVerifiedMobileNumberPayload>,
+        INotificationQueuePayload<INotificationVerifiedMobileNumberPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processForgotPassword({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationForgotPasswordPayload>,
+        INotificationQueuePayload<INotificationForgotPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processResetPassword({
         data: { userId },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processResetTwoFactorByAdmin({
         data: { userId, proceedBy },
     }: Job<
-        INotificationWorkerPayload,
+        INotificationQueuePayload,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processNewDeviceLogin({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationNewDeviceLoginPayload>,
+        INotificationQueuePayload<INotificationNewDeviceLoginPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processPublishTermPolicy({
         data: { data, proceedBy },
     }: Job<
-        INotificationWorkerBulkPayload<INotificationPublishTermPolicyPayload>,
+        INotificationBulkQueuePayload<INotificationPublishTermPolicyPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;
     processUserAcceptTermPolicy({
         data: { userId, data },
     }: Job<
-        INotificationWorkerPayload<INotificationAcceptTermPolicyPayload>,
+        INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;

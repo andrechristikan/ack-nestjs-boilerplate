@@ -63,7 +63,7 @@ The Common Module provides shared functionality and global services across the A
 - Logging (LoggerModule)
 - Database access (DatabaseModule)
 - Authentication and authorization (AuthModule, PolicyModule, RoleModule, ApiKeyModule, FeatureFlagModule, TermPolicyModule, SessionModule, ActivityLogModule, NotificationModule)
-- Utilities for messaging, requests, helpers, files, pagination, and Firebase
+- Utilities for messaging, requests, responses, helpers, files, pagination, and Firebase
 - Registers all these modules as global or shared imports for use throughout the application
 
 ## Configs
@@ -88,19 +88,20 @@ The languages folder provides internationalization (i18n) resources for multi-la
 
 **Location:** `src/migration/`
 
-The migration folder manages database migrations, initialization, and data seeding. It includes:
-- `migration.module.ts`: Main migration module for orchestrating migration logic
+The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
+- `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Ensures the database schema is up-to-date and supports initial and ongoing data population
+- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, and users
 
 ## Queues
 
 **Location:** `src/queues/`
 
 The queues folder implements background job processing using BullMQ and Redis. It includes:
-- `queue.module.ts`: Main queue module for job orchestration
-- `queue.register.module.ts`: Registers and manages queue processors
+- `queue.module.ts`: Composition root that provides the processor classes
+- `queue.register.module.ts`: Global module holding every `BullModule.registerQueue` call and the per-queue job defaults
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
+- Processor files live in their owning feature module (`<module>/processors/`); only their registration lives here
 - Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
 
 ## Router
@@ -139,6 +140,27 @@ The migration file is the entry point for the migration CLI tool using **nest-co
 **Location:** `src/modules/`
 
 The modules folder contains all feature modules, each representing a distinct domain or functionality in the application. Every module is self-contained and follows the repository design pattern, ensuring clear separation of concerns and scalability.
+
+**Feature modules:**
+
+```
+modules
+  ├── activity-log
+  ├── api-key
+  ├── auth
+  ├── country
+  ├── device
+  ├── feature-flag
+  ├── health
+  ├── hello
+  ├── notification
+  ├── password-history
+  ├── policy
+  ├── role
+  ├── session
+  ├── term-policy
+  └── user
+```
 
 No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:
 
@@ -228,26 +250,27 @@ Validation logic for DTOs and other data structures, often using class-validator
 
 ## Other Modules
 
-Below are explanations for the root folders and files outside `src/` (excluding those ignored by git):
+Below are explanations for the root folders and files outside `src/`:
 
 ### Folders
 
-- **.github/**: GitHub-specific configuration including Actions workflows, issue templates, and Copilot instructions.
+- **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
-- **ci/**: Contains CI/CD configuration files.
+- **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
+- **ci/**: Dockerfiles, the JWKS server nginx config, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated files including the Prisma client and Swagger JSON output.
-- **keys/**: Stores public/private keys and JWKS files for authentication and security.
-- **logs/**: Directory for application logs.
-- **prisma/**: Contains Prisma ORM schema and migration files for database management.
+- **generated/**: Auto-generated output: the Prisma client, the Swagger JSON, and the Vault init material. Not tracked by git.
+- **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
+- **logs/**: Directory for application logs. Not tracked by git.
+- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
 - **scripts/**: Utility scripts for tasks like key generation.
-- **test/**: Contains test cases for the project.
+- **test/**: Jest configuration (`jest.json`) and the spec suite, mirroring `src/`.
 
 ### Files
 
 - **.commitlintrc**: Configuration for commit message linting to enforce commit standards.
 - **.dockerignore**: Specifies files and directories to exclude from Docker builds.
-- **.env.example**: Example environment variable file for reference and onboarding.
+- **.env.example**: Example environment variable file for reference and onboarding. `.env` itself is not tracked by git.
 - **.gitignore**: Specifies files and directories to exclude from Git version control.
 - **.npmrc**: Configuration for npm package manager behavior.
 - **.prettierignore**: Specifies files and directories to exclude from Prettier formatting.
@@ -260,7 +283,12 @@ Below are explanations for the root folders and files outside `src/` (excluding 
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
 - **pnpm-workspace.yaml**: pnpm workspace configuration for monorepo support.
-- **tsconfig.json**: TypeScript configuration file, specifying compiler options and project structure.
+- **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@config`, `@configs/*`, `@modules/*`, `@queues/*`, `@routes/*`, `@router`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@package`).
+- **README.md**: Project introduction, feature list, and entry point to the documentation.
+- **CONTRIBUTING.md**: Contribution workflow and standards.
+- **CODE_OF_CONDUCT.md**: Community code of conduct.
+- **SECURITY.md**: Supported versions and vulnerability reporting process.
+- **LICENSE.md**: Project license.
 
 
 

@@ -9,6 +9,8 @@ export class PaginationPerPageExceedsMaximumException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor(maxPerPage: number, receivedPerPage: number) {
-        super('pagination.error.perPageExceedsMaximum', { messageProperties: { maxPerPage, receivedPerPage } });
+        super('pagination.error.perPageExceedsMaximum', {
+            messageProperties: { maxPerPage, receivedPerPage },
+        });
     }
 }

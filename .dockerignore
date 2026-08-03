@@ -1,4 +1,5 @@
 # Dependencies & build output (reinstalled / regenerated inside the image)
+# generated/ also holds agent reports under generated/docs/ — not needed in the image
 node_modules/
 dist/
 generated/

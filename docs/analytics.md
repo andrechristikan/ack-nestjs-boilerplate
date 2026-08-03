@@ -1068,11 +1068,13 @@ db.Devices.aggregate([
 
 ---
 
-### 30. New Device Login Events
+### 30. Device Info Refresh Events
 
-**Business Priority:** 🟠 High — each event is a potential security notification trigger; volume informs notification system load.
+**Business Priority:** 🟠 High — volume of device metadata updates (name, platform, push token) informs notification system load and stale-token detection.
 
 **Source:** `ActivityLogs.action = userDeviceRefresh`, `createdAt`
+
+> `userDeviceRefresh` fires when an authenticated user updates the metadata of their CURRENT device ownership (`POST /user/device/refresh`) — it is not a new device registration or a new login.
 
 ```js
 db.ActivityLogs.aggregate([
@@ -1148,10 +1150,10 @@ db.Sessions.aggregate([
 
 **Business Priority:** 🟡 Medium — baseline for anomaly detection (A4) and capacity estimation.
 
-**Source:** `Devices` — grouped by `userId`
+**Source:** `DeviceOwnerships` — grouped by `userId`
 
 ```js
-db.Devices.aggregate([
+db.DeviceOwnerships.aggregate([
   { $group: { _id: "$userId", deviceCount: { $sum: 1 } } },
   {
     $group: {
@@ -1846,10 +1848,10 @@ db.Users.find({
 
 A user suddenly has far more devices than average — could indicate a compromised account being sold or device farming.
 
-**Source:** `Devices` — grouped by `userId`
+**Source:** `DeviceOwnerships` — grouped by `userId`
 
 ```js
-db.Devices.aggregate([
+db.DeviceOwnerships.aggregate([
   { $group: { _id: "$userId", deviceCount: { $sum: 1 } } },
   {
     $group: {
@@ -1967,7 +1969,7 @@ Combination of sensitive actions in a short window — classic compromised accou
 |--------|--------|
 | Password changed | `PasswordHistories.type = profile` |
 | GeoLocation changed drastically | `Sessions.geoLocation` different country from previous |
-| New device added | `Devices.createdAt` within 1 hour of password change |
+| New device added | `DeviceOwnerships.createdAt` within 1 hour of password change |
 | 2FA disabled or reset | `ActivityLogs.action = userDisableTwoFactor` or `adminUserResetTwoFactor` |
 | New push token registered | `Devices.notificationToken` updated |
 
@@ -1984,7 +1986,7 @@ const passwordChanges = db.PasswordHistories.aggregate([
 ]).toArray();
 
 passwordChanges.forEach(({ userId, changedAt }) => {
-  const newDevice = db.Devices.findOne({
+  const newDevice = db.DeviceOwnerships.findOne({
     userId,
     createdAt: {
       $gte: changedAt,
@@ -2085,21 +2087,30 @@ db.ActivityLogs.aggregate([
 
 One device fingerprint used by multiple users — indicates fake accounts operated from the same device.
 
-**Source:** `Devices` — `fingerprint`, `userId`
+**Source:** `Devices.fingerprint`; `DeviceOwnerships.userId` (a `Device` has no `userId` of its own — ownership is the join table)
 
 ```js
-db.Devices.aggregate([
+db.DeviceOwnerships.aggregate([
   {
     $group: {
-      _id:     "$fingerprint",
+      _id:     "$deviceId",
       userIds: { $addToSet: "$userId" },
       count:   { $sum: 1 },
     },
   },
   { $match: { count: { $gt: 1 } } },
   {
+    $lookup: {
+      from:         "Devices",
+      localField:   "_id",
+      foreignField: "_id",
+      as:           "device",
+    },
+  },
+  { $unwind: "$device" },
+  {
     $project: {
-      fingerprint: "$_id",
+      fingerprint: "$device.fingerprint",
       userCount:   { $size: "$userIds" },
       userIds:     1,
     },
@@ -2205,7 +2216,7 @@ Combine signals into a single **risk score** per user for investigation prioriti
 
 1. **Expose via admin API** — create dedicated admin endpoints per module (e.g., `GET /admin/users/analytics/growth`) running the aggregations above
 2. **Cache results** — use Redis with TTL (1 hour for daily stats, 5 minutes for real-time) to avoid overloading MongoDB
-3. **Background pre-computation** — for heavy aggregations (percentiles, cross-collection joins), use BullMQ to pre-compute and store in an `AnalyticsSnapshot` collection
+3. **Background pre-computation** — for heavy aggregations (percentiles, cross-collection joins), use BullMQ to pre-compute and store the results in a dedicated snapshot collection, which does not exist in the schema yet
 4. **Date range params** — all analytics endpoints must support `startDate` and `endDate` query params
 
 ### MongoDB Version Requirements
@@ -2227,7 +2238,8 @@ Ensure the following indexes exist for optimal query performance:
 | `ForgotPasswords` | `{ isUsed: 1, createdAt: -1 }` |
 | `TermPolicyUserAcceptances` | `{ termPolicyId: 1, acceptedAt: -1 }` |
 | `Verifications` | `{ type: 1, isUsed: 1, expiredAt: -1, createdAt: -1 }` |
-| `Devices` | `{ userId: 1, lastActiveAt: -1 }`, `{ fingerprint: 1 }`, `{ notificationProvider: 1 }`, `{ createdAt: -1 }` |
+| `Devices` | `{ fingerprint: 1 }`, `{ notificationProvider: 1 }`, `{ createdAt: -1 }` |
+| `DeviceOwnerships` | `{ userId: 1, lastActiveAt: -1 }` |
 | `UserMobiles` | `{ isVerified: 1, countryId: 1 }` |
 | `PasswordHistories` | `{ userId: 1, type: 1, createdAt: -1 }` |
 

@@ -42,9 +42,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-    EnumUserLoginWith,
-} from '@generated/prisma-client';
+import { EnumUserLoginWith } from '@generated/prisma-client';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -120,9 +118,7 @@ export class UserPublicController {
     @Response('user.verifyEmail')
     @ApiKeyProtected()
     @Patch('/verify/email')
-    async verifyEmail(
-        @Body() body: UserVerifyEmailRequestDto
-    ): Promise<void> {
+    async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
         return this.userService.verifyEmail(body);
     }
 
