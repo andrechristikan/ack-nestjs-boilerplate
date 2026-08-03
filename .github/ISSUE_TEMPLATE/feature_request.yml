@@ -4,6 +4,12 @@ title: "[FEAT] "
 labels:
   - feature
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement.
+        Large features should be discussed here **before** any implementation starts.
+        Usage questions belong in [Discussions](https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions), not issues.
   - type: checkboxes
     id: preflight
     attributes:
@@ -27,12 +33,41 @@ body:
       description: Describe the feature you'd like.
     validations:
       required: true
-  - type: textarea
-    id: modules
+  - type: dropdown
+    id: module
     attributes:
-      label: Affected Modules
-      description: Which existing modules are affected, or is a new module needed?
-      placeholder: "e.g. auth, user, session — or new module: payment"
+      label: Primary affected module
+      description: Main module this request targets. Mentions others in Additional Context if needed.
+      options:
+        - activity-log
+        - api-key
+        - auth
+        - country
+        - device
+        - feature-flag
+        - health
+        - hello
+        - notification
+        - password-history
+        - policy
+        - role
+        - session
+        - term-policy
+        - user
+        - common / shared
+        - new module
+        - other / unknown
+    validations:
+      required: true
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Entry point
+      options:
+        - HTTP / endpoint
+        - Queue / job
+        - CLI
+        - Other / unknown
     validations:
       required: true
   - type: textarea
@@ -53,14 +88,35 @@ body:
       placeholder: |
         METHOD /api/v1/path
         Request body: { ... }
-        Response: { ... }
+        Response: {
+          "data": { ... },
+          "message": "...",
+          ...
+        }
+        Error (ResponseErrorDto): {
+          "statusCode": 51501,
+          "statusCodeKey": "userNotFound",
+          "module": "user",
+          "message": "..."
+        }
     validations:
       required: false
   - type: textarea
     id: database
     attributes:
-      label: Database Changes (if applicable)
-      description: Will new models, fields, or indexes be needed in the Prisma schema?
+      label: Database / seed (if applicable)
+      description: New Prisma models/fields/indexes, or seed commands (`migration:seed` / standalone seed)?
+      placeholder: |
+        Schema: …
+        Seed: e.g. pnpm migration <name> --type seed — or none
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if applicable)
+      description: New or changed `.env` keys? Remember to call out `.env.example` updates.
+      placeholder: e.g. FOO_BAR=… — or none
     validations:
       required: false
   - type: textarea
@@ -74,6 +130,6 @@ body:
     id: context
     attributes:
       label: Additional Context
-      description: Screenshots, references, related issues, or anything else relevant.
+      description: Other modules touched, screenshots, references, related issues, or anything else relevant.
     validations:
       required: false

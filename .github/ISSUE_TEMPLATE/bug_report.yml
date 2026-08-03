@@ -75,6 +75,37 @@ body:
         - other / unknown
     validations:
       required: true
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Entry point
+      options:
+        - HTTP / endpoint
+        - Queue / job
+        - CLI
+        - Other / unknown
+    validations:
+      required: true
+  - type: input
+    id: error-identity
+    attributes:
+      label: Error identity (if applicable)
+      description: From the API error body — `statusCode`, `statusCodeKey`, and/or `messagePath`.
+      placeholder: e.g. 51501 / userNotFound / user.error.notFound
+    validations:
+      required: false
+  - type: checkboxes
+    id: reproduction-surface
+    attributes:
+      label: Reproduction surface
+      description: Tick any that apply. Details go in Additional Context.
+      options:
+        - label: Happens after a fresh `pnpm migration:seed`
+          required: false
+        - label: Needs specific `.env` values (describe in Additional Context)
+          required: false
+        - label: Only fails when MongoDB is Standalone (not a Replica Set)
+          required: false
   - type: input
     id: os
     attributes:
@@ -94,10 +125,18 @@ body:
     id: pnpm
     attributes:
       label: pnpm version
-      description: Project requires pnpm >= 10.25.0
-      placeholder: e.g. 10.33.0
+      description: Project requires pnpm >= 10.25.0 (repo pins packageManager pnpm@11.x)
+      placeholder: e.g. 11.17.0
     validations:
       required: true
+  - type: input
+    id: nestjs
+    attributes:
+      label: NestJS version
+      description: From `package.json` / lockfile (optional but helpful).
+      placeholder: e.g. 11.1.28
+    validations:
+      required: false
   - type: input
     id: version
     attributes:
@@ -109,6 +148,7 @@ body:
     id: mongodb
     attributes:
       label: MongoDB setup
+      description: This project requires a replica set for transactions.
       options:
         - Replica Set
         - Standalone
@@ -147,13 +187,18 @@ body:
         curl -X POST http://localhost:3000/api/v1/...
 
         # Response
-        { "statusCode": ..., "message": "..." }
+        {
+          "statusCode": 51501,
+          "statusCodeKey": "userNotFound",
+          "module": "user",
+          "message": "..."
+        }
     validations:
       required: false
   - type: textarea
     id: context
     attributes:
       label: Additional Context
-      description: Screenshots, related issues, or anything else relevant.
+      description: Screenshots, related issues, env details, or anything else relevant.
     validations:
       required: false

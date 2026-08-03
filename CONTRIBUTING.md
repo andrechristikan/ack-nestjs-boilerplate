@@ -46,7 +46,7 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 - Improve documentation → PRs are always welcome
 - Found a typo? → direct PR is fine
 
-**Not sure where to start?** Look for issues labeled [`good first issue`][ref-good-first-issue].
+**Not sure where to start?** Improve docs under `/docs`, fix a typo, or ask in [Discussions][ref-discussions] before opening an issue.
 
 ---
 
@@ -141,19 +141,25 @@ doc(readme): update docker setup instructions
 
 1. Create a branch from `main`:
    ```bash
+   git checkout main
+   git pull origin main
    git checkout -b feat/your-feature-name
    ```
 2. Make your changes
-3. Ensure all tests pass and linting is clean
-4. Push and open a PR against `main`
-5. Fill in the PR template completely
+3. Ensure husky / local checks pass (`pnpm lint`, `pnpm test`, and whatever else the pre-commit hook runs)
+4. Push and open a PR against `development` (integration branch). `main` stays the release/default line.
+5. Fill in the PR template so a reviewer can follow the work:
+   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?** (required checks + tests + mandatory when applicable)
+   - **Out of scope**, **Breaking Changes**, **Additional Notes** — when they apply
 6. Wait for review — at least **1 maintainer approval** is required to merge
+
+The PR template asks for what a reviewer must verify (boot, tests, seed/env, layering, status codes, i18n). Tick only the rows that apply to your change. Husky and CI still own lint/test gates.
 
 **PR will be rejected if:**
 - Tests are failing
 - Linting errors exist
-- No description of what/why changes were made
-- Breaking changes without prior discussion in an issue
+- No Summary of what changed and why
+- Scope / How Has This Been Tested? are empty or clearly unrun
 
 ---
 
@@ -187,6 +193,5 @@ Open a [Discussion][ref-discussions] — not an issue.
 <!-- REFERENCES -->
 
 [ref-code-of-conduct]: ./CODE_OF_CONDUCT.md
-[ref-good-first-issue]: https://github.com/andrechristikan/ack-nestjs-boilerplate/labels/good%20first%20issue
 [ref-conventional-commits]: https://www.conventionalcommits.org/
 [ref-discussions]: https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions
