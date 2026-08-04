@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
@@ -62,6 +62,7 @@ export class LoggerOptionService {
 
     async createOptions(): Promise<Params> {
         return {
+            forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
                 genReqId: this.getReqId,
                 formatters: {
@@ -413,8 +414,7 @@ export class LoggerOptionService {
     }
 
     private createAutoLoggingConfig():
-        | { ignore: (req: IRequestApp) => boolean }
-        | boolean {
+        { ignore: (req: IRequestApp) => boolean } | boolean {
         return this.autoLogger === true
             ? {
                   ignore: (req: IRequestApp) =>
