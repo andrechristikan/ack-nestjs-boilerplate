@@ -189,14 +189,14 @@ sequenceDiagram
     participant API
     participant Database
 
-    User->>API: POST /user/2fa/setup
+    User->>API: POST /shared/user/2fa/setup
     API->>API: Generate TOTP secret
     API->>API: Encrypt secret (AES-256)
     API->>Database: Save encrypted secret + IV
     API->>User: Return secret + otpauthUrl
     Note over User: Frontend generates QR code from otpauthUrl
     User->>User: Scan QR with authenticator app
-    User->>API: POST /user/2fa/enable {code}
+    User->>API: POST /shared/user/2fa/enable {code}
     API->>API: Decrypt secret & verify code
     API->>API: Generate 8 backup codes
     API->>Database: Hash & save backup codes
@@ -214,13 +214,13 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>Database: Verify credentials
     API->>Database: Check twoFactor.enabled
     API->>API: Generate challenge token
     API->>Cache: Store challenge (5min TTL)
     API->>User: Return challengeToken
-    User->>API: PATCH /user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
     API->>Cache: Validate challenge
     API->>Cache: Check if user is locked
     alt User Locked
@@ -263,16 +263,16 @@ sequenceDiagram
     API->>User: Send reset notification email
     
     Note over User: User Next Login
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>API: Generate TOTP secret
     API->>Database: Save encrypted secret
     API->>User: Return secret + otpauthUrl + challengeToken
     User->>User: Scan QR code
-    User->>API: POST /user/login/2fa/enable {challengeToken, code}
+    User->>API: POST /public/user/login/2fa/enable {challengeToken, code}
     API->>Database: Verify & save backup codes
     API->>Database: Set requiredSetup=false, attempt=0
     API->>User: Return backup codes
-    User->>API: PATCH /user/login/2fa/verify {challengeToken, code}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
     API->>User: Return tokens
 ```
 
@@ -286,7 +286,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /user/login/2fa/verify {backupCode}
+    User->>API: PATCH /public/user/login/2fa/verify {backupCode}
     API->>Cache: Check if user is locked
     alt User Locked
         API->>Cache: Get TTL (remaining lock time)
@@ -322,7 +322,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {code}
     API->>Cache: Check if user is locked
     
     alt User Already Locked
@@ -375,11 +375,11 @@ sequenceDiagram
     Admin->>User: 2FA has been reset
     
     Note over User: User must setup 2FA again on next login
-    User->>API: POST /user/login/credential
+    User->>API: POST /public/user/login/credential
     API->>User: Return secret + otpauthUrl + challengeToken
-    User->>API: POST /user/login/2fa/enable {code}
+    User->>API: POST /public/user/login/2fa/enable {code}
     API->>Database: Complete setup, attempt=0
-    User->>API: PATCH /user/login/2fa/verify {code}
+    User->>API: PATCH /public/user/login/2fa/verify {code}
     API->>User: Return tokens
 ```
 
@@ -438,7 +438,7 @@ sequenceDiagram
     User->>API: PATCH /public/user/password/reset<br/>{token, newPassword, code/backupCode, method}
     API->>Database: Verify reset token
     alt Token Invalid
-        API->>User: Error: Token invalid (404)
+        API->>User: Error: User not found (404)
     else Token Valid
         alt User has 2FA enabled
             API->>Cache: Check if user is locked

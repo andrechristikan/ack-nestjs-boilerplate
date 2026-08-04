@@ -167,7 +167,7 @@ Transforms and validates CSV data using DTO classes with class-validator decorat
 
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
-2. Rejects an empty row set, and a row set larger than `FileMaxDataImport` (1000)
+2. Rejects an empty row set, and a row set larger than `file.maxDataImport` (1000)
 3. Transforms each row into the specified DTO class
 4. Validates using class-validator with `whitelist: true` and `forbidNonWhitelisted: true`, so an unknown column fails the row
 5. Collects all validation errors with row context, never failing fast on the first bad row
@@ -178,7 +178,7 @@ Transforms and validates CSV data using DTO classes with class-validator decorat
 
 **Throws:**
 - `FileRequiredExtractFirstException`: No rows were passed in
-- `FileExceedMaxDataImportException`: Row count exceeds `FileMaxDataImport` (1000)
+- `FileExceedMaxDataImportException`: Row count exceeds `file.maxDataImport` (1000)
 - `FileImportException`: Contains detailed validation errors with row context
 
 ## CSV Import Flow
@@ -203,7 +203,7 @@ flowchart TD
     H --> I{FileCsvValidationPipe}
     
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
-    I -->|Rows > FileMaxDataImport| I3[Throw FileExceedMaxDataImportException]
+    I -->|Rows > file.maxDataImport| I3[Throw FileExceedMaxDataImportException]
     I -->|Within Cap| J[Transform Each Row to DTO Class]
     J --> K[Validate with class-validator]
     
@@ -464,7 +464,7 @@ Thrown during CSV validation with detailed error context. This exception provide
 | Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
 | Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
-| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds `FileMaxDataImport` (1000) |
+| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds `file.maxDataImport` (1000) |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | DTO validation failed with details |
 
 Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.

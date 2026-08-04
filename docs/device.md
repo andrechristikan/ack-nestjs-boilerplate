@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Device Module**: Located
 
 Devices represent physical or virtual clients that users log in from. Each device is uniquely identified by a `fingerprint` and can be owned by multiple users. User-device relationships are managed through the `DeviceOwnership` model.
 
-When a device ownership is removed, all active sessions linked to that device-user pair are immediately invalidated — across both Redis and the database — forcing logout on the affected client.
+When a device ownership is removed, all active sessions linked to that device-user pair are immediately invalidated across both Redis and the database, forcing logout on the affected client.
 
 This is a critical security mechanism. It allows users (and admins) to forcibly terminate all sessions on a specific device-user pair.
 
@@ -102,7 +102,7 @@ sequenceDiagram
     participant Redis
     participant Database
 
-    Client->>API: DELETE /user/device/remove/:deviceOwnershipId
+    Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
     API->>Database: Begin transaction
     API->>Database: Update DeviceOwnership (isRevoked=true)
     API->>Database: Update Device (clear notificationToken + notificationProvider)
@@ -122,16 +122,16 @@ sequenceDiagram
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/user/device/list` | List own active devices (cursor-based); each entry carries `activeSessionCount` and an `isCurrentDevice` flag |
-| `POST` | `/user/device/refresh` | Update device info (name, push token, platform) |
-| `DELETE` | `/user/device/remove/:deviceOwnershipId` | Remove own device — revokes all its sessions immediately |
+| `GET` | `/shared/user/device/list` | List own active devices (cursor-based); each entry carries `activeSessionCount` and an `isCurrentDevice` flag |
+| `POST` | `/shared/user/device/refresh` | Update device info (name, push token, platform) |
+| `DELETE` | `/shared/user/device/remove/:deviceOwnershipId` | Remove own device; revokes all its sessions immediately |
 
 ### Admin
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/user/:userId/device/list` | List a user's devices (offset-based), filterable by `isRevoked` |
-| `DELETE` | `/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device — revokes all its sessions immediately |
+| `GET` | `/admin/user/:userId/device/list` | List a user's devices (offset-based), filterable by `isRevoked` |
+| `DELETE` | `/admin/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device; revokes all its sessions immediately |
 
 ## Policy Control
 

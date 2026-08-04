@@ -40,6 +40,7 @@ Key features:
     - [Template System](#template-system)
 - [Delivery Tracking](#delivery-tracking)
 - [User Notification Settings](#user-notification-settings)
+- [Shared HTTP Endpoints](#shared-http-endpoints)
 
 ## Notification Types and Priorities
 
@@ -143,7 +144,7 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `cleanupTokens` | Remove reported invalid FCM tokens |
 | `cleanupStaleTokens` | Clean up tokens inactive for ≥ 30 days |
 
-On `onModuleInit`, `NotificationPushProcessorService` registers a recurring `cleanupStaleTokens` job (BullMQ `repeat`, cron `0 0 * * *`, in the app's configured timezone) rather than running the cleanup immediately.
+On `onModuleInit`, `NotificationPushProcessorService` registers a recurring `cleanupStaleTokens` job via BullMQ `upsertJobScheduler` (cron `0 0 * * *` from `notification.push.cleanupStaleTokensCron`, in the app's configured timezone) rather than running the cleanup immediately.
 
 ## Push Notifications
 
@@ -221,7 +222,7 @@ For AWS SES configuration and no-op mode, see [Third-Party Integration — SES][
 
 ## Delivery Tracking
 
-Each `Notification` record contains embedded `NotificationDelivery` rows (one per channel). Delivery fields:
+Each `Notification` record has related `NotificationDelivery` rows in `NotificationDeliveries` (one per channel, via `notificationId`). Delivery fields:
 
 | Field | Description |
 |-------|-------------|
@@ -268,6 +269,18 @@ The request DTO (`NotificationUserSettingRequestDto`) accepts:
 - `type`: `userActivity` | `marketing`
 - `channel`: `email` | `push` | `inApp`
 - `isActive`: `boolean`
+
+## Shared HTTP Endpoints
+
+Under router prefix `/shared` and controller path `/notification` (plus global `/api` and version `v1`):
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/shared/notification/list` | List the caller's notifications |
+| `GET` | `/shared/notification/list/user-setting` | List the caller's notification settings |
+| `PATCH` | `/shared/notification/update/read/:notificationId` | Mark one notification read |
+| `POST` | `/shared/notification/update/read-all` | Mark all notifications read |
+| `PUT` | `/shared/notification/update/setting` | Update a type+channel setting |
 
 ## Contribution
 

@@ -4,7 +4,7 @@ This document catalogs every application `statusCode` in the boilerplate, groupe
 
 `statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status — `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocation procedure lives in the project status-code rules. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
+The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocate new codes in those enums using the next free hundred in the block map below. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
 
 ## Block map
 
@@ -49,7 +49,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `orderByNotAllowed` | `50200` | `orderByNotAllowed` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.orderByNotAllowed` | The 'orderBy' field '{field}' is not allowed. Allowed fields are: {allowedFields}. |
-| `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` | '{property}' value provided is invalid. |
+| `filterInvalidValue` | `50201` | `filterInvalidValue` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.filterInvalidValue` or `pagination.error.filterInvalidValueEnum` | '{property}' value provided is invalid (enum variant uses the Enum messagePath). |
 | `invalidPerPage` | `50202` | `invalidPerPage` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidPerPage` | The 'perPage' parameter must be between 1 and {maxPerPage}. |
 | `invalidCursorPaginationParams` | `50203` | `invalidCursorPaginationParams` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.invalidCursorPaginationParams` | Invalid cursor pagination parameters provided. |
 | `cursorTooLong` | `50204` | `cursorTooLong` | 422 (`UNPROCESSABLE_ENTITY`) | `pagination.error.cursorTooLong` | The cursor length must not exceed {maxCursorLength} characters. |
@@ -140,9 +140,9 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
-| `isActive` | `50901` | `isActive` | — | `country.error.isActive` | — |
-| `inactive` | `50902` | `inactive` | — | `country.error.inactive` | — |
-| `exist` | `50903` | `exist` | — | `country.error.exist` | — |
+| `isActive` | `50901` | `isActive` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `inactive` | `50902` | `inactive` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `exist` | `50903` | `exist` | — | — | Reserved enum member; no exception or i18n path yet. |
 
 ## `user`
 
@@ -156,7 +156,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `statusInvalid` | `51005` | `statusInvalid` | — | `user.error.statusInvalid` | Invalid user status. |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
-| `deletedForbidden` | `51008` | `deletedForbidden` | — | `user.error.deletedForbidden` | — |
+| `deletedForbidden` | `51008` | `deletedForbidden` | — | — | Reserved enum member; no exception or i18n path yet. |
 | `blockedForbidden` | `51009` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
 | `passwordNotMatch` | `51010` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
 | `passwordMustNew` | `51011` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
@@ -172,7 +172,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `mobileNumberExist` | `51021` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
 | `verificationEmailResendLimitExceeded` | `51022` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
 | `forgotPasswordRequestLimitExceeded` | `51023` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
-| `twoFactorMethodRequired` | `51024` | `twoFactorMethodRequired` | — | `user.error.twoFactorMethodRequired` | — |
+| `twoFactorMethodRequired` | `51024` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
 | `notFoundForbidden` | `51025` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
 | `importEmailExist` | `51026` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
 

@@ -1074,7 +1074,7 @@ db.Devices.aggregate([
 
 **Source:** `ActivityLogs.action = userDeviceRefresh`, `createdAt`
 
-> `userDeviceRefresh` fires when an authenticated user updates the metadata of their CURRENT device ownership (`POST /user/device/refresh`) — it is not a new device registration or a new login.
+> `userDeviceRefresh` fires when an authenticated user updates the metadata of their CURRENT device ownership (`POST /shared/user/device/refresh`). It is not a new device registration or a new login.
 
 ```js
 db.ActivityLogs.aggregate([
@@ -2243,4 +2243,4 @@ Ensure the following indexes exist for optimal query performance:
 | `UserMobiles` | `{ isVerified: 1, countryId: 1 }` |
 | `PasswordHistories` | `{ userId: 1, type: 1, createdAt: -1 }` |
 
-> Most indexes above **already exist** in the schema — see `@@index` definitions in each model. New ones added here are marked where schema changes may be needed.
+> Treat the table as the index set this blueprint needs. Only some already exist in `prisma/schema.prisma` (for example `ActivityLogs { userId, action, createdAt }`, `Notifications { userId, priority, isRead, createdAt }`, `TermPolicyUserAcceptances { termPolicyId, acceptedAt }`, `Devices` unique `fingerprint`). Others such as `ActivityLogs { action, createdAt }`, `NotificationDeliveries { channel, processedAt, createdAt }`, and `PasswordHistories { userId, type, createdAt }` are not present yet and must be added before relying on them for analytics queries.

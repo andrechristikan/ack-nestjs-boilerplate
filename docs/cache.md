@@ -167,15 +167,17 @@ export class SessionService {
 @Module({
     imports: [
         ConfigModule.forRoot(),
-        RedisCacheModule.forRoot(),    // 1. First
-        CacheMainModule.forRoot(),      // 2. Second
-        SessionModule,                  // 3. Then feature modules
+        RedisCacheModule.forRoot(),    // Redis connection first
+        QueueRegisterModule.forRoot(), // BullMQ shares Redis wiring
+        CacheMainModule.forRoot(),     // Depends on RedisCacheModule
+        // ... DatabaseModule, RequestModule, and other globals ...
+        SessionModule,                 // Feature modules later (SessionUtil injects SessionCacheProvider)
     ]
 })
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`.
+**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` registers its own cache provider later.
 
 ## Usage
 
@@ -194,7 +196,7 @@ export class UserService {
 **Session cache:**
 ```typescript
 @Injectable()
-export class SessionService {
+export class SessionUtil {
     constructor(
         @Inject(SessionCacheProvider) private cache: Cache,
     ) {}

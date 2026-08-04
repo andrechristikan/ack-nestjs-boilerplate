@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Queue Module**: Located 
 
 Queue module for background job processing using [BullMQ][ref-bullmq] and [Redis][ref-redis]. This module implements a DRY design pattern with singleton Redis connections for efficient resource management.
 
-All queue configurations are centralized in `src/configs/redis.config.ts`, with root setup and management located in `src/queues`.
+All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, removeOn*) live in `src/configs/queue.config.ts`. Root setup and management live in `src/queues`.
 
 ## Related Documents
 
@@ -36,7 +36,7 @@ All queue configurations are centralized in `src/configs/redis.config.ts`, with 
 
 ## Configuration
 
-Queue configuration is managed in `src/configs/redis.config.ts`:
+Redis connection for queues is managed in `src/configs/redis.config.ts`:
 
 ```typescript
 export interface IConfigRedis {
@@ -46,6 +46,8 @@ export interface IConfigRedis {
     };
 }
 ```
+
+Job defaults (attempts, backoff delays, removeOnComplete / removeOnFail) are in `src/configs/queue.config.ts` and applied from `src/queues/queue.register.module.ts`.
 
 Environment variables:
 - `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)

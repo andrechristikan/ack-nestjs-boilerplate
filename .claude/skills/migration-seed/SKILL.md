@@ -1,6 +1,6 @@
 ---
 name: migration-seed
-description: Create or edit initial-data seeders under src/migration/ in ack-nestjs-boilerplate — a new seed command, seed data rows, remove() pair, migration.module registration, and package.json seed/remove order when the command is bundled. Use whenever the owner asks for a new migration seed, changes to migration/data or migration/seeds, template/aws seed commands, or adjustments to migration:seed / migration:remove order. Simplified flow: clarify → coder → light gate → doc-drift when docs/database.md claims change. NOT for feature modules, endpoints, or Controllers/Services/Repositories — that is the `coding` skill. NOT for running migration:* or schema commands.
+description: Create or edit initial-data seeders under src/migration/ in ack-nestjs-boilerplate — a new seed command, seed data rows, remove() pair, migration.module registration, and package.json seed/remove order when the command is bundled. Use whenever the owner asks for a new migration seed, changes to migration/data or migration/seeds, template/aws seed commands, or adjustments to migration:seed / migration:remove order. Simplified flow: clarify → coder → light gate. NOT for feature modules, endpoints, or Controllers/Services/Repositories — that is the `coding` skill. NOT for docs repair — that is owner-triggered `doc-drift` → `doc-writer`. NOT for running migration:* or schema commands.
 ---
 
 # Migration seed — initial data only
@@ -11,7 +11,8 @@ One job, kept small: add or change **bootstrap seed data** under `src/migration/
 
 ## Out of this skill (HARD)
 
-- **Do not invoke `coding`, `spec-coverage`, `reviewer-flow`, or `repository-pattern-gate`.** There is no HTTP flow to trace and no coverage set for seeds.
+- **Do not invoke `coding`, `spec-coverage`, `reviewer-flow`, `repository-pattern-gate`, `doc-drift`, or `pr-doc`.** There is no HTTP flow to trace, no coverage set for seeds, and docs/PR work is owner-triggered elsewhere.
+- **Do not dispatch `doc-writer` or `pr-doc-writer`.**
 - **Do not run `migration:*`, `db:*`, or `migration:fresh`.** Write the seed; the owner runs it (`rules/migration.md`, mandatory schema rule).
 - **Do not edit `prisma/schema.prisma`.** Seed rows must fit the schema that already exists.
 - **Do not absorb feature-module work.** A new endpoint, service method, or repository change belongs to `coding`.
@@ -24,8 +25,7 @@ One job, kept small: add or change **bootstrap seed data** under `src/migration/
 SCOPE (do not go outside this)
   seed:           <command-name>          # e.g. country, template-email-notification
   paths:          src/migration/**        (+ package.json scripts if order changes)
-  docs (optional): docs/database.md       # only when seeded-data claims change
-  out of scope:   src/modules/** feature work, test/, running any migration:* command
+  out of scope:   src/modules/** feature work, test/, docs/*.md edits, running any migration:* command
 ```
 
 ---
@@ -80,11 +80,7 @@ Migration-specific checks (read the code, do not invent):
 - Idempotent `seed()`; scoped `remove()`.
 - No `migration:*` / schema command was executed.
 
-### 4. Documentation — `doc-drift` when claims moved
-
-If the change adds/removes a bundled seed, changes seeded-data catalogue text, or alters documented commands, dispatch `doc-drift` with SCOPE pointing at `docs/database.md` (and any other doc that lists the seed). Otherwise skip.
-
-### 5. Hand back to the owner
+### 4. Hand back to the owner
 
 One short list:
 
@@ -92,6 +88,7 @@ One short list:
 - whether the command is bundled or standalone,
 - the exact owner commands to run (`pnpm migration <name> --type seed` / `remove`, or `migration:seed`),
 - path of `generated/docs/report-coder-migration-<slug>.md` if any,
+- stale-doc notes if seeded-data catalogue text in `docs/database.md` (or elsewhere) now disagrees — the owner runs skill `doc-drift` separately when they want the repair,
 - anything left undecided.
 
 ---

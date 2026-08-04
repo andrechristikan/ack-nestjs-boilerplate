@@ -298,7 +298,7 @@ sequenceDiagram
         S3-->>Client: 200 OK
         
         Client->>Backend: PUT /update/photo<br/>{photoKey: key, size}
-        Backend->>AwsS3Service: mapPresign(key, size)
+        Backend->>AwsS3Service: mapPresign({ key, size })
         AwsS3Service-->>Backend: IAwsS3
         
         Backend->>Repository: updatePhotoProfile(userId, aws)

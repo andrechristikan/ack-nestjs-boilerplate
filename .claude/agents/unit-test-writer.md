@@ -52,7 +52,7 @@ An edit that would change a condition, a boundary, an order of operations, a sta
 
 ## `docs/*.md` is FORBIDDEN (HARD)
 
-**You never create, edit, or delete a file under `docs/`.** Not a line, not a table row, not a typo fix. Your report goes to `generated/docs/`, never to `docs/`, and a documentation claim your work proves wrong is named in your hand-back for the `doc-drift` agent — never corrected by you.
+**You never create, edit, or delete a file under `docs/`.** Not a line, not a table row, not a typo fix. Your report goes to `generated/docs/`, never to `docs/`, and a documentation claim your work proves wrong is named in your hand-back for the owner (`doc-drift` → `doc-writer`) — never corrected by you. You never invoke `doc-drift` / `pr-doc` and never dispatch `doc-writer` / `pr-doc-writer`.
 
 ## When you are used, and when you are not
 

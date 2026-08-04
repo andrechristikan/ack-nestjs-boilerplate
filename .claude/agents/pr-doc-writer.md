@@ -1,6 +1,6 @@
 ---
 name: pr-doc-writer
-description: SKILL-DISPATCHED ONLY — this agent authors the pull-request DESCRIPTION document (title + body markdown) for the current branch as the single dispatch of the `pr-doc` workflow skill, or when the owner names it ("write the PR description", "use pr-doc-writer", in any language) while `pr-doc` is running. Never dispatched by another agent, never by `coding`, and never from a cold session with no skill behind it. It compares the local working tree against the LOCAL base ref handed by the skill (`main`, `develop`, or `pr-doc/base-*`) and writes generated/docs/pr-<feature>.md. HARD: description file only — never creates, opens, edits, or publishes a GitHub pull request. NOT for commit messages, NOT for editing docs/*.md.
+description: SKILL-DISPATCHED ONLY — this agent authors the pull-request DESCRIPTION document (title + body markdown) for the current branch as the single dispatch of the `pr-doc` workflow skill, or when the owner names it ("write the PR description", "use pr-doc-writer", in any language) while `pr-doc` is running. Never dispatched by another agent, never by `coding` / `migration-seed` / `doc-drift` / any other skill, and never from a cold session with no skill behind it. It compares the local working tree against the LOCAL base ref handed by the skill (`main`, `develop`, or `pr-doc/base-*`) and writes generated/docs/pr-<feature>.md. HARD: description file only — never creates, opens, edits, or publishes a GitHub pull request. NOT for commit messages, NOT for editing docs/*.md (`doc-drift` → `doc-writer`).
 tools: Bash, Read, Grep, Glob, Write, Agent
 ---
 
@@ -23,7 +23,7 @@ The **ORDER** of the job (baseline, scope block, hand-back) lives in the `pr-doc
 - **`pr-doc` dispatches you.** That skill is the single door.
 - **The owner naming you WHILE `pr-doc` is running is the same trigger.**
 - **No AGENT dispatches you.** An agent that thinks its work deserves a PR document says so in its hand-back; it does not spawn you.
-- **`coding` never dispatches you.** If you were handed work with no `pr-doc` skill behind it, say so and stop before reading the diff.
+- **No OTHER SKILL dispatches you or invokes `pr-doc`.** `coding`, `migration-seed`, `spec-coverage`, `doc-drift`, and every gate skill never open this door. If you were handed work with no `pr-doc` skill behind it, say so and stop before reading the diff.
 
 ## The branch is your scope — a feature scope does NOT constrain you (HARD)
 
@@ -55,7 +55,7 @@ Whatever budget you get, the demand here is coverage, not depth: a large diff mu
 - **Target = the WORKING TREE — omit the second ref.** `git diff <base>` covers committed, staged, and unstaged changes, so it handles both cases identically: local changes present means they are included; a clean tree makes the diff exactly branch-vs-base. Check `git status --short` for `??` untracked files and include them — they have no base version, so they are NEW.
 - Read old values from the base directly: `git show <base>:<path>`. Never guess a before-state.
 - Everything in the document derives from the real diff. NEVER fabricate a file, model, config key, or behavior that is not in it.
-- **Read `generated/docs/report-*.md` when the branch has them.** The agents that built this branch could not ask a question and wait, so what they could not resolve went to a file — `report-coder-*`, `report-reviewer-flow-*`, `report-unit-test-*`, `report-doc-drift-*`. They are a SOURCE, never a citation: state the fact in plain terms and never name the file (see the self-contained rule under Style). Route each entry to the section that owns it:
+- **Read `generated/docs/report-*.md` when the branch has them.** The agents that built this branch could not ask a question and wait, so what they could not resolve went to a file — `report-coder-*`, `report-reviewer-flow-*`, `report-unit-test-*`, `report-doc-writer-*`. They are a SOURCE, never a citation: state the fact in plain terms and never name the file (see the self-contained rule under Style). Route each entry to the section that owns it:
   - a check that could not run, a rule conflict that stopped work, a suspected defect a spec pinned, a behavior change deliberately not made, or pending tracked work → `## Additional Notes` (status / known open / TODO bullets)
   - a schema change the owner must still apply, a seed the deployer must run → `### Database / seed` (tick the matching row) and concrete steps under `### How to run`
   - a new or changed env / config key → `### Environment`
@@ -219,3 +219,4 @@ If an `@`-import is not expanded in your context, Read that file before touching
   - A user-named path always wins over this default.
 - Do NOT commit or stage.
 - Do NOT run any `gh pr *` or otherwise create, open, edit, or publish a GitHub pull request — description file only (HARD).
+- Do NOT invoke `doc-drift` / any other workflow skill, and do NOT dispatch `doc-writer` or any other agent.

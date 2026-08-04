@@ -1,11 +1,19 @@
 ---
 name: pr-doc
-description: Author the pull-request DESCRIPTION document only for the current branch in ack-nestjs-boilerplate — living markdown at generated/docs/pr-<feature>.md against a local main or develop base (owner chooses before run). Use when the owner asks for a PR description / PR doc / "use pr-doc" (any language). Always ask main vs develop first; fetch origin; pull the target into a local ref (or a dedicated compare branch if pull cannot apply); compare from that local ref never from origin/*; reject when the current branch has no commits ahead of that local base. Dispatches `pr-doc-writer` only. HARD: writes the description file only — never creates, opens, edits, or publishes a GitHub pull request. NOT invoked by `coding`. NOT for commit messages, NOT for editing docs/*.md.
+description: Author the pull-request DESCRIPTION document only for the current branch in ack-nestjs-boilerplate — living markdown at generated/docs/pr-<feature>.md against a local main or develop base (owner chooses before run). Use when the owner asks for a PR description / PR doc / "use pr-doc" (any language). Always ask main vs develop first; fetch origin; pull the target into a local ref (or a dedicated compare branch if pull cannot apply); compare from that local ref never from origin/*; reject when the current branch has no commits ahead of that local base. Dispatches `pr-doc-writer` only. HARD: owner-triggered only — never invoked by `coding`, `migration-seed`, `spec-coverage`, `doc-drift`, gate skills, or any agent. Writes the description file only — never creates, opens, edits, or publishes a GitHub pull request. NOT for commit messages, NOT for editing docs/*.md (`doc-drift` → `doc-writer`).
 ---
 
 # PR document — whole branch, final state
 
 One job: produce a reviewer-facing **PR description document** for what this branch contains NOW. Diff-base rules live in `rules/git.md`. The document shape is `.github/pull_request_template.md`; fill rules live in the `pr-doc-writer` agent. This skill holds the ORDER and the trap at each step.
+
+## Owner-triggered only (HARD)
+
+**This skill is never opened by another skill or by any agent.**
+
+- **`coding`, `migration-seed`, `spec-coverage`, `doc-drift`, `anti-pattern-gate`, `repository-pattern-gate`, and every other skill do NOT invoke this skill.**
+- **No AGENT invokes this skill or dispatches `pr-doc-writer`.** Agents that think the branch deserves a PR document say so in their hand-back; the owner runs this skill when they want the file.
+- If you find yourself mid-`coding` (or any other skill) about to open PR-document work, stop and tell the owner to run `pr-doc` separately.
 
 ## Description only — never open a PR (HARD)
 
@@ -19,9 +27,9 @@ One job: produce a reviewer-facing **PR description document** for what this bra
 
 - **Do not dispatch any agent except `pr-doc-writer`.**
 - **Do not edit `docs/*.md`.**
+- **Do not invoke `doc-drift` and do not dispatch `doc-writer`.** Docs repair is a separate owner-triggered job.
 - **Do not write commit messages** and do not stage or commit (`rules/git.md`). Preparing the local compare base (fetch / ff-pull / compare branch) is the sanctioned exception — nothing else.
 - **Do not invent a parallel document shape.** The body must match `.github/pull_request_template.md` (filled checkboxes and sections). That shape is owned by `pr-doc-writer`; this skill does not redefine headings.
-- **`coding` never invokes this skill.** This is a standalone owner-triggered job.
 - **Do not assume the compare base.** Always ask `main` vs `develop` first (step 0). Never default silently.
 - **Do not compare against `origin/*`.** After step 0c the base in SCOPE is always a local ref.
 

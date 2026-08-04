@@ -28,7 +28,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | Concurrency | Horizontal scaling supported — stateless processes, shared Redis for sessions |
 | Disposability | Fast startup, graceful shutdown — no sticky sessions or local state |
 | Dev/Prod Parity | Same stack (Docker Compose) for local dev and production |
-| Logs | Logs as event streams via Pino to stdout — no log file management in app |
+| Logs | Logs as event streams via Pino to stdout, and optionally to files under `/logs` when `LOGGER_INTO_FILE=true` |
 | Admin Processes | One-off tasks via dedicated migration and seed scripts (`pnpm migration:seed`) |
 
 ### Security Standards

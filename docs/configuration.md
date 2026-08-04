@@ -205,7 +205,7 @@ twoFactor: {
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
   lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
-    key: string;                  // Encryption key for backup codes
+    key: string;                  // Encryption key for TOTP secrets
   };
 }
 ```

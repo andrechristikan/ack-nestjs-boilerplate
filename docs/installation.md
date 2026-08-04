@@ -48,9 +48,9 @@ Before starting, install the following tools and packages. We recommend using th
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org) | v24.11.0+ |
-| [MongoDB](https://docs.mongodb.com/) | v8.2.11 |
-| [Redis](https://redis.io) | v8.8.0 |
-| [PNPM](http://pnpm.io) | v11.5.x |
+| [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
+| [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
+| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.20.0`) |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]

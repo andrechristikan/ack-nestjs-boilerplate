@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma, works with any database. Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -116,7 +116,7 @@ This boilerplate is perfect for:
 - Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
-- [ ] Unit test
+- [x] Unit test setup (Jest under `test/`; expand coverage as features grow)
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -148,8 +148,8 @@ The project is built using the following technologies and versions. We always st
 | NodeJs         | v24.11.x |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8.0.x   |
-| Redis          | v8.0.x   |
+| MongoDB        | v8+ (compose: `mongo:latest`)   |
+| Redis          | v8+ (compose: `redis:latest`)   |
 | Docker         | v28.5.x  |
 | Docker Compose | v2.40.x  |
 
@@ -258,35 +258,30 @@ pnpm install
 # Setup environment
 cp .env.example .env
 
-# Run with Docker
+# Generate JWT keys, Prisma client, and push schema
+pnpm generate:keys
+pnpm db:generate
+pnpm db:migrate
+
+# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Access API
+# Run the API on the host
+pnpm start:dev
+
+# Access Swagger
 open http://localhost:3000/docs
 ```
 
-## Change DB with Minimal Effort
+To run the API inside Compose as well, start with the `apis` profile: `docker-compose --profile apis up -d`.
 
-Thanks to **Repository Pattern** and **Prisma ORM**, switching databases requires minimal code changes. The abstraction layer isolates database logic from business logic.
+## Database
 
-### Supported Databases
+This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`). Schema sync uses `pnpm db:migrate` (`prisma db push`). There is no `prisma migrate` script.
 
-| Database | Best For | Transaction Support |
-|----------|----------|---------------------|
-| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
+Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. Prefer forking that work deliberately rather than treating it as a one-command switch.
 
-**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
-
-**Migration typically requires:**
-- Updating `prisma/schema.prisma` provider
-- Adjusting ID strategy (ObjectId → UUID). Update the `DatabaseUtil` helpers.
-- Running `pnpm prisma migrate dev`
-- Running `pnpm migration:seed`
-
-**Business logic stays unchanged** - services, controllers, and authentication work as-is.
-
-For detailed migration guides, see [Database Documentation][ref-doc-database].
+For MongoDB setup and seeding, see [Database Documentation][ref-doc-database].
 
 ## Installation
 

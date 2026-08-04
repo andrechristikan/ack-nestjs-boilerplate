@@ -99,7 +99,7 @@ ThrottlerModule.forRootAsync({
 async endpoint() {}
 ```
 
-`@RequestThrottleByUser()` MUST sit ABOVE `@AuthJwtAccessProtected()`. Guards execute bottom-up, so the user guard runs after JWT verification and sees the verified `req.user`; place it below and `req.user` is not yet populated, silently degrading it to IP tracking. An authenticated request carrying this decorator is counted against BOTH its IP bucket (global guard) and its user bucket (defense in depth).
+`@RequestThrottleByUser()` sits ABOVE `@AuthJwtAccessProtected()` in source. Guards execute bottom-up, so the user guard runs after JWT verification and sees the verified `req.user`; place it below and `req.user` is not yet populated, silently degrading it to IP tracking. An authenticated request carrying this decorator is counted against BOTH its IP bucket (global guard) and its user bucket (defense in depth).
 
 **Redis keys** follow the configured patterns, with `{name}` the throttler name (default `default`) and `{tracker}` the IP or userId:
 ```
@@ -365,7 +365,7 @@ async endpoint() {}
 
 Place it ABOVE `@AuthJwtAccessProtected()` so it runs after JWT verification and sees the verified `req.user`. See [Rate Limiting](#rate-limiting).
 
-> Client IP, geolocation, and user-agent are exposed via the `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators, which now just read the value resolved once per request into the request store under `RequestLogStoreKey`. See [Request Store](#request-store).
+> Client IP, geolocation, and user-agent are exposed via the `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators, which read the value resolved once per request into the request store under `RequestLogStoreKey`. See [Request Store](#request-store).
 
 
 <!-- REFERENCES -->

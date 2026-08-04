@@ -49,10 +49,13 @@ is scanning as "just tests".
 |---|---|
 | A feature, endpoint, or service is being built | `coding` — `coder` writes the failing spec FIRST; TDD there is not waived |
 | The specs are red because the CODE is wrong and the owner wants the code fixed | `coding`, with `superpowers:systematic-debugging` — this skill reports defects, it does not fix them |
+| `docs/*.md` is stale | owner-triggered `doc-drift` → `doc-writer` — this skill never invokes them |
+| A PR description document is needed | owner-triggered `pr-doc` → `pr-doc-writer` — this skill never invokes them |
 | e2e or load tests | out of scope entirely |
 
 **`coding` never invokes this skill.** Feature TDD lives inside `coder`. This skill is a
-standalone workflow for coverage backfill after code already exists.
+standalone workflow for coverage backfill after code already exists. **Never invoke `doc-drift`
+or `pr-doc`, and never dispatch `doc-writer` or `pr-doc-writer`.**
 
 ## No spec, no plan (HARD)
 

@@ -1,11 +1,11 @@
 ---
 name: coding
-description: Build a feature in ack-nestjs-boilerplate's repository pattern, end to end — from brainstorming the design with the owner, through spec and plan, test-first implementation by the coder agent, whole-feature gates, mandatory flow review, doc-drift check, and report collection. Use this whenever the owner asks for a new feature, a new endpoint or service method, a new queue processor, or a refactor of feature code. Covers Controller → Service → Repository placement via the gates; module scaffold lives inside the coder agent; status-code procedure lives in `rules/status-code.md` (coder follows it). NOT for standalone coverage backfill — that is the `spec-coverage` skill, and this skill does not invoke it.
+description: Build a feature in ack-nestjs-boilerplate's repository pattern, end to end — from brainstorming the design with the owner, through spec and plan, test-first implementation by the coder agent, whole-feature gates, mandatory flow review, and report collection. Use this whenever the owner asks for a new feature, a new endpoint or service method, a new queue processor, or a refactor of feature code. Covers Controller → Service → Repository placement via the gates; module scaffold lives inside the coder agent; status-code procedure lives in `rules/status-code.md` (coder follows it). NOT for standalone coverage backfill — that is the `spec-coverage` skill. NOT for docs repair — that is owner-triggered `doc-drift` → `doc-writer`. This skill does not invoke either.
 ---
 
 # Coding — build a feature in the repository pattern
 
-One job, run end to end: turning a feature request into reviewed, documented code that obeys Controller → Service → Repository. `rules/*.md` hold the constraints; this skill holds the ORDER and the trap at each step. On disagreement the rule file governs — fix the skill.
+One job, run end to end: turning a feature request into reviewed code that obeys Controller → Service → Repository. `rules/*.md` hold the constraints; this skill holds the ORDER and the trap at each step. On disagreement the rule file governs — fix the skill.
 
 **Repository pattern only.** Controllers, services, repositories, and flat folder-per-concern modules. Keep that shape; do not invent another folder scheme on top of it.
 
@@ -15,12 +15,13 @@ One job, run end to end: turning a feature request into reviewed, documented cod
 - **Do not invoke `migration-seed`.** Standalone seed work under `src/migration/` is a parallel skill. If this feature also needs bootstrap rows, either finish the feature here and point the owner at `migration-seed`, or keep a thin seed via `coder` scaffold §9 — do not restate the full seed workflow.
 - **Do not dispatch `unit-test-writer`.** Only `spec-coverage` may dispatch it. `coder` writes failing specs and brings touched files to 100% coverage itself.
 - **Do not dispatch `pr-doc-writer` and do not invoke `pr-doc`.** PR documents are a standalone owner-triggered job (`pr-doc` → `pr-doc-writer`). This skill never opens that door.
+- **Do not dispatch `doc-writer` and do not invoke `doc-drift`.** Docs repair is a standalone owner-triggered job (`doc-drift` → `doc-writer`). Agents name stale docs in their hand-back; the owner runs `doc-drift` when they want the repair.
 - **Do not dispatch `auditor`.** That agent does not exist. Flow review inside this skill is `reviewer-flow` only.
 - **Do not restate module-scaffold or status-code procedures.** Module scaffold lives in the `coder` agent; status-code procedure lives in `rules/status-code.md` (coder follows it). Point at those when a task needs a new module folder set, router/queue registration, or a status-code enum allocation.
 
 ## The scope block (HARD)
 
-**Compute the scope ONCE, at step 0, and paste it verbatim into every dispatch.** An agent given a vague scope will widen it — `reviewer-flow` will invent entry points outside the feature, `doc-drift` will sweep all of `docs/`, `coder` will refactor what it passes through. Each of those is a scope breach, and each costs the owner budget they did not authorise.
+**Compute the scope ONCE, at step 0, and paste it verbatim into every dispatch.** An agent given a vague scope will widen it — `reviewer-flow` will invent entry points outside the feature, `coder` will refactor what it passes through. Each of those is a scope breach, and each costs the owner budget they did not authorise.
 
 ```
 SCOPE (do not go outside this)
@@ -71,14 +72,14 @@ Dispatch one task at a time, in parallel where the plan marked them independent.
 - Every dispatch carries the scope block and the path to the plan.
 - **`coder` writes the failing spec first — TDD is mandatory here and is not waived.** Same head watches red, then implements, then brings every touched production file to 100% coverage. It never delegates specs to `unit-test-writer`.
 - Module scaffold and status-code allocation, when needed, run **inside `coder`** (status-code steps from `rules/status-code.md`). This skill only dispatches; it does not walk those procedures.
-- `coder` cannot ask a question and wait, so what it cannot resolve lands in `generated/docs/report-coder-<feature>.md`. Step 7 reads it.
+- `coder` cannot ask a question and wait, so what it cannot resolve lands in `generated/docs/report-coder-<feature>.md`. Step 6 reads it.
 
 ### 4. Gate the whole feature — `anti-pattern-gate`, plus `repository-pattern-gate` when it applies
 
 `coder` runs the gate on its own task diff. This pass is different: run it once over the WHOLE feature surface, where the smells that only appear across tasks live — a DTO reused incorrectly across two services, a constant redeclared in the third task beside the source of truth the first task created.
 
 - `anti-pattern-gate` — ALWAYS. Run in place, yourself.
-- `repository-pattern-gate` — when the feature touches controllers, services, repositories, or module wiring (including router / queue registration). Skip it only when the change is purely outside those surfaces (e.g. i18n JSON alone, a docs-only follow-up already handled by `doc-drift`).
+- `repository-pattern-gate` — when the feature touches controllers, services, repositories, or module wiring (including router / queue registration). Skip it only when the change is purely outside those surfaces (e.g. i18n JSON alone).
 
 ### 5. Review the flow — `reviewer-flow` (mandatory)
 
@@ -86,33 +87,28 @@ Dispatch `reviewer-flow` with the scope block. **Hand it the paths** — it does
 
 This is where the seam defects surface: a DTO the interceptor strips, an exception no filter knows, a guard that already set what the handler re-derives, a controller holding a rule. Fix what it confirms (via `coder`, still TDD), then re-run the touched specs and re-gate the touched surface. Its findings land in `generated/docs/report-reviewer-flow-<feature>.md`.
 
-### 6. Documentation drift — `doc-drift`
+### 6. Collect the reports and hand them to the owner
 
-Dispatch `doc-drift` with the scope block plus the `docs/*.md` files your change plausibly touches. It is the ONLY agent allowed to write `docs/` — `coder`, `reviewer-flow`, and `unit-test-writer` are forbidden.
-
-Hand it the `generated/docs/report-coder-<feature>.md` entries too: that file holds the docs the coder found stale, and **status-code block claims** (module, block base, members) the coder recorded because the enum files are the only registry — `doc-drift` verifies any numbers quoted in `docs/` against those enums.
-
-### 7. Collect the reports and hand them to the owner
-
-Read every `generated/docs/report-*-<feature>.md` this run produced — coder, reviewer-flow, and any `report-doc-drift-*` CONFLICT notes — and put them in front of the owner as one list:
+Read every `generated/docs/report-*-<feature>.md` this run produced — coder and reviewer-flow — and put them in front of the owner as one list:
 
 - rule conflicts the coder stopped on,
 - suspected business-logic defects,
 - checks that could not run (the boot check with containers down, a suite that could not be scoped),
 - status-code block claims from the coder report, if any,
+- stale-doc notes agents named but did not repair,
 - anything an agent found outside the scope block and correctly did not touch.
 
 Nothing in those files is closed by this step. They are surfaced, and the owner decides.
 
 Before you stop, run the release checks in the main session when the owner wants the branch merge-ready: `pnpm typecheck`, `pnpm lint`, `pnpm spell`, full `pnpm test`, and `pnpm start:dev` for the boot check. A DI or import cycle surfaces at BOOT, never at `tsc` or jest.
 
-**There is no PR-document step.** If a PR description is needed, the owner runs skill `pr-doc` separately.
+**There is no docs-repair step and no PR-document step.** If docs need repair, the owner runs skill `doc-drift` separately. If a PR description is needed, the owner runs skill `pr-doc` separately.
 
 ---
 
 ## Narrow bug fix
 
-No new behavior → skip steps 1–2; `superpowers:systematic-debugging`, then enter at step 3 with a minimal plan and scope block. Steps 4–7 still apply.
+No new behavior → skip steps 1–2; `superpowers:systematic-debugging`, then enter at step 3 with a minimal plan and scope block. Steps 4–6 still apply.
 
 ---
 

@@ -51,7 +51,7 @@ This documentation explains the database architecture and features in ACK NestJS
 
 > **💡 Tip:** Use Docker setup from the installation guide for automatic MongoDB replica set configuration.
 
-**MongoDB 8.0.x** running as a **replica set** (required for transactions)
+**MongoDB 8+** running as a **replica set** (required for transactions). Local compose uses `mongo:latest`.
 
 ## Migration
 
@@ -80,7 +80,7 @@ This command will read your Prisma schema and generate the client code in `gener
 
 ## Seeding
 
-Seeding in ACK NestJS Boilerplate is handled using [Commander.js][ref-commander]. All seed commands are implemented in `src/migration/seeds/*`.
+Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed commands are implemented in `src/migration/seeds/*`.
 
 ### Database Seeds
 
@@ -318,7 +318,7 @@ type GeoLocation {
 - `Session.geoLocation` — location at login time
 - `ActivityLog.geoLocation` — location when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -379,7 +379,7 @@ type UserAgentOs {
 - `Session.userAgent` — client info at login time
 - `ActivityLog.userAgent` — client info when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -580,76 +580,24 @@ Prisma perfectly enables **Repository Design Pattern** implementation:
 - **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
 - **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
 - **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **Database Agnostic**: Switch between MongoDB, PostgreSQL without changing repository code
+- **MongoDB on this checkout**: `prisma/schema.prisma` uses `provider = "mongodb"`; schema sync is `pnpm db:migrate` (`prisma db push`)
 
-### Change DB with Minimal Effort
+### Database provider
 
-Prisma, combined with the Repository Pattern, allows you to switch databases with minimal effort and maximum codebase stability. The data access layer is fully abstracted, so your service and business logic remain unchanged regardless of the underlying database engine.
+This boilerplate ships **MongoDB only**. ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Prisma can target other engines in general, but switching provider here means rewriting the schema, `DatabaseUtil` ID helpers, and Mongo-specific query patterns. There is no `prisma migrate` script; do not treat a provider switch as a one-command migration.
 
-#### Supported Databases
-
-| Database | Best For | Transaction Support |
-|----------|----------|---------------------|
-| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
-
-**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
-
-#### Quick Migration: MongoDB → PostgreSQL
-
-**1. Update Prisma Schema** (`prisma/schema.prisma`):
-```prisma
-// Change provider
-datasource db {
-  provider = "postgresql"  // was: "mongodb"
-  url      = env("DATABASE_URL")
-}
-
-// Update ID fields in all models
-model User {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid  // was: @default(auto()) @map("_id") @db.ObjectId
-  // Replace @db.ObjectId with @db.Uuid from all foreign keys
-}
-```
-
-**2. Update Environment** (`.env`):
-```bash
-# From:
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?replicaSet=rs0
-
-# To:
-DATABASE_URL=postgresql://user:password@localhost:5432/ACKNestJs
-```
-
-**3. Generate Migration & Client:**
-```bash
-pnpm prisma migrate dev --name init  # PostgreSQL
-pnpm db:generate                      # Regenerate client
-```
-
-**4. Update Database Module Code:**
-
-- **DatabaseClientFactory** (`src/common/database/factories/database.client.factory.ts`) - May require updates for connection options and database-specific features
-- **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection lifecycle and log event handling
-- **DatabaseUtil** (`src/common/database/utils/database.util.ts`) - Replace MongoDB `ObjectId` helpers with UUID validators
-
-**5. Re-seed Database:**
-```bash
-pnpm migration:seed
-```
+For setup and seeding on MongoDB, see the sections above.
 
 #### Learn More
 
-- [Prisma: Switching Databases][ref-prisma-setup]
 - [Prisma MongoDB Documentation][ref-prisma-mongodb]
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [nest-commander][ref-nest-commander]
 
 
 <!-- REFERENCES -->
 
 [ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
 
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md

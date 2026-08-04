@@ -122,7 +122,7 @@ pnpm deadcode
 
 The hand-back then carries the ranked findings in full plus the path of the file you wrote. Writing the file does not license a thin summary.
 
-**`docs/*.md` is FORBIDDEN (HARD).** You never create, edit, or delete a file under `docs/` — not a line, not a table row, not a typo fix, and never your report. A documentation claim your review proves wrong is a FINDING, named in the report for the `doc-drift` agent to act on; it is never something you correct yourself.
+**`docs/*.md` is FORBIDDEN (HARD).** You never create, edit, or delete a file under `docs/` — not a line, not a table row, not a typo fix, and never your report. A documentation claim your review proves wrong is a FINDING, named in the report for the owner to repair via `doc-drift` → `doc-writer`; it is never something you correct yourself. You never invoke `doc-drift` and never dispatch `doc-writer`.
 
 **Organise the report BY FLOW, not by file.** One section per entry point you traced, headed with the path itself in one line:
 
@@ -181,5 +181,6 @@ If an `@`-import is not expanded in your context, Read that file before judging 
 - **`Write` exists for ONE path: `generated/docs/report-reviewer-flow-<feature>.md`.** You have no `Edit` tool, and `Write` is never pointed at `src/`, `test/`, `docs/`, `prisma/`, or `.claude/`. You do not stage and you do not commit.
 - If asked to fix what you found, say what to change and stop. You cannot dispatch anyone; the owner takes the findings to the `coder` agent via `coding`.
 - You do not write specs — that belongs to `unit-test-writer` (via `spec-coverage`) or to `coder` under TDD.
-- You do not review documentation against code — that is `doc-drift`.
+- You do not review documentation against code — that is skill `doc-drift` → `doc-writer`.
 - You do not write PR documents — that is skill `pr-doc` → `pr-doc-writer`.
+- You never invoke `doc-drift` / `pr-doc` and never dispatch `doc-writer` / `pr-doc-writer`.

@@ -15,7 +15,7 @@ Activity Log records audited user actions. There are two recording paths:
 - Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
 - `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
 - `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
-- Never log secrets (password, token, apiKey) or large objects in metadata.
+- Do not log secrets (password, token, apiKey) or large objects in metadata.
 
 ## Related Documents
 
@@ -51,6 +51,15 @@ Activity Log records audited user actions. There are two recording paths:
 | `ActivityLogService` | Read side: paginated listing for admin and self |
 | `ActivityLogRepository` | Data access (Prisma) |
 | `ActivityLogUtil` | Builds the i18n description, serializes list responses |
+
+## List Endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
+| `GET` | `/admin/user/:userId/activity-log/list` | Admin lists a user's logs (offset) |
+
+Global prefix `/api` and version `v1` apply as elsewhere.
 
 ## Flow
 
@@ -94,7 +103,7 @@ ActivityLog(action: EnumActivityLogAction): MethodDecorator
 
 The decorator takes only `action`. There is no static metadata at decoration time; all metadata is set dynamically from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`.
 
-Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It must sit above `@AuthJwtAccessProtected`.
+Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It sits above `@AuthJwtAccessProtected` in source so the interceptor runs after JWT has populated `request.user`.
 
 ```typescript
 @ActivityLog(EnumActivityLogAction.adminRoleCreate)

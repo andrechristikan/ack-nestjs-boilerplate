@@ -71,12 +71,19 @@ pnpm install
 # Copy environment file
 cp .env.example .env
 
+# Generate JWT keys, Prisma client, and push schema
+pnpm generate:keys
+pnpm db:generate
+pnpm db:migrate
+
 # Start infrastructure (MongoDB + Redis)
 docker-compose up -d
 
 # Run in development mode
 pnpm start:dev
 ```
+
+For the full onboarding path (including Docker profiles and key material), see [Installation](docs/installation.md).
 
 ---
 

@@ -127,13 +127,12 @@ graph TD
     C --> D[Password History<br/>Stored]
     D --> E[Password Expiration<br/>Timer Started]
     E --> F{Login Attempt}
-    F -->|Success| G[Session Created]
+    F -->|Success| K{Password Expired?}
     F -->|Fail| H[Attempt Counter<br/>Incremented]
     H --> I{Max Attempts Reached?}
     I -->|No| F
     I -->|Yes| J[User Inactivated]
-    G --> K{Password Expired?}
-    K -->|No| G
+    K -->|No| G[Session Created]
     K -->|Yes| L[Login rejected<br/>UserPasswordExpiredException]
     L --> M[Reset Password<br/>via forgot-password flow]
     M --> C
@@ -273,8 +272,8 @@ sequenceDiagram
         API-->>Client: Response
     else Session not found or jti mismatch
         Redis-->>API: Validation failed
-        API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
-        Note over API: Token valid but session invalid/revoked<br/>or jti doesn't match (potential token reuse)
+        API-->>Client: 401 Unauthorized (SessionForbiddenException)
+        Note over API: Token signature valid but session invalid/revoked<br/>or jti does not match (potential token reuse).<br/>AuthJwtAccessTokenInvalidException covers signature/Passport failures.
     end
 ```
 
@@ -335,14 +334,14 @@ sequenceDiagram
             API-->>Client: Response
             
         else jti mismatch
-            API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException)
+            API-->>Client: 401 Unauthorized (SessionForbiddenException)
             Note over API,Redis: Security breach detected: token reuse attempt
             Client->>User: Redirect to login
         end
         
     else Session not found in Redis (expired)
         Redis-->>API: Session not found
-        API-->>Client: 401 Unauthorized (AuthJwtRefreshTokenInvalidException)
+        API-->>Client: 401 Unauthorized (SessionForbiddenException)
         Client->>User: Redirect to login
     end
     
@@ -1270,14 +1269,14 @@ sequenceDiagram
         
         alt Session Not Found
             Redis-->>API: null
-            API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
+            API-->>Client: 401 Unauthorized (SessionForbiddenException)
         else Session Found
             Redis-->>API: {userId, sessionId, jti, expiredAt}
             
             API->>API: Compare token jti with Redis jti
             
             alt jti Mismatch
-                API-->>Client: 401 Unauthorized (AuthJwtAccessTokenInvalidException)
+                API-->>Client: 401 Unauthorized (SessionForbiddenException)
                 Note over API: Potential security breach:<br/>Old token used after refresh
             else jti Match
                 API->>API: All validations passed

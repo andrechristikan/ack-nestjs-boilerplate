@@ -79,11 +79,11 @@ SENTRY_DSN=<your_sentry_dsn>
 
 | Variable | Description | Type | Default | Required |
 |----------|-------------|------|---------|----------|
-| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | No |
-| `LOGGER_LEVEL` | Minimum log level | `string` | `debug` | No |
-| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | No |
-| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | No |
-| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | No |
+| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
+| `LOGGER_LEVEL` | Minimum log level | `string` | `debug` | Yes |
+| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
+| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
+| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
 | `SENTRY_DSN` | Sentry Data Source Name for error tracking | `string` | `null` | No |
 
 ### Configuration Interface

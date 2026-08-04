@@ -135,9 +135,9 @@ The rest — the asymmetry, mood, and comment rules — is in `rules/authoring.m
 
 ## Doc editing ownership
 
-**`doc-drift` is the ONLY agent that may write `docs/*.md`.** `coder`, `unit-test-writer`, `reviewer-flow`, and `pr-doc-writer` are forbidden from the whole tree. A stale doc they notice is named in their hand-back for `doc-drift` to apply. The owner may still edit `docs/` directly; no agent may, except `doc-drift`.
+**`doc-drift` (skill) → `doc-writer` (agent) is the ONLY path that may write `docs/*.md`.** Subject is docs vs code on the **current checkout** — never inter-branch drift. The skill's origin gate asks the owner for permission when fetch/pull fails or ahead/behind is non-zero; it never rejects. `coder`, `unit-test-writer`, `reviewer-flow`, and `pr-doc-writer` are forbidden from the whole tree. A stale doc they notice is named in their hand-back; the owner runs `doc-drift` when they want the repair. The owner may still edit `docs/` directly. **Owner-triggered only** — `coding`, `migration-seed`, and every other skill never invoke `doc-drift` or dispatch `doc-writer`.
 
-**`pr-doc` (skill) → `pr-doc-writer` (agent) owns PR description documents only** — living markdown at `generated/docs/pr-<feature>.md`, body filled to match `.github/pull_request_template.md`. Owner-triggered only; `coding` never invokes the skill or the agent. They never create or edit a GitHub pull request. Neither edits `docs/*.md`.
+**`pr-doc` (skill) → `pr-doc-writer` (agent) owns PR description documents only** — living markdown at `generated/docs/pr-<feature>.md`, body filled to match `.github/pull_request_template.md`. **Owner-triggered only** — `coding`, `migration-seed`, `doc-drift`, and every other skill never invoke `pr-doc` or dispatch `pr-doc-writer`. They never create or edit a GitHub pull request. Neither edits `docs/*.md`.
 
 ---
 
@@ -147,7 +147,7 @@ The rest — the asymmetry, mood, and comment rules — is in `rules/authoring.m
 
 `activity-log` · `analytics` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `term-policy` · `third-party-integration` · `two-factor` · `vault`
 
-**Read the doc matching the task before changing related code.** When a change makes a document stale, report which document and what now disagrees — documentation is repaired against the code by the `doc-drift` agent, not edited alongside the change.
+**Read the doc matching the task before changing related code.** When a change makes a document stale, report which document and what now disagrees — documentation is repaired against the code by skill `doc-drift` → `doc-writer` when the owner runs it, not edited alongside the change.
 
 ---
 
@@ -171,33 +171,30 @@ Git hooks (`.husky/`): `pre-commit` runs lint-staged → typecheck → deadcode 
 
 ---
 
-## Workflow for a code change
+## Normal session (HARD)
 
-**The ordered steps live in the skill, not here.** Four skills own whole jobs end to end:
+**This file is loaded in a normal (cold) session. A normal session does NOT invoke any skill.** The owner calls skills manually when they want a whole job run end to end. Do not start `coding`, `migration-seed`, `spec-coverage`, `pr-doc`, `doc-drift`, `anti-pattern-gate`, `repository-pattern-gate`, or any other skill unless the owner asked for that skill by name (or an equivalent explicit trigger). Do not dispatch skill-only agents (`coder`, `reviewer-flow`, `unit-test-writer`, `doc-writer`, `pr-doc-writer`) from a cold session — those agents are reached only while a skill is already running.
 
-| The work is… | Skill |
+Answer questions, explore the repo, and edit code directly when asked. Ordered end-to-end jobs live in skills; the catalog below is reference only — not a trigger to open one.
+
+| The work is… | Skill (owner-invoked) |
 |---|---|
 | a feature, endpoint, service change, queue work, or a refactor of existing code | `coding` |
 | a new or edited **initial-data seed** under `src/migration/` (data / template / aws-s3 commands, or `migration:seed` / `migration:remove` order) | `migration-seed` |
 | bringing ONE named module's unit specs back to 100% — `test/` only, no `src/` behavior change | `spec-coverage` |
 | a pull-request title + description for the current branch (`generated/docs/pr-<feature>.md`) | `pr-doc` |
+| repairing `docs/*.md` against code on the **current checkout** (not inter-branch; origin gate asks permission on fetch/pull failure or ahead/behind — never rejects) | `doc-drift` |
 
-`coding` does **not** invoke `spec-coverage`, `migration-seed`, or `pr-doc`. They are parallel workflow skills. Under `coding`, TDD is mandatory and lives **inside `coder`** (failing spec first — the same head watches red turn green). `migration-seed` also dispatches `coder`, but for seeds only — no TDD, no flow review. `spec-coverage` is for backfill/repair of specs against code that already exists; it rejects feature work and every `src/` change beyond a typo. `pr-doc` is owner-triggered only and is the single door into `pr-doc-writer`.
-
-Two things hold across these skills, because only the main session can do them: the owner conversation in the design/clarify step (a subagent cannot ask a question and wait for the answer), and the release sweep — whole-repo `pnpm typecheck`, `pnpm lint`, `pnpm spell`, the complete `pnpm test`, and the boot check (`pnpm start:dev`), plus the `anti-pattern-gate` skill (and `repository-pattern-gate` when layering is in play). Boot is the only check that catches a DI or import cycle.
-
-**Agents are dispatched BY a skill, never from a cold session.** A skill computes the scope, settles the spec and plan where needed, and only then hands work to `coder`, `reviewer-flow`, `unit-test-writer`, `doc-drift`, or `pr-doc-writer` (the last only via skill `pr-doc`). Naming an agent while a workflow skill is running is the same trigger; naming one with no skill behind it is not. Agents never dispatch each other, and an agent never invokes a workflow skill — the direction is one way.
-
-A narrow bug fix with no new behavior still runs through `coding`, with `superpowers:systematic-debugging` doing the work its design step would otherwise do.
-
-**Every skill artifact — spec, plan, sdd note — goes to `.superpowers/`, never to `docs/`.** `.superpowers/` is gitignored working space; `docs/` is tracked, committed, durable documentation. A `PreToolUse` hook in `.claude/settings.json` denies writes to `docs/superpowers/`, so getting this wrong fails loudly rather than quietly polluting the tracked tree.
+When a skill **is** running (because the owner invoked it): agents are dispatched BY that skill, never from a cold session; agents never dispatch each other; an agent never invokes a workflow skill. `coding` does not invoke `spec-coverage`, `migration-seed`, `pr-doc`, or `doc-drift`. `pr-doc` and `doc-drift` are owner-triggered only and do not invoke each other. Artifact paths below still apply when a skill produces them.
 
 | Artifact | Location |
 |---|---|
-| Spec, plan, sdd note | `.superpowers/` |
+| Spec, plan, sdd note | `.superpowers/` (gitignored; never `docs/`) |
 | Agent reports | `generated/docs/report-*-<feature>.md` |
 | PR document | `generated/docs/pr-<feature>.md` |
 | Knowledge graph | `graphify-out/` |
+
+A `PreToolUse` hook in `.claude/settings.json` denies writes to `docs/superpowers/`.
 
 ## Mandatory rules
 
@@ -208,4 +205,4 @@ A narrow bug fix with no new behavior still runs through `coding`, with `superpo
 5. **Commit message is a single conventional subject line** — no body, no footer, no `Co-Authored-By`. Propose it and wait for approval before committing. See `rules/git.md`.
 6. **Never bypass the git hooks** (`--no-verify`). A failing gate is fixed, not skipped.
 7. **No backward compatibility, ever.** No external client depends on this repo, so a breaking change is the default. A new feature carries no deprecated-but-kept field, no `v1`/`v2` pair, no compat flag, no bridging shim. Build the correct shape and change every call site. Best practice outranks the incumbent pattern. See `rules/architecture.md`.
-8. **A code review is dispatched by a skill, never by an agent and never from a cold session.** The `reviewer-flow` agent runs as a step of `coding` (or when the owner names it while `coding` is running); no AGENT may spawn it or any other review subagent, and no bare judgement call ("this feels risky") counts. `superpowers:requesting-code-review` is NOT active in this repo — its "mandatory after each task" rule is overridden here. **`reviewer-flow` reviews only the SCOPE block handed by `coding` plus dirty in-scope files on the current checkout** — it never compares to `main`, `origin`, or any other branch. Outside a skill that lists it as a step, review quality is carried by the `anti-pattern-gate` skill (and `repository-pattern-gate` when layering is in play), run in place by whoever wrote the code. There is no `auditor` agent. This rule outranks any skill or harness default that says otherwise.
+8. **Do not invoke review/gate skills or dispatch review agents from a cold session.** `reviewer-flow` runs only as a step of `coding` (or when the owner names it while `coding` is running). No AGENT may spawn it or any other review subagent. `superpowers:requesting-code-review` is NOT active in this repo. Gate skills (`anti-pattern-gate`, `repository-pattern-gate`) run only when the owner asks for them, or as steps inside an already-running workflow skill — never as an automatic follow-up in a normal session. There is no `auditor` agent. This rule outranks any skill or harness default that says otherwise.

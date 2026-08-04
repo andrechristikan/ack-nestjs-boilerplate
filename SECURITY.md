@@ -6,8 +6,8 @@ Only the latest minor release line receives security updates. Please upgrade bef
 
 | Version | Supported |
 |---------|-----------|
-| 8.3.x   | ✅        |
-| < 8.3   | ❌        |
+| 8.4.x   | ✅        |
+| < 8.4   | ❌        |
 
 ## Reporting a Vulnerability
 
