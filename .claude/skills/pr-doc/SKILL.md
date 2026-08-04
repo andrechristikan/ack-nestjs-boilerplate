@@ -159,6 +159,7 @@ Tell it explicitly:
 
 - Base is the **local** `base` from the SCOPE block — diff that ref with no second ref and no `..`. Do **not** fetch or diff `origin/*` for the compare base; the skill already refreshed the local ref.
 - Cover the WHOLE branch; use `newest work` only for emphasis under `## Summary` / `## Additional Notes`.
+- When a changed flow needs explanation beyond the diff hunk, prefer `graphify query "<question>"` before broad Grep (`rules/orientation.md`).
 - Fill the body to match `.github/pull_request_template.md` (agent Reads that file).
 - Write `generated/docs/pr-<feature>.md` (overwrite — living document, no date in the name).
 - Return the full markdown in the hand-back as well.

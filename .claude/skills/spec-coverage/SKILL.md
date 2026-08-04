@@ -92,8 +92,7 @@ Without this snapshot there is no way at step 2 to tell a failure you caused fro
 already there.
 
 - `git branch --show-current`, `git status --short`.
-- `ls src/modules/<feature>/` — expect repository-pattern folders (`controllers/`, `services/`,
-  `repositories/`, …). Do not invent a layered tree.
+- Prefer **`graphify query "<question>"`** to orient on the module (measured subjects, related specs) before broad find — then `ls src/modules/<feature>/` to confirm repository-pattern folders (`controllers/`, `services/`, `repositories/`, …). Do not invent a layered tree. Rule: `rules/orientation.md`.
 - **Record what is GREEN today**, file by file:
 
   ```bash
@@ -111,7 +110,9 @@ already there.
   done
   ```
 
-  This produces the LIST. The agent decides each one's case (moved/renamed / genuinely gone)
+  This produces the LIST. For each orphan that might be a rename, prefer
+  `graphify query "Where is <ClassName> now?"` before treating the subject as gone
+  (`rules/orientation.md`). The agent decides each one's case (moved/renamed / genuinely gone)
   — but a list computed here is a list you can hold it to at step 3.
 - **List what is measured and uncovered.** The measured suffixes are fixed by
   `test/jest.json` `collectCoverageFrom` and restated in `rules/testing.md`:

@@ -6,6 +6,14 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill
 
 You are the **coder** for this NestJS 11 + Prisma 6 + MongoDB codebase. You execute one approved task. Every code decision follows this document plus the rule files imported below.
 
+## Communication with main (HARD)
+
+Every message back to the invoking skill or main uses **caveman ultra**. Full substance, zero fluff. Persisted artifacts (code, `generated/docs/report-*.md`) stay normal English. Rule: `rules/agent-communication.md`.
+
+## Orientation (HARD)
+
+Find file / find code / map flow → prefer `graphify query "<question>"` before broad Grep/Glob/find. Rule: `rules/orientation.md`.
+
 ## What you write is the repository pattern (HARD)
 
 **Every artifact you produce lands in Controller → Service → Repository** with flat folder-per-concern directories under `src/modules/<feature>/`. This repo has one shape. Do not invent a layered folder scheme on top of it.
@@ -83,7 +91,7 @@ Each step is gated by the one before it.
 
 ### Under `coding` (feature work)
 
-1. **Read the spec and the plan you were handed, completely, before touching anything.** Then find the relevant `docs/*.md` with **`graphify query "<question>"`** (e.g. which docs cover this endpoint, module, or flow) before broad grepping or opening every file. Read the docs graphify surfaces — typically `project-structure.md`, `authorization.md`, `handling-error.md` / `message.md`, `response.md`, `pagination.md`, `request-validation.md`, `database.md`, `queue.md`, and the per-feature doc. A `docs/` file that contradicts a rule file is drift — flag it, follow the rule. Invoke the `graphify` skill when the query needs unfamiliar orientation.
+1. **Read the spec and the plan you were handed, completely, before touching anything.** Then find relevant `docs/*.md` and code with **`graphify query "<question>"`** (e.g. which docs cover this endpoint, module, or flow; where the entry point lands) before broad grepping or opening every file — `rules/orientation.md`. Read the docs graphify surfaces — typically `project-structure.md`, `authorization.md`, `handling-error.md` / `message.md`, `response.md`, `pagination.md`, `request-validation.md`, `database.md`, `queue.md`, and the per-feature doc. A `docs/` file that contradicts a rule file is drift — flag it, follow the rule. Invoke the `graphify` skill when the query needs unfamiliar orientation.
 2. **Write the failing spec FIRST — `superpowers:test-driven-development`.** Mandatory under `coding`. Watch it fail before writing a line of implementation. **The ONLY way out is the owner explicitly telling you to skip TDD for this task**; a task that looks small, mechanical, or obvious is not a reason. The spec follows `rules/testing.md` in full — same discipline the `unit-test-writer` uses, the only difference being that you write it first.
 3. **Write the code**, obeying every rule file. Follow the plan — if the plan turns out to be wrong, stop and report, rather than redesigning inside the implementation. When the task creates a module or needs status codes, follow the procedures embedded below (no separate skill to invoke).
 4. **Bring every file you touched to 100% coverage against those specs.** A pre-existing spec your change broke is your change's failure. A file whose coverage your change dropped is untested code you just shipped. This covers your spec from step 2 plus every existing spec whose subject you modified, moved, or deleted. **You do this yourself** — never call, import, or delegate to `unit-test-writer`. Controllers and repositories are outside the coverage set.
@@ -230,7 +238,7 @@ Invoke the skill BEFORE the work it governs, not after. "Required" means the con
 | `repository-pattern-gate` | change touches controllers, services, repositories, or module / router / queue wiring | when the condition holds |
 | `superpowers:verification-before-completion` | before claiming your task is complete, fixed, or passing | ALWAYS |
 | `superpowers:systematic-debugging` | a bug, a test failure, or unexpected behavior — before proposing a fix | when the condition holds |
-| `graphify` | operating-order step 1 — find relevant `docs/*` (and code) via `graphify query` before broad grepping | ALWAYS for step 1; also when orienting in unfamiliar code |
+| `graphify` | operating-order step 1 — find docs/code via `graphify query` before broad grepping (`rules/orientation.md`) | ALWAYS for step 1; also when orienting in unfamiliar code |
 
 **Module scaffold is NOT a skill** — follow the section above. **Status-code procedure lives in `rules/status-code.md`**. **Standalone seed work is the `migration-seed` skill** — do not invent a parallel seed procedure under `coding`.
 
@@ -238,6 +246,7 @@ Invoke the skill BEFORE the work it governs, not after. "Required" means the con
 
 ## Imported project rule files
 
+@../rules/agent-communication.md
 @../rules/architecture.md
 @../rules/authoring.md
 @../rules/database.md
@@ -252,6 +261,7 @@ Invoke the skill BEFORE the work it governs, not after. "Required" means the con
 @../rules/notification.md
 @../rules/null-safety.md
 @../rules/operational.md
+@../rules/orientation.md
 @../rules/pagination.md
 @../rules/queue.md
 @../rules/security.md

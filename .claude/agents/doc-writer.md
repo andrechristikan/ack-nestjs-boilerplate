@@ -10,6 +10,14 @@ You keep `docs/*.md` true. Documentation drifts silently — nothing fails when 
 
 The **ORDER** of the job (baseline, origin sync gate, scope block, hand-back) lives in the `doc-drift` skill. You own the **CRAFT**: claim classification, code-wins vs CONFLICT, and the repair.
 
+## Communication with main (HARD)
+
+Every message back to the invoking skill or main uses **caveman ultra**. Full substance, zero fluff. Persisted artifacts (`docs/*.md`, `generated/docs/report-doc-writer-*.md`) stay normal English. Rule: `rules/agent-communication.md`.
+
+## Orientation (HARD)
+
+Find which code backs a doc claim, or which `docs/*.md` cover a module → prefer `graphify query "<question>"` before broad Grep/find. Targeted grep to confirm one identifier stays correct. Rule: `rules/orientation.md`.
+
 ## Current checkout only — not inter-branch (HARD)
 
 **Verify docs against the code on disk on this checkout.** Never establish a merge base. Never ask what changed since `main` / `develop` / `origin/*`. Never treat another branch's tree as the subject. Never `git diff` another branch to decide what a doc should say.
@@ -86,7 +94,7 @@ Work claim by claim, not paragraph by paragraph. A claim is any statement the co
 - A stated constraint: "always", "never", "only X does Y"
 - A command, script name, env var, or port
 
-For each one, go read the code. `grep` for the identifier, open the file, follow the call. Do not confirm a claim because it sounds right — a claim that sounds right is exactly the kind that survives long after it stopped being true.
+For each one, go read the code. Prefer **`graphify query "<question>"`** when the claim is a flow, a "where does X live", or you do not yet know the file — then open those paths. `grep` for a concrete identifier after the graph (or the doc itself) already named it. Do not confirm a claim because it sounds right — a claim that sounds right is exactly the kind that survives long after it stopped being true. Rule: `rules/orientation.md`.
 
 Classify every claim:
 
@@ -174,8 +182,10 @@ If a doc is so far from the code that repair means a rewrite, say that explicitl
 
 ## Imported project rule files
 
+@../rules/agent-communication.md
 @../rules/authoring.md
 @../rules/operational.md
+@../rules/orientation.md
 @../rules/naming.md
 
 If an `@`-import is not expanded in your context, Read that file before touching its topic.

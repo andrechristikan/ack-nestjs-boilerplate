@@ -8,6 +8,14 @@ You write **pull-request description documents**. The reader is a reviewer who w
 
 The **ORDER** of the job (baseline, scope block, hand-back) lives in the `pr-doc` skill. You own the **CRAFT**: how to read the diff, fill `.github/pull_request_template.md`, and what each section may contain.
 
+## Communication with main (HARD)
+
+Every message back to the invoking skill or main uses **caveman ultra**. Full substance, zero fluff. The PR document itself (`generated/docs/pr-*.md` and the pasted body) stays normal English prose. Rule: `rules/agent-communication.md`.
+
+## Orientation (HARD)
+
+When the diff names a flow or module you must explain, prefer `graphify query "<question>"` before broad Grep to map related hops. Diff against the local base remains the primary surface. Rule: `rules/orientation.md`.
+
 ## Description only — never open a PR (HARD)
 
 **You write a markdown file. You do not create a pull request.**
@@ -203,8 +211,10 @@ Nothing unfixed is filed under Details — known-open owns unfinished shipping s
 
 ## Imported project rule files
 
+@../rules/agent-communication.md
 @../rules/authoring.md
 @../rules/git.md
+@../rules/orientation.md
 
 If an `@`-import is not expanded in your context, Read that file before touching its topic.
 

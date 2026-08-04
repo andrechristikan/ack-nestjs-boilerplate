@@ -41,7 +41,7 @@ Every dispatch in the flow below carries this block. An agent that finds somethi
 ### 0. Baseline — before anything is designed
 
 - `git branch --show-current` and `git status --short` — know what branch you are on and what is already uncommitted.
-- `ls src/modules/<feature>/` — know the current folder set (or that the module does not exist yet).
+- Prefer **`graphify query "<question>"`** to orient on the feature (module layout, related docs, existing entry points) before broad grepping — then `ls src/modules/<feature>/` to confirm the folder set (or that the module does not exist yet). Rule pointer: `rules/orientation.md`.
 - **Record which specs are GREEN today** for the paths in scope: `pnpm test --testPathPatterns <scope>`. Without this snapshot there is no way at later steps to tell a failure you caused from one that was already there. Write the baseline into your notes before a single file changes.
 - Build the scope block.
 - Do **not** fetch remotes. Orientation is the current checkout only (`git branch --show-current`, `git status --short`). `reviewer-flow` never diffs against `main`, `origin`, or any other branch — it reviews only the SCOPE block you hand it.
@@ -50,7 +50,7 @@ Every dispatch in the flow below carries this block. An agent that finds somethi
 
 Loop with the owner until the feature is unambiguous. This runs in the main session because it needs a back-and-forth; it cannot be delegated to an agent.
 
-- **Map the existing flow first.** Prefer `graphify query "<question>"` over the entry points in scope — endpoint to database, including the global guards, pipes, interceptors and filters a request crosses. Design against the real path, not against an assumption about it. This is a READ, not a review: do not dispatch `reviewer-flow` here — there is no diff yet.
+- **Map the existing flow first.** Prefer `graphify query "<question>"` over the entry points in scope — endpoint to database, including the global guards, pipes, interceptors and filters a request crosses. Broad Grep/Glob is the fallback after the graph, not the opening move (`rules/orientation.md`). Design against the real path, not against an assumption about it. This is a READ, not a review: do not dispatch `reviewer-flow` here — there is no diff yet.
 - **Enumerate the possibilities, then argue them.** Put the options on the table with their costs, and say which one you would pick and why.
 - **Challenge the owner.** If the approach they proposed is worse than an alternative, say so first, name the specific downside, and give the alternative. Weigh complexity against benefit explicitly — the simplest design that satisfies the requirement wins.
 - Settle it against the rules: which role owns each artifact (controller / service / repository), whether the change crosses a module, whether a queue job or event is required, whether a status-code member is new.

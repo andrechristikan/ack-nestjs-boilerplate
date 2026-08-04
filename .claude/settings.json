@@ -14,6 +14,7 @@
         "frontend-design@claude-plugins-official": false
     },
     "claudeMdExcludes": [
+        "**/.claude/rules/agent-communication.md",
         "**/.claude/rules/architecture.md",
         "**/.claude/rules/authoring.md",
         "**/.claude/rules/database.md",
@@ -26,6 +27,7 @@
         "**/.claude/rules/notification.md",
         "**/.claude/rules/null-safety.md",
         "**/.claude/rules/operational.md",
+        "**/.claude/rules/orientation.md",
         "**/.claude/rules/pagination.md",
         "**/.claude/rules/queue.md",
         "**/.claude/rules/security.md",

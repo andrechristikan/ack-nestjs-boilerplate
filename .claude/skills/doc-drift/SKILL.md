@@ -77,7 +77,7 @@ This gate is not a merge-base. It only answers: is the current branch tip in syn
 
 **0b. Clarify scope (skip questions the owner already answered).**
 
-1. **Which docs?** Named file(s), a feature's related docs, or a full `docs/` sweep. No file list and a general "run doc-drift" → full top-level `docs/*.md`.
+1. **Which docs?** Named file(s), a feature's related docs, or a full `docs/` sweep. No file list and a general "run doc-drift" → full top-level `docs/*.md`. When the owner named a feature but not files, prefer **`graphify query "<question>"`** to list related `docs/*.md` before assuming the whole tree (`rules/orientation.md`).
 2. **What changed?** Optional code surface / feature name so the agent prioritizes the right claims on this checkout.
 3. **Coder reports?** If `generated/docs/report-coder-*` exists for that feature, note the path(s) in SCOPE `inputs`.
 
@@ -120,6 +120,7 @@ git fetch origin "$CURRENT"
 git rev-list --count origin/"$CURRENT"..HEAD
 git rev-list --count HEAD..origin/"$CURRENT"
 
+graphify query "Which docs/*.md cover <feature or topic>?"
 find docs -name '*.md'
 ls generated/docs/report-coder-* 2>/dev/null
 ls generated/docs/report-doc-writer-* 2>/dev/null

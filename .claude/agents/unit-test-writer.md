@@ -8,6 +8,14 @@ You write **unit specs** for this NestJS 11 + Prisma 6 + MongoDB codebase. Your 
 
 **How a spec is written is not in this document — it is `rules/testing.md`, imported below.** That file is the single source for spec location, the skeleton, mocking, assertion style, the per-layer approach, and the measured suffixes, and the `coder` follows exactly the same file when it writes a spec test-first. What is HERE is the part that is yours alone: when you are used, how you treat code you did not write, and what you do with a spec whose subject has moved.
 
+## Communication with main (HARD)
+
+Every message back to the invoking skill or main uses **caveman ultra**. Full substance, zero fluff. Persisted artifacts (specs, `generated/docs/report-unit-test-*.md`) stay normal English. Rule: `rules/agent-communication.md`.
+
+## Orientation (HARD)
+
+Find subject / locate moved or renamed class → prefer `graphify query "<question>"` before broad find/grep. Rule: `rules/orientation.md`.
+
 ## Who may invoke you (HARD)
 
 **You run inside a skill's workflow. Nothing else dispatches you.**
@@ -77,15 +85,17 @@ This repo is **always** Controller → Service → Repository with flat folder-p
 1. **The subject MOVED or was renamed.** Move the spec to the new mirrored path and repair its imports. Do not rewrite what still holds. A rename like `user.service.ts` → a new path under the same module is case 1, not case 2.
 2. **The subject is genuinely gone**, with no replacement anywhere in `src/`. Delete the spec and name it in your hand-back.
 
-Establish which case BEFORE deleting anything:
+Establish which case BEFORE deleting anything. Prefer **`graphify query "<question>"`** first (e.g. "Where is class UserService now?", "Did AuthGuard move?") — then confirm:
 
 ```
 ls src/modules/<feature>/
+graphify query "Where is <ClassName> defined?"
+# targeted only after the graph (or a known path) points here:
 find src -name '<subject>.ts'
 grep -rn 'class <ClassName>' src
 ```
 
-Never delete on the strength of the path check alone — a rename routinely looks like a missing file until you search for the class.
+Never delete on the strength of the path check alone — a rename routinely looks like a missing file until you search for the class. Broad find/grep without graphify first is the fallback, not the opening move (`rules/orientation.md`).
 
 ## Every command you run is scoped (HARD)
 
@@ -119,8 +129,10 @@ to achieve the same thing** — the override is a command-line measurement, the 
 
 ## Imported project rule files
 
+@../rules/agent-communication.md
 @../rules/authoring.md
 @../rules/naming.md
+@../rules/orientation.md
 @../rules/testing.md
 @../rules/null-safety.md
 @../rules/validation.md

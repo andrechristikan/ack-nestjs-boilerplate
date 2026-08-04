@@ -12,10 +12,11 @@ This is the last pass before code is called done. Its job is recognition, not ad
 ## How to run the gate
 
 1. Get the diff of what you changed **inside the surface you were given**. Prefer, in order: the SCOPE paths from the skill (when present), then dirty files on this checkout (`git status --short`, `git diff -- <paths>`, `git diff --cached -- <paths>`). **Do not** invent a surface with `git diff main` / `git diff origin/...` / `git diff development` when a skill already handed you SCOPE — those compare other branches and fight `coding` / `reviewer-flow`. Outside a scoped skill run, still prefer path-limited diffs over a whole-branch base.
-2. Walk the sections below that match what the diff touched. Skip sections with no touched files.
-3. For each smell you recognize, **read the canonical rule** in the file named beside it. Decide there, not here.
-4. Fix, or state explicitly why the rule does not apply. A hit you cannot justify is a defect, not a judgement call.
-5. Report what fired and what you did. Silence about a hit reads as "clean" and is worse than a fix you did not make.
+2. When a smell needs a related registration site, caller, or sibling pattern you do not already have open, prefer **`graphify query "<question>"`** before broad Grep (`rules/orientation.md`). Diff remains the primary surface.
+3. Walk the sections below that match what the diff touched. Skip sections with no touched files.
+4. For each smell you recognize, **read the canonical rule** in the file named beside it. Decide there, not here.
+5. Fix, or state explicitly why the rule does not apply. A hit you cannot justify is a defect, not a judgement call.
+6. Report what fired and what you did. Silence about a hit reads as "clean" and is worse than a fix you did not make.
 
 Two things to keep in mind while scanning. First, the smell list is not exhaustive — it catches the failures that actually recur here, so an absence of hits is not proof of correctness. Second, several of these fail only at RUNTIME (missing `@Expose`, route-param mismatch, queue payload rename, i18n key typo); `tsc` staying green means nothing for that class.
 

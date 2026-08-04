@@ -35,7 +35,7 @@ SCOPE (do not go outside this)
 ### 0. Baseline
 
 - `git branch --show-current` and `git status --short`.
-- `ls src/migration/seeds/` and `ls src/migration/data/`.
+- Prefer **`graphify query "<question>"`** to find a sibling seed of the same kind and related migration docs — then `ls src/migration/seeds/` and `ls src/migration/data/` to confirm (`rules/orientation.md`).
 - Read `rules/migration.md` end to end. Skim the seeding section of `docs/database.md` for the live catalogue and script orders.
 - Open one sibling seed that matches the kind of work (data seed via `DatabaseService`, or template/aws via a feature/service) — match that pattern; do not invent a third access path.
 - Build the SCOPE block.

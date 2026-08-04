@@ -29,7 +29,7 @@ Inject repositories **as classes**. No `@Inject(TOKEN)` for a repository with on
 
 ## Placement procedure
 
-Before writing or moving a method, answer in order:
+Before writing or moving a method, answer in order. When you need a sibling example or the real registration site for a role, prefer **`graphify query "<question>"`** before broad Grep (`rules/orientation.md`).
 
 1. **Is it HTTP surface?** Decorators, `@Param` / `@Body` / `@Query`, calling one service method, normalizing `dto.field ?? null`, returning `IResponseReturn<T>` — **controller**. If the answer starts with "if the user is…" or "when the entity is…", it is a **service** rule that leaked upward.
 2. **Is it a business rule, orchestration, or throw?** Existence checks, ownership, state transitions, composing two repositories, building `messagePath` — **service**. If the answer is a Prisma call shape, it leaked downward into the service.
