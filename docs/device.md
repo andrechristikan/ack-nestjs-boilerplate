@@ -37,7 +37,7 @@ A Device represents a physical or virtual client. It is identified by a globally
 - `fingerprint` — Globally unique identifier for the device. This value should be generated on the frontend and sent with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
 - `name` — Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
 - `platform` — Platform of the device. See `EnumDevicePlatform` below
-- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /user/device/refresh`, cleared on device removal and by the stale-token cleanup
+- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on device removal and by the stale-token cleanup
 - `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
 
 ### Enums

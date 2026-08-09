@@ -12,7 +12,7 @@ Two-Factor Authentication (2FA) adds an additional security layer to user authen
 - Challenge-based verification flow
 - Session revocation on security changes
 - Account protection with failed attempts tracking
-- **2FA protection on sensitive operations** (login, password change, password reset, disable 2FA)
+- **2FA protection on sensitive operations** (login, password change, password reset, disable 2FA, backup code regeneration)
 
 ## Related Documents
 
@@ -153,14 +153,16 @@ After 7th failed attempt (attempt=7):
 
 ### Shared Endpoints (User Operations)
 **2FA Management:**
-- `GET /shared/user/2fa/status` - Check current 2FA status
+- `GET /shared/user/2fa/status/get` - Check current 2FA status
 - `POST /shared/user/2fa/setup` - Get TOTP secret and otpauthUrl
 - `POST /shared/user/2fa/enable` - Enable 2FA with code verification
-- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires 2FA verification)**
-- `POST /shared/user/2fa/regenerate-backup-codes` - Regenerate backup codes
+- `DELETE /shared/user/2fa/disable` - **Disable 2FA (requires an authenticator code or a backup code)**
+- `POST /shared/user/2fa/backup-code/regenerate` - **Regenerate backup codes (requires an authenticator code)**
+
+`disable` accepts either method: the body carries `method` (`code` or `backupCodes`) with the matching `code` / `backupCode`. `backup-code/regenerate` takes a `code` field only and pins the method to `code` on the server, so a backup code cannot be used to rotate the backup codes. The credential being replaced never authorises its own replacement. Both routes run the same verification path as login, so both are subject to the attempt counter and the temporary lock.
 
 **Password Operations (require 2FA if enabled):**
-- `PATCH /shared/user/change-password` - **Change password (requires 2FA verification if enabled)**
+- `PATCH /shared/user/password/change` - **Change password (requires 2FA verification if enabled)**
 
 ### Public Endpoints
 **Login Flow:**
@@ -174,7 +176,7 @@ After 7th failed attempt (attempt=7):
 - `PATCH /public/user/password/reset` - **Reset password (requires 2FA verification if enabled)**
 
 ### Admin Endpoints
-- `PATCH /admin/user/update/:userId/2fa/reset` - Force reset user's 2FA (clears lock and resets attempts)
+- `PATCH /admin/user/2fa/:userId/reset` - Force reset user's 2FA (clears lock and resets attempts)
 
 **Note:** See Swagger documentation for detailed request/response schemas.
 
@@ -249,7 +251,7 @@ sequenceDiagram
 
 ### Admin Force Setup Flow
 
-Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects a user whose 2FA is not enabled (`twoFactorNotEnabled`) and rejects the admin resetting their own account (`notSelf`).
+Admin forces a user who already has 2FA enabled to set it up again on next login. The endpoint rejects the admin resetting their own account (`notSelf`), an unknown user (`notFound`), a blocked user (`blockedInvalid`), and a user whose 2FA is not enabled (`twoFactorNotEnabled`).
 ```mermaid
 sequenceDiagram
     participant Admin
@@ -257,7 +259,7 @@ sequenceDiagram
     participant Database
     participant User
 
-    Admin->>API: PATCH /admin/user/update/:userId/2fa/reset
+    Admin->>API: PATCH /admin/user/2fa/:userId/reset
     API->>Database: Set requiredSetup=true, clear secret + IV + backup codes
     API->>Database: Revoke all user sessions
     API->>User: Send reset notification email
@@ -299,7 +301,7 @@ sequenceDiagram
             API->>Database: Reset attempt to 0
             API->>Database: Update lastUsedAt
             API->>User: Return access + refresh tokens
-            Note over User: The response carries tokens only.<br/>Remaining backup codes are read from<br/>GET /shared/user/2fa/status
+            Note over User: The response carries tokens only.<br/>Remaining backup codes are read from<br/>GET /shared/user/2fa/status/get
         else Backup Code Invalid
             API->>Database: Increment attempt counter
             API->>Database: Get updated attempt count
@@ -365,7 +367,7 @@ sequenceDiagram
     Note over User: User locked out or lost access
     User->>Admin: Request 2FA reset
     
-    Admin->>API: PATCH /admin/user/update/:userId/2fa/reset
+    Admin->>API: PATCH /admin/user/2fa/:userId/reset
     API->>Database: Reset 2FA (set requiredSetup=true)
     API->>Database: Clear attempt counter
     API->>Cache: Clear lock (if exists)
@@ -395,7 +397,7 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /shared/user/change-password<br/>{oldPassword, newPassword, code/backupCode, method}
+    User->>API: PATCH /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
     API->>Database: Verify old password
     alt Old Password Invalid
         API->>User: Error: Password not match (400)

@@ -115,7 +115,7 @@ enum EnumDocRequestBodyType {
 
 **Auto-includes:**
 
-- Content-Type header based on bodyType (or 'none' if not specified)
+- Content-Type (`ApiConsumes`) derived from `bodyType`; when `bodyType` is `none` or omitted, no Content-Type is emitted
 
 **Usage:**
 
@@ -607,7 +607,7 @@ export function UserAdminGetDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
             dto: UserProfileResponseDto,
         })
@@ -615,8 +615,8 @@ export function UserAdminGetDoc(): MethodDecorator {
 }
 
 @UserAdminGetDoc()
-@Get('/:id')
-async getUser(@Param('id') id: string) {
+@Get('/get/:userId')
+async getUser(@Param('userId') userId: string) {
     // implementation
 }
 ```
@@ -664,7 +664,7 @@ export function UserAdminListDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
             availableSearch: ['name', 'email', 'username'],
@@ -707,7 +707,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
 }
 
 @UserSharedUploadPhotoProfileDoc()
-@Post('/profile/upload/photo')
+@Post('/profile/photo/upload')
 async uploadPhotoProfile(
     @UploadedFile(
         RequestRequiredPipe,

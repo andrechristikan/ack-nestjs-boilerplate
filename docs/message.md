@@ -73,6 +73,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `auth.json` | Authentication messages |
 | `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
+| `database.json` | Database-related messages |
 | `device.json` | Device management messages |
 | `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
@@ -84,11 +85,13 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `pagination.json` | Pagination messages |
 | `passwordHistory.json` | Password history messages |
 | `policy.json` | Policy messages |
+| `project.json` | Project messages |
 | `request.json` | Request validation messages |
 | `role.json` | Role messages |
 | `session.json` | Session messages |
 | `termPolicy.json` | Terms & policy messages |
 | `user.json` | User messages |
+| `workspace.json` | Workspace messages |
 
 Example structure:
 

@@ -68,20 +68,26 @@ This boilerplate is perfect for:
 - Must run MongoDB as a `replication set` for `database transactions`.
 - If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 - In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
-- When using multiple protection decorators, they must be applied in the correct order:
+- When using multiple protection decorators, they must be applied in the correct order. A route takes only the slots it needs; the relative order of the ones it takes never changes:
     ```typescript
     @ExampleDoc()
+    @Response('example.get')
     @TermPolicyAcceptanceProtected(...)
     @PolicyAbilityProtected({...})
     @RoleProtected(...)
+    @ProjectMemberProtected(...)      // /user scope only
+    @ProjectProtected()               // /user scope only
+    @WorkspaceMemberProtected(...)    // /user scope only
+    @WorkspaceProtected()             // /user scope only
     @ActivityLog(...)
     @UserProtected()
-    @AuthJwtAccessProtected()
     @FeatureFlagProtected(...)
+    @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Get('/some-endpoint')
     ```
+    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets must sit **above** it. `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user` - below it, the guard always takes its anonymous branch and any rollout below 100% is inert. See [Authorization Documentation][ref-doc-authorization].
+- `@HttpCode()` belongs only on `@Post` routes. Every other method already defaults to `200 OK`, so declaring it there is a no-op.
 - The project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - The project uses Prisma `6.19` to handle the database.
 - The project uses pnpm as the package manager.
@@ -99,6 +105,7 @@ This boilerplate is perfect for:
 - [x] Notification System includes silent, inApp, push, and email.
 - [x] Activity Log records successful user activities with `@ActivityLog`
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
+- [x] Multi-workspace tenancy with workspace-scoped projects ([docs/workspace.md][ref-doc-workspace], [docs/project.md][ref-doc-project])
 
 ### Next Features
 
@@ -107,7 +114,6 @@ This boilerplate is perfect for:
 - [ ] Login with passkey
 - [ ] Login with Github SSO
 - [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])
-- [ ] Multi-Tenant Architecture
 - [ ] Verification Mobile Number, whatsapp or/and sms
 - [ ] Versioning System (Force frontend to update, especially mobile)
 
@@ -116,7 +122,7 @@ This boilerplate is perfect for:
 - Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
-- [x] Unit test setup (Jest under `test/`; expand coverage as features grow)
+- [ ] Unit test suite — Jest is configured (`test/jest.json`, `pnpm test`), but `test/` currently holds **no spec files**; the suite is suspended and `pnpm test` exits green with "No tests found"
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -174,6 +180,7 @@ For more information see [package.json][ref-package-json]
 - **Modular Structure** - Component-based folder organization
 - **12-Factor App** - Cloud-native best practices
 - **Production Ready** - Enterprise-grade security and scalability
+- **Workspaces & Projects** - Every user owns a personal workspace; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
 
 ### 🔐 Authentication & Security
 Production-ready authentication system with multiple strategies and security layers.
@@ -241,9 +248,9 @@ Multi-channel notification system for user engagement.
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
-- **Jest Testing** - Unit test setup mirroring `src/` under `test/`
+- **Jest Testing** - Jest configured under `test/`, specs mirroring `src/` (no specs committed yet)
 - **Swagger UI** - Auto-generated API documentation
-- **Detailed Docs** - 20+ documentation files covering all features
+- **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
 - **Docker Support** - Complete containerization with docker-compose
 
 ## Quick Start
@@ -406,3 +413,6 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
 [ref-doc-doc]: docs/doc.md
+[ref-doc-workspace]: docs/workspace.md
+[ref-doc-project]: docs/project.md
+[ref-doc-status-codes]: docs/status-codes.md

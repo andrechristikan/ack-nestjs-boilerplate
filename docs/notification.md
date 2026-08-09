@@ -116,6 +116,11 @@ Jobs are dispatched via `NotificationUtil`, which applies deduplication per `use
 | `resetTwoFactorByAdmin` | Admin reset user 2FA |
 | `publishTermPolicy` | New term policy published (bulk, all active users) |
 | `userAcceptTermPolicy` | User accepted a term policy |
+| `workspaceInvite` | Workspace invite sent to a registered user |
+| `workspaceInviteUnregistered` | Workspace invite sent to an address with no account |
+| `workspaceJoinRequest` | Workspace join request submitted |
+| `workspaceJoinAccepted` | Workspace join request accepted |
+| `workspaceJoinRejected` | Workspace join request rejected |
 
 ### Email Queue
 
@@ -141,6 +146,10 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `resetPassword` | Push alert when password is reset |
 | `resetTwoFactorByAdmin` | Push alert when admin resets 2FA |
 | `temporaryPasswordByAdmin` | Push alert for temporary password |
+| `workspaceInvite` | Push alert for a workspace invite |
+| `workspaceJoinRequest` | Push alert for a workspace join request |
+| `workspaceJoinAccepted` | Push alert when a join request is accepted |
+| `workspaceJoinRejected` | Push alert when a join request is rejected |
 | `cleanupTokens` | Remove reported invalid FCM tokens |
 | `cleanupStaleTokens` | Clean up tokens inactive for ≥ 30 days |
 
@@ -215,6 +224,10 @@ Available templates (one per `EnumNotificationProcess` that uses email):
 | `notification.verified-mobile-number.template.hbs` | `verifiedMobileNumber` |
 | `notification.reset-two-factor-by-admin.template.hbs` | `resetTwoFactorByAdmin` |
 | `notification.publish-term-policy.template.hbs` | `publishTermPolicy` |
+| `notification.workspace-invite.template.hbs` | `workspaceInvite`, `workspaceInviteUnregistered` |
+| `notification.workspace-join-request.template.hbs` | `workspaceJoinRequest` |
+| `notification.workspace-join-accepted.template.hbs` | `workspaceJoinAccepted` |
+| `notification.workspace-join-rejected.template.hbs` | `workspaceJoinRejected` |
 
 Templates are managed independently from migrations. Use `NotificationTemplateService` methods (e.g., `emailImportWelcome()`, `emailDeleteWelcome()`) to sync them to SES.
 
@@ -277,10 +290,10 @@ Under router prefix `/shared` and controller path `/notification` (plus global `
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/shared/notification/list` | List the caller's notifications |
-| `GET` | `/shared/notification/list/user-setting` | List the caller's notification settings |
-| `PATCH` | `/shared/notification/update/read/:notificationId` | Mark one notification read |
-| `POST` | `/shared/notification/update/read-all` | Mark all notifications read |
-| `PUT` | `/shared/notification/update/setting` | Update a type+channel setting |
+| `GET` | `/shared/notification/setting/list` | List the caller's notification settings |
+| `PATCH` | `/shared/notification/update/:notificationId/read` | Mark one notification read |
+| `POST` | `/shared/notification/update/read` | Mark all notifications read |
+| `PUT` | `/shared/notification/setting/update` | Update a type+channel setting |
 
 ## Contribution
 

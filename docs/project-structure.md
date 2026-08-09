@@ -91,7 +91,7 @@ The languages folder provides internationalization (i18n) resources for multi-la
 The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, and users
+- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, users, and workspaces
 
 ## Queues
 
@@ -156,10 +156,12 @@ modules
   ├── notification
   ├── password-history
   ├── policy
+  ├── project
   ├── role
   ├── session
   ├── term-policy
-  └── user
+  ├── user
+  └── workspace
 ```
 
 No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:

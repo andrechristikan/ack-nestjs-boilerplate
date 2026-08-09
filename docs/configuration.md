@@ -42,6 +42,8 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [Health Configuration](#health-configuration)
 - [Notification Configuration](#notification-configuration)
 - [File Configuration](#file-configuration)
+- [Workspace Configuration](#workspace-configuration)
+- [Project Configuration](#project-configuration)
 
 ## Configuration Structure
 
@@ -372,7 +374,7 @@ prettier: boolean               // Format logs for better readability
 **`sentry`** - Sentry integration configuration
 ```typescript
 sentry: {
-  dsn?: string;                 // Sentry DSN for error tracking
+  dsn: string | null;           // Sentry DSN for error tracking; null when unset
   timeoutInMs: number;          // Sentry timeout in milliseconds
 }
 ```
@@ -428,7 +430,7 @@ cors: {
 > - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
 > - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, `x-request-id`, etc.
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
@@ -479,11 +481,6 @@ This configuration handles user-related settings including username patterns and
 
 #### Configuration Keys:
 
-**`usernamePrefix`** - Username generation prefix
-```typescript
-usernamePrefix: string          // Prefix for auto-generated usernames (default: 'user')
-```
-
 **`usernamePattern`** - Username validation pattern
 ```typescript
 usernamePattern: RegExp         // Regex pattern for valid usernames
@@ -492,6 +489,11 @@ usernamePattern: RegExp         // Regex pattern for valid usernames
 **`uploadPhotoProfilePath`** - User profile photo upload path template
 ```typescript
 uploadPhotoProfilePath: string  // Path template for user profile photo uploads
+```
+
+**`maxDataImport`** - User CSV import row cap
+```typescript
+maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
 ```
 
 **`default`** - Default role and country assigned to new users
@@ -733,6 +735,15 @@ keyPattern: string              // Redis cache key pattern for feature flag data
 cacheTtlInMs: number            // Cache TTL in milliseconds for feature flag data
 ```
 
+**`anonymous`** - Anonymous evaluation identity configuration
+```typescript
+anonymous: {
+  headerName: string;           // HTTP header carrying the anonymous id (default: 'x-anonymous-id')
+  idMaxLength: number;          // Maximum anonymous id length (default: 100)
+  idPattern: RegExp;            // Regex pattern for a valid anonymous id
+}
+```
+
 ### Response Configuration
 
 **File**: `src/configs/response.config.ts`
@@ -799,6 +810,7 @@ job: {
   emailBackoffDelayInMs: number;       // Email queue exponential backoff delay (ms('10s'))
   pushBackoffDelayInMs: number;        // Push queue exponential backoff delay (ms('5s'))
   notificationBackoffDelayInMs: number; // Notification queue exponential backoff delay (ms('3s'))
+  workspaceBackoffDelayInMs: number;   // Workspace queue exponential backoff delay (ms('10s'))
 }
 ```
 
@@ -859,7 +871,105 @@ This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 1000)
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100)
+```
+
+### Workspace Configuration
+
+**File**: `src/configs/workspace.config.ts`
+**Interface**: `IConfigWorkspace`
+
+This configuration handles workspace resolution, slug generation, and workspace invitation settings.
+
+#### Configuration Keys:
+
+**`headerName`** - Workspace HTTP header
+```typescript
+headerName: string              // HTTP header carrying the active workspace id (default: 'x-workspace-id')
+```
+
+**`storeKey`** - Request store key
+```typescript
+storeKey: string                // Request store key for the resolved workspace id (default: 'workspaceId')
+```
+
+**`maxWorkspacesPerUser`** - Workspace ownership cap
+```typescript
+maxWorkspacesPerUser: number    // Maximum workspaces a single user may own (default: 10)
+```
+
+**`personalNamePattern`** - Personal workspace name template
+```typescript
+personalNamePattern: string     // Name template for the personal workspace ("{username}'s Workspace")
+```
+
+**`slugPrefix`** - Workspace slug prefix
+```typescript
+slugPrefix: string              // Prefix applied to generated workspace slugs (default: 'w-')
+```
+
+**`slugPattern`** - Workspace slug validation pattern
+```typescript
+slugPattern: RegExp             // Regex pattern for valid workspace slugs
+```
+
+**`slugMaxLength`** - Workspace slug length cap
+```typescript
+slugMaxLength: number           // Maximum slug length (default: 30)
+```
+
+**`slugMaxAttempts`** - Workspace slug generation retries
+```typescript
+slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
+```
+
+**`invite`** - Workspace invitation configuration
+```typescript
+invite: {
+  expiredInDays: number;         // Invitation validity in days (default: 7)
+  tokenLength: number;           // Length of the invitation token (default: 100)
+  referencePrefix: string;       // Prefix for invitation references (default: 'WIN')
+  referenceRandomLength: number; // Random part length of the invitation reference (default: 25)
+  linkBaseUrl: string;           // Base path for invitation links ('workspace/invites')
+  signupLinkBaseUrl: string;     // Declared as 'sign-up'; no reader in src/
+  expirySweepCron: string;       // Cron pattern for the invitation expiry sweep (default: '0 0 * * *')
+}
+```
+
+**`joinRequest`** - Workspace join request configuration
+```typescript
+joinRequest: {
+  reviewLinkBaseUrl: string;    // Base path for join request review links ('workspace/join-requests')
+}
+```
+
+### Project Configuration
+
+**File**: `src/configs/project.config.ts`
+**Interface**: `IConfigProject`
+
+This configuration handles project slug generation.
+
+#### Configuration Keys:
+
+**`slugPrefix`** - Project slug prefix
+```typescript
+slugPrefix: string              // Prefix applied to generated project slugs (default: 'p-')
+```
+
+**`slugPattern`** - Project slug validation pattern
+```typescript
+slugPattern: RegExp             // Regex pattern for valid project slugs
+```
+
+**`slugMaxLength`** - Project slug length cap
+```typescript
+slugMaxLength: number           // Maximum slug length (default: 30)
+```
+
+**`slugMaxAttempts`** - Project slug generation retries
+```typescript
+slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
 ```
 
 

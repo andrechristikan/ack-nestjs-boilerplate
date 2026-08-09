@@ -6,6 +6,8 @@ This documentation explains the features and usage of:
 - **PolicyAbilityProtected**: Located at `src/modules/policy/decorators`
 - **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
 
+The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarised here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
+
 ## Overview
 
 This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
@@ -20,6 +22,8 @@ The system is built using NestJS guards and decorators, making it easy to apply 
 - [Activity Log Documentation][ref-doc-activity-log] - For tracking authorization-related user activities
 - [Term Policy Document][ref-doc-term-policy] - For managing user acceptance of terms and policies
 - [Device Documentation][ref-doc-device] - For device management and session invalidation
+- [Workspace Documentation][ref-doc-workspace] - For the workspace guards, their exceptions, and `x-workspace-id`
+- [Project Documentation][ref-doc-project] - For the project guards and the workspace-owner bypass
 
 ## Table of Contents
 
@@ -53,6 +57,7 @@ The system is built using NestJS guards and decorators, making it easy to apply 
   - [Guards](#guards-3)
     - [TermPolicyGuard](#termpolicyguard)
   - [Important Notes](#important-notes-3)
+- [Workspace and Project Protected](#workspace-and-project-protected)
 - [Creating Custom Roles](#creating-custom-roles)
   - [Overview](#overview-1)
   - [How to Create a New Role](#how-to-create-a-new-role)
@@ -70,20 +75,26 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 @TermPolicyAcceptanceProtected()           // 3.  Term policy acceptance
 @PolicyAbilityProtected({ ... })           // 4.  CASL policy ability
 @RoleProtected(EnumRoleType.admin)         // 5.  Role type
-@ActivityLog(EnumActivityLogAction.login)  // 6.  Activity log
-@UserProtected()                           // 7.  User status
-@AuthJwtAccessProtected()                  // 8.  JWT access or refresh
-@FeatureFlagProtected('exampleKey')        // 9.  Feature flag
-@ApiKeyProtected()                         // 10. API key
-@HttpCode(HttpStatus.OK)                   // 11. HTTP status, only when it differs from the default
-@Get('/endpoint')                          // 12. HTTP method, always last
+@ProjectMemberProtected(...)               // 6.  Project member role
+@ProjectProtected()                        // 7.  Project resolution from :projectId
+@WorkspaceMemberProtected(...)             // 8.  Workspace member role
+@WorkspaceProtected()                      // 9.  Workspace resolution from x-workspace-id
+@ActivityLog(EnumActivityLogAction.login)  // 10. Activity log
+@UserProtected()                           // 11. User status
+@FeatureFlagProtected('exampleKey')        // 12. Feature flag
+@AuthJwtAccessProtected()                  // 13. JWT access or refresh
+@ApiKeyProtected()                         // 14. API key
+@HttpCode(HttpStatus.OK)                   // 15. HTTP status, only when it differs from the default
+@Get('/endpoint')                          // 16. HTTP method, always last
 ```
 
-A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@FeatureFlagProtected()` → `@AuthJwtAccessProtected()` → `@UserProtected()` → `@RoleProtected()` → `@PolicyAbilityProtected()` → `@TermPolicyAcceptanceProtected()`.
+A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyAbilityProtected()` → `@TermPolicyAcceptanceProtected()`.
 
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies slot 6 in source and requires `@AuthJwtAccessProtected()`.
+- `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies its source slot and requires `@AuthJwtAccessProtected()`.
 - A guard that depends on state an earlier guard sets must sit ABOVE that guard in source, so it runs after it.
+- `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
+- The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyAbilityProtected()` instead, and takes the workspace or project id from the path.
 
 ## User Protected
 
@@ -560,6 +571,25 @@ flowchart TD
 - All specified term policies must be accepted by the user for access to be granted
 - Incorrect decorator ordering will result in runtime errors
 
+## Workspace and Project Protected
+
+Four decorators scope a `/user` request to one workspace and, inside it, to one project. They occupy slots 6-9 of the stack above and are documented in full by the modules that own them.
+
+| Decorator | Guards it binds | Selects the resource from |
+|---|---|---|
+| `@WorkspaceProtected()` | `WorkspaceGuard` | The `x-workspace-id` header |
+| `@WorkspaceMemberProtected(...roles)` | `WorkspaceMemberGuard`, plus `WorkspaceRoleGuard` when roles are given | The membership of the resolved workspace |
+| `@ProjectProtected()` | `ProjectGuard` | The `:projectId` route param, constrained to the resolved workspace |
+| `@ProjectMemberProtected(...roles)` | `ProjectMemberGuard` with no arguments, `ProjectRoleGuard` with roles | The membership of the resolved project |
+
+Three properties matter wherever these appear:
+
+- **Each guard reads what the previous one stored and never re-fetches or re-authenticates.** Dropping one from the stack leaves the next reading an empty store key, which surfaces as a `notFound` or `forbidden` rather than a crash.
+- **A workspace `owner` is privileged.** It satisfies every workspace role, and it reaches every project in the workspace without holding a `ProjectMember` row.
+- **The `/admin` scope takes none of them.** Admin routes reach the same resources through `@RoleProtected()` + `@PolicyAbilityProtected()` and take the workspace or project id from the path.
+
+For the guard bodies, the exceptions and status codes each one throws, the store keys, and the `@WorkspaceCurrent()` / `@ProjectCurrent()` parameter decorators, see [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
+
 ## Creating Custom Roles
 
 The boilerplate supports creating custom roles through the role management API. Each role can have a unique combination of permissions (abilities) that define what actions users with that role can perform on different resources.
@@ -656,3 +686,5 @@ flowchart LR
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-device]: device.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-project]: project.md

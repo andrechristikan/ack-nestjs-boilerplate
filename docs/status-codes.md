@@ -16,18 +16,21 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50300` | `request` | `50300`–`50303` | 4 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
-| `50600` | `feature-flag` | `50600`–`50605` | 6 |
+| `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50707` | 8 |
 | `50800` | `auth` | `50800`–`50814` | 15 |
 | `50900` | `country` | `50900`–`50903` | 4 |
-| `51000` | `user` | `51000`–`51026` | 27 |
+| `51000` | `user` | `51000`–`51027` | 28 |
 | `51100` | `policy` | `51100`–`51101` | 2 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
 | `51500` | `term-policy` | `51500`–`51508` | 9 |
+| `51600` | `workspace` | `51600`–`51620` | 21 |
+| `51700` | `project` | `51700`–`51707` | 8 |
+| `51800` | `database` | `51800` | 1 |
 
-Next free hundred: `51600` (verify by scanning enums before claiming).
+Next free hundred: `51900` (verify by scanning enums before claiming).
 
 ## `app`
 
@@ -101,6 +104,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `predefinedKeyLengthExceeded` | `50603` | `predefinedKeyLengthExceeded` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyLengthExceeded` | Predefined key length exceeded the maximum allowed. |
 | `predefinedKeyEmpty` | `50604` | `predefinedKeyEmpty` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyEmpty` | Predefined key cannot be empty. |
 | `predefinedKeyTypeInvalid` | `50605` | `predefinedKeyTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyTypeInvalid` | Predefined key type is invalid. |
+| `predefinedKeyNotFound` | `50606` | `predefinedKeyNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `featureFlag.error.predefinedKeyNotFound` | Predefined key is not registered as a feature flag. |
 
 ## `api-key`
 
@@ -175,6 +179,7 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `twoFactorMethodRequired` | `51024` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
 | `notFoundForbidden` | `51025` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
 | `importEmailExist` | `51026` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
+| `importUsernameExist` | `51027` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
 
 ## `policy`
 
@@ -217,6 +222,51 @@ Next free hundred: `51600` (verify by scanning enums before claiming).
 | `contentNotFound` | `51506` | `contentNotFound` | 404 (`NOT_FOUND`) | `termPolicy.error.contentNotFound` | Term policy content not found. |
 | `contentExist` | `51507` | `contentExist` | 409 (`CONFLICT`) | `termPolicy.error.contentExist` | This content already exists in the term policy. |
 | `contentEmpty` | `51508` | `contentEmpty` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentEmpty` | Term policy content cannot be empty. |
+
+## `workspace`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `notFound` | `51600` | `notFound` | 404 (`NOT_FOUND`) | `workspace.error.notFound` | Sorry, we couldn't find the workspace. |
+| `memberForbidden` | `51601` | `memberForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberForbidden` | You are not a member of this workspace. |
+| `roleForbidden` | `51602` | `roleForbidden` | 403 (`FORBIDDEN`) | `workspace.error.roleForbidden` | You do not have the required role in this workspace. |
+| `inviteInvalid` | `51603` | `inviteInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.inviteInvalid` | This workspace invite link is invalid or has expired. |
+| `capReached` | `51604` | `capReached` | 400 (`BAD_REQUEST`) | `workspace.error.capReached` | You have reached the maximum number of workspaces you can own. |
+| `slugAlreadyExists` | `51605` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `workspace.error.slugAlreadyExists` | This workspace slug is already taken. |
+| `memberNotFound` | `51606` | `memberNotFound` | 404 (`NOT_FOUND`) | `workspace.error.memberNotFound` | Sorry, we couldn't find that workspace member. |
+| `lastOwner` | `51607` | `lastOwner` | 400 (`BAD_REQUEST`) | `workspace.error.lastOwner` | You are the last owner; transfer ownership before leaving. |
+| `memberPeerForbidden` | `51608` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `workspace.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `inviteDuplicate` | `51609` | `inviteDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.inviteDuplicate` | There is already a pending invite for this email in this workspace. |
+| `inviteProjectMismatch` | `51610` | `inviteProjectMismatch` | 400 (`BAD_REQUEST`) | `workspace.error.inviteProjectMismatch` | This project does not belong to the current workspace. |
+| `inviteRoleRequired` | `51611` | `inviteRoleRequired` | 400 (`BAD_REQUEST`) | `workspace.error.inviteRoleRequired` | `projectMemberRole` is required when `projectId` is set, and must be omitted otherwise. |
+| `inviteNotFound` | `51612` | `inviteNotFound` | 404 (`NOT_FOUND`) | `workspace.error.inviteNotFound` | Sorry, we couldn't find that workspace invite. |
+| `inviteAlreadyProcessed` | `51613` | `inviteAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.inviteAlreadyProcessed` | This workspace invite is no longer pending. |
+| `notPublic` | `51614` | `notPublic` | 400 (`BAD_REQUEST`) | `workspace.error.notPublic` | This workspace is not accepting public join requests. |
+| `joinRequestAlreadyMember` | `51615` | `joinRequestAlreadyMember` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyMember` | You are already a member of this workspace. |
+| `joinRequestDuplicate` | `51616` | `joinRequestDuplicate` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestDuplicate` | You already have a pending join request for this workspace. |
+| `joinRequestNotFound` | `51617` | `joinRequestNotFound` | 404 (`NOT_FOUND`) | `workspace.error.joinRequestNotFound` | Sorry, we couldn't find that workspace join request. |
+| `joinRequestAlreadyProcessed` | `51618` | `joinRequestAlreadyProcessed` | 400 (`BAD_REQUEST`) | `workspace.error.joinRequestAlreadyProcessed` | This workspace join request is no longer pending. |
+| `selfTransfer` | `51619` | `selfTransfer` | 400 (`BAD_REQUEST`) | `workspace.error.selfTransfer` | You cannot transfer ownership to yourself. |
+| `slugInvalid` | `51620` | `slugInvalid` | 400 (`BAD_REQUEST`) | `workspace.error.slugInvalid` | This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+
+## `project`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `notFound` | `51700` | `notFound` | 404 (`NOT_FOUND`) | `project.error.notFound` | Sorry, we couldn't find the project. |
+| `memberForbidden` | `51701` | `memberForbidden` | 403 (`FORBIDDEN`) | `project.error.memberForbidden` | You are not a member of this project. |
+| `roleForbidden` | `51702` | `roleForbidden` | 403 (`FORBIDDEN`) | `project.error.roleForbidden` | You do not have the required role in this project. |
+| `memberPeerForbidden` | `51703` | `memberPeerForbidden` | 403 (`FORBIDDEN`) | `project.error.memberPeerForbidden` | You are not allowed to perform this action on this member. |
+| `memberNotFound` | `51704` | `memberNotFound` | 404 (`NOT_FOUND`) | `project.error.memberNotFound` | Sorry, we couldn't find that project member. |
+| `memberAlreadyAssigned` | `51705` | `memberAlreadyAssigned` | 400 (`BAD_REQUEST`) | `project.error.memberAlreadyAssigned` | This user is already assigned to the project. |
+| `slugAlreadyExists` | `51706` | `slugAlreadyExists` | 400 (`BAD_REQUEST`) | `project.error.slugAlreadyExists` | This project slug is already taken in this workspace. |
+| `slugInvalid` | `51707` | `slugInvalid` | 400 (`BAD_REQUEST`) | `project.error.slugInvalid` | This project slug is not allowed; use letters, digits and hyphens only, within the allowed length. |
+
+## `database`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
 
 ## Related documents
 

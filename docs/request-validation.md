@@ -419,17 +419,17 @@ export class UserController {
 ```
 
 **RequestIsValidObjectIdPipe**
-Validates MongoDB ObjectId:
+Validates MongoDB ObjectId, throwing `RequestIsMongoIdException` otherwise. Instantiate it with `{ optional: true }` to let an absent value pass through as `undefined`:
 
 ```typescript
 @Get(':userId')
-findOne(@Param('userId', RequestIsValidObjectIdPipe) userId: string) {
+findOne(@Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe) userId: string) {
   return this.userService.findById(userId);
 }
 ```
 
 **File validation pipes**
-`FileExtensionPipe` validates the upload extension. A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe` validates every row against the import DTO, caps the row count at `FileMaxDataImport` (1000), and collects all per-row failures into a `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+`FileExtensionPipe` validates the upload extension. A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe` validates every row against the import DTO, caps the row count at the `file.maxDataImport` config value (100, overridable per pipe via `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, and collects all per-row failures into a `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
 
 ## Error Message Mapping
 

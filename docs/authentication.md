@@ -24,6 +24,10 @@ Configuration for tokens, password, two-factor, social providers, and API keys i
 - [Configuration Documentation][ref-doc-configuration] - For auth configuration details
 - [Environment Documentation][ref-doc-environment] - For JWT and OAuth environment variables
 - [Device Documentation][ref-doc-device] - For device management and its impact on session lifecycle
+- [Workspace Documentation][ref-doc-workspace] - For what an authenticated request is scoped to, and for sign-up carrying an invite token
+- [Project Documentation][ref-doc-project] - For project scoping inside a workspace
+
+This document covers authentication only - proving who the caller is. What an authenticated caller is then allowed to reach is [Authorization][ref-doc-authorization], and the workspace or project a request is scoped to is [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
 ## Table of Contents
 
@@ -1233,7 +1237,7 @@ When a session is revoked:
 
 | Trigger | Scope |
 |---|---|
-| Password change (`PATCH /shared/user/change-password`) | All sessions of the user |
+| Password change (`PATCH /shared/user/password/change`) | All sessions of the user |
 | Forgot-password reset (`PATCH /public/user/password/reset`) | All sessions of the user |
 | Admin temporary password | All sessions of the target user |
 | Two-factor disable, and admin two-factor reset | All sessions of the user |
@@ -1303,5 +1307,8 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-environment]: environment.md
 [ref-doc-device]: device.md
 [ref-doc-two-factor]: two-factor.md
+[ref-doc-authorization]: authorization.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-project]: project.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

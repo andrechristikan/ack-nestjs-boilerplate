@@ -20,6 +20,8 @@ All queries are written as **MongoDB aggregation pipelines** targeting the Prism
 - [Device Module](#device-module)
 - [Notification Module](#notification-module)
 - [Term Policy Module](#term-policy-module)
+- [Workspace Module](#workspace-module)
+- [Project Module](#project-module)
 - [Anomaly Detection](#anomaly-detection)
 - [Fraud Detection](#fraud-detection)
 
@@ -1715,6 +1717,266 @@ db.TermPolicyUserAcceptances.aggregate([
 
 ---
 
+## Workspace Module
+
+### 47. Workspace Creation Trend
+
+**Business Priority:** 🔴 Critical — workspaces are the tenancy boundary, so their growth curve is the multi-tenant counterpart of user registrations.
+
+**Source:** `Workspaces` — `createdAt`, `deletedAt`, `isPublic`; `ActivityLogs.action = workspaceCreated`
+
+> [!NOTE]
+> Sign-up without an invite token provisions a personal workspace and logs `workspaceCreated`. Sign-up with an invite token joins the invited workspace instead and logs `workspaceInviteAccepted`.
+
+```js
+db.Workspaces.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: ISODate("2026-01-01"), $lt: ISODate("2026-02-01") },
+      deletedAt: null,
+    },
+  },
+  {
+    $group: {
+      _id: {
+        year:  { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day:   { $dayOfMonth: "$createdAt" },
+      },
+      count: { $sum: 1 },
+    },
+  },
+  { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+])
+
+// Public vs private split
+db.Workspaces.aggregate([
+  { $match: { deletedAt: null } },
+  { $group: { _id: "$isPublic", count: { $sum: 1 } } },
+])
+```
+
+---
+
+### 48. Workspace Invite Funnel
+
+**Business Priority:** 🔴 Critical — invites are the growth loop inside a workspace; a low acceptance rate signals deliverability failure or onboarding friction.
+
+**Source:** `WorkspaceInvites` — `status` (`EnumWorkspaceInviteStatus`: `pending`, `accepted`, `revoked`, `expired`), `createdAt`, `acceptedAt`, `expiredAt`
+
+**Formula:**
+$$\text{acceptance rate} = \frac{\text{COUNT}(status = 'accepted')}{\text{COUNT(all invites)}} \times 100$$
+
+```js
+db.WorkspaceInvites.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: ISODate("2026-01-01"), $lt: ISODate("2026-02-01") },
+    },
+  },
+  {
+    $group: {
+      _id:   "$status",
+      count: { $sum: 1 },
+      avgAcceptMs: {
+        $avg: {
+          $cond: [
+            { $eq: ["$status", "accepted"] },
+            { $subtract: ["$acceptedAt", "$createdAt"] },
+            null,
+          ],
+        },
+      },
+    },
+  },
+  {
+    $project: {
+      status:         "$_id",
+      count:          1,
+      avgAcceptHours: { $divide: ["$avgAcceptMs", 3600000] },
+    },
+  },
+  { $sort: { count: -1 } },
+])
+```
+
+---
+
+### 49. Workspace Join Request Outcome
+
+**Business Priority:** 🟠 High — rejection reasons show whether public workspaces attract spam or genuinely mismatched requesters.
+
+**Source:** `WorkspaceJoinRequests` — `status` (`EnumWorkspaceJoinRequestStatus`: `pending`, `accepted`, `rejected`, `cancelled`), `rejectReasonCode` (`EnumWorkspaceJoinRejectReason`), `createdAt`, `reviewedAt`
+
+```js
+db.WorkspaceJoinRequests.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: ISODate("2026-01-01"), $lt: ISODate("2026-02-01") },
+    },
+  },
+  {
+    $group: {
+      _id:   "$status",
+      count: { $sum: 1 },
+      avgReviewMs: {
+        $avg: {
+          $cond: [
+            { $ne: ["$reviewedAt", null] },
+            { $subtract: ["$reviewedAt", "$createdAt"] },
+            null,
+          ],
+        },
+      },
+    },
+  },
+  {
+    $project: {
+      status:         "$_id",
+      count:          1,
+      avgReviewHours: { $divide: ["$avgReviewMs", 3600000] },
+    },
+  },
+])
+
+// Rejection reason breakdown
+db.WorkspaceJoinRequests.aggregate([
+  { $match: { status: "rejected", rejectReasonCode: { $ne: null } } },
+  { $group: { _id: "$rejectReasonCode", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+])
+```
+
+---
+
+### 50. Workspace Membership Distribution
+
+**Business Priority:** 🟠 High — separates single-member personal workspaces from real collaborative tenants; the key input for pricing and capacity planning.
+
+**Source:** `WorkspaceMembers` — `workspaceId`, `role` (`EnumWorkspaceMemberRole`: `owner`, `admin`, `member`), `joinedAt`
+
+```js
+// Members per workspace
+db.WorkspaceMembers.aggregate([
+  { $group: { _id: "$workspaceId", memberCount: { $sum: 1 } } },
+  {
+    $group: {
+      _id:  null,
+      avg:  { $avg: "$memberCount" },
+      max:  { $max: "$memberCount" },
+      solo: { $sum: { $cond: [{ $eq: ["$memberCount", 1] }, 1, 0] } },
+      p90:  { $percentile: { input: "$memberCount", p: [0.9], method: "approximate" } },
+    },
+  },
+])
+
+// Role distribution
+db.WorkspaceMembers.aggregate([
+  { $group: { _id: "$role", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+])
+```
+
+---
+
+### 51. Per-Workspace Activity Volume
+
+**Business Priority:** 🟡 Medium — identifies dormant tenants and the heaviest workspaces for cost attribution.
+
+**Source:** `ActivityLogs` — `workspaceId`, `action`, `createdAt`
+
+> `ActivityLogs.workspaceId` is optional; entries written outside a workspace context leave it null.
+
+```js
+db.ActivityLogs.aggregate([
+  {
+    $match: {
+      workspaceId: { $ne: null },
+      createdAt:   { $gte: ISODate("2026-01-01"), $lt: ISODate("2026-02-01") },
+    },
+  },
+  { $group: { _id: "$workspaceId", events: { $sum: 1 } } },
+  { $sort: { events: -1 } },
+  { $limit: 50 },
+])
+```
+
+---
+
+## Project Module
+
+### 52. Project Creation and Projects per Workspace
+
+**Business Priority:** 🟠 High — projects are the unit of work inside a workspace; a workspace with zero projects never reached activation.
+
+**Source:** `Projects` — `workspaceId`, `createdAt`, `deletedAt`
+
+```js
+// Creation trend
+db.Projects.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: ISODate("2026-01-01"), $lt: ISODate("2026-02-01") },
+      deletedAt: null,
+    },
+  },
+  {
+    $group: {
+      _id: {
+        year:  { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day:   { $dayOfMonth: "$createdAt" },
+      },
+      count: { $sum: 1 },
+    },
+  },
+  { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+])
+
+// Projects per workspace
+db.Projects.aggregate([
+  { $match: { deletedAt: null } },
+  { $group: { _id: "$workspaceId", projectCount: { $sum: 1 } } },
+  {
+    $group: {
+      _id:                    null,
+      avg:                    { $avg: "$projectCount" },
+      max:                    { $max: "$projectCount" },
+      workspacesWithProjects: { $sum: 1 },
+    },
+  },
+])
+```
+
+---
+
+### 53. Project Membership Distribution
+
+**Business Priority:** 🟡 Medium — the admin/member/viewer mix shows whether projects are used for collaboration or read-only sharing.
+
+**Source:** `ProjectMembers` — `projectId`, `role` (`EnumProjectMemberRole`: `admin`, `member`, `viewer`), `joinedAt`
+
+```js
+db.ProjectMembers.aggregate([
+  { $group: { _id: "$role", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+])
+
+// Members per project
+db.ProjectMembers.aggregate([
+  { $group: { _id: "$projectId", memberCount: { $sum: 1 } } },
+  {
+    $group: {
+      _id: null,
+      avg: { $avg: "$memberCount" },
+      max: { $max: "$memberCount" },
+    },
+  },
+])
+```
+
+---
+
 ## Anomaly Detection
 
 Anomaly detection identifies **abnormal patterns** from users or the system that potentially indicate security issues — not explicitly fraud, but early signals requiring investigation.
@@ -2214,7 +2476,7 @@ Combine signals into a single **risk score** per user for investigation prioriti
 
 ### Recommended Approach
 
-1. **Expose via admin API** — create dedicated admin endpoints per module (e.g., `GET /admin/users/analytics/growth`) running the aggregations above
+1. **Expose via admin API** — create dedicated admin endpoints per module (e.g., `GET /admin/user/analytics/growth`) running the aggregations above
 2. **Cache results** — use Redis with TTL (1 hour for daily stats, 5 minutes for real-time) to avoid overloading MongoDB
 3. **Background pre-computation** — for heavy aggregations (percentiles, cross-collection joins), use BullMQ to pre-compute and store the results in a dedicated snapshot collection, which does not exist in the schema yet
 4. **Date range params** — all analytics endpoints must support `startDate` and `endDate` query params
@@ -2242,5 +2504,11 @@ Ensure the following indexes exist for optimal query performance:
 | `DeviceOwnerships` | `{ userId: 1, lastActiveAt: -1 }` |
 | `UserMobiles` | `{ isVerified: 1, countryId: 1 }` |
 | `PasswordHistories` | `{ userId: 1, type: 1, createdAt: -1 }` |
+| `Workspaces` | `{ deletedAt: 1, createdAt: -1 }`, `{ isPublic: 1, deletedAt: 1, createdAt: -1 }` |
+| `WorkspaceMembers` | `{ workspaceId: 1, role: 1 }`, `{ workspaceId: 1, joinedAt: 1 }` |
+| `WorkspaceInvites` | `{ workspaceId: 1, status: 1, createdAt: -1 }` |
+| `WorkspaceJoinRequests` | `{ workspaceId: 1, status: 1, createdAt: -1 }` |
+| `Projects` | `{ workspaceId: 1, deletedAt: 1, createdAt: -1 }` |
+| `ProjectMembers` | `{ projectId: 1, role: 1 }` |
 
-> Treat the table as the index set this blueprint needs. Only some already exist in `prisma/schema.prisma` (for example `ActivityLogs { userId, action, createdAt }`, `Notifications { userId, priority, isRead, createdAt }`, `TermPolicyUserAcceptances { termPolicyId, acceptedAt }`, `Devices` unique `fingerprint`). Others such as `ActivityLogs { action, createdAt }`, `NotificationDeliveries { channel, processedAt, createdAt }`, and `PasswordHistories { userId, type, createdAt }` are not present yet and must be added before relying on them for analytics queries.
+> Treat the table as the index set this blueprint needs. Only some already exist in `prisma/schema.prisma` (for example `ActivityLogs { userId, workspaceId, createdAt }`, `Notifications { userId, priority, isRead, createdAt }`, `TermPolicyUserAcceptances { termPolicyId, acceptedAt }`, `Devices` unique `fingerprint`, plus every workspace and project index listed above). Others such as `ActivityLogs { action, createdAt }` and `ActivityLogs { userId, action, createdAt }` (there is no index on `action` at all), `NotificationDeliveries { channel, processedAt, createdAt }`, and `PasswordHistories { userId, type, createdAt }` are not present yet and must be added before relying on them for analytics queries.

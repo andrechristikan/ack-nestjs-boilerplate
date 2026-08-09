@@ -194,7 +194,7 @@ Accepting the same policy twice returns `409` (`alreadyAccepted`). When no publi
 Users can view their acceptance history:
 
 ```typescript
-GET /shared/user/term-policy/list/accepted
+GET /shared/user/term-policy/acceptance/list
 ```
 
 Returns all policies the user has accepted with timestamps and policy details.
@@ -208,7 +208,7 @@ Admins manage the complete lifecycle of term policies from creation to publishin
 Generate presigned URL for uploading content to S3:
 
 ```typescript
-POST /admin/term-policy/generate/content/presign
+POST /admin/term-policy/content/presign/generate
 {
   "type": "termsOfService",
   "version": 1,
@@ -232,7 +232,7 @@ POST /admin/term-policy/create
 Add new language variant to draft policy:
 
 ```typescript
-PUT /admin/term-policy/update/:termPolicyId/content/add
+PUT /admin/term-policy/content/:termPolicyId/add
 ```
 
 ### Update Content
@@ -240,7 +240,7 @@ PUT /admin/term-policy/update/:termPolicyId/content/add
 Replace existing language content in draft policy:
 
 ```typescript
-PUT /admin/term-policy/update/:termPolicyId/content/update
+PUT /admin/term-policy/content/:termPolicyId/update
 ```
 
 ### Remove Content
@@ -248,7 +248,7 @@ PUT /admin/term-policy/update/:termPolicyId/content/update
 Remove specific language variant from draft policy:
 
 ```typescript
-DELETE /admin/term-policy/update/:termPolicyId/content/remove
+DELETE /admin/term-policy/content/:termPolicyId/remove
 ```
 
 ### Get Content
@@ -256,7 +256,7 @@ DELETE /admin/term-policy/update/:termPolicyId/content/remove
 Get presigned URL to download policy content:
 
 ```typescript
-POST /admin/term-policy/get/:termPolicyId/content/:language
+GET /admin/term-policy/content/:termPolicyId/:language/get
 ```
 
 Works on draft and published policies alike, and always signs against the private bucket.

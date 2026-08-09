@@ -640,7 +640,7 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 ```typescript
 sentry: {
     dsn: string | null;  // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeout: number;     // Request timeout in milliseconds (default: 10000ms = 10s)
+    timeoutInMs: number; // Request timeout in milliseconds (default: 10000ms = 10s)
 }
 ```
 

@@ -129,22 +129,13 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 @ResponsePaging('user.list')
 @Get('/list')
 async listUsers(
-  @PaginationOffsetQuery() query: IPaginationQuery
+  @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
 ): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, totalPage, count } = await this.userService.findAll(query);
-  
-  return {
-    type: 'offset',
-    data,
-    totalPage,
-    page: query.page,
-    perPage: query.perPage,
-    count,
-    hasNext: query.page < totalPage,
-    hasPrevious: query.page > 1,
-    nextPage: query.page < totalPage ? query.page + 1 : undefined,
-    previousPage: query.page > 1 ? query.page - 1 : undefined
-  };
+  const { data, ...others } = await this.userService.findAll(pagination);
+
+  // `others` carries type: 'offset', count, page, perPage, totalPage,
+  // hasNext, hasPrevious, nextPage, previousPage from PaginationService.offset
+  return { data, ...others };
 }
 ```
 
@@ -154,18 +145,13 @@ async listUsers(
 @ResponsePaging('user.list')
 @Get('/list')
 async listUsers(
-  @PaginationCursorQuery() query: IPaginationQuery
+  @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
 ): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, cursor, count, hasNext } = await this.userService.findAllCursor(query);
-  
-  return {
-    type: 'cursor',
-    data,
-    cursor,
-    perPage: query.perPage,
-    count,
-    hasNext
-  };
+  const { data, ...others } = await this.userService.findAllCursor(pagination);
+
+  // `others` carries type: 'cursor', cursor, perPage, hasNext and optional count
+  // from PaginationService.cursor; the interceptor emits `cursor` as `nextCursor`
+  return { data, ...others };
 }
 ```
 
@@ -180,7 +166,7 @@ File download response decorator that handles CSV and PDF file downloads with pr
 - Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
 - CSV data must be a string (pre-converted to CSV format)
 - PDF data must be a Buffer
-- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.{extension}`
+- Optional `filename` - if not provided, generates a timestamped CSV filename from `response.filenameExportPattern`: `export-{timestamp}.csv`. The generated fallback is always `.csv`, so pass `filename` explicitly for PDF
 
 **Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
@@ -361,7 +347,7 @@ device: DeviceResponseDto;
 Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` plus `@ApiHideProperty()` is required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s, both are needed so the JSON and the Swagger schema agree.
 
 ```typescript
-// Parent exposes isActive/startAt/endAt/name/type/key; create response hides isActive/startAt, keeps the rest, and adds `secret`.
+// Parent exposes isActive/startAt/endAt/name/type/key; create response hides every one of them and adds `secret`.
 export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
   @Expose()
   secret: string;
@@ -373,6 +359,22 @@ export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
   @ApiHideProperty()
   @Exclude()
   startAt?: Date;
+
+  @ApiHideProperty()
+  @Exclude()
+  endAt?: Date;
+
+  @ApiHideProperty()
+  @Exclude()
+  name: string;
+
+  @ApiHideProperty()
+  @Exclude()
+  type: EnumApiKeyType;
+
+  @ApiHideProperty()
+  @Exclude()
+  key: string;
 }
 ```
 
@@ -392,7 +394,7 @@ Controller returns { data } / { data: [] }
 ResponseInterceptor wraps into standard envelope + metadata + headers
 ```
 
-Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the four app filters call it instead of building metadata inline.
+Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters call it instead of building metadata inline.
 
 ## Response Structure
 
@@ -474,7 +476,7 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 **Cache Key:**
 
 ```text
-Apis:*
+Apis:{key}
 ```
 
 **Custom Cache Configuration:**

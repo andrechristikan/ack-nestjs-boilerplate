@@ -70,6 +70,7 @@ Currently available queues defined in `src/queues/enums/queue.enum.ts`:
 - `EnumQueue.notification`: General notification processing queue
 - `EnumQueue.notificationEmail`: Email notification processing queue
 - `EnumQueue.notificationPush`: Push notification processing queue
+- `EnumQueue.workspace`: Workspace background processing queue
 
 Queue priorities defined in `EnumQueuePriority`:
 - `high`: 1
@@ -90,14 +91,23 @@ export class NotificationPushUtil {
         private readonly notificationPushQueue: Queue
     ) {}
 
-    async sendNewDeviceLogin(payload: INotificationPushQueuePayload): Promise<void> {
+    async sendNewDeviceLogin(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationNewDeviceLoginPayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload<INotificationNewDeviceLoginPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.newDeviceLogin,
             payload,
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${payload.send.userId}`,
+                    id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
                     ttl: 1000,
                 },
             }
@@ -115,6 +125,7 @@ Default job options come from `queue.config.ts` (interface `IConfigQueue`) and a
 | `EnumQueue.notificationEmail` | `10000` |
 | `EnumQueue.notificationPush` | `5000` |
 | `EnumQueue.notification` | `3000` |
+| `EnumQueue.workspace` | `10000` |
 
 For example, the `notificationEmail` queue:
 
@@ -141,6 +152,7 @@ export enum EnumQueue {
     notification = 'notification',
     notificationEmail = 'notificationEmail',
     notificationPush = 'notificationPush',
+    workspace = 'workspace',
     yourQueue = 'yourQueue', // New queue
 }
 ```
@@ -171,7 +183,7 @@ static forRoot(): DynamicModule {
 
 ## Creating New Processor
 
-1. Create processor class extending `QueueProcessorBase`:
+1. Create the processor class inside its owning feature module, under `src/modules/<feature>/processors/`, extending `QueueProcessorBase`:
 
 ```typescript
 @QueueProcessor(EnumQueue.notificationPush)
@@ -208,11 +220,12 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 
 ```typescript
 @Module({
-    imports: [],
+    imports: [WorkspaceModule],
     providers: [
         NotificationEmailProcessor,
         NotificationPushProcessor,
         NotificationProcessor,
+        WorkspaceProcessor,
         YourNewProcessor, // Add processor
     ],
 })

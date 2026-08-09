@@ -48,7 +48,7 @@ Activity Log records audited user actions. There are two recording paths:
 | `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
 | `ActivityLogInterceptor` | Reads the action, reads dynamic metadata and request context (`IRequestLog`: IP, user agent, geo) from the request store, persists the log on success and failure |
 | `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
-| `ActivityLogService` | Read side: paginated listing for admin and self |
+| `ActivityLogService` | Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
 | `ActivityLogRepository` | Data access (Prisma) |
 | `ActivityLogUtil` | Builds the i18n description, serializes list responses |
 
@@ -57,7 +57,9 @@ Activity Log records audited user actions. There are two recording paths:
 | Method | Path | Scope |
 |--------|------|-------|
 | `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
-| `GET` | `/admin/user/:userId/activity-log/list` | Admin lists a user's logs (offset) |
+| `GET` | `/shared/user/activity-log/workspace/list` | Authenticated user lists own logs in the workspace from `x-workspace-id` (cursor) |
+| `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
+| `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
 
 Global prefix `/api` and version `v1` apply as elsewhere.
 

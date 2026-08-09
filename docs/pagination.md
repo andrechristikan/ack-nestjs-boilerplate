@@ -261,7 +261,7 @@ Decorator for cursor-based pagination.
 ```typescript
 @PaginationCursorQuery({
     availableSearch: ['name', 'email'],
-    cursorField: '_id'
+    cursorField: 'id'
 })
 pagination: IPaginationQueryCursorParams
 ```
@@ -429,7 +429,7 @@ PaginationQueryFilterDate(
 - `options.type`:
   - `EnumPaginationFilterDateBetweenType.start`: Greater than or equal (`gte`) — use for start date
   - `EnumPaginationFilterDateBetweenType.end`: Less than or equal (`lte`) — use for end date
-  - Undefined: Equals — exact date match
+  - Undefined: emits the `equal` key — exact date match
 - `options.dayOf`: Day adjustment option (`EnumHelperDateDayOf`)
 
 **Usage:**
@@ -498,10 +498,11 @@ pagination: IPaginationQueryOffsetParams
 - Affected by inserts/deletes during pagination
 
 **Constraints:**
-- Max page: 20
-- Max perPage: 100
-- Min page: 1
-- Min perPage: 1
+- Max page: 20 (`PaginationDefaultMaxPage`); above it throws `PaginationPageExceedsMaximumException` (50208)
+- Max perPage: 100 (`PaginationDefaultMaxPerPage`); above it throws `PaginationPerPageExceedsMaximumException` (50210)
+- Min page: 1; below it throws `PaginationPageCannotBeLessThanOneException` (50209)
+- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50211)
+- A non-integer `page` or `perPage` throws `PaginationInvalidPageException` (50207) or `PaginationInvalidPerPageException` (50202)
 
 **Response Example:**
 
@@ -546,10 +547,10 @@ The pagination fields ride inside the `metadata` block of the standard response 
 - MongoDB ObjectID timestamps prevent duplicates
 
 **Constraints:**
-- Max cursor length: 256 characters
-- Cursor format: URL-safe base64 (A-Za-z0-9_-)
-- Max perPage: 100
-- Min perPage: 1
+- Max cursor length: 256 characters (`PaginationMaxCursorLength`); longer throws `PaginationCursorTooLongException` (50204)
+- Cursor format: URL-safe base64 (A-Za-z0-9_-); any other character throws `PaginationInvalidCursorFormatException` (50205)
+- Max perPage: 100; above it throws `PaginationPerPageExceedsMaximumException` (50210)
+- Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50211)
 
 **Response Example:**
 
@@ -766,7 +767,7 @@ GET /users?page=1&perPage=20&search=john&orderBy=name:asc
 async listUsers(
     @PaginationCursorQuery({
         availableSearch: ['name', 'email'],
-        cursorField: '_id'
+        cursorField: 'id'
     })
     pagination: IPaginationQueryCursorParams
 ) {
@@ -813,7 +814,7 @@ async findWithPaginationCursor(
 GET /users?perPage=20&orderBy=name:asc
 
 # Next page
-GET /users?cursor=eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsibmFtZSI6ImFzYyJ9fQ==&perPage=20
+GET /users?cursor=eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsibmFtZSI6ImFzYyJ9fQ&perPage=20
 ```
 
 ### With Filters

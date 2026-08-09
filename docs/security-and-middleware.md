@@ -17,7 +17,8 @@ consumer
     RequestUrlVersionMiddleware,     // 6. API version extraction
     RequestResponseTimeMiddleware,   // 7. Response time tracking
     RequestCustomLanguageMiddleware, // 8. Language detection
-    RequestCompressionMiddleware     // 9. Response compression
+    RequestWorkspaceMiddleware,      // 9. Active workspace header
+    RequestCompressionMiddleware     // 10. Response compression
   )
   .forRoutes('{*wildcard}');
 ```
@@ -42,6 +43,7 @@ consumer
 - [Body Parser](#body-parser)
 - [URL Versioning](#url-versioning)
 - [Custom Language](#custom-language)
+- [Active Workspace](#active-workspace)
 - [Response Compression](#response-compression)
 - [Response Time](#response-time)
 - [Request Timeout](#request-timeout)
@@ -247,6 +249,22 @@ x-custom-lang: id
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
+## Active Workspace
+
+Processes the `x-workspace-id` header for workspace scoping.
+
+**Implementation:** `RequestWorkspaceMiddleware`
+
+**Usage:**
+```bash
+# Request header
+x-workspace-id: 6650f0c5a1b2c3d4e5f60718
+```
+
+**Storage:** the raw header value is written to the request store under the key configured by `workspace.storeKey` (`workspaceId`), or `null` when the header is absent or not a string. The middleware never validates the id; `WorkspaceGuard` resolves and validates it later.
+
+**Configuration:** See [Configuration][ref-doc-configuration]
+
 ## Response Compression
 
 Applies gzip/deflate compression using [compression][ref-compression].
@@ -305,6 +323,8 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 | `RequestIdStoreKey` | `RequestRequestIdMiddleware` | `req.id` (dual-write) |
 | `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
 | `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
+
+Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
 **Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators still exist, but are now thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`.
 

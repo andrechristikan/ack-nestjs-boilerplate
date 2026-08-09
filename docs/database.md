@@ -40,6 +40,7 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Client Access Surface](#client-access-surface)
 	- [Automatic Actor Stamping](#automatic-actor-stamping)
 	- [Soft Delete and Restore](#soft-delete-and-restore)
+- [Generated Unique Values](#generated-unique-values)
 - [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
@@ -96,8 +97,8 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 
 **Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
 
-- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `termPolicy` → `user`. A seed that references another's rows runs after it, so `user` is last: it needs both `role` and `country`.
-- `migration:remove` runs `user` → `apiKey` → `featureFlag` → `country` → `role` → `termPolicy`, removing the referrer before anything it references.
+- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `user` needs both `role` and `country`, and `workspace` needs the seeded users.
+- `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `role` → `termPolicy`, removing the referrer before anything it references.
 - Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
 - Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
 
@@ -118,6 +119,7 @@ Run the command:
 - `role`: Inserts user roles (superadmin, admin, user) with abilities and permissions.
 - `termPolicy`: Inserts term policy documents (cookies, marketing, privacy, terms of service) with version and content.
 - `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
+- `workspace`: Inserts one default personal workspace per seeded user, with that user as owner member. Requires the `user` seed to have run first, and skips any user who already owns a workspace.
 
 
 ### Template Seeds
@@ -252,15 +254,15 @@ The seeded users differ per environment. This is controlled by `migrationUserDat
 
 **User accounts:**
 
-| Email | Name | Role | Password | Country | Environments |
-|-------|------|------|----------|---------|-------------|
-| superadmin@mail.com | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
-| admin@mail.com | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
-| user@mail.com | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
+| Email | Username | Name | Role | Password | Country | Environments |
+|-------|----------|------|------|----------|---------|-------------|
+| superadmin@mail.com | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
+| admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
+| user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
 ### Feature Flags
 
-Five feature flags are created to control authentication and user features:
+Six feature flags are created to control authentication, user, and workspace features:
 
 | Key | Description | Enabled | Rollout | Metadata |
 |-----|-------------|---------|---------|----------|
@@ -269,6 +271,7 @@ Five feature flags are created to control authentication and user features:
 | `loginWithCredential` | Enable login with Credential | ✅ Yes | 100% | - |
 | `signUp` | Enable user sign up | ✅ Yes | 100% | - |
 | `changePassword` | Enable change password feature | ✅ Yes | 100% | `forgotAllowed: true` |
+| `workspace` | Enable the workspace and project router surface, including invitation and join request | ✅ Yes | 100% | `invitationAllowed: true`, `joinRequestAllowed: true` |
 
 All features are enabled by default with 100% rollout for development convenience.
 
@@ -512,6 +515,8 @@ The extension carries the `create` / `createMany` / `update` / `updateMany` / `u
 
 `DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token, the factory, and the extension util stay unexported; `DatabaseModule` exports only `DatabaseService` and `DatabaseUtil`.
 
+The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
+
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
@@ -532,7 +537,7 @@ For a caller this means a nested write needs no hand-written `createdBy` / `upda
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry the soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone, and their repositories (`WorkspaceRepository.softDelete`, `ProjectRepository.softDelete`) stamp it through a plain `update` inside a transaction that also cascades to the rows they own.
 
 - `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status, and write the nested activity log in one call.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
@@ -540,6 +545,27 @@ The extension adds two methods to every model. They are meaningful only on model
 
 **Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
 
+## Generated Unique Values
+
+Some columns carry a server-generated value that must be unique: workspace and project slugs today. A random draw can collide with a row that already holds it, so every generator is a **bounded retry that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
+
+The shape is the same in all three places:
+
+1. Draw a candidate through `HelperService.generateSlug(prefix, maxLength)`.
+2. Attempt the write, or check the value is free.
+3. On collision, draw again. The budget is a `slugMaxAttempts` config value (`5` for both `workspace` and `project`).
+4. When the budget is exhausted, throw `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
+
+| Generator | Collision signal | Attempt budget |
+|---|---|---|
+| `WorkspaceRepository.createWithOwner` | Prisma `P2002` on the create | `workspace.slugMaxAttempts` |
+| `ProjectRepository.createWithSlug` | Prisma `P2002` on the create | `project.slugMaxAttempts` |
+| `UserRepository.generateUniqueWorkspaceSlug` | a `workspace.findFirst` pre-check, plus the caller's list of slugs already claimed but not yet written | `workspace.slugMaxAttempts` |
+
+Two rules hold across all of them:
+
+- **A `P2002` that is not the generated value is rethrown untouched.** The retry only ever absorbs a collision on the value the repository itself drew; a unique violation on a client-supplied field stays the caller's error.
+- **`UserRepository.generateUniqueWorkspaceSlug` resolves outside the transaction.** The personal-workspace slug for sign-up, admin create, and admin CSV import is drawn before `$transaction` opens, so the retry loop never holds a transaction open across attempts. In the CSV import each row is additionally passed the slugs earlier rows in the same batch already claimed, because those rows are not written yet and a database pre-check cannot see them.
 
 ## Docker
 

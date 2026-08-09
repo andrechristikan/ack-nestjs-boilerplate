@@ -100,7 +100,7 @@ export class UserUpdateProfilePhotoRequestDto extends PickType(
 
 **Step 2 - Controller Endpoints:**
 
-`UserSharedController` is registered by `RoutesSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/generate-presign/photo` and `PUT /shared/user/profile/update/photo`, under the configured global prefix and the `v1` version prefix.
+`UserSharedController` is registered by `RoutesSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
 
 ```typescript
 @ApiTags('modules.shared.user')
@@ -118,7 +118,7 @@ export class UserSharedController {
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
   @HttpCode(HttpStatus.OK)
-  @Post('/profile/generate-presign/photo')
+  @Post('/profile/photo/presign/generate')
   async generatePhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserGeneratePhotoProfileRequestDto
@@ -132,7 +132,7 @@ export class UserSharedController {
   @UserProtected()
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
-  @Put('/profile/update/photo')
+  @Put('/profile/photo/update')
   async updatePhotoProfile(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserUpdateProfilePhotoRequestDto
@@ -174,10 +174,14 @@ export class UserService {
     const requestLog: IRequestLog =
       this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-    const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photoKey, size });
-    await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
+    try {
+      const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photoKey, size });
+      await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
 
-    return;
+      return;
+    } catch (err: unknown) {
+      throw new AppUnknownException(err);
+    }
   }
 }
 ```
@@ -194,7 +198,7 @@ Two things follow from the options actually passed:
 async function uploadPhotoSimple(file: File) {
   try {
     // Step 1: Request presigned URL
-    const response = await fetch('/api/v1/shared/user/profile/generate-presign/photo', {
+    const response = await fetch('/api/v1/shared/user/profile/photo/presign/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +227,7 @@ async function uploadPhotoSimple(file: File) {
     }
 
     // Step 3: Notify backend
-    await fetch('/api/v1/shared/user/profile/update/photo', {
+    await fetch('/api/v1/shared/user/profile/photo/update', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -279,7 +283,7 @@ sequenceDiagram
     participant S3 as AWS S3
     participant Repository as Database
 
-    Client->>Backend: POST /generate-presign/photo<br/>{extension, size}
+    Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
     Backend->>UserUtil: createRandomFilenamePhotoProfileWithPath()
     UserUtil-->>Backend: unique S3 key
     
@@ -297,7 +301,7 @@ sequenceDiagram
         S3->>S3: Encrypt file with AES256
         S3-->>Client: 200 OK
         
-        Client->>Backend: PUT /update/photo<br/>{photoKey: key, size}
+        Client->>Backend: PUT /profile/photo/update<br/>{photoKey: key, size}
         Backend->>AwsS3Service: mapPresign({ key, size })
         AwsS3Service-->>Backend: IAwsS3
         
@@ -340,7 +344,7 @@ sequenceDiagram
 
 ### Term Policy Content Presign
 
-The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RoutesAdminModule`, so the route is `POST /admin/term-policy/generate/content/presign`.
+The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RoutesAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
 
 ```typescript
 @TermPolicyAdminGenerateContentPresignDoc()
@@ -359,7 +363,7 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
 @HttpCode(HttpStatus.OK)
-@Post('/generate/content/presign')
+@Post('/content/presign/generate')
 async generate(
   @Body() body: TermPolicyContentPresignRequestDto
 ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
