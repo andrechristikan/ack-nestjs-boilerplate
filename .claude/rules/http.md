@@ -29,6 +29,7 @@ NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last
 
 Reordering is a defect even when the app still boots: the order encodes which gate rejects first — and because guards run bottom-up, the gate NEAREST the method rejects first (API key before JWT before user status before activity log before workspace before project before role before policy before term policy). A reshuffle changes which error a caller sees.
 
+- **`@HttpCode` belongs ONLY on `@Post`.** Nest defaults POST to `201 Created` and every other method to `200 OK`, so `@HttpCode(HttpStatus.OK)` above a `@Get` / `@Put` / `@Patch` / `@Delete` is a no-op that reads as if the route were doing something unusual. Delete it — and delete the `HttpCode` / `HttpStatus` imports when the file has no `@Post` left that needs them.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
 - `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret. See `docs/activity-log.md`.
 - `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyAbilityProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
@@ -116,34 +117,87 @@ invent a format validator it has no format for.
 
 ## Route path shape (HARD)
 
+There are TWO grammars. **Which one applies is decided by WHERE the noun comes from, not by what it means:**
+
+- Everything in the controller's `path:` is the controller's OWN resource, however many segments and scope ids it carries. `path: '/user/:userId/session'` makes `session` the own resource.
+- Any noun introduced by the ROUTE DECORATOR opens a sub-resource namespace. `@Delete('/mobile-number/…')` inside `path: '/user'` makes `mobile-number` a sub-resource.
+
+That line is mechanical on purpose. "Is a session really a sub-resource of a user?" has no stable answer; "which file wrote the segment" has exactly one.
+
+**The controller's own resource** — action first, id after it:
+
 ```
-[/<sub-resource>]/<action>[/:<id>[/<target>[/<sub-action>]]]
+/<action>[/:<id>[/<target>]]
 ```
 
-Read left to right: WHERE it lives, WHAT is being done, to WHICH row, on WHICH part of it.
+**A sub-resource namespace** (`member`, `invite`, `join-request`, `mobile-number`, `2fa`, `content`, …) — id first, action LAST:
 
-- **The action is ONE word.** `create` · `get` · `list` · `update` · `delete` · `remove` · `revoke` · `resend` · `accept` · `reject` · `assign` · `leave` · `switch` · `claim` · `preview` · `publish` · `transfer`.
-- **Never fold the target into the action with a dash.** `update-role`, `update-slug`, `soft-delete`, `update-status` are wrong. What is being updated is a segment AFTER the id, because that is the only position that scales: a second attribute adds a sibling segment instead of inventing a second compound verb.
-- **The id comes immediately after the action** — never `update/read/:notificationId`, always `update/:notificationId/read`.
-- A dash inside a **sub-resource noun** is fine (`/mobile-number/update/:mobileNumberId`) — `rules/naming.md` allows a dash within one segment for a compound noun. The prohibition is on compound *verbs*.
-- A leading scope prefix is allowed where the resource is genuinely nested (`/activity-log/user/:userId/list`). That is `<sub-resource>/:<id>` narrowing, not an attribute.
-- **The sub-resource segment is SINGULAR.** `/invite/*`, `/join-request/*`, `/member/*`, `/mobile-number/*`, `/session`, `/device`, `/password-history`, `/api-key`, `/feature-flag`, `/term-policy`, `/role`, `/notification` — every one of them. A sub-resource is a NAMESPACE, not a collection: the same prefix carries `create`, `get`, `list`, and `delete`, so pluralising it makes three of the four read wrong. A plural sub-resource is a defect even when the route underneath it is a list.
+```
+/<sub-resource>/:<id>[/<target>]/<action>
+/<sub-resource>[/<target>]/<action>                      when the action addresses no single row (list, create)
+/<sub-resource>/:<scope-id>[/:<id>][/<target>]/<action>  when a parent row narrows the whole namespace
+```
+
+The second grammar closes on the action because the action is the only segment that never narrows: everything before it is addressing, so putting it anywhere but last splits the address in two.
+
+- **The action is ONE word, and it is a VERB.** `accept` · `add` · `assign` · `change` · `check` · `claim` · `create` · `delete` · `disable` · `enable` · `export` · `forgot` · `generate` · `get` · `import` · `leave` · `list` · `login` · `logout` · `preview` · `publish` · `refresh` · `regenerate` · `reject` · `remove` · `resend` · `reset` · `revoke` · `send` · `setup` · `sign-up` · `switch` · `transfer` · `update` · `upload` · `verify`. Extend this list when a genuinely new verb is needed — a path whose last segment is a NOUN is usually the defect, not a missing entry. The two exceptions are named below: health probes, and an action qualified by HOW it is performed.
+- **Health probes are exempt.** `/health/aws`, `/health/database`, `/health/instance` are noun-only by convention and carry no action. Do not "fix" them.
+- **Never fold the target into the action with a dash.** `update-role`, `update-slug`, `soft-delete`, `update-status`, `read-all`, `change-password`, `generate-presign`, `regenerate-backup-codes` are wrong. The target is its own segment, because that is the only position that scales: a second attribute adds a sibling segment instead of inventing a second compound verb. A dash inside a single lexical word is NOT that: `sign-up` is one verb, and it is the kebab spelling of the `signUp` used everywhere in code — the same mapping as `mobile-number` ↔ `mobileNumber`. Never collapse it to `signup`; that breaks the mapping the whole repo relies on.
+- **An action MAY end on a noun when that noun names HOW the action is performed, not WHAT it acts on.** `/login/credential`, `/login/social/google` — the trailing segment is the credential type, and the flow's own sub-steps nest under the same namespace (`/login/2fa/verify`). This is the only place a path may close on a noun. It does NOT license `/list/user-setting`, where the trailing noun is a different resource being listed.
+- **ONE verb per path.** `/update/:termPolicyId/content/update` and `/update/:apiKeyId/reset` carry two. The first verb is always the wrong one — it is a namespace pretending to be an action. Drop it and let the real noun open the path: `/content/:termPolicyId/update`, `/reset/:apiKeyId`.
+- **The HTTP method and the action agree.** A `@Post` whose action is `get`, or a `@Delete` whose action is `update`, is a defect in one of the two — decide which and fix it.
+- **Own resource: the id comes immediately after the action** — never `update/read/:notificationId`, always `update/:notificationId/read`.
+- **Sub-resource: the id comes immediately after the namespace, and the action closes the path** — `/join-request/:workspaceJoinRequestId/reject`, `/member/:workspaceMemberId/role/update`.
+- **The namespace ALWAYS leads — never a bare `:id`.** A scope id that narrows the whole namespace goes INSIDE it, immediately after the noun and before the row id: `/member/:projectId/:projectMemberId/remove`, not `/:projectId/member/:projectMemberId/remove`. Ids read left to right as scope then row, and the action still closes the path.
+- A dash inside a **sub-resource noun** is fine (`/mobile-number/:mobileNumberId/update`) — `rules/naming.md` allows a dash within one segment for a compound noun. The prohibition is on compound *verbs*.
+- **EVERY resource noun segment is SINGULAR** — in the controller's `path:` (`/api-key`, `/feature-flag`, `/term-policy`, `/session`, `/device`, `/role`, `/notification`) and in a route's sub-resource slot (`/invite/*`, `/join-request/*`, `/member/*`, `/mobile-number/*`, `/content/*`, `/setting/*`) alike. A resource noun is a NAMESPACE, not a collection: the same prefix carries `create`, `get`, `list`, and `delete`, so pluralising it makes three of the four read wrong. A plural noun is a defect even when the route underneath it is a list.
 - **The target segment after an id MAY be plural.** `@Get('/get/:roleId/abilities')` is correct: `abilities` names a part of the row already addressed by `:roleId`, and that part genuinely is a collection. The singular rule governs the namespace slot only — do not "fix" a target to singular.
 
 ```
-GOOD  @Patch('/update/:apiKeyId/status')
-GOOD  @Put('/update/:userId/password')
-GOOD  @Get('/get/:roleId/abilities')                      target after an id — plural is correct
-GOOD  @Delete('/member/remove/:workspaceMemberId')
+GOOD  @Patch('/update/:apiKeyId/status')                      own resource
+GOOD  @Put('/update/:userId/password')                        own resource
+GOOD  @Get('/get/:roleId/abilities')                          target after an id — plural is correct
+GOOD  @Delete('/member/:workspaceMemberId/remove')            sub-resource
+GOOD  @Patch('/member/:workspaceMemberId/role/update')        sub-resource with a target
+GOOD  @Post('/join-request/:workspaceJoinRequestId/reject')   sub-resource
+GOOD  @Get('/join-request/list')                              sub-resource, addresses no row
+GOOD  @Get('/user/:userId/list')                              sub-resource, addresses a parent row
+GOOD  @Delete('/member/:projectId/:projectMemberId/remove')   scope id, then row id, then the action
+GOOD  @Delete('/revoke/:sessionId')                           own resource — the controller mounts at
+                                                              path: '/user/:userId/session', so `session`
+                                                              is ITS resource and the action leads
+GOOD  @Post('/login/credential')                              action qualified by HOW — see the noun rule
+GOOD  @Post('/sign-up')                                       one lexical verb, kebab of `signUp`
 
-BAD   @Delete('/members/remove/:workspaceMemberId')       -> /member/remove/:workspaceMemberId
-BAD   @Get('/join-requests/list')                         -> /join-request/list
-BAD   @Patch('/member/update-role/:workspaceMemberId')    -> /member/update/:workspaceMemberId/role
-BAD   @Patch('/update-slug/:projectId')                   -> /update/:projectId/slug
-BAD   @Delete('/soft-delete/:projectId')                  -> /delete/:projectId
-BAD   @Post('/transfer-ownership')                        -> /ownership/transfer
-BAD   @Patch('/update/read/:notificationId')              -> /update/:notificationId/read
+BAD   @Delete('/member/remove/:workspaceMemberId')            -> /member/:workspaceMemberId/remove
+BAD   @Get('/:projectId/member/list')                         -> /member/:projectId/list
+BAD   @Post('/join-request/reject/:workspaceJoinRequestId')   -> /join-request/:workspaceJoinRequestId/reject
+BAD   @Delete('/members/remove/:workspaceMemberId')           -> /member/:workspaceMemberId/remove
+BAD   @Get('/join-requests/list')                             -> /join-request/list
+BAD   @Patch('/member/update-role/:workspaceMemberId')        -> /member/:workspaceMemberId/role/update
+BAD   @Patch('/update-slug/:projectId')                       -> /update/:projectId/slug
+BAD   @Delete('/soft-delete/:projectId')                      -> /delete/:projectId
+BAD   @Get('/:projectId/get')                                 -> /get/:projectId
+BAD   @Post('/transfer-ownership')                            -> /ownership/transfer
+BAD   @Patch('/update/read/:notificationId')                  -> /update/:notificationId/read
+BAD   @Put('/mobile-number/update/:mobileNumberId')           -> /mobile-number/:mobileNumberId/update
+BAD   @Put('/update/:termPolicyId/content/update')            -> /content/:termPolicyId/update      two verbs
+BAD   @Patch('/update/:userId/2fa/reset')                     -> /2fa/:userId/reset                 two verbs
+BAD   @Patch('/change-password')                              -> /password/change                   dash verb
+BAD   @Post('/2fa/regenerate-backup-codes')                   -> /2fa/backup-code/regenerate        dash verb
+BAD   @Get('/profile')                                        -> /profile/get                       no action
+BAD   @Get('/list/user-setting')                              -> /setting/list                      noun last
+BAD   @Post('/check/username')                                -> /username/check                    noun last
+BAD   @Post('/get/:termPolicyId/content/:language')           -> @Get('/content/:termPolicyId/:language/get')
 ```
+
+## Custom request headers (HARD)
+
+A new `x-*` request header is not live until it is registered. Adding the middleware, the config entry, and the guard that reads it is only half the job.
+
+- **Register the name in `request.config.ts` → `cors.allowedHeader`.** Without it the browser preflight rejects the header, the request never reaches Nest, and the feature is dead from every browser client while still working from curl and Postman. `tsc`, lint, and jest all stay green — nothing but a real cross-origin request catches this.
+- **The header name lives in a config file, never as a literal in the middleware or guard** (`x-workspace-id` → `workspace.headerName`, `x-anonymous-id` → `featureFlag.anonymous.headerName`). The CORS entry is the one place the raw string is repeated, because `cors.allowedHeader` is a flat transport allow-list.
+- **A header the server READS must be in `allowedHeader`; a header the server SETS and the client must read needs `exposedHeaders` instead.** They are different lists solving different halves of CORS.
 
 ## Guards
 

@@ -1,0 +1,294 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperService } from '@common/helper/services/helper.service';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
+    EnumActivityLogAction,
+    Prisma,
+    Project,
+} from '@generated/prisma-client';
+import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
+import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class ProjectRepository {
+    private readonly slugPrefix: string;
+    private readonly slugMaxLength: number;
+    private readonly maxSlugAttempts: number;
+
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly helperService: HelperService,
+        private readonly paginationService: PaginationService,
+        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
+        this.slugMaxLength = this.configService.get<number>(
+            'project.slugMaxLength'
+        )!;
+        this.maxSlugAttempts = this.configService.get<number>(
+            'project.slugMaxAttempts'
+        )!;
+    }
+
+    async findActiveByIdAndWorkspace(
+        projectId: string,
+        workspaceId: string
+    ): Promise<Project | null> {
+        return this.databaseService.client.project.findFirst({
+            where: {
+                id: projectId,
+                workspaceId,
+                OR: ProjectActiveFilter,
+            },
+        });
+    }
+
+    async findByIdForAdmin(projectId: string): Promise<Project | null> {
+        return this.databaseService.client.project.findUnique({
+            where: { id: projectId },
+        });
+    }
+
+    async existsBySlugInWorkspace(
+        workspaceId: string,
+        slug: string,
+        excludeProjectId?: string
+    ): Promise<boolean> {
+        const count = await this.databaseService.client.project.count({
+            where: {
+                // @note: add an active filter here and a soft-deleted slug still holds the unique index.
+                workspaceId,
+                slug,
+                ...(excludeProjectId ? { id: { not: excludeProjectId } } : {}),
+            },
+        });
+
+        return count > 0;
+    }
+
+    async findWithPaginationOffsetForWorkspace(
+        workspaceId: string,
+        memberUserId: string | null,
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >
+    ): Promise<IResponsePagingReturn<Project>> {
+        return this.paginationService.offset<
+            Project,
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >(this.databaseService.client.project, {
+            ...others,
+            where: {
+                AND: [
+                    where ?? {},
+                    { workspaceId },
+                    { OR: ProjectActiveFilter },
+                    ...(memberUserId
+                        ? [{ members: { some: { userId: memberUserId } } }]
+                        : []),
+                ],
+            },
+        });
+    }
+
+    async findWithPaginationOffsetForAdmin(
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >,
+        workspaceId?: string
+    ): Promise<IResponsePagingReturn<Project>> {
+        return this.paginationService.offset<
+            Project,
+            Prisma.ProjectSelect,
+            Prisma.ProjectWhereInput
+        >(this.databaseService.client.project, {
+            ...others,
+            where: {
+                ...where,
+                ...(workspaceId ? { workspaceId } : {}),
+            },
+        });
+    }
+
+    async createWithSlug(
+        workspaceId: string,
+        actorId: string,
+        dto: ProjectCreateRequestDto,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        if (dto.slug) {
+            return this.createWithWorkspaceAndSlug(
+                workspaceId,
+                actorId,
+                dto,
+                dto.slug,
+                requestLog
+            );
+        }
+
+        let slug = this.helperService.generateSlug(
+            this.slugPrefix,
+            this.slugMaxLength
+        );
+        let attemptsLeft = this.maxSlugAttempts;
+
+        while (true) {
+            try {
+                return await this.createWithWorkspaceAndSlug(
+                    workspaceId,
+                    actorId,
+                    dto,
+                    slug,
+                    requestLog
+                );
+            } catch (err: unknown) {
+                attemptsLeft -= 1;
+
+                const isSlugCollision =
+                    err instanceof Prisma.PrismaClientKnownRequestError &&
+                    err.code === 'P2002';
+
+                if (!isSlugCollision || attemptsLeft <= 0) {
+                    throw err;
+                }
+
+                slug = this.helperService.generateSlug(
+                    this.slugPrefix,
+                    this.slugMaxLength
+                );
+            }
+        }
+    }
+
+    private async createWithWorkspaceAndSlug(
+        workspaceId: string,
+        actorId: string,
+        { name, description }: ProjectCreateRequestDto,
+        slug: string,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.create({
+                data: {
+                    workspaceId,
+                    name,
+                    slug,
+                    description,
+                    createdBy: actorId,
+                    deletedAt: null,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.workspaceActivityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectCreated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
+
+    async updateDetails(
+        projectId: string,
+        workspaceId: string,
+        actorId: string,
+        { name, description }: ProjectUpdateRequestDto,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    name,
+                    description,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.workspaceActivityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectUpdated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
+
+    async updateSlug(
+        projectId: string,
+        workspaceId: string,
+        actorId: string,
+        slug: string,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    slug,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.workspaceActivityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectUpdated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
+
+    async softDelete(
+        projectId: string,
+        workspaceId: string,
+        actorId: string,
+        requestLog: IRequestLog
+    ): Promise<void> {
+        const today = this.helperService.dateCreate();
+
+        await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    deletedAt: today,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.workspaceActivityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectDeleted,
+                    requestLog
+                )
+            ),
+        ]);
+    }
+}

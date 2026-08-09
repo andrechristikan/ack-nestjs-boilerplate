@@ -74,7 +74,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/user-setting')
+    @Get('/setting/list')
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
@@ -107,7 +107,7 @@ export class NotificationSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/update/read-all')
+    @Post('/update/read')
     async markAllAsRead(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
@@ -120,7 +120,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/setting')
+    @Put('/setting/update')
     async updateUserSetting(
         @AuthJwtPayload('userId')
         userId: string,

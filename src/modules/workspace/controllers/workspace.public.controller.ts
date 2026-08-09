@@ -25,7 +25,7 @@ export class WorkspacePublicController {
     @Response('workspace.invite.preview')
     @FeatureFlagProtected('workspace')
     @ApiKeyProtected()
-    @Get('/invite/:inviteToken')
+    @Get('/invite/:inviteToken/preview')
     async invitePreview(
         @Param('inviteToken', RequestRequiredPipe)
         inviteToken: string

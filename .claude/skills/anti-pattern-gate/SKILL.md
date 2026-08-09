@@ -104,16 +104,25 @@ When the diff touches controllers, services, repositories, or module wiring, als
 | A `@Workspace*Protected()` / `@Project*Protected()` on an **admin**-scope route | Admin scope carries no workspace or project guard — `rules/http.md` |
 | An admin route narrowed to a workspace or project by the `x-workspace-id` header instead of an explicit path param | Admin scope carries no workspace or project guard — `rules/http.md` |
 | `EnumRoleType.superAdmin` listed in a `@RoleProtected(...)` call | `@RoleProtected` never lists `superAdmin` — `rules/http.md` |
+| A new `x-*` request header read by a middleware or guard but missing from `request.config.ts` → `cors.allowedHeader` | Custom request headers — `rules/http.md` |
+| A header name written as a string literal in a middleware or guard instead of read from config | Custom request headers — `rules/http.md` |
 | A guard resolving an entity and deciding a business rule inline | Guards — `rules/http.md` |
 | A credential assigned onto `request.<field>` by a guard | Guards — `rules/http.md`, `rules/security.md` |
 | A 2FA, account-state, or ownership check written in a controller | Controllers — `rules/http.md` |
 | A controller assembling pagination metadata by hand | Controllers — `rules/http.md` |
 | A bare `:id` route param, or a param name disagreeing across route / `@Param` / doc constant | Route params — `rules/http.md` |
+| `@HttpCode(HttpStatus.OK)` on a `@Get` / `@Put` / `@Patch` / `@Delete` — only `@Post` defaults to 201 | Decorator order — `rules/http.md` |
 | A controller handler that is not `async` | Controllers — `rules/http.md` |
 | A controller handler returning a bare DTO instead of an envelope type | Controllers — `rules/http.md` |
 | `return { data: undefined }` manufactured for a handler that has nothing to return | Controllers — `rules/http.md` |
-| A dash-compound VERB in a route path (`update-role`, `soft-delete`, `update-status`) | Route path shape — `rules/http.md` |
-| A route where the id does not come immediately after the action (`update/read/:id`) | Route path shape — `rules/http.md` |
+| A dash-compound VERB in a route path (`update-role`, `soft-delete`, `update-status`, `read-all`, `change-password`, `generate-presign`) | Route path shape — `rules/http.md` |
+| **NOT a smell:** `sign-up` — one lexical verb, the kebab spelling of `signUp`; collapsing it to `signup` is the defect | Route path shape — `rules/http.md` |
+| Two verbs in one route path (`/update/:termPolicyId/content/update`, `/update/:apiKeyId/reset`) | Route path shape — `rules/http.md` |
+| An HTTP method that disagrees with its action (`@Post` on `/get/…`, `@Delete` on `/update/…`) | Route path shape — `rules/http.md` |
+| A route path ending on a NOUN, outside a health probe or an action qualified by HOW (`/profile`, `/2fa/status`, `/list/user-setting`) | Route path shape — `rules/http.md` |
+| A plural resource noun in a controller `path:` or a route's sub-resource slot | Route path shape — `rules/http.md` |
+| An own-resource route where the id does not come immediately after the action (`update/read/:id`) | Route path shape — `rules/http.md` |
+| A sub-resource route where the id follows the action instead of the namespace, or where the action is not the LAST segment (`/member/remove/:id`) | Route path shape — `rules/http.md` |
 | An ObjectId param validated by `RequestIsValidObjectIdPipe` WITHOUT `RequestRequiredPipe` in front of it | The pipes are a pair — `rules/http.md` |
 | `RequestRequiredPipe` removed from a param because it "looks redundant" | The pipes are a pair — `rules/http.md` |
 | A body field duplicating a path param | Route params — `rules/http.md` |

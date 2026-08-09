@@ -296,7 +296,6 @@ export class WorkspaceUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Delete('/delete')
     async softDelete(
         @WorkspaceCurrent() workspace: Workspace,
@@ -346,8 +345,7 @@ export class WorkspaceUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Patch('/member/update/:workspaceMemberId/role')
+    @Patch('/member/:workspaceMemberId/role/update')
     async memberUpdateRole(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
@@ -376,8 +374,7 @@ export class WorkspaceUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Delete('/member/remove/:workspaceMemberId')
+    @Delete('/member/:workspaceMemberId/remove')
     async memberRemove(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
@@ -456,7 +453,7 @@ export class WorkspaceUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/invite/resend/:workspaceInviteId')
+    @Post('/invite/:workspaceInviteId/resend')
     async inviteResend(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
@@ -483,8 +480,7 @@ export class WorkspaceUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Delete('/invite/revoke/:workspaceInviteId')
+    @Delete('/invite/:workspaceInviteId/revoke')
     async inviteRevoke(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
@@ -580,7 +576,7 @@ export class WorkspaceUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/join-request/accept/:workspaceJoinRequestId')
+    @Post('/join-request/:workspaceJoinRequestId/accept')
     async joinRequestAccept(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
@@ -608,7 +604,7 @@ export class WorkspaceUserController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/join-request/reject/:workspaceJoinRequestId')
+    @Post('/join-request/:workspaceJoinRequestId/reject')
     async joinRequestReject(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,

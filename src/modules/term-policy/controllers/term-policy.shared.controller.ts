@@ -51,7 +51,7 @@ export class TermPolicySharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/accepted')
+    @Get('/acceptance/list')
     async listAccepted(
         @PaginationCursorQuery()
         pagination: IPaginationQueryCursorParams<

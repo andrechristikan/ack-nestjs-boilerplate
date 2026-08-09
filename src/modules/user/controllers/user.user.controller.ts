@@ -28,7 +28,7 @@ export class UserUserController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/delete/self')
+    @Delete('/self/delete')
     async deleteSelf(@AuthJwtPayload('userId') userId: string): Promise<void> {
         await this.userService.deleteSelf(userId);
     }

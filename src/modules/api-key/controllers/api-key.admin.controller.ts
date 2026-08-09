@@ -134,7 +134,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:apiKeyId/reset')
+    @Patch('/reset/:apiKeyId')
     async reset(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         apiKeyId: string

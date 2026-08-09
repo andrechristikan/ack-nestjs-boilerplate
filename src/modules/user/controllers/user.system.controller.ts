@@ -89,7 +89,7 @@ export class UserSystemController {
     @Response('user.checkUsername')
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/check/username')
+    @Post('/username/check')
     async checkUsername(
         @Body() body: UserCheckUsernameRequestDto
     ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
@@ -100,7 +100,7 @@ export class UserSystemController {
     @Response('user.checkEmail')
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/check/email')
+    @Post('/email/check')
     async checkEmail(
         @Body() body: UserCheckEmailRequestDto
     ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {

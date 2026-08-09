@@ -117,7 +117,7 @@ export class UserPublicController {
     @UserPublicVerifyEmailDoc()
     @Response('user.verifyEmail')
     @ApiKeyProtected()
-    @Patch('/verify/email')
+    @Patch('/email/verify')
     async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
         await this.userService.verifyEmail(body);
     }
@@ -126,7 +126,7 @@ export class UserPublicController {
     @Response('user.sendEmailVerification')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/send/email')
+    @Post('/email/send')
     async sendEmailVerification(
         @Body() body: UserSendEmailVerificationRequestDto
     ): Promise<void> {
@@ -149,7 +149,6 @@ export class UserPublicController {
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Patch('/password/reset')
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto

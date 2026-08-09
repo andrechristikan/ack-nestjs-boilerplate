@@ -34,7 +34,7 @@ import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
-@ApiTags('common.admin.featureFlag')
+@ApiTags('modules.admin.featureFlag')
 @Controller({
     version: '1',
     path: '/feature-flag',

@@ -73,7 +73,7 @@ Match the house style in `rules/operational.md`:
 
 ## What is in scope
 
-Everything at the top level of `docs/` — run `find docs -name '*.md'` and never assume the list. Currently: `activity-log` · `analytics` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `term-policy` · `third-party-integration` · `two-factor` · `vault`.
+Everything at the top level of `docs/` — run `find docs -name '*.md'` and never assume the list. Currently: `activity-log` · `analytics` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `status-codes` · `term-policy` · `third-party-integration` · `two-factor` · `vault`.
 
 Also in scope when they make a claim about the code: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`.
 

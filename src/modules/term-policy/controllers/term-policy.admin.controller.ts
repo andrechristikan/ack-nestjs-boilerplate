@@ -174,7 +174,7 @@ export class TermPolicyAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/generate/content/presign')
+    @Post('/content/presign/generate')
     async generate(
         @Body() body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
@@ -193,7 +193,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:termPolicyId/content/update')
+    @Put('/content/:termPolicyId/update')
     async updateContent(
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
@@ -220,7 +220,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/:termPolicyId/content/add')
+    @Put('/content/:termPolicyId/add')
     async addContent(
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
@@ -247,7 +247,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/update/:termPolicyId/content/remove')
+    @Delete('/content/:termPolicyId/remove')
     async removeContent(
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,
@@ -273,8 +273,7 @@ export class TermPolicyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/get/:termPolicyId/content/:language')
+    @Get('/content/:termPolicyId/:language/get')
     async getContent(
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string,

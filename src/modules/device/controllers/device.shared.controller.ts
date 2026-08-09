@@ -84,7 +84,6 @@ export class DeviceSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,

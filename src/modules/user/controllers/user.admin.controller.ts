@@ -222,7 +222,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:userId/2fa/reset')
+    @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,

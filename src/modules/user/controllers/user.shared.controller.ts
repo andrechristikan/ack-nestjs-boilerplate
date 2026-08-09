@@ -106,7 +106,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/profile')
+    @Get('/profile/get')
     async profile(
         @AuthJwtPayload('userId')
         userId: string
@@ -137,7 +137,7 @@ export class UserSharedController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/generate-presign/photo')
+    @Post('/profile/photo/presign/generate')
     async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,
@@ -152,7 +152,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/profile/update/photo')
+    @Put('/profile/photo/update')
     async updatePhotoProfile(
         @AuthJwtPayload('userId')
         userId: string,
@@ -170,7 +170,7 @@ export class UserSharedController {
     @FileUploadSingle()
     @RequestTimeout('1m')
     @HttpCode(HttpStatus.OK)
-    @Post('/profile/upload/photo')
+    @Post('/profile/photo/upload')
     async uploadPhotoProfile(
         @AuthJwtPayload('userId')
         userId: string,
@@ -194,7 +194,7 @@ export class UserSharedController {
     @FeatureFlagProtected('changePassword')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/change-password')
+    @Patch('/password/change')
     async changePassword(
         @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto
@@ -223,7 +223,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/mobile-number/update/:mobileNumberId')
+    @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @Param(
@@ -248,7 +248,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/mobile-number/delete/:mobileNumberId')
+    @Delete('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
         @Param(
@@ -283,7 +283,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/2fa/status')
+    @Get('/2fa/status/get')
     async getTwoFactorStatus(
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
@@ -325,7 +325,6 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Delete('/2fa/disable')
     async disableTwoFactor(
         @UserCurrent() user: IUser,
@@ -340,7 +339,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Post('/2fa/regenerate-backup-codes')
+    @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
