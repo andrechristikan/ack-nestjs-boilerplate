@@ -18,6 +18,7 @@ import { NotificationEmailUtil } from '@modules/notification/utils/notification.
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 import { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
@@ -213,7 +214,8 @@ export class WorkspaceService implements IWorkspaceService {
         };
 
         if (existingUser) {
-            // @note: swap in UserUtil.encryptedLink and importing UserModule cycles back.
+            // Encrypted here rather than through UserUtil: WorkspaceModule
+            // cannot import UserModule.
             const encryptedInviteAcceptLink =
                 this.helperService.aes256EncryptSimple(
                     tokenData.link,
@@ -260,7 +262,8 @@ export class WorkspaceService implements IWorkspaceService {
 
         await Promise.all(
             reviewers.map(reviewer => {
-                // @note: hoist this out of the loop and every reviewer but the first fails decrypt.
+                // Encrypted once per reviewer: the key is the reviewer's own
+                // userId, so one shared ciphertext decrypts for nobody else.
                 const encryptedJoinRequestReviewLink =
                     this.helperService.aes256EncryptSimple(
                         link,
@@ -339,6 +342,7 @@ export class WorkspaceService implements IWorkspaceService {
         return member;
     }
 
+    /** Enforces `allowedRoles` against the caller's membership. An `owner` satisfies every role check structurally and is therefore never listed in a route's `allowedRoles`. */
     validateWorkspaceRoleGuard(
         member: WorkspaceMember | null,
         allowedRoles: EnumWorkspaceMemberRole[]
@@ -347,7 +351,6 @@ export class WorkspaceService implements IWorkspaceService {
             throw new WorkspaceRoleForbiddenException();
         }
 
-        // @note: fold this into allowedRoles and every @WorkspaceMemberProtected(admin) route rejects the owner.
         if (member.role === EnumWorkspaceMemberRole.owner) {
             return member;
         }
@@ -790,7 +793,8 @@ export class WorkspaceService implements IWorkspaceService {
     async resendInvite(
         workspace: Workspace,
         actorId: string,
-        workspaceInviteId: string
+        workspaceInviteId: string,
+        { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
         await this.assertInvitationAllowed();
 
@@ -805,7 +809,7 @@ export class WorkspaceService implements IWorkspaceService {
             throw new WorkspaceInviteAlreadyProcessedException();
         }
 
-        const tokenData = this.createInviteTokenData();
+        const tokenData = this.createInviteTokenData(expiryDuration);
 
         const invite = await this.workspaceInviteRepository.rotateForResend(
             workspaceInviteId,
@@ -867,7 +871,6 @@ export class WorkspaceService implements IWorkspaceService {
             throw new WorkspaceInviteInvalidException();
         }
 
-        // @note: without this, a repeat claim hits the workspaceId+userId unique constraint raw.
         const existingMember =
             await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 invite.workspaceId,
@@ -911,6 +914,7 @@ export class WorkspaceService implements IWorkspaceService {
         };
     }
 
+    /** Resolves a public workspace by slug. A workspace that exists but is not public reports the same `notFound` as one that does not exist, so a slug cannot be probed. */
     async previewWorkspace(
         slug: string
     ): Promise<IResponseReturn<WorkspacePreviewResponseDto>> {
@@ -918,7 +922,6 @@ export class WorkspaceService implements IWorkspaceService {
 
         const workspace =
             await this.workspaceRepository.findActivePublicBySlug(slug);
-        // @note: split this into a 403 for "exists but private" and the slug becomes probeable.
         if (!workspace) {
             throw new WorkspaceNotFoundException();
         }

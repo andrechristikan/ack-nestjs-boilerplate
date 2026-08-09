@@ -49,6 +49,7 @@ import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
@@ -197,7 +198,8 @@ export interface IUserService {
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<void>;
     regenerateTwoFactorBackupCodes(
-        user: IUser
+        user: IUser,
+        body: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>>;
     resetTwoFactorByAdmin(userId: string, updatedBy: string): Promise<void>;
     importByAdmin(

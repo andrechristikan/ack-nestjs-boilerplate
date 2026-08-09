@@ -124,7 +124,7 @@ export class AuthTwoFactorUtil {
     }
 
     generateEncryptionIv(): string {
-        // Store as a tagged string so we can safely parse/extend formats later.
+        // Tagged with its encoding so the format is identifiable on read.
         return `hex:${randomBytes(16).toString('hex')}`;
     }
 
@@ -309,5 +309,12 @@ export class AuthTwoFactorUtil {
         const retryAfterMs = await this.cacheManager.ttl(key);
 
         return isLocked ? (retryAfterMs ?? 0) : 0;
+    }
+
+    async clearLockTwoFactorAttempt(user: IUser): Promise<void> {
+        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        await this.cacheManager.del(key);
+
+        return;
     }
 }

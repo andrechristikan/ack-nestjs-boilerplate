@@ -27,6 +27,7 @@ import {
 import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
 import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
@@ -339,7 +340,11 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
             summary:
                 'rotate the token and expiry of a pending invite and resend it; the old link stops working',
         }),
-        DocRequest({ params: WorkspaceInviteDocParamsId }),
+        DocRequest({
+            params: WorkspaceInviteDocParamsId,
+            bodyType: EnumDocRequestBodyType.json,
+            dto: WorkspaceInviteResendRequestDto,
+        }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,

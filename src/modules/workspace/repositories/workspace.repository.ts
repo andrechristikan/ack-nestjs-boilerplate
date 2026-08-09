@@ -1,3 +1,4 @@
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -115,13 +116,13 @@ export class WorkspaceRepository {
         });
     }
 
+    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
     async existsBySlug(
         slug: string,
         excludeWorkspaceId?: string
     ): Promise<boolean> {
         const count = await this.databaseService.client.workspace.count({
             where: {
-                // @note: add an active filter here and a soft-deleted slug still holds the unique index.
                 slug,
                 ...(excludeWorkspaceId
                     ? { id: { not: excludeWorkspaceId } }
@@ -216,8 +217,10 @@ export class WorkspaceRepository {
                     err instanceof Prisma.PrismaClientKnownRequestError &&
                     err.code === 'P2002';
 
-                if (!isSlugCollision || attemptsLeft <= 0) {
+                if (!isSlugCollision) {
                     throw err;
+                } else if (attemptsLeft <= 0) {
+                    throw new DatabaseUniqueValueGenerationFailedException();
                 }
 
                 slug = this.helperService.generateSlug(
@@ -310,6 +313,7 @@ export class WorkspaceRepository {
         return workspace;
     }
 
+    /** Stamps the workspace `deletedAt` and cascades in one transaction: still-active projects are soft-deleted, pending invites become `expired`, and pending join requests become `cancelled` rather than `rejected`, which would imply a reviewer decision nobody made. */
     async softDelete(
         workspaceId: string,
         actorId: string,
@@ -325,7 +329,6 @@ export class WorkspaceRepository {
                     updatedBy: actorId,
                 },
             }),
-            // @note: drop the filter and projects deleted earlier lose their real deletedAt.
             this.databaseService.client.project.updateMany({
                 where: {
                     workspaceId,
@@ -336,7 +339,6 @@ export class WorkspaceRepository {
                     updatedBy: actorId,
                 },
             }),
-            // @note: drop the status filter and settled invites lose their real outcome.
             this.databaseService.client.workspaceInvite.updateMany({
                 where: {
                     workspaceId,
@@ -347,7 +349,6 @@ export class WorkspaceRepository {
                     updatedBy: actorId,
                 },
             }),
-            // @note: swap cancelled for rejected and the row reads as a reviewer decision with no reviewer.
             this.databaseService.client.workspaceJoinRequest.updateMany({
                 where: {
                     workspaceId,

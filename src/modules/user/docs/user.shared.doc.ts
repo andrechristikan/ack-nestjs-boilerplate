@@ -23,6 +23,7 @@ import {
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
@@ -348,7 +349,11 @@ export function UserSharedTwoFactorRegenerateBackupDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.twoFactor.regenerate', {
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
+            dto: UserTwoFactorRegenerateBackupCodeRequestDto,
+        }),
+        DocResponse('user.twoFactor.regenerateBackupCodes', {
             dto: UserTwoFactorEnableResponseDto,
         })
     );

@@ -54,6 +54,7 @@ import {
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
@@ -341,9 +342,10 @@ export class UserSharedController {
     @ApiKeyProtected()
     @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @Body() body: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.regenerateTwoFactorBackupCodes(user);
+        return this.userService.regenerateTwoFactorBackupCodes(user, body);
     }
 
     @UserSharedLogoutDoc()

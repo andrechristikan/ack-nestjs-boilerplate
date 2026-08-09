@@ -1,3 +1,4 @@
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -57,6 +58,7 @@ export class ProjectRepository {
         });
     }
 
+    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
     async existsBySlugInWorkspace(
         workspaceId: string,
         slug: string,
@@ -64,7 +66,6 @@ export class ProjectRepository {
     ): Promise<boolean> {
         const count = await this.databaseService.client.project.count({
             where: {
-                // @note: add an active filter here and a soft-deleted slug still holds the unique index.
                 workspaceId,
                 slug,
                 ...(excludeProjectId ? { id: { not: excludeProjectId } } : {}),
@@ -165,8 +166,10 @@ export class ProjectRepository {
                     err instanceof Prisma.PrismaClientKnownRequestError &&
                     err.code === 'P2002';
 
-                if (!isSlugCollision || attemptsLeft <= 0) {
+                if (!isSlugCollision) {
                     throw err;
+                } else if (attemptsLeft <= 0) {
+                    throw new DatabaseUniqueValueGenerationFailedException();
                 }
 
                 slug = this.helperService.generateSlug(

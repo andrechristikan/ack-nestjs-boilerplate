@@ -2,7 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
-export abstract class DatabaseUniqueValueGenerationFailedException extends AppBaseException {
+export class DatabaseUniqueValueGenerationFailedException extends AppBaseException {
     readonly module = 'database';
     readonly statusCode = EnumDatabaseStatusCodeError.uniqueValueGenerationFailed;
     readonly statusCodeKey = EnumDatabaseStatusCodeError[this.statusCode];

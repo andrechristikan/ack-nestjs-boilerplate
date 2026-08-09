@@ -1,4 +1,5 @@
 import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -77,6 +78,7 @@ export class UserRepository {
     private readonly personalWorkspaceNamePattern: string;
     private readonly workspaceSlugPrefix: string;
     private readonly workspaceSlugMaxLength: number;
+    private readonly workspaceSlugMaxAttempts: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -94,6 +96,9 @@ export class UserRepository {
         )!;
         this.workspaceSlugMaxLength = this.configService.get<number>(
             'workspace.slugMaxLength'
+        )!;
+        this.workspaceSlugMaxAttempts = this.configService.get<number>(
+            'workspace.slugMaxAttempts'
         )!;
     }
 
@@ -431,8 +436,10 @@ export class UserRepository {
         createdBy: string
     ): Promise<User> {
         const { ipAddress, userAgent, geoLocation } = requestLog;
-        const workspaceContext =
-            this.resolvePersonalWorkspaceContext(username);
+        const workspaceContext = await this.resolvePersonalWorkspaceContext(
+            username,
+            []
+        );
 
         return this.databaseService.client.$transaction(
             async tx => {
@@ -1226,9 +1233,10 @@ export class UserRepository {
     ): Promise<IUserSignUpWorkspaceContext | null> {
         return workspaceInviteToken
             ? this.resolveInviteWorkspaceContext(workspaceInviteToken, email)
-            : this.resolvePersonalWorkspaceContext(username);
+            : this.resolvePersonalWorkspaceContext(username, []);
     }
 
+    /** Resolves a sign-up invite token to its workspace context, accepting only pending, unexpired invites whose workspace is still active. */
     private async resolveInviteWorkspaceContext(
         token: string,
         email: string
@@ -1242,7 +1250,6 @@ export class UserRepository {
                     token: hashedToken,
                     status: EnumWorkspaceInviteStatus.pending,
                     expiredAt: { gt: today },
-                    // @note: drop this and a signup can join a workspace deleted before the cascade.
                     workspace: { OR: WorkspaceActiveFilter },
                 },
             });
@@ -1261,16 +1268,45 @@ export class UserRepository {
         };
     }
 
-    private resolvePersonalWorkspaceContext(
-        username: string
-    ): IUserSignUpWorkspacePersonal {
+    /** Draws a workspace slug that is free in the database and absent from `reservedSlugs`, the slugs the caller has already claimed but not yet written. */
+    private async generateUniqueWorkspaceSlug(
+        reservedSlugs: string[]
+    ): Promise<string> {
+        let attemptsLeft = this.workspaceSlugMaxAttempts;
+
+        while (attemptsLeft > 0) {
+            attemptsLeft -= 1;
+
+            const slug = this.helperService.generateSlug(
+                this.workspaceSlugPrefix,
+                this.workspaceSlugMaxLength
+            );
+            if (reservedSlugs.includes(slug)) {
+                continue;
+            }
+
+            const taken = await this.databaseService.client.workspace.findFirst(
+                {
+                    where: { slug },
+                    select: { id: true },
+                }
+            );
+            if (!taken) {
+                return slug;
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
+    }
+
+    private async resolvePersonalWorkspaceContext(
+        username: string,
+        reservedSlugs: string[]
+    ): Promise<IUserSignUpWorkspacePersonal> {
         return {
             type: EnumUserSignUpWorkspaceContextType.personal,
             workspaceId: this.databaseUtil.createId(),
-            slug: this.helperService.generateSlug(
-                this.workspaceSlugPrefix,
-                this.workspaceSlugMaxLength
-            ),
+            slug: await this.generateUniqueWorkspaceSlug(reservedSlugs),
             name: this.personalWorkspaceNamePattern.replace(
                 '{username}',
                 username
@@ -2067,6 +2103,7 @@ export class UserRepository {
                     update: {
                         secret: secretEncrypted,
                         iv,
+                        attempt: 0,
                         updatedAt: now,
                         updatedBy: userId,
                     },
@@ -2114,6 +2151,7 @@ export class UserRepository {
                     twoFactor: {
                         update: {
                             enabled: true,
+                            requiredSetup: false,
                             confirmedAt: twoFactor?.confirmedAt ?? now,
                             backupCodes: backupCodesHashed,
                             lastUsedAt: now,
@@ -2254,6 +2292,7 @@ export class UserRepository {
                 twoFactor: {
                     update: {
                         requiredSetup: true,
+                        attempt: 0,
                         backupCodes: [],
                         secret: null,
                         iv: null,
@@ -2294,7 +2333,7 @@ export class UserRepository {
         });
     }
 
-    async increaseTwoFactorAttempt(userId: string): Promise<User> {
+    async increaseTwoFactorAttempt(userId: string): Promise<IUser> {
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
@@ -2305,6 +2344,10 @@ export class UserRepository {
                         },
                     },
                 },
+            },
+            include: {
+                role: true,
+                twoFactor: true,
             },
         });
     }
@@ -2349,17 +2392,27 @@ export class UserRepository {
                 },
             });
 
+        const workspaceContexts: IUserSignUpWorkspacePersonal[] = [];
+        for (const username of usernames) {
+            workspaceContexts.push(
+                await this.resolvePersonalWorkspaceContext(
+                    username,
+                    workspaceContexts.map(({ slug }) => slug)
+                )
+            );
+        }
+
         const users = await this.databaseService.client.$transaction(
             async tx => {
                 const usersToCreate: Prisma.PrismaPromise<User>[] = [];
                 const relatedToCreate: Prisma.PrismaPromise<unknown>[] = [];
 
                 for (const [index, { email, name }] of data.entries()) {
-                    // @note: reuse the caller's id — the temporary password is AES-keyed with it.
+                    // The caller's id is reused: the temporary password is
+                    // AES-keyed with it.
                     const userId = userIds[index];
                     const username = usernames[index];
-                    const workspaceContext =
-                        this.resolvePersonalWorkspaceContext(username);
+                    const workspaceContext = workspaceContexts[index];
                     const {
                         passwordCreated,
                         passwordExpired,

@@ -128,6 +128,7 @@ import {
 import { Duration } from 'luxon';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
@@ -343,7 +344,6 @@ export class UserService implements IUserService {
                 createdBy
             );
 
-            // @note: send email after all creation
             await this.notificationUtil.sendWelcomeByAdmin(
                 created.id,
                 {
@@ -814,7 +814,6 @@ export class UserService implements IUserService {
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
 
-            // @note: send email after all creation
             await this.notificationUtil.sendTemporaryPasswordByAdmin(
                 updated.id,
                 {
@@ -910,7 +909,6 @@ export class UserService implements IUserService {
                     : Promise.resolve(),
             ]);
 
-            // @note: send email after all creation
             await this.notificationUtil.sendChangePassword(user.id);
 
             return;
@@ -1036,7 +1034,6 @@ export class UserService implements IUserService {
                 workspaceContext!
             );
 
-            // @note: send email after all creation
             await this.notificationUtil.sendWelcomeSocial(user.id);
         }
 
@@ -1199,7 +1196,6 @@ export class UserService implements IUserService {
                 workspaceContext!
             );
 
-            // @note: send email after all creation
             await this.notificationUtil.sendWelcome(created.id, {
                 expiredAt: this.helperService.dateFormatToIso(
                     emailVerification.expiredAt
@@ -1239,7 +1235,6 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            // @note: send email after all creation
             await this.notificationUtil.sendVerifiedEmail(verification.userId, {
                 reference: verification.reference,
             });
@@ -1443,7 +1438,6 @@ export class UserService implements IUserService {
                     : Promise.resolve(),
             ]);
 
-            // @note: send email after all creation
             await this.notificationUtil.sendResetPassword(resetPassword.userId);
 
             return;
@@ -1541,7 +1535,6 @@ export class UserService implements IUserService {
                 requestLog
             );
 
-            // @note: send notification after all creation
             await this.notificationUtil.sendVerificationEmail(user.id, {
                 expiredAt: this.helperService.dateFormatToIso(
                     emailVerification.expiredAt
@@ -1647,10 +1640,11 @@ export class UserService implements IUserService {
             }
         );
         if (!verified.isValid) {
-            await this.userRepository.increaseTwoFactorAttempt(user.id);
+            const attempted =
+                await this.userRepository.increaseTwoFactorAttempt(user.id);
 
-            if (this.authTwoFactorUtil.checkAttempt(user)) {
-                await this.authTwoFactorUtil.lockTwoFactorAttempt(user);
+            if (this.authTwoFactorUtil.checkAttempt(attempted)) {
+                await this.authTwoFactorUtil.lockTwoFactorAttempt(attempted);
             }
 
             throw new AuthTwoFactorInvalidException();
@@ -1830,14 +1824,10 @@ export class UserService implements IUserService {
             throw new AuthTwoFactorSetupRequiredException();
         }
 
-        const secret = this.authTwoFactorUtil.decryptSecret(
-            user.twoFactor.secret,
-            user.twoFactor.iv
-        );
-        const isValidCode = this.authTwoFactorUtil.verifyCode(secret, code);
-        if (!isValidCode) {
-            throw new AuthTwoFactorInvalidException();
-        }
+        await this.handleTwoFactorValidation(user, {
+            method: EnumAuthTwoFactorMethod.code,
+            code,
+        });
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
@@ -1868,19 +1858,11 @@ export class UserService implements IUserService {
             throw new AuthTwoFactorNotEnabledException();
         }
 
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
-            user.twoFactor!,
-            {
-                method,
-                code,
-                backupCode,
-            }
-        );
-        if (!verified.isValid) {
-            await this.userRepository.increaseTwoFactorAttempt(user.id);
-
-            throw new AuthTwoFactorInvalidException();
-        }
+        await this.handleTwoFactorValidation(user, {
+            method,
+            code,
+            backupCode,
+        });
 
         try {
             const sessions = await this.sessionRepository.findActive(user.id);
@@ -1897,7 +1879,8 @@ export class UserService implements IUserService {
     }
 
     async regenerateTwoFactorBackupCodes(
-        user: IUser
+        user: IUser,
+        { code }: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
@@ -1905,6 +1888,11 @@ export class UserService implements IUserService {
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
         }
+
+        await this.handleTwoFactorValidation(user, {
+            method: EnumAuthTwoFactorMethod.code,
+            code,
+        });
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
@@ -1954,9 +1942,9 @@ export class UserService implements IUserService {
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
+                this.authTwoFactorUtil.clearLockTwoFactorAttempt(user),
             ]);
 
-            // @note: send email after all creation
             await this.notificationUtil.sendResetTwoFactorByAdmin(
                 user.id,
                 updatedBy
@@ -2047,7 +2035,6 @@ export class UserService implements IUserService {
                 createdBy
             );
 
-            // @note: send email after all creation
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
                 sendEmailPromises.push(
