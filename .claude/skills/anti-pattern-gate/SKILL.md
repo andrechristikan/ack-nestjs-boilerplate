@@ -130,9 +130,10 @@ When the diff touches controllers, services, repositories, or module wiring, als
 | A literal message string passed to `@Response()` instead of an i18n path | Responses — `rules/http.md` |
 | An endpoint with no matching `*.doc.ts` factory | Swagger docs — `rules/http.md` |
 | An inline `@ApiQuery` / `@ApiParam` array literal inside a doc call | Swagger docs — `rules/http.md` |
-| Method JSDoc on a service / repository / controller / seed handler | Comments — `rules/authoring.md` |
-| A line comment that is not `// @note:`, `// TODO`, or `// FIXME` | Comments — `rules/authoring.md` |
-| A `// @note` without the colon, or one that narrates WHAT / defends a rule | Comments — `rules/authoring.md` |
+| Routine method JSDoc on a service / repository / controller / seed handler | Comments — `rules/authoring.md` |
+| A `// @note:` anywhere in `src/` | `@note` is banned — `rules/authoring.md` |
+| An inline `//` comment that is not a `TODO` / `FIXME`, where the code already shows what it says | Comments — `rules/authoring.md` |
+| A comment or JSDoc explaining a CHOICE ("no X here because it would…", "chosen over Y") instead of stating behaviour | Final state only — `rules/authoring.md` |
 
 ## DTOs / validation — `rules/validation.md`
 
@@ -216,9 +217,10 @@ When the diff touches controllers, services, repositories, or module wiring, als
 | A `private` method declared below a public method instead of directly under the constructor | Member order — `rules/authoring.md` |
 | A comment explaining a cast, an obvious call, or what the next line does | Comments — `rules/authoring.md` |
 | A trailing `//` comment to the right of code | Comments — `rules/authoring.md` |
-| Method JSDoc on internal code, or JSDoc with `@param` / `@returns` / `@example` / `@throws` | Comments — `rules/authoring.md` |
+| Routine method JSDoc on internal code, or JSDoc with `@param` / `@returns` / `@example` / `@throws` | Comments — `rules/authoring.md` |
 | JSDoc on an interface, including a per-field comment | Comments — `rules/authoring.md` |
-| A class/module JSDoc narrating history, a decision, or a wiring relationship ("moved from X", "also serves Y, injected from Z") instead of the symbol's current final state | Comments — `rules/authoring.md` |
+| Any comment or JSDoc narrating history, a decision, or a wiring relationship ("moved from X", "also serves Y, injected from Z") instead of the symbol's current final state | Final state only — `rules/authoring.md` |
+| A `// @note:` surviving anywhere in `src/` | `@note` is banned — `rules/authoring.md` |
 | An existing rule-compliant comment deleted or rephrased during a refactor | Comments — `rules/authoring.md` |
 | `logger.error('message', error)` — message first | Logging — `rules/operational.md` |
 | `process.env` read directly in feature code | Config — `rules/operational.md` |

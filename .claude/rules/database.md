@@ -26,6 +26,16 @@ Setup, seeding, and composite types are in `docs/database.md`. This file is the 
 - Prefer one generic repository method with a discriminator param over a near-duplicate method per variant (OCP).
 - **The repository owns `null → {}` normalization** of filter params before they reach Prisma. A caller that does it has taken the repository's job.
 
+## Generated unique values
+
+A repository that generates a unique value itself — a slug, a reference, any random column behind a unique index — retries a bounded number of times from a `*MaxAttempts` config key, and **throws `DatabaseUniqueValueGenerationFailedException` when the attempts run out**.
+
+- **NEVER let a raw `P2002` escape the repository as the exhaustion signal.** A caller cannot tell "we drew the same random string five times" from "the client sent a duplicate email", and the client receives an untranslated Prisma error either way.
+- A `P2002` that is **not** the generated column is a different failure and is rethrown untouched — the retry loop only owns collisions on the value it drew.
+- Do not fall through and let the write decide. Exhausting the attempt budget is the answer, not a step on the way to one.
+
+This is the one exception to "a repository never throws a typed exception". It is a **`common/database`** exception, not a feature-module one, because the condition belongs to persistence rather than to any domain rule — `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (51800), message `database.error.uniqueValueGenerationFailed`. A repository still never throws a `<feature>` exception and never builds a feature i18n path (`rules/architecture.md`).
+
 ## Transactions
 
 MongoDB transactions require the replica set — that is why `docker-compose` runs one. Two forms:

@@ -2,6 +2,19 @@
 
 Full API in `docs/pagination.md`. `PaginationService` is global and offers two strategies: `offset(...)` and `cursor(...)`.
 
+## The route scope decides the strategy
+
+**`/admin/**` is offset. Every other scope — `/user`, `/shared`, `/system`, `/public` — is cursor.**
+
+Not a per-endpoint judgement. There is no exception list and no "unless the collection is bounded". A new paginated endpoint takes the strategy of the prefix it is registered under in `src/router/routes/`, and nothing else decides it.
+
+An admin console is the only consumer that needs a total, a page number and a jump-to-page; `IPaginationCursorReturn` has none of those. Offset also cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`), so it is a narrow-then-browse tool, never a scan tool — which is why no other scope may use it.
+
+Consequences that are part of the rule, not side effects:
+
+- A non-admin list has **no `count`, no `page`, no `totalPage`**. `includeCount` is a repository-side argument, never a query param; set it only when a concrete screen needs the number.
+- **Every field in a cursor route's `availableOrderBy` must be immutable.** A row whose sort key changes mid-scroll genuinely moves, and no tiebreaker can stabilise it — `updatedAt`, `lastActiveAt` and a renameable `name` are illegal on a cursor route and legal on an offset one. When a module has both an admin route and a non-admin one, that is two constants, not one shared list.
+
 ## Where it runs
 
 **`PaginationService` is injected in REPOSITORIES.** Not in services, not in controllers. The repository builds the Prisma call, hands it to the pagination service, and returns `IResponsePagingReturn<T>`. The service passes it through; the controller returns it.
