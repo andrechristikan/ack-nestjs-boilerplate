@@ -95,8 +95,6 @@ export interface INotificationQueuePayload<
     userId: string;
 }
 
-// For push notification
-
 export interface INotificationSendPushPayload {
     userId: string;
     notificationId: string;
@@ -116,7 +114,6 @@ export interface INotificationPushCleanupTokenQueuePayload {
     };
 }
 
-// For email notification
 export interface INotificationEmailSendPayload {
     userId: string;
     notificationId: string;

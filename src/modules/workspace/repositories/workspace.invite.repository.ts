@@ -66,6 +66,7 @@ export class WorkspaceInviteRepository {
         return count;
     }
 
+    /** Finds a pending invite by hashed token, restricted to invites whose workspace is still active, so an invite orphaned before the soft-delete cascade existed cannot be claimed. */
     async findPendingByHashedToken(
         hashedToken: string
     ): Promise<WorkspaceInvite | null> {
@@ -78,7 +79,6 @@ export class WorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                // @note: drop this and invites orphaned before the softDelete cascade stay claimable.
                 workspace: {
                     OR: WorkspaceActiveFilter,
                 },
@@ -115,8 +115,8 @@ export class WorkspaceInviteRepository {
         return count > 0;
     }
 
+    /** Reads the user table directly rather than through `UserRepository`, which this module cannot inject: `UserModule` imports `WorkspaceModule`. */
     async findActiveUserByEmail(email: string): Promise<User | null> {
-        // @note: reach for UserRepository here and DI cycles — UserModule imports WorkspaceModule.
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null, status: EnumUserStatus.active },
         });
@@ -254,6 +254,7 @@ export class WorkspaceInviteRepository {
         ]);
     }
 
+    /** Accepts an invite for a user who already exists: it creates the membership and settles the invite, and never creates a user row. */
     async acceptForExistingUser(
         userId: string,
         invite: WorkspaceInvite,
@@ -262,7 +263,6 @@ export class WorkspaceInviteRepository {
     ): Promise<WorkspaceMember> {
         const today = this.helperService.dateCreate();
 
-        // @note: swap in UserRepository's invite-accept branch and it creates a second user row.
         return this.databaseService.client.$transaction(async tx => {
             const member = await tx.workspaceMember.create({
                 data: {

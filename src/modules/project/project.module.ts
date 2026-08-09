@@ -7,7 +7,6 @@ import { Module } from '@nestjs/common';
 
 /** Project guard/service layer backing `@Project*Protected`; HTTP controllers are wired through the router modules. */
 @Module({
-    // @note: remove this import and DI breaks — util/repository come from here.
     imports: [WorkspaceModule],
     exports: [ProjectService, ProjectRepository, ProjectMemberRepository],
     providers: [

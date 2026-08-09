@@ -2,7 +2,7 @@ import { DatabaseResponseDto } from '@common/database/dtos/response/database.res
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
-/** Public workspace profile resolved by slug for an unauthenticated caller. */
+/** Public workspace profile resolved by slug for an unauthenticated caller. Every audit column is excluded, so a guessable slug reveals nothing about who runs the workspace. */
 export class WorkspacePreviewResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
@@ -29,7 +29,6 @@ export class WorkspacePreviewResponseDto extends DatabaseResponseDto {
     @Expose()
     description: string | null;
 
-    // @note: drop an exclude here and anyone guessing a public slug learns who runs the workspace.
     @ApiHideProperty()
     @Exclude()
     createdBy: string | null;

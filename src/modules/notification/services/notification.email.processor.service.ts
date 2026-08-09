@@ -623,7 +623,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                 expiredAt,
             } = job.data.data!;
 
-            // @note: no userId yet, so the key is `reference`, not userId
+            // Keyed by `reference`: an unregistered invitee has no userId yet.
             const inviteAcceptLink = this.userUtil.decryptedLink(
                 reference,
                 encryptedInviteAcceptLink

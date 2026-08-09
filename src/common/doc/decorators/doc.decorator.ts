@@ -51,8 +51,8 @@ import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 
-// @note SchemaObject is not part of @nestjs/swagger's public exports; derive it from
-// the public generateSchema return type instead of deep-importing dist internals.
+// Derived from the public generateSchema return type: SchemaObject is not part
+// of @nestjs/swagger's public exports and lives in dist internals.
 type SchemaObject = ReturnType<typeof generateSchema>['schema'];
 
 function createSchemaObject(doc: IDocOfOptions): SchemaObject {

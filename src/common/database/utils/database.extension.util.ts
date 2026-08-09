@@ -96,8 +96,8 @@ export class DatabaseExtensionUtil {
             },
             model: {
                 $allModels: {
-                    // @note Must stay a method, not an arrow: Prisma.getExtensionContext reads `this`
-                    // as the model delegate the call was made on.
+                    // Must stay a method, not an arrow: Prisma.getExtensionContext
+                    // reads `this` as the model delegate the call was made on.
                     async softDelete<T>(
                         this: T,
                         args: IDatabaseSoftDeleteArgs

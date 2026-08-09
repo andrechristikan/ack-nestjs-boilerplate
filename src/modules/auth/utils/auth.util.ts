@@ -32,7 +32,6 @@ import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.res
 /** Auth utility: JWT signing/verification, password hashing, and social token verification. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
-    // jwt
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: string;
     private readonly jwtAccessTokenPublicKey: string;
@@ -50,15 +49,12 @@ export class AuthUtil {
     private readonly jwtIssuer: string;
     private readonly jwtHeader: string;
 
-    // apple
     private readonly appleHeader: string;
     private readonly applePrefix: string;
 
-    // google
     private readonly googleHeader: string;
     private readonly googlePrefix: string;
 
-    // password
     private readonly passwordExpiredInMs: number;
     private readonly passwordExpiredTemporaryInMs: number;
     private readonly passwordSaltLength: number;
@@ -66,11 +62,9 @@ export class AuthUtil {
     private readonly passwordAttempt: boolean;
     private readonly passwordMaxAttempt: number;
 
-    // apple
     private readonly appleClientId: string;
     private readonly appleSignInClientId: string;
 
-    // google
     private readonly googleClient: OAuth2Client;
 
     constructor(
@@ -125,7 +119,6 @@ export class AuthUtil {
         this.googlePrefix =
             this.configService.get<string>('auth.google.prefix')!;
 
-        // password
         this.passwordExpiredInMs = this.configService.get<number>(
             'auth.password.expiredInMs'
         )!;
@@ -145,7 +138,6 @@ export class AuthUtil {
             'auth.password.maxAttempt'
         )!;
 
-        // apple
         this.appleClientId = this.configService.get<string>(
             'auth.apple.clientId'
         )!;
@@ -153,7 +145,6 @@ export class AuthUtil {
             'auth.apple.signInClientId'
         )!;
 
-        // google
         this.googleClient = new OAuth2Client(
             this.configService.get<string>('auth.google.clientId')!,
             this.configService.get<string>('auth.google.clientSecret')!

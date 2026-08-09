@@ -167,6 +167,7 @@ export class ProjectService implements IProjectService {
         return false;
     }
 
+    /** Lists projects in the workspace: a workspace `owner` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
@@ -175,7 +176,6 @@ export class ProjectService implements IProjectService {
             Prisma.ProjectWhereInput
         >
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        // @note: dropping this bypass narrows an owner's list to their own project memberships.
         const memberUserId = this.isWorkspaceOwner(workspaceMember)
             ? null
             : workspaceMember.userId;

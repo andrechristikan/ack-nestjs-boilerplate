@@ -21,7 +21,8 @@ export function FileCsvValidationPipe<TDto extends ClassConstructor<unknown>>(
         private readonly maxDataImport: number;
 
         constructor(private readonly configService: ConfigService) {
-            // @note: take the config KEY, not the value — a pipe factory runs at decoration time.
+            // Takes the config KEY, not the value: a pipe factory runs at
+            // decoration time, before config is resolved.
             this.maxDataImport = this.configService.get<number>(
                 options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;

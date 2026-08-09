@@ -11,7 +11,8 @@ export function QueueProcessor(
     name: EnumQueue,
     options?: Omit<NestWorkerOptions, 'name'>
 ): ClassDecorator {
-    // @note: currently there is no way to inject ConfigService into decorators
+    // Config is read through configKey, not ConfigService: a decorator has no
+    // injection context.
     return Processor(
         {
             name,

@@ -26,7 +26,6 @@ export interface IAuthJwtAccessTokenPayload {
     deviceOwnershipId: string;
     roleId: string;
 
-    // standard JWT claims
     jti?: string;
     iat?: number;
     nbf?: number;

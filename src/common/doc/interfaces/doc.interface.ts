@@ -57,7 +57,6 @@ export interface IDocResponseOptions<T = unknown> {
 export interface IDocResponsePagingOptions<
     T = unknown,
 > extends IDocResponseOptions<T> {
-    // @note required, overrides optional `dto?` from base: paginated data array needs a concrete item schema
     dto: ClassConstructor<T>;
     availableSearch?: string[];
     availableOrder?: string[];

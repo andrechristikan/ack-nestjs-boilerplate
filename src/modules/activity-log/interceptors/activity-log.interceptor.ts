@@ -151,7 +151,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
                 ActivityLogMetadataStoreKey
             ) ?? {};
 
-        // non blocking log saving
+        // Not awaited: writing the log never delays the response.
         this.saveActivityLog(context, request, {
             rawError,
             metadataActivityLogStore,
