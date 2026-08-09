@@ -9,7 +9,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 
 export interface IDeviceService {
     getListOffsetByAdmin(

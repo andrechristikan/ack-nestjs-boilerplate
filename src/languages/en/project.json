@@ -1,0 +1,29 @@
+{
+    "list": "List of projects",
+    "create": "Project created successfully",
+    "get": "Project retrieved successfully",
+    "update": "Project updated successfully",
+    "updateSlug": "Project slug updated successfully",
+    "softDelete": "Project deleted successfully",
+    "member": {
+        "list": "List of project members",
+        "assign": "Project member assigned successfully",
+        "updateRole": "Project member role updated successfully",
+        "remove": "Project member removed successfully",
+        "leave": "You have left the project"
+    },
+    "admin": {
+        "list": "List of all projects",
+        "get": "Project retrieved successfully"
+    },
+    "error": {
+        "notFound": "Sorry, we couldn't find the project.",
+        "memberForbidden": "You are not a member of this project.",
+        "roleForbidden": "You do not have the required role in this project.",
+        "memberPeerForbidden": "You are not allowed to perform this action on this member.",
+        "memberNotFound": "Sorry, we couldn't find that project member.",
+        "memberAlreadyAssigned": "This user is already assigned to the project.",
+        "slugAlreadyExists": "This project slug is already taken in this workspace.",
+        "slugInvalid": "This project slug is not allowed; use letters, digits and hyphens only, within the allowed length."
+    }
+}

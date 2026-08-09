@@ -30,7 +30,6 @@ import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.r
 /** Username/verification/forgot-password token generation, response mapping, and profanity checks. */
 @Injectable()
 export class UserUtil {
-    private readonly usernamePrefix: string;
     private readonly usernamePattern: RegExp;
     private readonly uploadPhotoProfilePath: string;
 
@@ -59,9 +58,6 @@ export class UserUtil {
         private readonly fileService: FileService,
         private readonly responseUtil: ResponseUtil
     ) {
-        this.usernamePrefix = this.configService.get<string>(
-            'user.usernamePrefix'
-        )!;
         this.usernamePattern = this.configService.get<RegExp>(
             'user.usernamePattern'
         )!;
@@ -136,12 +132,6 @@ export class UserUtil {
             extension,
             randomLength: 20,
         });
-    }
-
-    createRandomUsername(): string {
-        const suffix = this.helperService.randomString(6);
-
-        return `${this.usernamePrefix}-${suffix}`.toLowerCase();
     }
 
     /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */

@@ -8,6 +8,10 @@ import {
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { Logger } from '@nestjs/common';
@@ -69,6 +73,38 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                     return this.notificationPushProcessorService.processResetPassword(
                         job as Job<
                             INotificationPushQueuePayload,
+                            IQueueResponse,
+                            EnumNotificationPushProcess
+                        >
+                    );
+                case EnumNotificationPushProcess.workspaceInvite:
+                    return this.notificationPushProcessorService.processWorkspaceInvite(
+                        job as Job<
+                            INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+                            IQueueResponse,
+                            EnumNotificationPushProcess
+                        >
+                    );
+                case EnumNotificationPushProcess.workspaceJoinRequest:
+                    return this.notificationPushProcessorService.processWorkspaceJoinRequest(
+                        job as Job<
+                            INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                            IQueueResponse,
+                            EnumNotificationPushProcess
+                        >
+                    );
+                case EnumNotificationPushProcess.workspaceJoinAccepted:
+                    return this.notificationPushProcessorService.processWorkspaceJoinAccepted(
+                        job as Job<
+                            INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+                            IQueueResponse,
+                            EnumNotificationPushProcess
+                        >
+                    );
+                case EnumNotificationPushProcess.workspaceJoinRejected:
+                    return this.notificationPushProcessorService.processWorkspaceJoinRejected(
+                        job as Job<
+                            INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >

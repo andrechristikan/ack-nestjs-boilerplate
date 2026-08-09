@@ -4,6 +4,7 @@ import {
     IsBoolean,
     IsEnum,
     IsNotEmpty,
+    IsOptional,
     IsString,
     MaxLength,
     MinLength,
@@ -58,4 +59,15 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @IsString()
     @IsEnum([EnumUserSignUpFrom.mobile, EnumUserSignUpFrom.website])
     from: EnumUserSignUpFrom;
+
+    @ApiProperty({
+        description:
+            'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one',
+        example: faker.string.alphanumeric(100),
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    @IsNotEmpty()
+    workspaceInviteToken?: string;
 }

@@ -13,6 +13,7 @@ import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/te
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -190,7 +191,9 @@ export class TermPolicyRepository {
                     },
                     include: {
                         termPolicy: true,
-                        user: true,
+                        user: {
+                            select: UserRefSelect,
+                        },
                     },
                 }),
                 this.databaseService.client.user.update({

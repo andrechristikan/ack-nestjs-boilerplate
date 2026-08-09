@@ -41,6 +41,17 @@ const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
             forgotAllowed: true,
         },
     },
+    {
+        key: 'workspace',
+        description:
+            'Enable the workspace and project router surface, including invitation and join request',
+        rolloutPercent: 100,
+        isEnable: true,
+        metadata: {
+            invitationAllowed: true,
+            joinRequestAllowed: true,
+        },
+    },
 ];
 
 export const migrationFeatureFlagData: Record<

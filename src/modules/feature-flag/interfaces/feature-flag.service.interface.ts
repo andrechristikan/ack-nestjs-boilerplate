@@ -8,12 +8,19 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 
 export interface IFeatureFlagService {
-    validateFeatureFlagGuard(request: IRequestApp, key: string): Promise<void>;
+    validateFeatureFlagGuard(
+        request: IRequestApp,
+        keyPath: string
+    ): Promise<void>;
+    validateFeatureFlagMetadata(
+        key: string,
+        metadataKey: string
+    ): Promise<void>;
     getListByAdmin(
         pagination: IPaginationQueryOffsetParams<
             Prisma.FeatureFlagSelect,

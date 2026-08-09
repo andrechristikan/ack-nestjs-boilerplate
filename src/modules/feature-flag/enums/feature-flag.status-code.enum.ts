@@ -5,4 +5,5 @@ export enum EnumFeatureFlagStatusCodeError {
     predefinedKeyLengthExceeded = 50603,
     predefinedKeyEmpty = 50604,
     predefinedKeyTypeInvalid = 50605,
+    predefinedKeyNotFound = 50606,
 }

@@ -19,6 +19,7 @@ import {
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumWorkspaceJoinRejectReason,
     Notification,
     NotificationUserSetting,
     Prisma,
@@ -585,6 +586,182 @@ export class NotificationRepository {
                 })
             )
         );
+    }
+
+    async createWorkspaceInvite(
+        notificationId: string,
+        userId: string,
+        username: string,
+        workspaceId: string,
+        workspaceName: string,
+        inviterName: string,
+        createdBy: string
+    ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.client.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.workspaceInvite.title',
+                body: 'notification.notify.workspaceInvite.body',
+                userId,
+                metadata: { username, workspaceId, workspaceName, inviterName },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                            { channel: EnumNotificationChannel.email },
+                            { channel: EnumNotificationChannel.push },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createWorkspaceJoinRequest(
+        notificationId: string,
+        userId: string,
+        username: string,
+        workspaceId: string,
+        workspaceName: string,
+        requesterName: string,
+        createdBy: string
+    ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.client.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.workspaceJoinRequest.title',
+                body: 'notification.notify.workspaceJoinRequest.body',
+                userId,
+                metadata: { username, workspaceId, workspaceName, requesterName },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                            { channel: EnumNotificationChannel.email },
+                            { channel: EnumNotificationChannel.push },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createWorkspaceJoinAccepted(
+        notificationId: string,
+        userId: string,
+        username: string,
+        workspaceId: string,
+        workspaceName: string,
+        createdBy: string
+    ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.client.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.workspaceJoinAccepted.title',
+                body: 'notification.notify.workspaceJoinAccepted.body',
+                userId,
+                metadata: { username, workspaceId, workspaceName },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                            { channel: EnumNotificationChannel.email },
+                            { channel: EnumNotificationChannel.push },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    async createWorkspaceJoinRejected(
+        notificationId: string,
+        userId: string,
+        username: string,
+        workspaceId: string,
+        workspaceName: string,
+        rejectReasonCode: EnumWorkspaceJoinRejectReason,
+        createdBy: string
+    ): Promise<Notification> {
+        const today = this.helperService.dateCreate();
+        return this.databaseService.client.notification.create({
+            data: {
+                id: notificationId,
+                type: EnumNotificationType.userActivity,
+                title: 'notification.notify.workspaceJoinRejected.title',
+                body: 'notification.notify.workspaceJoinRejected.body',
+                userId,
+                metadata: {
+                    username,
+                    workspaceId,
+                    workspaceName,
+                    rejectReasonCode,
+                },
+                isRead: false,
+                priority: EnumNotificationPriority.normal,
+                createdBy,
+                deliveries: {
+                    createMany: {
+                        data: [
+                            {
+                                channel: EnumNotificationChannel.silent,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                            { channel: EnumNotificationChannel.email },
+                            { channel: EnumNotificationChannel.push },
+                            {
+                                channel: EnumNotificationChannel.inApp,
+                                processedAt: today,
+                                sentAt: today,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
     }
 
     async markAsRead(

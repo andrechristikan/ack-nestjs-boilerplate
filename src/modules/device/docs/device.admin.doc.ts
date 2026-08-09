@@ -8,7 +8,7 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import {
     DeviceOwnershipDocParamsId,
     DeviceOwnershipDocQueryList,
@@ -28,8 +28,8 @@ export function DeviceAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<DeviceResponseDto>('device.list', {
-            dto: DeviceResponseDto,
+        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+            dto: DeviceOwnershipResponseDto,
         })
     );
 }

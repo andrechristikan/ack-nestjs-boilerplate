@@ -228,7 +228,7 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {
-        return this.userService.resetTwoFactorByAdmin(userId, updatedBy);
+        await this.userService.resetTwoFactorByAdmin(userId, updatedBy);
     }
 
     @UserAdminImportDoc()
@@ -254,11 +254,13 @@ export class UserAdminController {
             RequestRequiredPipe,
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
             FileCsvParsePipe,
-            FileCsvValidationPipe(UserImportRequestDto)
+            FileCsvValidationPipe(UserImportRequestDto, {
+                maxDataImportConfigKey: 'user.maxDataImport',
+            })
         )
         data: UserImportRequestDto[]
     ): Promise<void> {
-        return this.userService.importByAdmin(data, createdBy);
+        await this.userService.importByAdmin(data, createdBy);
     }
 
     @UserAdminExportDoc()

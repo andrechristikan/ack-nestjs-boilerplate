@@ -54,6 +54,10 @@ export class MigrationTemplateEmailNotificationSeed
             newDeviceLoginEmail,
             publishTermPolicyEmail,
             resetPasswordEmail,
+            workspaceInviteEmail,
+            workspaceJoinRequestEmail,
+            workspaceJoinAcceptedEmail,
+            workspaceJoinRejectedEmail,
         ] = await Promise.all([
             this.notificationEmailTemplateService.emailGetChangePassword(),
             this.notificationEmailTemplateService.emailGetWelcomeSocial(),
@@ -68,6 +72,10 @@ export class MigrationTemplateEmailNotificationSeed
             this.notificationEmailTemplateService.emailGetNewDeviceLogin(),
             this.notificationEmailTemplateService.emailGetPublishTermPolicy(),
             this.notificationEmailTemplateService.emailGetResetPassword(),
+            this.notificationEmailTemplateService.emailGetWorkspaceInvite(),
+            this.notificationEmailTemplateService.emailGetWorkspaceJoinRequest(),
+            this.notificationEmailTemplateService.emailGetWorkspaceJoinAccepted(),
+            this.notificationEmailTemplateService.emailGetWorkspaceJoinRejected(),
         ]);
 
         const promises: Promise<boolean>[] = [];
@@ -186,6 +194,42 @@ export class MigrationTemplateEmailNotificationSeed
             );
         }
 
+        if (!workspaceInviteEmail) {
+            this.logger.log(
+                'Workspace Invite Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportWorkspaceInvite()
+            );
+        }
+
+        if (!workspaceJoinRequestEmail) {
+            this.logger.log(
+                'Workspace Join Request Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportWorkspaceJoinRequest()
+            );
+        }
+
+        if (!workspaceJoinAcceptedEmail) {
+            this.logger.log(
+                'Workspace Join Accepted Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportWorkspaceJoinAccepted()
+            );
+        }
+
+        if (!workspaceJoinRejectedEmail) {
+            this.logger.log(
+                'Workspace Join Rejected Email template missing, importing...'
+            );
+            promises.push(
+                this.notificationEmailTemplateService.emailImportWorkspaceJoinRejected()
+            );
+        }
+
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
@@ -218,6 +262,10 @@ export class MigrationTemplateEmailNotificationSeed
                 this.notificationEmailTemplateService.emailDeleteNewDeviceLogin(),
                 this.notificationEmailTemplateService.emailDeletePublishTermPolicy(),
                 this.notificationEmailTemplateService.emailDeleteResetPassword(),
+                this.notificationEmailTemplateService.emailDeleteWorkspaceInvite(),
+                this.notificationEmailTemplateService.emailDeleteWorkspaceJoinRequest(),
+                this.notificationEmailTemplateService.emailDeleteWorkspaceJoinAccepted(),
+                this.notificationEmailTemplateService.emailDeleteWorkspaceJoinRejected(),
             ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing emails');

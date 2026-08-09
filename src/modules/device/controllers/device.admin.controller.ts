@@ -31,7 +31,7 @@ import {
     DeviceAdminListDoc,
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {

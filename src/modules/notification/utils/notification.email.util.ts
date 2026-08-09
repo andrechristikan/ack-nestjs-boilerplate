@@ -3,6 +3,7 @@ import {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
     INotificationEmailSendPayload,
+    INotificationEmailUnregisteredQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -11,6 +12,11 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteUnregisteredPayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -487,6 +493,126 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${publishTermPolicy.type}-${publishTermPolicy.version}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace invite email for a registered invitee (has `userId`); called by the main notification processor after the `Notification` row is created. */
+    async sendWorkspaceInvite(
+        sendPayload: INotificationEmailSendPayload,
+        data: INotificationWorkspaceInvitePayload
+    ): Promise<void> {
+        const payload: INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.workspaceInvite,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.workspaceInvite}-${data.reference}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); callers bypass `NotificationUtil`'s main-queue orchestration entirely. */
+    async sendWorkspaceInviteUnregistered(
+        email: string,
+        data: INotificationWorkspaceInviteUnregisteredPayload
+    ): Promise<void> {
+        const payload: INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload> =
+            {
+                send: { email },
+                data,
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.workspaceInviteUnregistered,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationProcess.workspaceInviteUnregistered}-${data.reference}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request email for one reviewer (workspace owner/admin). */
+    async sendWorkspaceJoinRequest(
+        sendPayload: INotificationEmailSendPayload,
+        data: INotificationWorkspaceJoinRequestPayload
+    ): Promise<void> {
+        const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.workspaceJoinRequest,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request-accepted email for the requester. */
+    async sendWorkspaceJoinAccepted(
+        sendPayload: INotificationEmailSendPayload,
+        data: INotificationWorkspaceJoinAcceptedPayload
+    ): Promise<void> {
+        const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.workspaceJoinAccepted,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.workspaceJoinAccepted}-${data.workspaceId}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request-rejected email for the requester. */
+    async sendWorkspaceJoinRejected(
+        sendPayload: INotificationEmailSendPayload,
+        data: INotificationWorkspaceJoinRejectedPayload
+    ): Promise<void> {
+        const payload: INotificationEmailQueuePayload<INotificationWorkspaceJoinRejectedPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.emailQueue.add(
+            EnumNotificationProcess.workspaceJoinRejected,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationProcess.workspaceJoinRejected}-${data.workspaceId}-${sendPayload.userId}`,
                     ttl: 1000,
                 },
             }

@@ -4,7 +4,11 @@ import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-val
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogAdminListDoc } from '@modules/activity-log/docs/activity-log.admin.doc';
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import {
+    ActivityLogAdminListByUserDoc,
+    ActivityLogAdminListByWorkspaceDoc,
+} from '@modules/activity-log/docs/activity-log.admin.doc';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -17,20 +21,20 @@ import {
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
-@ApiTags('modules.admin.user.activityLog')
+@ApiTags('modules.admin.activityLog')
 @Controller({
     version: '1',
-    path: '/user/:userId/activity-log',
+    path: '/activity-log',
 })
 export class ActivityLogAdminController {
     constructor(private readonly activityLogService: ActivityLogService) {}
 
-    @ActivityLogAdminListDoc()
-    @ResponsePaging('activityLog.list')
+    @ActivityLogAdminListByUserDoc()
+    @ResponsePaging('activityLog.listByUser')
     @TermPolicyAcceptanceProtected()
     @PolicyAbilityProtected(
         {
@@ -46,9 +50,11 @@ export class ActivityLogAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list')
-    async list(
-        @PaginationOffsetQuery()
+    @Get('/user/:userId/list')
+    async listByUser(
+        @PaginationOffsetQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
         pagination: IPaginationQueryOffsetParams<
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
@@ -56,6 +62,44 @@ export class ActivityLogAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByAdmin(userId, pagination);
+        return this.activityLogService.getListOffsetByUser(userId, pagination);
+    }
+
+    @ActivityLogAdminListByWorkspaceDoc()
+    @ResponsePaging('activityLog.listByWorkspace')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected(
+        {
+            subject: EnumPolicySubject.workspace,
+            action: [EnumPolicyAction.read],
+        },
+        {
+            subject: EnumPolicySubject.activityLog,
+            action: [EnumPolicyAction.read],
+        }
+    )
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/workspace/:workspaceId/list')
+    async listByWorkspace(
+        @PaginationOffsetQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >,
+        @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        workspaceId: string,
+        @Query('userId', new RequestIsValidObjectIdPipe({ optional: true }))
+        userId?: string
+    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+        return this.activityLogService.getListOffsetByWorkspace(
+            workspaceId,
+            userId ?? null,
+            pagination
+        );
     }
 }

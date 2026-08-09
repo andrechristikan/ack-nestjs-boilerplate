@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserTwoFactorResponseDto } from '@modules/user/dtos/response/user.two-factor.response.dto';
 import { Expose, Type } from 'class-transformer';
@@ -12,6 +13,25 @@ export class UserLoginResponseDto {
     })
     @Expose()
     isTwoFactorEnable: boolean;
+
+    @ApiProperty({
+        description:
+            'Id of the workspace the user last switched to; null when never set',
+        example: faker.database.mongodbObjectId(),
+        nullable: true,
+        required: true,
+    })
+    @Expose()
+    lastWorkspaceId: string | null;
+
+    @ApiProperty({
+        description: 'When lastWorkspaceId last changed; null when never set',
+        example: faker.date.recent(),
+        nullable: true,
+        required: true,
+    })
+    @Expose()
+    lastWorkspaceChangedAt: Date | null;
 
     @ApiProperty({
         required: false,

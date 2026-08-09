@@ -127,7 +127,7 @@ export class UserSharedController {
         @Body()
         body: UserUpdateProfileRequestDto
     ): Promise<void> {
-        return this.userService.updateProfile(userId, body);
+        await this.userService.updateProfile(userId, body);
     }
 
     @UserSharedGeneratePhotoProfilePresignDoc()
@@ -158,7 +158,7 @@ export class UserSharedController {
         userId: string,
         @Body() body: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
-        return this.userService.updatePhotoProfile(userId, body);
+        await this.userService.updatePhotoProfile(userId, body);
     }
 
     @UserSharedUploadPhotoProfileDoc()
@@ -184,22 +184,22 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<void> {
-        return this.userService.uploadPhotoProfile(userId, file);
+        await this.userService.uploadPhotoProfile(userId, file);
     }
 
     @UserSharedChangePasswordDoc()
     @Response('user.changePassword')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @AuthJwtAccessProtected()
     @FeatureFlagProtected('changePassword')
+    @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/change-password')
     async changePassword(
         @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto
     ): Promise<void> {
-        return this.userService.changePassword(user, body);
+        await this.userService.changePassword(user, body);
     }
 
     @UserSharedAddMobileNumberDoc()
@@ -274,7 +274,7 @@ export class UserSharedController {
         @Body()
         body: UserClaimUsernameRequestDto
     ): Promise<void> {
-        return this.userService.claimUsername(userId, body);
+        await this.userService.claimUsername(userId, body);
     }
 
     @UserSharedTwoFactorStatusDoc()
@@ -331,7 +331,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorDisableRequestDto
     ): Promise<void> {
-        return this.userService.disableTwoFactor(user, body);
+        await this.userService.disableTwoFactor(user, body);
     }
 
     @UserSharedTwoFactorRegenerateBackupDoc()
@@ -359,7 +359,7 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<void> {
-        return this.userService.logout(userId, sessionId, deviceOwnershipId);
+        await this.userService.logout(userId, sessionId, deviceOwnershipId);
     }
 
     // TODO: Verify number implementation, but which provider?

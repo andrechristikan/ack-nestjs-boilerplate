@@ -7,6 +7,7 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { PasswordHistory, Prisma } from '@generated/prisma-client';
 
@@ -39,7 +40,9 @@ export class PasswordHistoryRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -65,7 +68,9 @@ export class PasswordHistoryRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }

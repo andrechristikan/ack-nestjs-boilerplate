@@ -17,7 +17,7 @@ export class ActivityLogService implements IActivityLogService {
         private readonly activityUtil: ActivityLogUtil
     ) {}
 
-    async getListOffsetByAdmin(
+    async getListOffsetByUser(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
             Prisma.ActivityLogSelect,
@@ -25,7 +25,7 @@ export class ActivityLogService implements IActivityLogService {
         >
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
-            await this.activityRepository.findWithPaginationOffset(
+            await this.activityRepository.findUserScopedWithPaginationOffset(
                 userId,
                 pagination
             );
@@ -38,7 +38,7 @@ export class ActivityLogService implements IActivityLogService {
         };
     }
 
-    async getListCursor(
+    async getListCursorByUser(
         userId: string,
         pagination: IPaginationQueryCursorParams<
             Prisma.ActivityLogSelect,
@@ -46,7 +46,53 @@ export class ActivityLogService implements IActivityLogService {
         >
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         const { data, ...others } =
-            await this.activityRepository.findWithPaginationCursor(
+            await this.activityRepository.findUserScopedWithPaginationCursor(
+                userId,
+                pagination
+            );
+
+        const activityLogs: ActivityLogResponseDto[] =
+            this.activityUtil.mapList(data);
+        return {
+            data: activityLogs,
+            ...others,
+        };
+    }
+
+    async getListOffsetByWorkspace(
+        workspaceId: string,
+        userId: string | null,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+        const { data, ...others } =
+            await this.activityRepository.findByWorkspaceWithPaginationOffset(
+                workspaceId,
+                userId,
+                pagination
+            );
+
+        const activityLogs: ActivityLogResponseDto[] =
+            this.activityUtil.mapList(data);
+        return {
+            data: activityLogs,
+            ...others,
+        };
+    }
+
+    async getListCursorByWorkspace(
+        workspaceId: string,
+        userId: string | null,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+        const { data, ...others } =
+            await this.activityRepository.findByWorkspaceWithPaginationCursor(
+                workspaceId,
                 userId,
                 pagination
             );

@@ -10,8 +10,9 @@ import {
 } from 'class-validator';
 import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
 import { Transform } from 'class-transformer';
+import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
-export class UserCreateRequestDto {
+export class UserCreateRequestDto extends UserClaimUsernameRequestDto {
     @ApiProperty({
         example: faker.internet.email(),
         required: true,

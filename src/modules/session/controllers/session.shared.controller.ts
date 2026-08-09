@@ -65,6 +65,6 @@ export class SessionSharedController {
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        return this.sessionService.revoke(userId, sessionId);
+        await this.sessionService.revoke(userId, sessionId);
     }
 }

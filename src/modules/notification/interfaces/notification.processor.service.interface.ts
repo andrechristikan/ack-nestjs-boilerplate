@@ -11,6 +11,10 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -111,6 +115,34 @@ export interface INotificationProcessorService {
         data: { userId, data },
     }: Job<
         INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceInvite({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinRequest({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinAccepted({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinRejected({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse>;

@@ -2,7 +2,6 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import queueConfig from '@configs/queue.config';
 import {
     QueueConfigKey,
     QueueProcessorConfigKey,
@@ -16,47 +15,106 @@ import { EnumQueue } from '@queues/enums/queue.enum';
 @Module({})
 export class QueueRegisterModule {
     static forRoot(): DynamicModule {
-        const { job } = queueConfig();
-
         const queues = [
-            BullModule.registerQueue({
+            BullModule.registerQueueAsync({
                 name: EnumQueue.notificationEmail,
                 configKey: QueueConfigKey,
-                defaultJobOptions: {
-                    attempts: job.attempts,
-                    backoff: {
-                        type: 'exponential',
-                        delay: job.emailBackoffDelayInMs,
+                imports: [ConfigModule],
+                inject: [ConfigService],
+                useFactory: (configService: ConfigService) => ({
+                    defaultJobOptions: {
+                        attempts: configService.get<number>(
+                            'queue.job.attempts'
+                        ),
+                        backoff: {
+                            type: 'exponential',
+                            delay: configService.get<number>(
+                                'queue.job.emailBackoffDelayInMs'
+                            ),
+                        },
+                        removeOnComplete: configService.get<number>(
+                            'queue.job.removeOnComplete'
+                        ),
+                        removeOnFail: configService.get<number>(
+                            'queue.job.removeOnFail'
+                        ),
                     },
-                    removeOnComplete: job.removeOnComplete,
-                    removeOnFail: job.removeOnFail,
-                },
+                }),
             }),
-            BullModule.registerQueue({
+            BullModule.registerQueueAsync({
                 name: EnumQueue.notificationPush,
                 configKey: QueueConfigKey,
-                defaultJobOptions: {
-                    attempts: job.attempts,
-                    backoff: {
-                        type: 'exponential',
-                        delay: job.pushBackoffDelayInMs,
+                imports: [ConfigModule],
+                inject: [ConfigService],
+                useFactory: (configService: ConfigService) => ({
+                    defaultJobOptions: {
+                        attempts: configService.get<number>(
+                            'queue.job.attempts'
+                        ),
+                        backoff: {
+                            type: 'exponential',
+                            delay: configService.get<number>(
+                                'queue.job.pushBackoffDelayInMs'
+                            ),
+                        },
+                        removeOnComplete: configService.get<number>(
+                            'queue.job.removeOnComplete'
+                        ),
+                        removeOnFail: configService.get<number>(
+                            'queue.job.removeOnFail'
+                        ),
                     },
-                    removeOnComplete: job.removeOnComplete,
-                    removeOnFail: job.removeOnFail,
-                },
+                }),
             }),
-            BullModule.registerQueue({
+            BullModule.registerQueueAsync({
                 name: EnumQueue.notification,
                 configKey: QueueConfigKey,
-                defaultJobOptions: {
-                    attempts: job.attempts,
-                    backoff: {
-                        type: 'exponential',
-                        delay: job.notificationBackoffDelayInMs,
+                imports: [ConfigModule],
+                inject: [ConfigService],
+                useFactory: (configService: ConfigService) => ({
+                    defaultJobOptions: {
+                        attempts: configService.get<number>(
+                            'queue.job.attempts'
+                        ),
+                        backoff: {
+                            type: 'exponential',
+                            delay: configService.get<number>(
+                                'queue.job.notificationBackoffDelayInMs'
+                            ),
+                        },
+                        removeOnComplete: configService.get<number>(
+                            'queue.job.removeOnComplete'
+                        ),
+                        removeOnFail: configService.get<number>(
+                            'queue.job.removeOnFail'
+                        ),
                     },
-                    removeOnComplete: job.removeOnComplete,
-                    removeOnFail: job.removeOnFail,
-                },
+                }),
+            }),
+            BullModule.registerQueueAsync({
+                name: EnumQueue.workspace,
+                configKey: QueueConfigKey,
+                imports: [ConfigModule],
+                inject: [ConfigService],
+                useFactory: (configService: ConfigService) => ({
+                    defaultJobOptions: {
+                        attempts: configService.get<number>(
+                            'queue.job.attempts'
+                        ),
+                        backoff: {
+                            type: 'exponential',
+                            delay: configService.get<number>(
+                                'queue.job.workspaceBackoffDelayInMs'
+                            ),
+                        },
+                        removeOnComplete: configService.get<number>(
+                            'queue.job.removeOnComplete'
+                        ),
+                        removeOnFail: configService.get<number>(
+                            'queue.job.removeOnFail'
+                        ),
+                    },
+                }),
             }),
         ];
 

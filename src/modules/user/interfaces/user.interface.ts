@@ -2,17 +2,34 @@ import {
     Country,
     Device,
     DeviceOwnership,
+    EnumProjectMemberRole,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumWorkspaceMemberRole,
     Role,
     TwoFactor,
     User,
     UserMobileNumber,
+    UserPhoto,
 } from '@generated/prisma-client';
+import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
     role: Role;
     twoFactor: TwoFactor | null;
+}
+
+export interface IUserRef {
+    id: string;
+    name: string | null;
+    username: string;
+    photo: UserPhoto | null;
+    createdAt: Date;
+    createdBy: string | null;
+    updatedAt: Date;
+    updatedBy: string | null;
+    deletedAt: Date | null;
+    deletedBy: string | null;
 }
 
 export interface IUserMobileNumber extends UserMobileNumber {
@@ -74,5 +91,23 @@ export interface IUserVerificationMobileNumberCreate {
 }
 
 export type IUserVerificationCreate =
-    | IUserVerificationEmailCreate
-    | IUserVerificationMobileNumberCreate;
+    IUserVerificationEmailCreate | IUserVerificationMobileNumberCreate;
+
+export interface IUserSignUpWorkspacePersonal {
+    type: EnumUserSignUpWorkspaceContextType.personal;
+    workspaceId: string;
+    slug: string;
+    name: string;
+}
+
+export interface IUserSignUpWorkspaceInvite {
+    type: EnumUserSignUpWorkspaceContextType.invite;
+    workspaceId: string;
+    workspaceInviteId: string;
+    workspaceMemberRole: EnumWorkspaceMemberRole;
+    projectId?: string;
+    projectMemberRole?: EnumProjectMemberRole;
+}
+
+export type IUserSignUpWorkspaceContext =
+    IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;

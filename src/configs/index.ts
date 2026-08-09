@@ -21,6 +21,8 @@ import QueueConfig from '@configs/queue.config';
 import HealthConfig from '@configs/health.config';
 import NotificationConfig from '@configs/notification.config';
 import FileConfig from '@configs/file.config';
+import WorkspaceConfig from '@configs/workspace.config';
+import ProjectConfig from '@configs/project.config';
 
 export default [
     AppConfig,
@@ -46,4 +48,6 @@ export default [
     HealthConfig,
     NotificationConfig,
     FileConfig,
+    WorkspaceConfig,
+    ProjectConfig,
 ];

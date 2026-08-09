@@ -1,6 +1,6 @@
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 

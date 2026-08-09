@@ -7,6 +7,6 @@ export interface IConfigFile {
 export default registerAs(
     'file',
     (): IConfigFile => ({
-        maxDataImport: 1000,
+        maxDataImport: 100,
     })
 );

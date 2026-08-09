@@ -20,6 +20,10 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationProcessorService } from '@modules/notification/interfaces/notification.processor.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -701,6 +705,277 @@ export class NotificationProcessorService implements INotificationProcessorServi
 
         return {
             message: 'User accept term policy notification processed',
+        };
+    }
+
+    async processWorkspaceInvite({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
+        ]);
+
+        if (!user) {
+            return {
+                message: 'User not found, skipping workspace invite notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        const promises = [
+            this.notificationRepository.createWorkspaceInvite(
+                notificationId,
+                user.id,
+                user.username,
+                data!.workspaceId,
+                data!.workspaceName,
+                data!.inviterName,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendWorkspaceInvite(
+                emailPayload,
+                data!
+            ),
+        ];
+
+        if (devices.length > 0) {
+            const pushPayload: INotificationSendPushPayload = {
+                userId,
+                notificationId,
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
+                username: user.username,
+            };
+
+            promises.push(
+                this.notificationPushUtil.sendWorkspaceInvite(
+                    pushPayload,
+                    data!
+                )
+            );
+        }
+
+        const results = await Promise.allSettled(promises);
+
+        return { message: 'Workspace invite notification processed', results };
+    }
+
+    async processWorkspaceJoinRequest({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
+        ]);
+
+        if (!user) {
+            return {
+                message:
+                    'User not found, skipping workspace join request notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        const promises = [
+            this.notificationRepository.createWorkspaceJoinRequest(
+                notificationId,
+                user.id,
+                user.username,
+                data!.workspaceId,
+                data!.workspaceName,
+                data!.requesterName,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendWorkspaceJoinRequest(
+                emailPayload,
+                data!
+            ),
+        ];
+
+        if (devices.length > 0) {
+            const pushPayload: INotificationSendPushPayload = {
+                userId,
+                notificationId,
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
+                username: user.username,
+            };
+
+            promises.push(
+                this.notificationPushUtil.sendWorkspaceJoinRequest(
+                    pushPayload,
+                    data!
+                )
+            );
+        }
+
+        const results = await Promise.allSettled(promises);
+
+        return {
+            message: 'Workspace join request notification processed',
+            results,
+        };
+    }
+
+    async processWorkspaceJoinAccepted({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
+        ]);
+
+        if (!user) {
+            return {
+                message:
+                    'User not found, skipping workspace join accepted notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        const promises = [
+            this.notificationRepository.createWorkspaceJoinAccepted(
+                notificationId,
+                user.id,
+                user.username,
+                data!.workspaceId,
+                data!.workspaceName,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendWorkspaceJoinAccepted(
+                emailPayload,
+                data!
+            ),
+        ];
+
+        if (devices.length > 0) {
+            const pushPayload: INotificationSendPushPayload = {
+                userId,
+                notificationId,
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
+                username: user.username,
+            };
+
+            promises.push(
+                this.notificationPushUtil.sendWorkspaceJoinAccepted(
+                    pushPayload,
+                    data!
+                )
+            );
+        }
+
+        const results = await Promise.allSettled(promises);
+
+        return {
+            message: 'Workspace join accepted notification processed',
+            results,
+        };
+    }
+
+    async processWorkspaceJoinRejected({
+        data: { userId, proceedBy, data },
+    }: Job<
+        INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
+        unknown,
+        EnumNotificationProcess
+    >): Promise<IQueueResponse> {
+        const [user, devices] = await Promise.all([
+            this.userRepository.findOneActiveById(userId),
+            this.deviceOwnershipRepository.findTokensByUserId(userId),
+        ]);
+
+        if (!user) {
+            return {
+                message:
+                    'User not found, skipping workspace join rejected notification',
+            };
+        }
+
+        const notificationId = this.databaseUtil.createId();
+        const emailPayload: INotificationEmailSendPayload = {
+            userId: user.id,
+            email: user.email,
+            username: user.username,
+            notificationId,
+        };
+
+        const promises = [
+            this.notificationRepository.createWorkspaceJoinRejected(
+                notificationId,
+                user.id,
+                user.username,
+                data!.workspaceId,
+                data!.workspaceName,
+                data!.rejectReasonCode,
+                proceedBy
+            ),
+            this.notificationEmailUtil.sendWorkspaceJoinRejected(
+                emailPayload,
+                data!
+            ),
+        ];
+
+        if (devices.length > 0) {
+            const pushPayload: INotificationSendPushPayload = {
+                userId,
+                notificationId,
+                notificationTokens: devices
+                    .map(d => d.device.notificationToken)
+                    .filter((t): t is string => t !== null),
+                username: user.username,
+            };
+
+            promises.push(
+                this.notificationPushUtil.sendWorkspaceJoinRejected(
+                    pushPayload,
+                    data!
+                )
+            );
+        }
+
+        const results = await Promise.allSettled(promises);
+
+        return {
+            message: 'Workspace join rejected notification processed',
+            results,
         };
     }
 }

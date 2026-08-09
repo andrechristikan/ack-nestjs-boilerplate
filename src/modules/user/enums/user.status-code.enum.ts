@@ -26,4 +26,5 @@ export enum EnumUserStatusCodeError {
     twoFactorMethodRequired = 51024,
     notFoundForbidden = 51025,
     importEmailExist = 51026,
+    importUsernameExist = 51027,
 }

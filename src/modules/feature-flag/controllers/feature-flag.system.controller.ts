@@ -6,7 +6,7 @@ import { Prisma } from '@generated/prisma-client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import { FeatureFlagSystemListDoc } from '@modules/feature-flag/docs/feature-flag.system.doc';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
+import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';

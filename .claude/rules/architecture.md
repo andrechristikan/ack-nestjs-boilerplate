@@ -77,6 +77,12 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 - Do not raise "unused / dead code / YAGNI violation" against an export meeting the three conditions — in a review, a PR description, an audit, or a plan. If it fails one, name WHICH one and argue that. "It has no call sites" is not a finding, and neither is "it is new".
 - When the two axes genuinely both apply, **complexity wins**: reject the structure, keep the breadth. The answer is a flatter sibling, never a dropped one.
 
+## Independent awaits run concurrently (HARD)
+
+When two or more `await`s in the same scope do not depend on each other's result, they run in one `Promise.all([...])`. Sequential `await`s there are not a style choice — they add every call's latency together for no reason, and the cost is invisible in review because each line looks correct on its own.
+
+The exceptions are real, so name them when they apply: an await whose argument uses an earlier result, a write that must not happen if an earlier step throws, and anything already inside a Prisma `$transaction` (which sequences by design).
+
 ## Path aliases — relative imports are forbidden
 
 ```

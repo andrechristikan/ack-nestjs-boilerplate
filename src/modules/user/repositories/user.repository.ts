@@ -1,4 +1,5 @@
 import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
@@ -34,9 +35,11 @@ import {
     IUserLogin,
     IUserLoginResult,
     IUserProfile,
+    IUserSignUpWorkspaceContext,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     Country,
     EnumActivityLogAction,
@@ -53,24 +56,46 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumWorkspaceInviteStatus,
+    EnumWorkspaceMemberRole,
     ForgotPassword,
     Prisma,
-    TermPolicyUserAcceptance,
     User,
     UserMobileNumber,
     Verification,
 } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import {
+    IUserSignUpWorkspaceInvite,
+    IUserSignUpWorkspacePersonal,
+} from '@modules/user/interfaces/user.interface';
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 
 @Injectable()
 export class UserRepository {
+    private readonly personalWorkspaceNamePattern: string;
+    private readonly workspaceSlugPrefix: string;
+    private readonly workspaceSlugMaxLength: number;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
-    ) {}
+        private readonly helperService: HelperService,
+        private readonly configService: ConfigService
+    ) {
+        this.personalWorkspaceNamePattern = this.configService.get<string>(
+            'workspace.personalNamePattern'
+        )!;
+        this.workspaceSlugPrefix = this.configService.get<string>(
+            'workspace.slugPrefix'
+        )!;
+        this.workspaceSlugMaxLength = this.configService.get<number>(
+            'workspace.slugMaxLength'
+        )!;
+    }
 
     async findWithPaginationOffset(
         {
@@ -140,6 +165,18 @@ export class UserRepository {
         return this.databaseService.client.user.findMany({
             where: {
                 email: { in: emails },
+            },
+            include: {
+                role: true,
+                twoFactor: true,
+            },
+        });
+    }
+
+    async findByUsernames(usernames: string[]): Promise<IUser[]> {
+        return this.databaseService.client.user.findMany({
+            where: {
+                username: { in: usernames },
             },
             include: {
                 role: true,
@@ -382,8 +419,7 @@ export class UserRepository {
 
     async createByAdmin(
         userId: string,
-        username: string,
-        { countryId, email, name }: UserCreateRequestDto,
+        { username, countryId, email, name }: UserCreateRequestDto,
         {
             passwordCreated,
             passwordExpired,
@@ -391,135 +427,158 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { id: roleId, type: roleType }: IRole,
-        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        requestLog: IRequestLog,
         createdBy: string
     ): Promise<User> {
-        const termPolicies =
-            await this.databaseService.client.termPolicy.findMany({
-                where: {
-                    type: {
-                        in: [
-                            EnumTermPolicyType.termsOfService,
-                            EnumTermPolicyType.privacy,
-                        ],
-                    },
-                    status: EnumTermPolicyStatus.published,
-                },
-                select: {
-                    id: true,
-                },
-            });
+        const { ipAddress, userAgent, geoLocation } = requestLog;
+        const workspaceContext =
+            this.resolvePersonalWorkspaceContext(username);
 
-        const [user] = await this.databaseService.client.$transaction([
-            this.databaseService.client.user.create({
-                data: {
-                    id: userId,
-                    email,
-                    countryId,
-                    roleId,
-                    name,
-                    signUpFrom: EnumUserSignUpFrom.admin,
-                    signUpWith: EnumUserSignUpWith.credential,
-                    passwordCreated,
-                    passwordExpired,
-                    password: passwordHash,
-                    passwordAttempt: 0,
-                    username,
-                    isVerified: roleType === EnumRoleType.user ? false : true,
-                    status: EnumUserStatus.active,
-                    termPolicy: {
-                        [EnumTermPolicyType.cookies]: false,
-                        [EnumTermPolicyType.marketing]: false,
-                        [EnumTermPolicyType.privacy]: true,
-                        [EnumTermPolicyType.termsOfService]: true,
-                    },
-                    createdBy,
-                    deletedAt: null,
-                    passwordHistories: {
-                        create: {
-                            password: passwordHash,
-                            type: EnumPasswordHistoryType.admin,
-                            expiredAt: passwordPeriodExpired,
-                            createdAt: passwordCreated,
-                            createdBy,
-                        },
-                    },
-                    activityLogs: {
-                        createMany: {
-                            data: [
-                                {
-                                    action: EnumActivityLogAction.userCreated,
-                                    description:
-                                        this.activityLogUtil.getDescription(
-                                            EnumActivityLogAction.userCreated
-                                        ),
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy,
-                                },
-                                {
-                                    action: EnumActivityLogAction.userSendVerificationEmail,
-                                    description:
-                                        this.activityLogUtil.getDescription(
-                                            EnumActivityLogAction.userSendVerificationEmail
-                                        ),
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy,
-                                },
+        return this.databaseService.client.$transaction(
+            async tx => {
+                const termPolicies = await tx.termPolicy.findMany({
+                    where: {
+                        type: {
+                            in: [
+                                EnumTermPolicyType.termsOfService,
+                                EnumTermPolicyType.privacy,
                             ],
                         },
+                        status: EnumTermPolicyStatus.published,
                     },
-                    notificationSettings: {
-                        createMany: {
-                            data: Object.values(EnumNotificationChannel)
-                                .map(channel =>
-                                    Object.values(EnumNotificationType).map(
-                                        type => ({
-                                            channel,
-                                            type,
-                                            isActive: true,
-                                        })
-                                    )
-                                )
-                                .flat(),
-                        },
+                    select: {
+                        id: true,
                     },
-                    twoFactor: {
-                        create: {
-                            enabled: false,
-                            requiredSetup: false,
-                            createdBy,
-                        },
-                    },
-                },
-            }),
-            ...termPolicies.map(termPolicy =>
-                this.databaseService.client.termPolicyUserAcceptance.create({
-                    data: {
-                        userId,
-                        termPolicyId: termPolicy.id,
-                        createdBy,
-                    },
-                })
-            ),
-        ]);
+                });
 
-        return user;
+                const createdUser = await tx.user.create({
+                    data: {
+                        id: userId,
+                        email,
+                        countryId,
+                        roleId,
+                        name,
+                        signUpFrom: EnumUserSignUpFrom.admin,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        passwordCreated,
+                        passwordExpired,
+                        password: passwordHash,
+                        passwordAttempt: 0,
+                        username,
+                        isVerified:
+                            roleType === EnumRoleType.user ? false : true,
+                        status: EnumUserStatus.active,
+                        lastWorkspaceId: workspaceContext.workspaceId,
+                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: false,
+                            [EnumTermPolicyType.marketing]: false,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
+                        createdBy,
+                        deletedAt: null,
+                        passwordHistories: {
+                            create: {
+                                password: passwordHash,
+                                type: EnumPasswordHistoryType.admin,
+                                expiredAt: passwordPeriodExpired,
+                                createdAt: passwordCreated,
+                                createdBy,
+                            },
+                        },
+                        activityLogs: {
+                            createMany: {
+                                data: [
+                                    {
+                                        action: EnumActivityLogAction.userCreated,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userCreated
+                                            ),
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy,
+                                    },
+                                    {
+                                        action: EnumActivityLogAction.userSendVerificationEmail,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userSendVerificationEmail
+                                            ),
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy,
+                                    },
+                                    this.buildWorkspaceSignUpActivityLog(
+                                        workspaceContext,
+                                        requestLog,
+                                        createdBy
+                                    ),
+                                ],
+                            },
+                        },
+                        notificationSettings: {
+                            createMany: {
+                                data: Object.values(EnumNotificationChannel)
+                                    .map(channel =>
+                                        Object.values(EnumNotificationType).map(
+                                            type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            })
+                                        )
+                                    )
+                                    .flat(),
+                            },
+                        },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
+                                requiredSetup: false,
+                                createdBy,
+                            },
+                        },
+                    },
+                });
+
+                await Promise.all([
+                    ...this.buildWorkspaceSignUpOperations(
+                        tx,
+                        userId,
+                        workspaceContext,
+                        createdBy
+                    ),
+                    ...termPolicies.map(termPolicy =>
+                        tx.termPolicyUserAcceptance.create({
+                            data: {
+                                userId,
+                                termPolicyId: termPolicy.id,
+                                createdBy,
+                            },
+                        })
+                    ),
+                ]);
+
+                return createdUser;
+            },
+            { timeout: 10_000 }
+        );
     }
 
     async updateStatusByAdmin(
@@ -1160,119 +1219,296 @@ export class UserRepository {
         });
     }
 
+    async resolveWorkspaceSignUpContext(
+        workspaceInviteToken: string | null,
+        email: string,
+        username: string
+    ): Promise<IUserSignUpWorkspaceContext | null> {
+        return workspaceInviteToken
+            ? this.resolveInviteWorkspaceContext(workspaceInviteToken, email)
+            : this.resolvePersonalWorkspaceContext(username);
+    }
+
+    private async resolveInviteWorkspaceContext(
+        token: string,
+        email: string
+    ): Promise<IUserSignUpWorkspaceInvite | null> {
+        const hashedToken = this.helperService.sha256Hash(token);
+        const today = this.helperService.dateCreate();
+
+        const invite =
+            await this.databaseService.client.workspaceInvite.findFirst({
+                where: {
+                    token: hashedToken,
+                    status: EnumWorkspaceInviteStatus.pending,
+                    expiredAt: { gt: today },
+                    // @note: drop this and a signup can join a workspace deleted before the cascade.
+                    workspace: { OR: WorkspaceActiveFilter },
+                },
+            });
+
+        if (!invite || invite.email.toLowerCase() !== email.toLowerCase()) {
+            return null;
+        }
+
+        return {
+            type: EnumUserSignUpWorkspaceContextType.invite,
+            workspaceId: invite.workspaceId,
+            workspaceInviteId: invite.id,
+            workspaceMemberRole: invite.workspaceRole,
+            projectId: invite.projectId ?? undefined,
+            projectMemberRole: invite.projectRole ?? undefined,
+        };
+    }
+
+    private resolvePersonalWorkspaceContext(
+        username: string
+    ): IUserSignUpWorkspacePersonal {
+        return {
+            type: EnumUserSignUpWorkspaceContextType.personal,
+            workspaceId: this.databaseUtil.createId(),
+            slug: this.helperService.generateSlug(
+                this.workspaceSlugPrefix,
+                this.workspaceSlugMaxLength
+            ),
+            name: this.personalWorkspaceNamePattern.replace(
+                '{username}',
+                username
+            ),
+        };
+    }
+
+    private buildWorkspaceSignUpOperations(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        workspaceContext: IUserSignUpWorkspaceContext,
+        actorId: string
+    ): Prisma.PrismaPromise<unknown>[] {
+        if (
+            workspaceContext.type ===
+            EnumUserSignUpWorkspaceContextType.personal
+        ) {
+            return [
+                tx.workspace.create({
+                    data: {
+                        id: workspaceContext.workspaceId,
+                        name: workspaceContext.name,
+                        slug: workspaceContext.slug,
+                        createdBy: actorId,
+                        deletedAt: null,
+                    },
+                }),
+                tx.workspaceMember.create({
+                    data: {
+                        workspaceId: workspaceContext.workspaceId,
+                        userId,
+                        role: EnumWorkspaceMemberRole.owner,
+                        createdBy: actorId,
+                    },
+                }),
+            ];
+        }
+
+        const operations: Prisma.PrismaPromise<unknown>[] = [
+            tx.workspaceMember.create({
+                data: {
+                    workspaceId: workspaceContext.workspaceId,
+                    userId,
+                    role: workspaceContext.workspaceMemberRole,
+                    createdBy: actorId,
+                },
+            }),
+            tx.workspaceInvite.update({
+                where: { id: workspaceContext.workspaceInviteId },
+                data: {
+                    status: EnumWorkspaceInviteStatus.accepted,
+                    acceptedAt: this.helperService.dateCreate(),
+                    acceptedByUserId: userId,
+                    updatedBy: actorId,
+                },
+            }),
+        ];
+
+        if (workspaceContext.projectId && workspaceContext.projectMemberRole) {
+            operations.push(
+                tx.projectMember.create({
+                    data: {
+                        projectId: workspaceContext.projectId,
+                        userId,
+                        role: workspaceContext.projectMemberRole,
+                        createdBy: actorId,
+                    },
+                })
+            );
+        }
+
+        return operations;
+    }
+
+    private buildWorkspaceSignUpActivityLog(
+        workspaceContext: IUserSignUpWorkspaceContext,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        actorId: string
+    ): Prisma.ActivityLogCreateManyUserInput {
+        const action =
+            workspaceContext.type ===
+            EnumUserSignUpWorkspaceContextType.personal
+                ? EnumActivityLogAction.workspaceCreated
+                : EnumActivityLogAction.workspaceInviteAccepted;
+
+        return {
+            action,
+            description: this.activityLogUtil.getDescription(action),
+            workspaceId: workspaceContext.workspaceId,
+            ipAddress,
+            userAgent: this.databaseUtil.toPlainObject(userAgent),
+            geoLocation: this.databaseUtil.toPlainObject(geoLocation),
+            createdBy: actorId,
+        };
+    }
+
     async createBySocial(
         email: string,
-        username: string,
         roleId: string,
         loginWith: EnumUserLoginWith,
         {
+            username,
             countryId,
             name,
             from,
             cookies,
             marketing,
         }: UserCreateSocialRequestDto,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
+        requestLog: IRequestLog,
+        workspaceContext: IUserSignUpWorkspaceContext
     ): Promise<IUser> {
+        const { ipAddress, userAgent, geoLocation } = requestLog;
         const userId = this.databaseUtil.createId();
         const signUpWith =
             loginWith === EnumUserLoginWith.socialApple
                 ? EnumUserSignUpWith.socialApple
                 : EnumUserSignUpWith.socialGoogle;
 
-        const termPolicies =
-            await this.databaseService.client.termPolicy.findMany({
-                where: {
-                    type: {
-                        in: [
-                            EnumTermPolicyType.termsOfService,
-                            EnumTermPolicyType.privacy,
-                            cookies ? EnumTermPolicyType.cookies : null,
-                            marketing ? EnumTermPolicyType.marketing : null,
-                        ].filter(Boolean) as EnumTermPolicyType[],
+        return this.databaseService.client.$transaction(
+            async tx => {
+                const termPolicies = await tx.termPolicy.findMany({
+                    where: {
+                        type: {
+                            in: [
+                                EnumTermPolicyType.termsOfService,
+                                EnumTermPolicyType.privacy,
+                                cookies ? EnumTermPolicyType.cookies : null,
+                                marketing ? EnumTermPolicyType.marketing : null,
+                            ].filter(Boolean) as EnumTermPolicyType[],
+                        },
+                        status: EnumTermPolicyStatus.published,
                     },
-                    status: EnumTermPolicyStatus.published,
-                },
-                select: {
-                    id: true,
-                },
-            });
+                    select: {
+                        id: true,
+                    },
+                });
 
-        const [user] = await this.databaseService.client.$transaction([
-            this.databaseService.client.user.create({
-                data: {
-                    id: userId,
-                    email,
-                    countryId,
-                    name,
-                    roleId,
-                    signUpFrom: from,
-                    signUpWith,
-                    username,
-                    isVerified: true,
-                    status: EnumUserStatus.active,
-                    termPolicy: {
-                        [EnumTermPolicyType.cookies]: cookies,
-                        [EnumTermPolicyType.marketing]: marketing,
-                        [EnumTermPolicyType.privacy]: true,
-                        [EnumTermPolicyType.termsOfService]: true,
-                    },
-                    createdBy: userId,
-                    deletedAt: null,
-                    activityLogs: {
-                        create: {
-                            action: EnumActivityLogAction.userCreated,
-                            description: this.activityLogUtil.getDescription(
-                                EnumActivityLogAction.userCreated
-                            ),
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            geoLocation:
-                                this.databaseUtil.toPlainObject(geoLocation),
-                            createdBy: userId,
-                        },
-                    },
-                    notificationSettings: {
-                        createMany: {
-                            data: Object.values(EnumNotificationChannel)
-                                .map(channel =>
-                                    Object.values(EnumNotificationType).map(
-                                        type => ({
-                                            channel,
-                                            type,
-                                            isActive: true,
-                                        })
-                                    )
-                                )
-                                .flat(),
-                        },
-                    },
-                    twoFactor: {
-                        create: {
-                            enabled: false,
-                            requiredSetup: false,
-                            createdBy: userId,
-                        },
-                    },
-                },
-                include: {
-                    role: true,
-                    twoFactor: true,
-                },
-            }),
-            ...termPolicies.map(termPolicy =>
-                this.databaseService.client.termPolicyUserAcceptance.create({
+                const createdUser = await tx.user.create({
                     data: {
-                        userId,
-                        termPolicyId: termPolicy.id,
+                        id: userId,
+                        email,
+                        countryId,
+                        name,
+                        roleId,
+                        signUpFrom: from,
+                        signUpWith,
+                        username,
+                        isVerified: true,
+                        status: EnumUserStatus.active,
+                        lastWorkspaceId: workspaceContext.workspaceId,
+                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
                         createdBy: userId,
+                        deletedAt: null,
+                        activityLogs: {
+                            createMany: {
+                                data: [
+                                    {
+                                        action: EnumActivityLogAction.userCreated,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userCreated
+                                            ),
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    this.buildWorkspaceSignUpActivityLog(
+                                        workspaceContext,
+                                        requestLog,
+                                        userId
+                                    ),
+                                ],
+                            },
+                        },
+                        notificationSettings: {
+                            createMany: {
+                                data: Object.values(EnumNotificationChannel)
+                                    .map(channel =>
+                                        Object.values(EnumNotificationType).map(
+                                            type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            })
+                                        )
+                                    )
+                                    .flat(),
+                            },
+                        },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
+                                requiredSetup: false,
+                                createdBy: userId,
+                            },
+                        },
                     },
-                })
-            ),
-        ]);
+                    include: {
+                        role: true,
+                        twoFactor: true,
+                    },
+                });
 
-        return user;
+                await Promise.all([
+                    ...this.buildWorkspaceSignUpOperations(
+                        tx,
+                        userId,
+                        workspaceContext,
+                        userId
+                    ),
+                    ...termPolicies.map(termPolicy =>
+                        tx.termPolicyUserAcceptance.create({
+                            data: {
+                                userId,
+                                termPolicyId: termPolicy.id,
+                                createdBy: userId,
+                            },
+                        })
+                    ),
+                ]);
+
+                return createdUser;
+            },
+            { timeout: 10_000 }
+        );
     }
 
     async verify(
@@ -1303,9 +1539,9 @@ export class UserRepository {
 
     async signUp(
         userId: string,
-        username: string,
         roleId: string,
         {
+            username,
             countryId,
             email,
             marketing,
@@ -1320,149 +1556,170 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
+        requestLog: IRequestLog,
+        workspaceContext: IUserSignUpWorkspaceContext
     ): Promise<User> {
-        const termPolicies =
-            await this.databaseService.client.termPolicy.findMany({
-                where: {
-                    type: {
-                        in: [
-                            EnumTermPolicyType.termsOfService,
-                            EnumTermPolicyType.privacy,
-                            cookies ? EnumTermPolicyType.cookies : null,
-                            marketing ? EnumTermPolicyType.marketing : null,
-                        ].filter(Boolean) as EnumTermPolicyType[],
-                    },
-                    status: EnumTermPolicyStatus.published,
-                },
-                select: {
-                    id: true,
-                },
-            });
+        const { ipAddress, userAgent, geoLocation } = requestLog;
 
-        const [user] = await this.databaseService.client.$transaction([
-            this.databaseService.client.user.create({
-                data: {
-                    id: userId,
-                    email,
-                    countryId,
-                    name,
-                    roleId,
-                    signUpFrom: from,
-                    signUpWith: EnumUserSignUpWith.credential,
-                    username,
-                    isVerified: false,
-                    status: EnumUserStatus.active,
-                    passwordCreated,
-                    passwordExpired,
-                    password: passwordHash,
-                    passwordAttempt: 0,
-                    passwordHistories: {
-                        create: {
-                            password: passwordHash,
-                            type: EnumPasswordHistoryType.signUp,
-                            expiredAt: passwordPeriodExpired,
-                            createdAt: passwordCreated,
-                            createdBy: userId,
+        return this.databaseService.client.$transaction(
+            async tx => {
+                const termPolicies = await tx.termPolicy.findMany({
+                    where: {
+                        type: {
+                            in: [
+                                EnumTermPolicyType.termsOfService,
+                                EnumTermPolicyType.privacy,
+                                cookies ? EnumTermPolicyType.cookies : null,
+                                marketing ? EnumTermPolicyType.marketing : null,
+                            ].filter(Boolean) as EnumTermPolicyType[],
                         },
+                        status: EnumTermPolicyStatus.published,
                     },
-                    termPolicy: {
-                        [EnumTermPolicyType.cookies]: cookies,
-                        [EnumTermPolicyType.marketing]: marketing,
-                        [EnumTermPolicyType.privacy]: true,
-                        [EnumTermPolicyType.termsOfService]: true,
+                    select: {
+                        id: true,
                     },
-                    createdBy: userId,
-                    deletedAt: null,
-                    activityLogs: {
-                        createMany: {
-                            data: [
-                                {
-                                    action: EnumActivityLogAction.userSignedUp,
-                                    description:
-                                        this.activityLogUtil.getDescription(
-                                            EnumActivityLogAction.userSignedUp
-                                        ),
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy: userId,
-                                },
-                                {
-                                    action: EnumActivityLogAction.userSendVerificationEmail,
-                                    description:
-                                        this.activityLogUtil.getDescription(
-                                            EnumActivityLogAction.userSendVerificationEmail
-                                        ),
-                                    ipAddress,
-                                    userAgent:
-                                        this.databaseUtil.toPlainObject(
-                                            userAgent
-                                        ),
-                                    geoLocation:
-                                        this.databaseUtil.toPlainObject(
-                                            geoLocation
-                                        ),
-                                    createdBy: userId,
-                                },
-                            ],
-                        },
-                    },
-                    notificationSettings: {
-                        createMany: {
-                            data: Object.values(EnumNotificationChannel)
-                                .map(channel =>
-                                    Object.values(EnumNotificationType).map(
-                                        type => ({
-                                            channel,
-                                            type,
-                                            isActive: true,
-                                        })
-                                    )
-                                )
-                                .flat(),
-                        },
-                    },
-                    verifications: {
-                        create: {
-                            expiredAt,
-                            reference,
-                            token: hashedToken,
-                            type,
-                            to: email,
-                            createdBy: userId,
-                        },
-                    },
-                    twoFactor: {
-                        create: {
-                            enabled: false,
-                            requiredSetup: false,
-                            createdBy: userId,
-                        },
-                    },
-                },
-                include: {
-                    role: true,
-                },
-            }),
-            ...termPolicies.map(termPolicy =>
-                this.databaseService.client.termPolicyUserAcceptance.create({
+                });
+
+                const createdUser = await tx.user.create({
                     data: {
-                        userId,
-                        termPolicyId: termPolicy.id,
+                        id: userId,
+                        email,
+                        countryId,
+                        name,
+                        roleId,
+                        signUpFrom: from,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        username,
+                        isVerified: false,
+                        status: EnumUserStatus.active,
+                        passwordCreated,
+                        passwordExpired,
+                        password: passwordHash,
+                        passwordAttempt: 0,
+                        lastWorkspaceId: workspaceContext.workspaceId,
+                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        passwordHistories: {
+                            create: {
+                                password: passwordHash,
+                                type: EnumPasswordHistoryType.signUp,
+                                expiredAt: passwordPeriodExpired,
+                                createdAt: passwordCreated,
+                                createdBy: userId,
+                            },
+                        },
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
                         createdBy: userId,
+                        deletedAt: null,
+                        activityLogs: {
+                            createMany: {
+                                data: [
+                                    {
+                                        action: EnumActivityLogAction.userSignedUp,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userSignedUp
+                                            ),
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    {
+                                        action: EnumActivityLogAction.userSendVerificationEmail,
+                                        description:
+                                            this.activityLogUtil.getDescription(
+                                                EnumActivityLogAction.userSendVerificationEmail
+                                            ),
+                                        ipAddress,
+                                        userAgent:
+                                            this.databaseUtil.toPlainObject(
+                                                userAgent
+                                            ),
+                                        geoLocation:
+                                            this.databaseUtil.toPlainObject(
+                                                geoLocation
+                                            ),
+                                        createdBy: userId,
+                                    },
+                                    this.buildWorkspaceSignUpActivityLog(
+                                        workspaceContext,
+                                        requestLog,
+                                        userId
+                                    ),
+                                ],
+                            },
+                        },
+                        notificationSettings: {
+                            createMany: {
+                                data: Object.values(EnumNotificationChannel)
+                                    .map(channel =>
+                                        Object.values(EnumNotificationType).map(
+                                            type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            })
+                                        )
+                                    )
+                                    .flat(),
+                            },
+                        },
+                        verifications: {
+                            create: {
+                                expiredAt,
+                                reference,
+                                token: hashedToken,
+                                type,
+                                to: email,
+                                createdBy: userId,
+                            },
+                        },
+                        twoFactor: {
+                            create: {
+                                enabled: false,
+                                requiredSetup: false,
+                                createdBy: userId,
+                            },
+                        },
                     },
-                })
-            ),
-        ]);
+                    include: {
+                        role: true,
+                    },
+                });
 
-        return user;
+                await Promise.all([
+                    ...this.buildWorkspaceSignUpOperations(
+                        tx,
+                        userId,
+                        workspaceContext,
+                        userId
+                    ),
+                    ...termPolicies.map(termPolicy =>
+                        tx.termPolicyUserAcceptance.create({
+                            data: {
+                                userId,
+                                termPolicyId: termPolicy.id,
+                                createdBy: userId,
+                            },
+                        })
+                    ),
+                ]);
+
+                return createdUser;
+            },
+            { timeout: 10_000 }
+        );
     }
 
     async forgotPassword(
@@ -2067,13 +2324,15 @@ export class UserRepository {
 
     async importByAdmin(
         data: UserImportRequestDto[],
+        userIds: string[],
         usernames: string[],
         passwordHasheds: IAuthPassword[],
         countryId: string,
         { id: roleId, type: roleType }: IRole,
-        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        requestLog: IRequestLog,
         createdBy: string
     ): Promise<User[]> {
+        const { ipAddress, userAgent, geoLocation } = requestLog;
         const termPolicies =
             await this.databaseService.client.termPolicy.findMany({
                 where: {
@@ -2093,12 +2352,14 @@ export class UserRepository {
         const users = await this.databaseService.client.$transaction(
             async tx => {
                 const usersToCreate: Prisma.PrismaPromise<User>[] = [];
-                const termPolicyUserAcceptancesToCreate: Prisma.PrismaPromise<TermPolicyUserAcceptance>[] =
-                    [];
+                const relatedToCreate: Prisma.PrismaPromise<unknown>[] = [];
 
                 for (const [index, { email, name }] of data.entries()) {
-                    const userId = this.databaseUtil.createId();
+                    // @note: reuse the caller's id — the temporary password is AES-keyed with it.
+                    const userId = userIds[index];
                     const username = usernames[index];
+                    const workspaceContext =
+                        this.resolvePersonalWorkspaceContext(username);
                     const {
                         passwordCreated,
                         passwordExpired,
@@ -2126,6 +2387,9 @@ export class UserRepository {
                                         ? false
                                         : true,
                                 status: EnumUserStatus.active,
+                                lastWorkspaceId: workspaceContext.workspaceId,
+                                lastWorkspaceChangedAt:
+                                    this.helperService.dateCreate(),
                                 termPolicy: {
                                     [EnumTermPolicyType.cookies]: false,
                                     [EnumTermPolicyType.marketing]: false,
@@ -2180,6 +2444,11 @@ export class UserRepository {
                                                     ),
                                                 createdBy,
                                             },
+                                            this.buildWorkspaceSignUpActivityLog(
+                                                workspaceContext,
+                                                requestLog,
+                                                createdBy
+                                            ),
                                         ],
                                     },
                                 },
@@ -2210,7 +2479,13 @@ export class UserRepository {
                             },
                         })
                     );
-                    termPolicyUserAcceptancesToCreate.push(
+                    relatedToCreate.push(
+                        ...this.buildWorkspaceSignUpOperations(
+                            tx,
+                            userId,
+                            workspaceContext,
+                            createdBy
+                        ),
                         ...termPolicies.map(termPolicy =>
                             tx.termPolicyUserAcceptance.create({
                                 data: {
@@ -2224,10 +2499,11 @@ export class UserRepository {
                 }
 
                 const users = await Promise.all(usersToCreate);
-                await Promise.all(termPolicyUserAcceptancesToCreate);
+                await Promise.all(relatedToCreate);
 
                 return users;
-            }
+            },
+            { timeout: 30_000 }
         );
 
         return users;

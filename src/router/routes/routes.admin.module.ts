@@ -5,16 +5,21 @@ import { DeviceModule } from '@modules/device/device.module';
 import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { ProjectAdminController } from '@modules/project/controllers/project.admin.controller';
+import { ProjectModule } from '@modules/project/project.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
+import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
+import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Mounts administrative controllers: API key, role, user, password history, activity log,
- * session, term policy, feature flag, and device.
+ * Mounts administrative controllers: API key, role, user, password history,
+ * activity log, session, term policy, feature flag, device, workspace, and
+ * project (read-only).
  */
 @Module({
     controllers: [
@@ -27,9 +32,17 @@ import { Module } from '@nestjs/common';
         TermPolicyAdminController,
         FeatureFlagAdminController,
         DeviceAdminController,
+        WorkspaceAdminController,
+        ProjectAdminController,
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, PasswordHistoryModule, DeviceModule],
+    imports: [
+        UserModule,
+        PasswordHistoryModule,
+        DeviceModule,
+        WorkspaceModule,
+        ProjectModule,
+    ],
 })
 export class RoutesAdminModule {}

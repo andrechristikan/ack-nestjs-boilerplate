@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -21,6 +22,7 @@ import { UserEmailExistException } from '@modules/user/exceptions/user.email-exi
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
+import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
@@ -114,6 +116,7 @@ import {
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { Injectable, Logger } from '@nestjs/common';
 import {
     EnumUserLoginFrom,
@@ -134,6 +137,7 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
 import { ConfigService } from '@nestjs/config';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -164,6 +168,7 @@ export class UserService implements IUserService {
         private readonly sessionUtil: SessionUtil,
         private readonly sessionRepository: SessionRepository,
         private readonly featureFlagUtil: FeatureFlagUtil,
+        private readonly featureFlagService: FeatureFlagService,
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
@@ -174,6 +179,20 @@ export class UserService implements IUserService {
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
         )!;
+    }
+
+    private async assertForgotPasswordAllowed(): Promise<void> {
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            'changePassword',
+            'forgotAllowed'
+        );
+    }
+
+    private async assertWorkspaceInvitationAllowed(): Promise<void> {
+        await this.featureFlagService.validateFeatureFlagMetadata(
+            'workspace',
+            'invitationAllowed'
+        );
     }
 
     async validateUserGuard(
@@ -265,7 +284,7 @@ export class UserService implements IUserService {
     }
 
     async createByAdmin(
-        { countryId, email, name, roleId }: UserCreateRequestDto,
+        { countryId, email, name, roleId, username }: UserCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         const requestLog: IRequestLog =
@@ -285,6 +304,20 @@ export class UserService implements IUserService {
             throw new UserEmailExistException();
         }
 
+        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
+            await Promise.all([
+                this.userUtil.checkUsernamePattern(username),
+                this.userUtil.checkBadWord(username),
+                this.userRepository.existByUsername(username),
+            ]);
+        if (checkUsernamePattern) {
+            throw new UserUsernameNotAllowedException();
+        } else if (checkUsernameBadWord) {
+            throw new UserUsernameContainBadWordException();
+        } else if (usernameExist) {
+            throw new UserUsernameExistException();
+        }
+
         try {
             const userId = this.databaseUtil.createId();
             const passwordString = this.authUtil.createPasswordRandom();
@@ -295,11 +328,10 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
-            const randomUsername = this.userUtil.createRandomUsername();
             const created = await this.userRepository.createByAdmin(
                 userId,
-                randomUsername,
                 {
+                    username,
                     countryId,
                     email,
                     name,
@@ -938,7 +970,13 @@ export class UserService implements IUserService {
     async loginWithSocial(
         email: string,
         loginWith: EnumUserLoginWith,
-        { from, device, ...others }: UserCreateSocialRequestDto
+        {
+            from,
+            device,
+            username,
+            workspaceInviteToken,
+            ...others
+        }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
@@ -961,14 +999,41 @@ export class UserService implements IUserService {
                 throw new RoleNotFoundException();
             }
 
-            const randomUsername = this.userUtil.createRandomUsername();
+            const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
+                await Promise.all([
+                    this.userUtil.checkUsernamePattern(username),
+                    this.userUtil.checkBadWord(username),
+                    this.userRepository.existByUsername(username),
+                ]);
+            if (checkUsernamePattern) {
+                throw new UserUsernameNotAllowedException();
+            } else if (checkUsernameBadWord) {
+                throw new UserUsernameContainBadWordException();
+            } else if (usernameExist) {
+                throw new UserUsernameExistException();
+            }
+
+            if (workspaceInviteToken) {
+                await this.assertWorkspaceInvitationAllowed();
+            }
+
+            const workspaceContext =
+                await this.userRepository.resolveWorkspaceSignUpContext(
+                    workspaceInviteToken ?? null,
+                    email,
+                    username
+                );
+            if (workspaceInviteToken && !workspaceContext) {
+                throw new WorkspaceInviteInvalidException();
+            }
+
             user = await this.userRepository.createBySocial(
                 email,
-                randomUsername,
                 role.id,
                 loginWith,
-                { from, device, ...others },
-                requestLog
+                { username, from, device, ...others },
+                requestLog,
+                workspaceContext!
             );
 
             // @note: send email after all creation
@@ -1057,7 +1122,9 @@ export class UserService implements IUserService {
     async signUp({
         countryId,
         email,
+        username,
         password: passwordString,
+        workspaceInviteToken,
         ...others
     }: UserSignUpRequestDto): Promise<void> {
         const requestLog: IRequestLog =
@@ -1076,13 +1143,40 @@ export class UserService implements IUserService {
             throw new UserEmailExistException();
         }
 
+        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
+            await Promise.all([
+                this.userUtil.checkUsernamePattern(username),
+                this.userUtil.checkBadWord(username),
+                this.userRepository.existByUsername(username),
+            ]);
+        if (checkUsernamePattern) {
+            throw new UserUsernameNotAllowedException();
+        } else if (checkUsernameBadWord) {
+            throw new UserUsernameContainBadWordException();
+        } else if (usernameExist) {
+            throw new UserUsernameExistException();
+        }
+
+        if (workspaceInviteToken) {
+            await this.assertWorkspaceInvitationAllowed();
+        }
+
+        const workspaceContext =
+            await this.userRepository.resolveWorkspaceSignUpContext(
+                workspaceInviteToken ?? null,
+                email,
+                username
+            );
+        if (workspaceInviteToken && !workspaceContext) {
+            throw new WorkspaceInviteInvalidException();
+        }
+
         try {
             const userId = this.databaseUtil.createId();
             const password = this.authUtil.createPassword(
                 userId,
                 passwordString
             );
-            const randomUsername = this.userUtil.createRandomUsername();
             const emailVerification =
                 this.userUtil.verificationCreateVerification(
                     userId,
@@ -1091,9 +1185,9 @@ export class UserService implements IUserService {
 
             const created = await this.userRepository.signUp(
                 userId,
-                randomUsername,
                 role.id,
                 {
+                    username,
                     countryId,
                     email,
                     password: passwordString,
@@ -1101,7 +1195,8 @@ export class UserService implements IUserService {
                 },
                 password,
                 emailVerification,
-                requestLog
+                requestLog,
+                workspaceContext!
             );
 
             // @note: send email after all creation
@@ -1116,6 +1211,10 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -1214,6 +1313,8 @@ export class UserService implements IUserService {
     async forgotPassword({
         email,
     }: UserForgotPasswordRequestDto): Promise<void> {
+        await this.assertForgotPasswordAllowed();
+
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
@@ -1273,6 +1374,8 @@ export class UserService implements IUserService {
         code,
         method,
     }: UserForgotPasswordResetRequestDto): Promise<void> {
+        await this.assertForgotPasswordAllowed();
+
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
@@ -1463,6 +1566,8 @@ export class UserService implements IUserService {
             return {
                 data: {
                     isTwoFactorEnable: false,
+                    lastWorkspaceId: user.lastWorkspaceId,
+                    lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
                     tokens,
                 },
             };
@@ -1488,6 +1593,8 @@ export class UserService implements IUserService {
             return {
                 data: {
                     isTwoFactorEnable: true,
+                    lastWorkspaceId: user.lastWorkspaceId,
+                    lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
                     twoFactor: {
                         isRequiredSetup: true,
                         challengeToken,
@@ -1504,6 +1611,8 @@ export class UserService implements IUserService {
         return {
             data: {
                 isTwoFactorEnable: true,
+                lastWorkspaceId: user.lastWorkspaceId,
+                lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
                 twoFactor: {
                     isRequiredSetup: false,
                     challengeToken,
@@ -1873,20 +1982,46 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const emails = data.map(item => item.email);
-        const [checkRole, checkCountry, existingUsers] = await Promise.all([
+        const usernames = data.map(item => item.username);
+
+        const [
+            checkRole,
+            checkCountry,
+            existingUsersByEmail,
+            existingUsersByUsername,
+            badWordChecks,
+        ] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.countryRepository.existByAlpha2Code(this.userCountryName),
             this.userRepository.findByEmails(emails),
+            this.userRepository.findByUsernames(usernames),
+            Promise.all(
+                usernames.map(username => this.userUtil.checkBadWord(username))
+            ),
         ]);
 
-        if (existingUsers.length > 0) {
+        const duplicateUsernames = usernames.filter(
+            (username, index) => usernames.indexOf(username) !== index
+        );
+
+        if (existingUsersByEmail.length > 0) {
             throw new UserImportEmailExistException(
-                existingUsers.map(user => user.email).join(', ')
+                existingUsersByEmail.map(user => user.email).join(', ')
             );
         } else if (!checkRole) {
             throw new RoleNotFoundException();
         } else if (!checkCountry) {
             throw new CountryNotFoundException();
+        } else if (existingUsersByUsername.length > 0) {
+            throw new UserImportUsernameExistException(
+                existingUsersByUsername.map(user => user.username).join(', ')
+            );
+        } else if (duplicateUsernames.length > 0) {
+            throw new UserImportUsernameExistException(
+                [...new Set(duplicateUsernames)].join(', ')
+            );
+        } else if (badWordChecks.some(containsBadWord => containsBadWord)) {
+            throw new UserUsernameContainBadWordException();
         }
 
         try {
@@ -1894,9 +2029,6 @@ export class UserService implements IUserService {
             const userIds = Array(totalData)
                 .fill(0)
                 .map(() => this.databaseUtil.createId());
-            const usernames = Array(totalData)
-                .fill(0)
-                .map(() => this.userUtil.createRandomUsername());
             const passwords = Array(totalData)
                 .fill(0)
                 .map(() => this.authUtil.createPasswordRandom());
@@ -1906,6 +2038,7 @@ export class UserService implements IUserService {
 
             const newUsers = await this.userRepository.importByAdmin(
                 data,
+                userIds,
                 usernames,
                 passwordHasheds,
                 checkCountry.id,

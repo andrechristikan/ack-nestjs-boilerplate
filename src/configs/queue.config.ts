@@ -9,6 +9,7 @@ export interface IConfigQueue {
         emailBackoffDelayInMs: number;
         pushBackoffDelayInMs: number;
         notificationBackoffDelayInMs: number;
+        workspaceBackoffDelayInMs: number;
     };
 }
 
@@ -22,6 +23,7 @@ export default registerAs(
             emailBackoffDelayInMs: ms('10s'),
             pushBackoffDelayInMs: ms('5s'),
             notificationBackoffDelayInMs: ms('3s'),
+            workspaceBackoffDelayInMs: ms('10s'),
         },
     })
 );

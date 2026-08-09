@@ -111,7 +111,7 @@ export class UserPublicController {
         @Body()
         body: UserSignUpRequestDto
     ): Promise<void> {
-        return this.userService.signUp(body);
+        await this.userService.signUp(body);
     }
 
     @UserPublicVerifyEmailDoc()
@@ -119,7 +119,7 @@ export class UserPublicController {
     @ApiKeyProtected()
     @Patch('/verify/email')
     async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
-        return this.userService.verifyEmail(body);
+        await this.userService.verifyEmail(body);
     }
 
     @UserPublicSendEmailVerificationDoc()
@@ -130,31 +130,31 @@ export class UserPublicController {
     async sendEmailVerification(
         @Body() body: UserSendEmailVerificationRequestDto
     ): Promise<void> {
-        return this.userService.sendVerificationEmail(body);
+        await this.userService.sendVerificationEmail(body);
     }
 
     @UserPublicForgotPasswordDoc()
     @Response('user.forgotPassword')
-    @FeatureFlagProtected('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/password/forgot')
     async forgotPassword(
         @Body() body: UserForgotPasswordRequestDto
     ): Promise<void> {
-        return this.userService.forgotPassword(body);
+        await this.userService.forgotPassword(body);
     }
 
     @UserPublicResetPasswordDoc()
     @Response('user.resetPassword')
-    @FeatureFlagProtected('changePassword.forgotAllowed')
+    @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Patch('/password/reset')
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto
     ): Promise<void> {
-        return this.userService.resetPassword(body);
+        await this.userService.resetPassword(body);
     }
 
     @UserPublicLoginVerifyTwoFactorDoc()

@@ -10,6 +10,7 @@ import { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.
 import { RequestUrlVersionMiddleware } from '@common/request/middlewares/request.url-version.middleware';
 import { RequestResponseTimeMiddleware } from '@common/request/middlewares/request.response-time.middleware';
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
+import { RequestWorkspaceMiddleware } from '@common/request/middlewares/request.workspace.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
 import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
 import { RequestThrottlerModule } from '@common/request/request.throttler.module';
@@ -62,6 +63,7 @@ export class RequestMiddlewareModule implements NestModule {
                 RequestUrlVersionMiddleware,
                 RequestResponseTimeMiddleware,
                 RequestCustomLanguageMiddleware,
+                RequestWorkspaceMiddleware,
                 RequestCompressionMiddleware
             )
             .forRoutes('{*wildcard}');

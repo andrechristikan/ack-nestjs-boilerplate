@@ -23,7 +23,9 @@ role?: Record<string, IPaginationEqual>
 
 Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `PaginationQueryFilterInEnum` · `PaginationQueryFilterNinEnum` · `PaginationQueryFilterEqualBoolean` · `PaginationQueryFilterEqualNumber` · `PaginationQueryFilterEqualString` · `PaginationQueryFilterNotEqual` · `PaginationQueryFilterDate`.
 
-`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants in `<module>/constants/<module>.constant.ts` (`UserDefaultAvailableSearch`). **They are an allow-list, not a convenience** — an unrestricted `orderBy` lets a client sort on an unindexed or sensitive column.
+`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants under `<module>/constants/`, in `<module>.list.constant.ts` — the file that holds a module's list-endpoint constants (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), alongside the enum defaults its filter decorators use (`ApiKeyDefaultType`). A module with no other list constants may keep them in `<module>.constant.ts`, but `.list.constant.ts` is the default and what every existing module does.
+
+**They are an allow-list, not a convenience** — an unrestricted `orderBy` lets a client sort on an unindexed or sensitive column, and omitting them is not a neutral default: both pipes fail CLOSED, so `?search=` and `?orderBy=` are silently ignored rather than rejected. An endpoint that accepts a param and discards it is worse than one that rejects it.
 
 ## Filter shape
 

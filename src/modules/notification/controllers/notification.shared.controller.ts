@@ -87,7 +87,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/read/:notificationId')
+    @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
         @Param(

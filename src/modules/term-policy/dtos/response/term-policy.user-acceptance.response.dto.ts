@@ -1,7 +1,7 @@
 import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
@@ -16,11 +16,11 @@ export class TermPolicyUserAcceptanceResponseDto extends DatabaseResponseDto {
 
     @ApiProperty({
         required: true,
-        type: UserListResponseDto,
+        type: UserRefResponseDto,
     })
     @Expose()
-    @Type(() => UserListResponseDto)
-    readonly user: UserListResponseDto;
+    @Type(() => UserRefResponseDto)
+    readonly user: UserRefResponseDto;
 
     @ApiProperty({
         description: 'Identifier of the terms or policy accepted',

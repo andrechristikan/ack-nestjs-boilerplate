@@ -13,6 +13,11 @@ export enum EnumNotificationProcess {
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
+    workspaceInvite = 'workspaceInvite',
+    workspaceInviteUnregistered = 'workspaceInviteUnregistered',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
 export enum EnumNotificationPushProcess {
@@ -22,4 +27,8 @@ export enum EnumNotificationPushProcess {
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
     resetPassword = 'resetPassword',
     newDeviceLogin = 'newDeviceLogin',
+    workspaceInvite = 'workspaceInvite',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
 }

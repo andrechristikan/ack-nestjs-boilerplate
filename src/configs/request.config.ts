@@ -75,6 +75,7 @@ export default registerAs(
                 'x-timestamp',
                 'x-api-key',
                 'x-timezone',
+                'x-workspace-id',
                 'x-request-id',
                 'x-correlation-id',
                 'x-version',

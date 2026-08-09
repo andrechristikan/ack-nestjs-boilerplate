@@ -33,7 +33,7 @@ done
 | `50300`–`50303` | `src/common/request` |
 | `50400`–`50401` | `session` |
 | `50500`–`50504` | `role` |
-| `50600`–`50605` | `feature-flag` |
+| `50600`–`50606` | `feature-flag` |
 | `50700`–`50707` | `api-key` |
 | `50800`–`50814` | `auth` |
 | `50900`–`50903` | `country` |
@@ -43,10 +43,13 @@ done
 | `51300` | `device` |
 | `51400` | `src/common/aws` |
 | `51500`–`51508` | `term-policy` |
+| `51600`–`51620` | `workspace` |
+| `51700`–`51707` | `project` |
+| `51800` | `src/common/database` |
 
 | Note | Detail |
 |---|---|
-| Next free hundred | `51600` (verify by scan before claiming) |
+| Next free hundred | `51900` (verify by scan before claiming) |
 | Prefer | `5xxxx` for feature modules |
 
 ---

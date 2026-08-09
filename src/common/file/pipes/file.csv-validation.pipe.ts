@@ -6,21 +6,24 @@ import { IMessageValidationImportErrorParam } from '@common/message/interfaces/m
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
 import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
+import { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
 /**
  * Builds a pipe that transforms parsed CSV rows into `dto` and validates each via
  * class-validator, collecting per-row failures into a `FileImportException`.
  */
 export function FileCsvValidationPipe<TDto extends ClassConstructor<unknown>>(
-    dto: TDto
+    dto: TDto,
+    options?: IFileCsvValidationOptions
 ): Type<PipeTransform> {
     @Injectable()
     class MixinFileCsvValidationPipe implements PipeTransform {
         private readonly maxDataImport: number;
 
         constructor(private readonly configService: ConfigService) {
+            // @note: take the config KEY, not the value — a pipe factory runs at decoration time.
             this.maxDataImport = this.configService.get<number>(
-                'file.maxDataImport'
+                options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;
         }
 
@@ -35,7 +38,7 @@ export function FileCsvValidationPipe<TDto extends ClassConstructor<unknown>>(
         }
 
         /**
-         * Throws when rows are empty or exceed the configured `file.maxDataImport`,
+         * Throws when rows are empty or exceed the configured row cap,
          * then forwards to DTO validation.
          */
         private async parse(value: unknown[]): Promise<InstanceType<TDto>[]> {

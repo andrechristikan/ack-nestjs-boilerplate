@@ -10,7 +10,7 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';

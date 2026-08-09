@@ -8,11 +8,12 @@ import { SessionSharedController } from '@modules/session/controllers/session.sh
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
+import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Mounts controllers shared across access levels: user, password history, activity log,
- * session, term policy, device, and notification.
+ * Mounts controllers shared across access levels: user, password history,
+ * activity log, session, term policy, device, and notification.
  */
 @Module({
     controllers: [
@@ -26,6 +27,11 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, PasswordHistoryModule, DeviceModule],
+    imports: [
+        UserModule,
+        PasswordHistoryModule,
+        DeviceModule,
+        WorkspaceModule,
+    ],
 })
 export class RoutesSharedModule {}

@@ -71,11 +71,16 @@ export class ActivityLogInterceptor implements NestInterceptor {
             );
             let error: {
                 errorMessage?: string;
-                errorStack?: string;
             } = {};
             if (rawError) {
-                error = this.serializeError(rawError);
-                description += ` - Error: ${error.errorMessage}`;
+                const { errorMessage, errorStack } =
+                    this.serializeError(rawError);
+                error = { errorMessage };
+                description += ` - Error: ${errorMessage}`;
+
+                if (errorStack) {
+                    description += ` - Stack: ${errorStack}`;
+                }
             }
 
             await this.activityRepository.create(

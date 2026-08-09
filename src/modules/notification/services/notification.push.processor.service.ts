@@ -9,6 +9,10 @@ import {
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -345,6 +349,269 @@ export class NotificationPushProcessorService
 
         return {
             message: 'Forgot password notification processed',
+            result,
+        };
+    }
+
+    async processWorkspaceInvite({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
+            return {
+                message:
+                    'Firebase not initialized, skipping workspace invite notification',
+            };
+        }
+
+        const notification = await this.notificationRepository.updateProcessAt(
+            userId,
+            notificationId,
+            EnumNotificationChannel.push
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping workspace invite notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: {
+                username,
+                workspaceName: data!.workspaceName,
+                inviterName: data!.inviterName,
+            },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await Promise.allSettled([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
+
+        return {
+            message: 'Workspace invite notification processed',
+            result,
+        };
+    }
+
+    async processWorkspaceJoinRequest({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
+            return {
+                message:
+                    'Firebase not initialized, skipping workspace join request notification',
+            };
+        }
+
+        const notification = await this.notificationRepository.updateProcessAt(
+            userId,
+            notificationId,
+            EnumNotificationChannel.push
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping workspace join request notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: {
+                username,
+                workspaceName: data!.workspaceName,
+                requesterName: data!.requesterName,
+            },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await Promise.allSettled([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
+
+        return {
+            message: 'Workspace join request notification processed',
+            result,
+        };
+    }
+
+    async processWorkspaceJoinAccepted({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
+            return {
+                message:
+                    'Firebase not initialized, skipping workspace join accepted notification',
+            };
+        }
+
+        const notification = await this.notificationRepository.updateProcessAt(
+            userId,
+            notificationId,
+            EnumNotificationChannel.push
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping workspace join accepted notification',
+            };
+        }
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: {
+                username,
+                workspaceName: data!.workspaceName,
+            },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await Promise.allSettled([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
+
+        return {
+            message: 'Workspace join accepted notification processed',
+            result,
+        };
+    }
+
+    async processWorkspaceJoinRejected({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        if (!this.firebaseService.isInitialized()) {
+            return {
+                message:
+                    'Firebase not initialized, skipping workspace join rejected notification',
+            };
+        }
+
+        const notification = await this.notificationRepository.updateProcessAt(
+            userId,
+            notificationId,
+            EnumNotificationChannel.push
+        );
+        if (!notification) {
+            return {
+                message:
+                    'Notification not found, skipping workspace join rejected notification',
+            };
+        }
+
+        const rejectReasonLabel = this.messageService.setMessage(
+            `notification.rejectReason.${data!.rejectReasonCode}`
+        );
+
+        const title = this.messageService.setMessage(notification.title);
+        const body = this.messageService.setMessage(notification.body, {
+            properties: {
+                username,
+                workspaceName: data!.workspaceName,
+                rejectReasonLabel,
+            },
+        });
+
+        const result = await this.firebaseService.sendMulticast(
+            notificationTokens,
+            {
+                title,
+                body,
+            }
+        );
+
+        await Promise.allSettled([
+            this.notificationPushUtil.sendCleanupTokens(
+                userId,
+                result.failureTokens
+            ),
+            this.notificationRepository.updateSentAt(
+                userId,
+                notificationId,
+                EnumNotificationChannel.push,
+                result.failureTokens
+            ),
+        ]);
+
+        return {
+            message: 'Workspace join rejected notification processed',
             result,
         };
     }

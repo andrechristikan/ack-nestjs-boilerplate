@@ -30,6 +30,6 @@ export class UserUserController {
     @ApiKeyProtected()
     @Delete('/delete/self')
     async deleteSelf(@AuthJwtPayload('userId') userId: string): Promise<void> {
-        return this.userService.deleteSelf(userId);
+        await this.userService.deleteSelf(userId);
     }
 }

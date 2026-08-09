@@ -4,4 +4,5 @@ import { PickType } from '@nestjs/swagger';
 export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
     'email',
     'name',
+    'username',
 ]) {}

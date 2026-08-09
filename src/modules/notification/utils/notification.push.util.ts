@@ -5,6 +5,10 @@ import {
     INotificationPushQueuePayload,
     INotificationSendPushPayload,
     INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -118,6 +122,102 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace invite push for a registered invitee. */
+    async sendWorkspaceInvite(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationWorkspaceInvitePayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceInvitePayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.workspaceInvite,
+            payload,
+            {
+                priority: EnumQueuePriority.high,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.workspaceInvite}-${data.reference}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request push for one reviewer (workspace owner/admin). */
+    async sendWorkspaceJoinRequest(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationWorkspaceJoinRequestPayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.workspaceJoinRequest,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request-accepted push for the requester. */
+    async sendWorkspaceJoinAccepted(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationWorkspaceJoinAcceptedPayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.workspaceJoinAccepted,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.workspaceJoinAccepted}-${data.workspaceId}-${sendPayload.userId}`,
+                    ttl: 1000,
+                },
+            }
+        );
+    }
+
+    /** Enqueues the workspace join-request-rejected push for the requester. */
+    async sendWorkspaceJoinRejected(
+        sendPayload: INotificationSendPushPayload,
+        data: INotificationWorkspaceJoinRejectedPayload
+    ): Promise<void> {
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload> =
+            {
+                send: sendPayload,
+                data,
+            };
+
+        await this.notificationPushQueue.add(
+            EnumNotificationPushProcess.workspaceJoinRejected,
+            payload,
+            {
+                priority: EnumQueuePriority.medium,
+                deduplication: {
+                    id: `${EnumNotificationPushProcess.workspaceJoinRejected}-${data.workspaceId}-${sendPayload.userId}`,
                     ttl: 1000,
                 },
             }

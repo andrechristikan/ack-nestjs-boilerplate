@@ -7,15 +7,31 @@ import { Prisma } from '@generated/prisma-client';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 
 export interface IActivityLogService {
-    getListOffsetByAdmin(
+    getListOffsetByUser(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
         >
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
-    getListCursor(
+    getListCursorByUser(
         userId: string,
+        pagination: IPaginationQueryCursorParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
+    getListOffsetByWorkspace(
+        workspaceId: string,
+        userId: string | null,
+        pagination: IPaginationQueryOffsetParams<
+            Prisma.ActivityLogSelect,
+            Prisma.ActivityLogWhereInput
+        >
+    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
+    getListCursorByWorkspace(
+        workspaceId: string,
+        userId: string | null,
         pagination: IPaginationQueryCursorParams<
             Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput

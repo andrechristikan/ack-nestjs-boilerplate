@@ -3,6 +3,7 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 const userData: {
     country: string;
     email: Lowercase<string>;
+    username: Lowercase<string>;
     name: string;
     role: string;
     password: string;
@@ -10,6 +11,7 @@ const userData: {
     {
         country: 'ID',
         email: 'superadmin@mail.com',
+        username: 'superadmin',
         name: 'Super Admin',
         role: 'superadmin',
         password: 'aaAA@123',
@@ -17,6 +19,7 @@ const userData: {
     {
         country: 'ID',
         email: 'admin@mail.com',
+        username: 'admin',
         name: 'Admin',
         role: 'admin',
         password: 'aaAA@123',
@@ -28,6 +31,7 @@ export const migrationUserData: Record<
     {
         country: string;
         email: string;
+        username: string;
         name: string;
         role: string;
         password: string;
@@ -38,6 +42,7 @@ export const migrationUserData: Record<
         {
             country: 'ID',
             email: 'user@mail.com',
+            username: 'user',
             name: 'User',
             role: 'user',
             password: 'aaAA@123',

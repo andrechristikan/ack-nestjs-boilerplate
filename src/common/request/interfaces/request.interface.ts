@@ -15,3 +15,7 @@ export interface IRequestLog {
     ipAddress?: string | null;
     geoLocation?: GeoLocation | null;
 }
+
+export interface IRequestIsValidObjectIdPipeOptions {
+    optional: boolean;
+}

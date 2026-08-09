@@ -202,6 +202,11 @@ export class HelperService implements IHelperService {
         return result;
     }
 
+    generateSlug(prefix: string, maxLength: number): string {
+        const randomLength = maxLength - prefix.length;
+        return `${prefix}${this.randomString(randomLength)}`;
+    }
+
     censorString(text: string): string {
         if (text.length <= 5) {
             const stringCensor = '*'.repeat(text.length - 1);

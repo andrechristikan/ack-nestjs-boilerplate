@@ -60,7 +60,32 @@
         "userAcceptTermPolicy": {
             "title": "Term Policy Accepted",
             "body": "Hi {username}, you have accepted the {type} term policy version {version}."
+        },
+        "workspaceInvite": {
+            "title": "Workspace Invitation",
+            "body": "Hi {username}, {inviterName} has invited you to join the workspace {workspaceName}."
+        },
+        "workspaceJoinRequest": {
+            "title": "New Workspace Join Request",
+            "body": "Hi {username}, {requesterName} has requested to join the workspace {workspaceName}."
+        },
+        "workspaceJoinAccepted": {
+            "title": "Workspace Join Request Accepted",
+            "body": "Hi {username}, your request to join the workspace {workspaceName} has been accepted."
+        },
+        "workspaceJoinRejected": {
+            "title": "Workspace Join Request Rejected",
+            "body": "Hi {username}, your request to join the workspace {workspaceName} has been rejected. Reason: {rejectReasonLabel}."
         }
+    },
+    "rejectReason": {
+        "notAFit": "Not a good fit",
+        "incompleteProfile": "Incomplete profile",
+        "spam": "Spam",
+        "unknownRequester": "Unknown requester",
+        "wrongWorkspace": "Wrong workspace",
+        "memberLimitReached": "Member limit reached",
+        "other": "Other"
     },
     "error": {
         "notFound": "Notification not found.",

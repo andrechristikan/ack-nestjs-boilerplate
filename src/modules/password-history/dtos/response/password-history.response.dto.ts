@@ -1,6 +1,6 @@
 import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
 import { faker } from '@faker-js/faker';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumPasswordHistoryType } from '@generated/prisma-client';
 import { Expose, Type } from 'class-transformer';
@@ -15,11 +15,11 @@ export class PasswordHistoryResponseDto extends DatabaseResponseDto {
 
     @ApiProperty({
         required: true,
-        type: UserListResponseDto,
+        type: UserRefResponseDto,
     })
     @Expose()
-    @Type(() => UserListResponseDto)
-    user: UserListResponseDto;
+    @Type(() => UserRefResponseDto)
+    user: UserRefResponseDto;
 
     password: string;
 

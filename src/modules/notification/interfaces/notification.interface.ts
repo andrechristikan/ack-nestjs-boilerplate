@@ -3,6 +3,8 @@ import {
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumWorkspaceJoinRejectReason,
+    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client';
 
 export interface INotificationTemporaryPasswordPayload {
@@ -49,6 +51,37 @@ export interface INotificationPublishTermPolicyPayload {
 
 export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
     termPolicyId: string;
+}
+
+export interface INotificationWorkspaceInvitePayload {
+    workspaceId: string;
+    workspaceName: string;
+    inviterName: string;
+    workspaceMemberRole: EnumWorkspaceMemberRole;
+    encryptedInviteAcceptLink: string;
+    reference: string;
+    expiredAt: string;
+}
+
+export type INotificationWorkspaceInviteUnregisteredPayload =
+    INotificationWorkspaceInvitePayload;
+
+export interface INotificationWorkspaceJoinRequestPayload {
+    workspaceId: string;
+    workspaceName: string;
+    requesterName: string;
+    encryptedJoinRequestReviewLink: string;
+}
+
+export interface INotificationWorkspaceJoinAcceptedPayload {
+    workspaceId: string;
+    workspaceName: string;
+}
+
+export interface INotificationWorkspaceJoinRejectedPayload {
+    workspaceId: string;
+    workspaceName: string;
+    rejectReasonCode: EnumWorkspaceJoinRejectReason;
 }
 
 export interface INotificationBulkQueuePayload<T = unknown> {
@@ -100,5 +133,16 @@ export interface INotificationEmailQueuePayload<T = unknown> {
 
 export interface INotificationEmailBulkQueuePayload<T = unknown> {
     send: INotificationEmailSendPayload[];
+    data?: T;
+}
+
+export interface INotificationEmailSendUnregisteredPayload {
+    email: string;
+    cc?: string[];
+    bcc?: string[];
+}
+
+export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
+    send: INotificationEmailSendUnregisteredPayload;
     data?: T;
 }

@@ -45,11 +45,18 @@ The date and the "owner decision" attribution carry the provenance.
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
 
+## Private methods sit above public ones
+
+Inside a class, every `private` method is declared ABOVE the public methods, directly under the constructor. A reader meets the helpers before the code that calls them, and the public surface of the class stays in one uninterrupted block instead of being cut apart by helpers.
+
+This is a layout rule, not a visibility rule — it does not change what is private.
+
 ## Comments
 
 - **Minimal comments** — default zero, only a critical WHY.
 - **No method JSDoc on internal code (HARD).** A service, repository, controller, seed `seed()`/`remove()`, guard, pipe, or processor method carries no JSDoc — types, names, and tests are the contract. JSDoc is fine on a published library's public API; this is an internal boilerplate, so almost everything is internal.
 - **Optional one-line class JSDoc** only when the class name alone does not say what the Nest provider/command is for (live seed classes and some modules do this). Never required. Never method-level to "match" a class comment.
+- **JSDoc content states final state only (HARD).** Whatever JSDoc exists — the optional class JSDoc above, or any genuinely permitted case — describes what the symbol IS or DOES right now, present tense, as if it had always been that way. It never narrates history ("moved from X", "corrected 2026-08-05", "was Y, now Z"), a decision ("chosen over X because Y", "owner decided to merge/split"), or a cross-cutting relationship that is really explaining a wiring choice rather than the symbol's own definition ("X also serves Y's endpoint, injected from Z" describes a decision about X, not what X is). A JSDoc that stops making sense the moment something else in the codebase changes is written wrong, regardless of whether it happens to be accurate today. Deprecation is the one exception, and only when the symbol itself carries an explicit deprecation signal (a real `@deprecated` marker or equivalent) — never prose speculating that something might be going away.
 - **Banned JSDoc tags on any JSDoc that does exist:** `@example` `@param` `@returns` `@template` `@throws` `@private` `@export` `@class` `@implements` `@constraint` `@remarks`.
 - **No JSDoc on interfaces** (including per-field comments).
 - **`@note` is VERY RARE (HARD).** It exists for exactly two things:
@@ -61,7 +68,10 @@ other languages semantically, so English examples cost nothing.
   narration of WHAT, changelog or plan notes. Delete on sight.
 - **Re-test the note AFTER the change lands.** Delete notes whose subject the change itself
   removed.
-- **A note sits where the hazardous EDIT happens**, not where the value is declared.
+- **A note sits where the hazardous EDIT happens**, not where the value is declared — inside
+  the body, on the statement that breaks, and NEVER on the line above a method or class
+  declaration. A comment in that position is method- or class-level commentary, which the
+  JSDoc rules above already govern (method: forbidden; class: at most one line).
 - **The test:** finish "…otherwise". If it ends in a concrete breakage, it may stay. If it
   ends in "…because that is allowed", leave it out.
 - **Format:** `// @note: <reason>` exclusively, short and single-line (~80 chars). A bare `//` narration is not a form this codebase has. No trailing comments to the right of code.

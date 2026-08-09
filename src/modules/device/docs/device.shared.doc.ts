@@ -10,7 +10,7 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function DeviceSharedListDoc(): MethodDecorator {
@@ -23,8 +23,8 @@ export function DeviceSharedListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<DeviceResponseDto>('device.list', {
-            dto: DeviceResponseDto,
+        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+            dto: DeviceOwnershipResponseDto,
             type: EnumPaginationType.cursor,
         })
     );

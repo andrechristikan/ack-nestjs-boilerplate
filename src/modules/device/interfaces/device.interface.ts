@@ -1,13 +1,10 @@
-import {
-    Device,
-    DeviceOwnership,
-    Session,
-    User,
-} from '@generated/prisma-client';
+import { Device, DeviceOwnership, Session } from '@generated/prisma-client';
+import { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceOwnership extends DeviceOwnership {
     device: Device;
-    user: User;
+    user: IUserRef;
+    revokedBy: IUserRef | null;
     _count: {
         sessions: number;
     };

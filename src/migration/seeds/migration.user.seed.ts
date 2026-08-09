@@ -44,6 +44,7 @@ export class MigrationUserSeed
     private readonly users: {
         country: string;
         email: string;
+        username: string;
         name: string;
         role: string;
         password: string;
@@ -175,7 +176,7 @@ export class MigrationUserSeed
                                 [EnumTermPolicyType.privacy]: true,
                                 [EnumTermPolicyType.termsOfService]: true,
                             },
-                            username: this.userUtil.createRandomUsername(),
+                            username: user.username,
                             deletedAt: null,
                             passwordHistories: {
                                 create: {

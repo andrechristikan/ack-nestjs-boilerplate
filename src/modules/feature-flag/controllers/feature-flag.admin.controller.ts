@@ -1,5 +1,6 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -17,9 +18,9 @@ import {
     FeatureFlagAdminUpdateMetadataDoc,
     FeatureFlagAdminUpdateStatusDoc,
 } from '@modules/feature-flag/docs/feature-flag.admin.doc';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
@@ -78,7 +79,7 @@ export class FeatureFlagAdminController {
     @ApiKeyProtected()
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
@@ -98,7 +99,7 @@ export class FeatureFlagAdminController {
     @ApiKeyProtected()
     @Put('/update/:featureFlagId/metadata')
     async update(
-        @Param('featureFlagId', RequestRequiredPipe)
+        @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {

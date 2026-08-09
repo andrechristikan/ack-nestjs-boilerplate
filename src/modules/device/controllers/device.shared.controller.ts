@@ -19,7 +19,7 @@ import {
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -75,7 +75,7 @@ export class DeviceSharedController {
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @Body() body: DeviceRefreshRequestDto
     ): Promise<void> {
-        return this.deviceService.refresh(userId, deviceOwnershipId, body);
+        await this.deviceService.refresh(userId, deviceOwnershipId, body);
     }
 
     @DeviceSharedRemoveDoc()
@@ -95,6 +95,6 @@ export class DeviceSharedController {
         )
         deviceOwnershipId: string
     ): Promise<void> {
-        return this.deviceService.remove(userId, deviceOwnershipId);
+        await this.deviceService.remove(userId, deviceOwnershipId);
     }
 }

@@ -11,9 +11,9 @@ import {
     FeatureFlagDocParamsId,
     FeatureFlagDocQueryList,
 } from '@modules/feature-flag/constants/feature-flag.doc';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function FeatureFlagAdminListDoc(): MethodDecorator {

@@ -1,7 +1,7 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperService } from '@common/helper/services/helper.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response';
+import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,

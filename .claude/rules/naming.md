@@ -19,6 +19,15 @@
 .enum   .constant   .interface   .exception
 ```
 
+Four more are valid, but ONLY inside the one tree that owns them — they are not general-purpose suffixes:
+
+| Suffix | Only under | Example |
+|---|---|---|
+| `.config` | `src/configs/` | `workspace.config.ts` |
+| `.data` | `src/migration/data/` | `migration.role.data.ts` |
+| `.seed` | `src/migration/seeds/` | `migration.user.seed.ts` |
+| `.base` | `src/migration/bases/`, `src/queues/bases/` | `queue.processor.base.ts` |
+
 Anything else is invalid.
 
 - **DTO files always end `.dto.ts`.** Request and response DTOs live under `dtos/request/` and `dtos/response/` and carry the direction in the name: `user.create.request.dto.ts`, `user.profile.response.dto.ts`. A DTO shared by both directions sits directly in `dtos/` (`user.mobile-number.dto.ts`).

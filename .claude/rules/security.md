@@ -39,6 +39,6 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
 
 ## Request store
 
-Per-request state lives in one CLS-backed `RequestStoreService` in `@common`, keyed by constants (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `ActivityLogMetadataStoreKey`). Do not create a per-module CLS store; add a key to the shared one.
+Per-request state lives in one CLS-backed `RequestStoreService` in `@common`, keyed by constants (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `ActivityLogMetadataStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
 
 Geo-location and user-agent are resolved once per request into `RequestLogStoreKey` as an `IRequestLog`, then threaded to the repository as the last method parameter. Do not re-parse them downstream.

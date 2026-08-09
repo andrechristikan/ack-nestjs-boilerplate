@@ -21,6 +21,7 @@ import {
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
 
@@ -60,7 +61,12 @@ export class DeviceOwnershipRepository {
             },
             include: {
                 device: true,
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
                 _count: {
                     select: {
                         sessions: {
@@ -103,7 +109,12 @@ export class DeviceOwnershipRepository {
             },
             include: {
                 device: true,
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
                 _count: {
                     select: {
                         sessions: {
@@ -223,7 +234,12 @@ export class DeviceOwnershipRepository {
                     },
                     include: {
                         device: true,
-                        user: true,
+                        user: {
+                            select: UserRefSelect,
+                        },
+                        revokedBy: {
+                            select: UserRefSelect,
+                        },
                         _count: {
                             select: {
                                 sessions: {
@@ -317,7 +333,12 @@ export class DeviceOwnershipRepository {
                 },
                 include: {
                     device: true,
-                    user: true,
+                    user: {
+                        select: UserRefSelect,
+                    },
+                    revokedBy: {
+                        select: UserRefSelect,
+                    },
                     _count: {
                         select: {
                             sessions: {

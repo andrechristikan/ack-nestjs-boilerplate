@@ -34,6 +34,7 @@ export interface IHelperService {
     randomNumberInRange(min: number, max: number): number;
     calculatePercent(value: number, total: number): number;
     randomString(length: number): string;
+    generateSlug(prefix: string, maxLength: number): string;
     censorString(text: string): string;
     checkPasswordStrength(
         password: string,

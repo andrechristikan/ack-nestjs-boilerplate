@@ -10,6 +10,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -51,7 +52,12 @@ export class SessionRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -78,7 +84,12 @@ export class SessionRepository {
                 isRevoked: false,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -230,7 +241,12 @@ export class SessionRepository {
                 },
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }

@@ -5,10 +5,12 @@ import { HelloModule } from '@modules/hello/hello.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
+import { WorkspacePublicController } from '@modules/workspace/controllers/workspace.public.controller';
+import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Mounts unauthenticated public controllers: country, hello, user, and term policy.
+ * Mounts unauthenticated public controllers: country, hello, user, term policy, and workspace.
  */
 @Module({
     controllers: [
@@ -16,9 +18,10 @@ import { Module } from '@nestjs/common';
         HelloPublicController,
         UserPublicController,
         TermPolicyPublicController,
+        WorkspacePublicController,
     ],
     providers: [],
     exports: [],
-    imports: [CountryModule, HelloModule, UserModule],
+    imports: [CountryModule, HelloModule, UserModule, WorkspaceModule],
 })
 export class RoutesPublicModule {}

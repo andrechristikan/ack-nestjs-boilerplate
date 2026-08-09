@@ -6,7 +6,8 @@
 
 - **Identity & auth** — JWT (ES256/ES512, JWKS), social sign-in (Google / Apple), API keys, sessions, devices, password history, two-factor (TOTP + email/SMS challenge).
 - **Access control** — roles, CASL policy abilities, term-policy acceptance gating, feature flags with per-key salt rollout and user targeting.
-- **Platform** — notifications (email via SES, push via Firebase), file upload + S3 presign, activity log, analytics, i18n messages, health checks, country reference data.
+- **Workspace & project** — multi-workspace is **mandatory** for every platform user (personal workspace auto-created at signup, `x-workspace-id` header scopes workspace-scoped `/user` routes); invites (hashed token, encrypted link) and public-workspace join requests; projects are workspace-scoped with their own member roles.
+- **Platform** — notifications (email via SES, push via Firebase), file upload + S3 presign, activity log (workspace-scoped and user-scoped reads split by `workspaceId` presence), analytics, i18n messages, health checks, country reference data.
 
 ## Stack & runtime
 
@@ -72,7 +73,7 @@ Every folder is NestJS-coupled and/or performs I/O. It stays thin; it is not a p
 
 ### `src/modules/` — feature modules
 
-`activity-log` · `api-key` · `auth` · `country` · `device` · `feature-flag` · `health` · `hello` · `notification` · `password-history` · `policy` · `role` · `session` · `term-policy` · `user`
+`activity-log` · `api-key` · `auth` · `country` · `device` · `feature-flag` · `health` · `hello` · `notification` · `password-history` · `policy` · `project` · `role` · `session` · `term-policy` · `user` · `workspace`
 
 No module carries every folder. Take only what the feature needs, from three tiers:
 

@@ -3,11 +3,13 @@ import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
 import { CountryModule } from '@modules/country/country.module';
 import { UserModule } from '@modules/user/user.module';
+import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
+import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
 import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { AwsModule } from '@common/aws/aws.module';
 import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
@@ -17,7 +19,7 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
  * Registers all `nest-commander` seed/remove commands for initial data migration.
  */
 @Module({
-    imports: [CommonModule, CountryModule, UserModule, AwsModule],
+    imports: [CommonModule, CountryModule, UserModule, WorkspaceModule, AwsModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
@@ -25,6 +27,7 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
         MigrationRoleSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
+        MigrationWorkspaceSeed,
         MigrationTemplateEmailNotificationSeed,
         MigrationTemplateTermPolicySeed,
         MigrationAwsS3ConfigSeed,

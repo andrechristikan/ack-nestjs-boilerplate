@@ -10,6 +10,10 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
 import { Logger } from '@nestjs/common';
@@ -146,6 +150,38 @@ export class NotificationProcessor extends QueueProcessorBase {
                     return this.notificationProcessorService.processUserAcceptTermPolicy(
                         job as Job<
                             INotificationQueuePayload<INotificationAcceptTermPolicyPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+                case EnumNotificationProcess.workspaceInvite:
+                    return this.notificationProcessorService.processWorkspaceInvite(
+                        job as Job<
+                            INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+                case EnumNotificationProcess.workspaceJoinRequest:
+                    return this.notificationProcessorService.processWorkspaceJoinRequest(
+                        job as Job<
+                            INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+                case EnumNotificationProcess.workspaceJoinAccepted:
+                    return this.notificationProcessorService.processWorkspaceJoinAccepted(
+                        job as Job<
+                            INotificationQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+                case EnumNotificationProcess.workspaceJoinRejected:
+                    return this.notificationProcessorService.processWorkspaceJoinRejected(
+                        job as Job<
+                            INotificationQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

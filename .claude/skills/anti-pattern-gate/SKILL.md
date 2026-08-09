@@ -47,6 +47,7 @@ When the diff touches controllers, services, repositories, or module wiring, als
 | A new family member bought by adding an abstract base, a DI token, a config knob, or an `if (type === 'x')` branch | Complexity, not breadth — `rules/architecture.md` |
 | **NOT a smell:** an exported, fully-implemented primitive with zero call sites whose family has a used member (`PaginationQueryFilterNotEqual`, `DocAllOf`, `@RequestThrottleByUser`) — new or old — or anything `pnpm deadcode` lists | Kit surface — `rules/architecture.md` |
 | Copy-pasted logic in two services instead of one shared helper | DRY — `rules/architecture.md` |
+| Two or more sequential `await`s in one scope whose results do not feed each other, instead of a single `Promise.all([...])` | Independent awaits run concurrently — `rules/architecture.md` |
 
 ## Strict nulls / types — `rules/null-safety.md`
 
@@ -100,11 +101,21 @@ When the diff touches controllers, services, repositories, or module wiring, als
 | A protection decorator stack in any order other than the canonical one | Decorator order — `rules/http.md` |
 | `@ActivityLog` without `@AuthJwtAccessProtected` above it | Decorator order — `rules/http.md` |
 | A bare `@UseGuards(...)` where a `@<Feature>Protected()` decorator is the convention | Guards — `rules/http.md` |
+| A `@Workspace*Protected()` / `@Project*Protected()` on an **admin**-scope route | Admin scope carries no workspace or project guard — `rules/http.md` |
+| An admin route narrowed to a workspace or project by the `x-workspace-id` header instead of an explicit path param | Admin scope carries no workspace or project guard — `rules/http.md` |
+| `EnumRoleType.superAdmin` listed in a `@RoleProtected(...)` call | `@RoleProtected` never lists `superAdmin` — `rules/http.md` |
 | A guard resolving an entity and deciding a business rule inline | Guards — `rules/http.md` |
 | A credential assigned onto `request.<field>` by a guard | Guards — `rules/http.md`, `rules/security.md` |
 | A 2FA, account-state, or ownership check written in a controller | Controllers — `rules/http.md` |
 | A controller assembling pagination metadata by hand | Controllers — `rules/http.md` |
 | A bare `:id` route param, or a param name disagreeing across route / `@Param` / doc constant | Route params — `rules/http.md` |
+| A controller handler that is not `async` | Controllers — `rules/http.md` |
+| A controller handler returning a bare DTO instead of an envelope type | Controllers — `rules/http.md` |
+| `return { data: undefined }` manufactured for a handler that has nothing to return | Controllers — `rules/http.md` |
+| A dash-compound VERB in a route path (`update-role`, `soft-delete`, `update-status`) | Route path shape — `rules/http.md` |
+| A route where the id does not come immediately after the action (`update/read/:id`) | Route path shape — `rules/http.md` |
+| An ObjectId param validated by `RequestIsValidObjectIdPipe` WITHOUT `RequestRequiredPipe` in front of it | The pipes are a pair — `rules/http.md` |
+| `RequestRequiredPipe` removed from a param because it "looks redundant" | The pipes are a pair — `rules/http.md` |
 | A body field duplicating a path param | Route params — `rules/http.md` |
 | A `@Response` route whose handler returns a bare DTO instead of `IResponseReturn<T>` | Responses — `rules/http.md` |
 | A literal message string passed to `@Response()` instead of an i18n path | Responses — `rules/http.md` |
@@ -193,10 +204,12 @@ When the diff touches controllers, services, repositories, or module wiring, als
 
 | Smell | Canonical rule |
 |---|---|
+| A `private` method declared below a public method instead of directly under the constructor | Member order — `rules/authoring.md` |
 | A comment explaining a cast, an obvious call, or what the next line does | Comments — `rules/authoring.md` |
 | A trailing `//` comment to the right of code | Comments — `rules/authoring.md` |
 | Method JSDoc on internal code, or JSDoc with `@param` / `@returns` / `@example` / `@throws` | Comments — `rules/authoring.md` |
 | JSDoc on an interface, including a per-field comment | Comments — `rules/authoring.md` |
+| A class/module JSDoc narrating history, a decision, or a wiring relationship ("moved from X", "also serves Y, injected from Z") instead of the symbol's current final state | Comments — `rules/authoring.md` |
 | An existing rule-compliant comment deleted or rephrased during a refactor | Comments — `rules/authoring.md` |
 | `logger.error('message', error)` — message first | Logging — `rules/operational.md` |
 | `process.env` read directly in feature code | Config — `rules/operational.md` |
