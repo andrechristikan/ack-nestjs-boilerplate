@@ -29,7 +29,7 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
 
 - **A guard reads transport inputs and delegates the decision.** Resolving an entity and deciding a business rule inline puts the rule where no other caller can reuse it and no test can reach it.
 - CASL abilities come from the role's stored `abilities`; `@PolicyAbilityProtected` names the subject and actions. Do not re-implement an ability check by hand in a service.
-- Feature flags gate a route via `@FeatureFlagProtected('<key>')` — including nested metadata keys (`'changePassword.forgotAllowed'`). Flags carry per-key salt rollout and user targeting; read `docs/feature-flag.md` before adding one.
+- Feature flags gate a route via `@FeatureFlagProtected('<key>')`; `rules/feature-flag.md` owns the key shape. Flags carry per-key salt rollout and user targeting; read `docs/feature-flag.md` before adding one.
 
 ## Activity log
 
