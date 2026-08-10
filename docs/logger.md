@@ -80,7 +80,7 @@ SENTRY_DSN=<your_sentry_dsn>
 | Variable | Description | Type | Default | Required |
 |----------|-------------|------|---------|----------|
 | `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
-| `LOGGER_LEVEL` | Minimum log level | `string` | `debug` | Yes |
+| `LOGGER_LEVEL` | Minimum log level | `EnumLoggerLevel` | `debug` | Yes |
 | `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
 | `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
 | `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
@@ -91,7 +91,7 @@ SENTRY_DSN=<your_sentry_dsn>
 | Option | Description | Default |
 |--------|-------------|---------|
 | `enable` | Enable/disable logging | `false` |
-| `level` | Minimum log level (`error`, `warn`, `info`, `verbose`, `debug`, `silly`) | `debug` |
+| `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `debug` |
 | `intoFile` | Write logs to files | `false` |
 | `filePath` | Directory path for log files | `/logs` |
 | `auto` | Enable automatic HTTP request/response logging | `false` |
@@ -137,24 +137,30 @@ export class UserService {
 
 ### Log Levels
 
-Available log levels as defined in `EnumLoggerLevel`:
-
-```typescript
-this.logger.error('Error message');      // error level - Critical errors
-this.logger.warn('Warning message');     // warn level - Warning conditions
-this.logger.log('Info message');         // info level - General information
-this.logger.verbose('Verbose message');  // verbose level - Detailed information
-this.logger.debug('Debug message');      // debug level - Debug information
-```
+`EnumLoggerLevel` declares Pino's own level set. These six values are what `LOGGER_LEVEL` accepts:
 
 **Level Hierarchy (from highest to lowest priority):**
-1. `error` - Critical errors that need immediate attention
-2. `warn` - Warning conditions that should be reviewed
-3. `info` - General informational messages
-4. `verbose` - Detailed informational messages
+1. `fatal` - Unrecoverable failures that end the process or the job
+2. `error` - Critical errors that need immediate attention
+3. `warn` - Warning conditions that should be reviewed
+4. `info` - General informational messages
 5. `debug` - Debug-level messages for development
+6. `trace` - Fine-grained tracing, the most verbose level
 
-**Note:** Setting `LOGGER_LEVEL=warn` will log only `error` and `warn` messages, filtering out `info`, `verbose`, and `debug`.
+The `Logger` from `@nestjs/common` is backed by `nestjs-pino`, so its method names do not all match the level they emit:
+
+```typescript
+this.logger.fatal('Fatal message');      // fatal level
+this.logger.error('Error message');      // error level
+this.logger.warn('Warning message');     // warn level
+this.logger.log('Info message');         // info level  (method is log, not info)
+this.logger.debug('Debug message');      // debug level
+this.logger.verbose('Verbose message');  // trace level (method is verbose, not trace)
+```
+
+`log()` and `verbose()` are the two that differ. `verbose` and `silly` are Winston names; neither is a valid `LOGGER_LEVEL` value, and `LOGGER_LEVEL=verbose` is rejected by environment validation at startup.
+
+**Note:** Setting `LOGGER_LEVEL=warn` will log only `fatal`, `error`, and `warn` messages, filtering out `info`, `debug`, and `trace`.
 
 ### Log Severity
 

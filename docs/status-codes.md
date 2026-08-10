@@ -19,8 +19,8 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50707` | 8 |
 | `50800` | `auth` | `50800`–`50814` | 15 |
-| `50900` | `country` | `50900`–`50903` | 4 |
-| `51000` | `user` | `51000`–`51027` | 28 |
+| `50900` | `country` | `50900`–`50902` | 3 |
+| `51000` | `user` | `51000`–`51026` | 27 |
 | `51100` | `policy` | `51100`–`51101` | 2 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
@@ -154,9 +154,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `notFound` | `50900` | `notFound` | 404 (`NOT_FOUND`) | `country.error.notFound` | Country not found. |
-| `isActive` | `50901` | `isActive` | — | — | Reserved enum member; no exception or i18n path yet. |
-| `inactive` | `50902` | `inactive` | — | — | Reserved enum member; no exception or i18n path yet. |
-| `exist` | `50903` | `exist` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `inactive` | `50901` | `inactive` | — | — | Reserved enum member; no exception or i18n path yet. |
+| `exist` | `50902` | `exist` | — | — | Reserved enum member; no exception or i18n path yet. |
 
 ## `user`
 
@@ -170,26 +169,25 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `statusInvalid` | `51005` | `statusInvalid` | — | `user.error.statusInvalid` | Invalid user status. |
 | `blockedInvalid` | `51006` | `blockedInvalid` | 400 (`BAD_REQUEST`) | `user.error.blockedInvalid` | This user account has been blocked. |
 | `inactiveForbidden` | `51007` | `inactiveForbidden` | 403 (`FORBIDDEN`) | `user.error.inactive` | This user is inactive. |
-| `deletedForbidden` | `51008` | `deletedForbidden` | — | — | Reserved enum member; no exception or i18n path yet. |
-| `blockedForbidden` | `51009` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
-| `passwordNotMatch` | `51010` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
-| `passwordMustNew` | `51011` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
-| `passwordExpired` | `51012` | `passwordExpired` | 403 (`FORBIDDEN`) | `auth.error.passwordExpired` | Your password has expired. |
-| `passwordAttemptMax` | `51013` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.passwordAttemptMax` | Maximum password attempts exceeded. |
-| `mobileNumberInvalid` | `51014` | `mobileNumberInvalid` | 400 (`BAD_REQUEST`) | `user.error.mobileNumberInvalid` | This mobile number is invalid. |
-| `usernameNotAllowed` | `51015` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
-| `usernameContainBadWord` | `51016` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
-| `emailNotVerified` | `51017` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
-| `passwordNotSet` | `51018` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotSet` | Password has not been set for this account. |
-| `tokenInvalid` | `51019` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
-| `emailAlreadyVerified` | `51020` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
-| `mobileNumberExist` | `51021` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
-| `verificationEmailResendLimitExceeded` | `51022` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
-| `forgotPasswordRequestLimitExceeded` | `51023` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
-| `twoFactorMethodRequired` | `51024` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
-| `notFoundForbidden` | `51025` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
-| `importEmailExist` | `51026` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
-| `importUsernameExist` | `51027` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
+| `blockedForbidden` | `51008` | `blockedForbidden` | 403 (`FORBIDDEN`) | `user.error.blocked` | This user account has been blocked. |
+| `passwordNotMatch` | `51009` | `passwordNotMatch` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotMatch` | Passwords do not match. |
+| `passwordMustNew` | `51010` | `passwordMustNew` | 400 (`BAD_REQUEST`) | `auth.error.passwordMustNew` | New password must be different from previous passwords within the past {period} days. |
+| `passwordExpired` | `51011` | `passwordExpired` | 403 (`FORBIDDEN`) | `auth.error.passwordExpired` | Your password has expired. |
+| `passwordAttemptMax` | `51012` | `passwordAttemptMax` | 403 (`FORBIDDEN`) | `auth.error.passwordAttemptMax` | Maximum password attempts exceeded. |
+| `mobileNumberInvalid` | `51013` | `mobileNumberInvalid` | 400 (`BAD_REQUEST`) | `user.error.mobileNumberInvalid` | This mobile number is invalid. |
+| `usernameNotAllowed` | `51014` | `usernameNotAllowed` | 400 (`BAD_REQUEST`) | `user.error.usernameNotAllowed` | This username is not allowed. |
+| `usernameContainBadWord` | `51015` | `usernameContainBadWord` | 400 (`BAD_REQUEST`) | `user.error.usernameContainBadWord` | Username contains inappropriate words. |
+| `emailNotVerified` | `51016` | `emailNotVerified` | 403 (`FORBIDDEN`) | `user.error.emailNotVerified` | Email not verified. |
+| `passwordNotSet` | `51017` | `passwordNotSet` | 400 (`BAD_REQUEST`) | `auth.error.passwordNotSet` | Password has not been set for this account. |
+| `tokenInvalid` | `51018` | `tokenInvalid` | 400 (`BAD_REQUEST`) | `user.error.verificationTokenInvalid` | Verification token is invalid or expired. |
+| `emailAlreadyVerified` | `51019` | `emailAlreadyVerified` | 400 (`BAD_REQUEST`) | `user.error.emailAlreadyVerified` | This email has already been verified. |
+| `mobileNumberExist` | `51020` | `mobileNumberExist` | 409 (`CONFLICT`) | `user.error.mobileNumberExist` | This mobile number already exists. |
+| `verificationEmailResendLimitExceeded` | `51021` | `verificationEmailResendLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.verificationEmailResendLimitExceeded` | You have exceeded the limit for resending verification emails. Try again after {minutes} minutes. |
+| `forgotPasswordRequestLimitExceeded` | `51022` | `forgotPasswordRequestLimitExceeded` | 400 (`BAD_REQUEST`) | `user.error.forgotPasswordRequestLimitExceeded` | You have exceeded the limit for password reset requests. Try again after {minutes} minutes. |
+| `twoFactorMethodRequired` | `51023` | `twoFactorMethodRequired` | — | — | Reserved user enum member; live path uses auth `50813` + `auth.error.twoFactorMethodRequired`. |
+| `notFoundForbidden` | `51024` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
+| `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
+| `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
 
 ## `policy`
 

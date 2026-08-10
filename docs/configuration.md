@@ -191,8 +191,8 @@ password: {
 ```typescript
 twoFactor: {
   issuer: string;                 // Issuer name for OTP (TOTP)
-  strategy: string;               // OTP strategy (default: 'totp')
-  algorithm: string;              // Hash algorithm for OTP (default: 'sha1')
+  strategy: OTPStrategy;          // OTP strategy (default: 'totp')
+  algorithm: HashAlgorithm;       // Hash algorithm for OTP (default: 'sha1')
   digits: number;                 // Number of digits in OTP
   periodInMs: number;             // OTP validity window (ms); otplib receives seconds
   window: number;                 // Allowed window for OTP validation
@@ -348,7 +348,7 @@ enable: boolean                 // Turn logging on/off
 
 **`level`** - Log level configuration
 ```typescript
-level: string                   // Log level: error, warn, info, verbose, debug, silly
+level: EnumLoggerLevel          // Log level: fatal, error, warn, info, debug, trace
 ```
 
 **`intoFile`** - File logging option

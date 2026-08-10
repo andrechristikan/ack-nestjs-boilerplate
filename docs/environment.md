@@ -251,7 +251,7 @@ LOGGER_ENABLE=true
 ```
 
 **`LOGGER_LEVEL`** *(required)*  
-Logging level. Validated against `EnumLoggerLevel`. Options: `error`, `warn`, `info`, `verbose`, `debug`, `silly`
+Minimum log level. Validated against `EnumLoggerLevel`, which declares Pino's own level set. Options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
 ```bash
 LOGGER_LEVEL=debug
 ```
