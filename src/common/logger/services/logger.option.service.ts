@@ -14,7 +14,10 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
 import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
 import stripAnsi from 'strip-ansi';
-import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
+import {
+    EnumLoggerLevel,
+    EnumLoggerSeverity,
+} from '@common/logger/enums/logger.enum';
 import { Options } from 'pino-http';
 
 @Injectable()
@@ -26,7 +29,7 @@ export class LoggerOptionService {
     private readonly autoLogger: boolean;
 
     private readonly enable: boolean;
-    private readonly level: string;
+    private readonly level: EnumLoggerLevel;
     private readonly intoFile: boolean;
     private readonly filePath: string;
     private readonly prettier: boolean;
@@ -45,7 +48,7 @@ export class LoggerOptionService {
         this.autoLogger = this.configService.get<boolean>('logger.auto')!;
 
         this.enable = this.configService.get<boolean>('logger.enable')!;
-        this.level = this.configService.get<string>('logger.level')!;
+        this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
         this.intoFile = this.configService.get<boolean>('logger.intoFile')!;
         this.filePath = this.configService.get<string>('logger.filePath')!;
         this.prettier = this.configService.get<boolean>('logger.prettier')!;

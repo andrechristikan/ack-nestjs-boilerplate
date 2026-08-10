@@ -1,10 +1,10 @@
 export enum EnumLoggerLevel {
+    fatal = 'fatal',
     error = 'error',
     warn = 'warn',
     info = 'info',
-    verbose = 'verbose',
     debug = 'debug',
-    silly = 'silly',
+    trace = 'trace',
 }
 
 export enum EnumLoggerSeverity {
