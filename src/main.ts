@@ -109,4 +109,16 @@ async function bootstrap(): Promise<void> {
 
     return;
 }
-bootstrap();
+
+/**
+ * Forces the exit on a failed boot. Shutdown hooks are already registered by then, so the signal
+ * listeners keep the event loop alive and nothing else would terminate the process.
+ */
+bootstrap().catch((error: unknown) => {
+    const detail =
+        error instanceof Error ? (error.stack ?? error.message) : String(error);
+
+    process.stderr.write(`[Bootstrap] Failed to start the application\n`);
+    process.stderr.write(`${detail}\n`);
+    process.exit(1);
+});
