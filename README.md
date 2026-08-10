@@ -54,8 +54,7 @@ This boilerplate is perfect for:
     - [🔔 Notifications](#-notifications)
     - [📝 Testing \& Documentation](#-testing--documentation)
   - [Quick Start](#quick-start)
-  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
-    - [Supported Databases](#supported-databases)
+  - [Database](#database)
   - [Installation](#installation)
   - [License](#license)
   - [Contribute](#contribute)
@@ -180,7 +179,7 @@ For more information see [package.json][ref-package-json]
 - **Modular Structure** - Component-based folder organization
 - **12-Factor App** - Cloud-native best practices
 - **Production Ready** - Enterprise-grade security and scalability
-- **Workspaces & Projects** - Every user owns a personal workspace; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
+- **Workspaces & Projects** - Every user lands in a workspace at creation, personal by default or the inviting workspace when they sign up through an invite; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
 
 ### 🔐 Authentication & Security
 Production-ready authentication system with multiple strategies and security layers.

@@ -20,7 +20,7 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 
 ## AWS S3 Presigned URL Get Capability
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. It is a service capability only. No controller calls it, so there is no route, no request DTO, and no message key for a download presign.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyService.getContentByAdmin`, exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes `access: EnumAwsS3Accessibility.private`, so term policy content is signed against the private bucket. There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 

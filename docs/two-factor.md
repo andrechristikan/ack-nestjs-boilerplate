@@ -518,7 +518,7 @@ sequenceDiagram
 | 403 | `emailNotVerified` | Email not verified |
 | 404 | `notFound` | User not found |
 
-**Note on `twoFactorAttemptTemporaryLock`:** This error occurs when user tries to verify 2FA while locked. Response includes `retryAfterSeconds` indicating when user can retry. Lock is set automatically after the 5th failed attempt (when attempt counter reaches 5). Lock duration increases exponentially with each subsequent lockout.
+**Note on `twoFactorAttemptTemporaryLock`:** This error occurs when user tries to verify 2FA while locked. The remaining lock time is interpolated into the localized `message` string (`Please try again after {retryAfterSeconds}s.`); it is not returned as a separate response field. Lock is set automatically after the 5th failed attempt (when attempt counter reaches 5). Lock duration increases exponentially with each subsequent lockout.
 
 ## Contribution
 

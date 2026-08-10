@@ -29,6 +29,7 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
+- [Models](#models)
 - [Composite Types](#composite-types)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
@@ -290,6 +291,38 @@ The `termPolicy` seed creates each record with an empty `contents` array. The do
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
+
+## Models
+
+Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the collection name is what you see in MongoDB.
+
+| Model | Collection | Purpose |
+|---|---|---|
+| `ApiKey` | `ApiKeys` | API key credentials for machine access |
+| `Role` | `Roles` | Roles and their CASL abilities |
+| `Country` | `Countries` | Country reference data |
+| `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
+| `User` | `Users` | User accounts |
+| `Verification` | `Verifications` | Email and mobile verification tokens |
+| `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
+| `ActivityLog` | `ActivityLogs` | Audit trail of user actions |
+| `Session` | `Sessions` | Issued refresh sessions per device |
+| `Device` | `Devices` | Devices identified by fingerprint |
+| `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
+| `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
+| `TermPolicy` | `TermPolicies` | Term policy documents and versions |
+| `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
+| `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
+| `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
+| `Notification` | `Notifications` | Notification records |
+| `NotificationDelivery` | `NotificationDeliveries` | Per-channel delivery outcome of a notification |
+| `NotificationUserSetting` | `NotificationUserSettings` | Per-user channel and type preferences |
+| `Workspace` | `Workspaces` | Workspaces |
+| `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
+| `WorkspaceInvite` | `WorkspaceInvites` | Outstanding workspace invitations |
+| `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
+| `Project` | `Projects` | Projects inside a workspace |
+| `ProjectMember` | `ProjectMembers` | Project membership and role |
 
 ## Composite Types
 
@@ -622,6 +655,7 @@ For setup and seeding on MongoDB, see the sections above.
 
 <!-- REFERENCES -->
 
+[ref-prisma]: https://www.prisma.io
 [ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
 [ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
 

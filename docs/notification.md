@@ -229,7 +229,7 @@ Available templates (one per `EnumNotificationProcess` that uses email):
 | `notification.workspace-join-accepted.template.hbs` | `workspaceJoinAccepted` |
 | `notification.workspace-join-rejected.template.hbs` | `workspaceJoinRejected` |
 
-Templates are managed independently from migrations. Use `NotificationTemplateService` methods (e.g., `emailImportWelcome()`, `emailDeleteWelcome()`) to sync them to SES.
+Templates are not part of the bundled `migration:seed` / `migration:remove` scripts. They are synced by the standalone `template-email-notification` migration command (`MigrationTemplateEmailNotificationSeed`, registered in `MigrationModule`), which calls the `NotificationTemplateService` import methods (e.g., `emailImportWelcome()`) on `--type seed` and the matching delete methods (e.g., `emailDeleteWelcome()`) on `--type remove`.
 
 For AWS SES configuration and no-op mode, see [Third-Party Integration — SES][ref-doc-third-party].
 

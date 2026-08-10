@@ -346,6 +346,8 @@ flowchart TD
 - `EnumPolicySubject.termPolicy` - Terms and policies
 - `EnumPolicySubject.featureFlag` - Feature flags
 - `EnumPolicySubject.device` - Device management
+- `EnumPolicySubject.workspace` - Workspace management
+- `EnumPolicySubject.project` - Project management
 
 **Usage:**
 
@@ -643,7 +645,7 @@ Each ability consists of:
 - **action**: Array of allowed actions (manage, read, create, update, delete)
 
 **Available subjects and actions are defined in:**
-- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device
+- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project
 - `EnumPolicyAction`: manage, read, create, update, delete
 
 ### Assigning Roles to Users

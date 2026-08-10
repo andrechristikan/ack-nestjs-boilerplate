@@ -50,7 +50,7 @@ export interface IConfigRedis {
 Job defaults (attempts, backoff delays, removeOnComplete / removeOnFail) are in `src/configs/queue.config.ts` and applied from `src/queues/queue.register.module.ts`.
 
 Environment variables:
-- `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379`)
+- `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379/1`). Queues live on Redis database `1`; the cache uses database `0` through `CACHE_REDIS_URL`
 - `APP_NAME`: Application name for connection naming
 - `APP_ENV`: Application environment for connection naming
 
@@ -62,6 +62,9 @@ The queue system consists of:
 2. **Queue Module** (`src/queues/queue.module.ts`): Module for managing queue processors
 3. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): Base class with error handling and Sentry integration
 4. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
+5. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
+
+Producers and workers do not share one connection. `queue.register.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the `Queue` prefix. Register a queue with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator already binds `QueueProcessorConfigKey` for you.
 
 ## Available Queues
 
@@ -157,24 +160,43 @@ export enum EnumQueue {
 }
 ```
 
-2. Register queue in `src/queues/queue.register.module.ts`:
+2. Add its backoff delay to `IConfigQueue` in `src/configs/queue.config.ts`:
+
+```typescript
+job: {
+    // ... existing delays
+    yourQueueBackoffDelayInMs: ms('5s'),
+}
+```
+
+3. Register the queue in `src/queues/queue.register.module.ts`, reading every job default from config like the existing queues:
 
 ```typescript
 static forRoot(): DynamicModule {
     const queues = [
         // ... existing queues
-        BullModule.registerQueue({
+        BullModule.registerQueueAsync({
             name: EnumQueue.yourQueue,
             configKey: QueueConfigKey,
-            defaultJobOptions: {
-                attempts: 3,
-                backoff: {
-                    type: 'exponential',
-                    delay: 5000,
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                defaultJobOptions: {
+                    attempts: configService.get<number>('queue.job.attempts'),
+                    backoff: {
+                        type: 'exponential',
+                        delay: configService.get<number>(
+                            'queue.job.yourQueueBackoffDelayInMs'
+                        ),
+                    },
+                    removeOnComplete: configService.get<number>(
+                        'queue.job.removeOnComplete'
+                    ),
+                    removeOnFail: configService.get<number>(
+                        'queue.job.removeOnFail'
+                    ),
                 },
-                removeOnComplete: 50,
-                removeOnFail: 100,
-            },
+            }),
         }),
     ];
     // ...

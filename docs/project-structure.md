@@ -91,7 +91,8 @@ The languages folder provides internationalization (i18n) resources for multi-la
 The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, users, and workspaces
+- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, users, and workspaces (the seven commands bundled into `pnpm migration:seed`)
+- Ships three on-demand commands that are not part of `pnpm migration:seed`: `aws-s3-config`, `template-email-notification`, and `template-termPolicy`
 
 ## Queues
 
@@ -120,7 +121,8 @@ The router folder defines API routing by access level. It includes:
 The instrument file configures observability and monitoring for the application using **Sentry**. It is imported at the very beginning of the application bootstrap to ensure all errors and transactions are properly tracked. Key responsibilities include:
 - Initializing Sentry with DSN and configuration based on the environment
 - Configuring sampling rates for traces and profiles (higher in development, lower in production)
-- Implementing custom filtering logic to exclude non-fatal worker exceptions and protected routes from Sentry reporting
+- Implementing custom filtering logic in `beforeSend` to drop non-fatal `QueueException` events, requests to the excluded noise routes (`LoggerExcludedRoutes`: health, docs, hello, metrics, favicon, root), responses with a status code below 500, and events at `info` or `debug` level
+- Forwarding Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
 - Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
 - Ensuring sensitive data (PII) is not sent to Sentry
 
@@ -259,14 +261,14 @@ Below are explanations for the root folders and files outside `src/`:
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles, the JWKS server nginx config, and the Vault bootstrap scripts and policies.
+- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
 - **generated/**: Auto-generated output: the Prisma client, the Swagger JSON, and the Vault init material. Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
 - **scripts/**: Utility scripts for tasks like key generation.
-- **test/**: Jest configuration (`jest.json`) and the spec suite, mirroring `src/`.
+- **test/**: Jest configuration (`jest.json`). The spec suite is meant to mirror `src/`, but no spec files are committed, so `pnpm test` passes through `--passWithNoTests`.
 
 ### Files
 
@@ -284,7 +286,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
-- **pnpm-workspace.yaml**: pnpm workspace configuration for monorepo support.
+- **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
 - **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@config`, `@configs/*`, `@modules/*`, `@queues/*`, `@routes/*`, `@router`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@package`).
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.

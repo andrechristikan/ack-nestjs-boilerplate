@@ -453,11 +453,13 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
-    previousCursor?: string;
+    previousCursor?: string;   // declared on the DTO, never populated
   };
   data: T[];
 }
 ```
+
+Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCursor` from the service's `cursor` field and never assigns `previousCursor`, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Do not build a "previous page" control from either field.
 
 ## Caching
 

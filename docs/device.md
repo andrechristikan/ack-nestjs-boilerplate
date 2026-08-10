@@ -85,13 +85,13 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 ## What Happens When a Device Ownership is Removed
 
-Removing a device ownership (device per user) triggers a transaction that:
+Removing a device ownership (device per user) runs a transaction (steps 1 to 4) alongside a Redis delete (step 5):
 
-1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user), updates `updatedBy` and `lastActiveAt`. The ownership record is retained for audit trail.
+1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity.
 2. **Updates the `Device` record** — clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`. These fields live on the shared `Device` row, not on the ownership, so the push token is invalidated for every user owning that device.
 3. **Revokes the active session** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`)
 4. **Creates an activity log** entry with action `userRemoveDevice`, inside the same transaction
-5. **Deletes the session key from Redis** — causing immediate 401 on any subsequent request using those tokens
+5. **Deletes the session keys from Redis** — causing immediate 401 on any subsequent request using those tokens. This runs concurrently with the transaction, not after it, and the session list it deletes is read before the transaction opens.
 
 The admin endpoint records a second log with action `adminDeviceRemove`. That one is written by `ActivityLogInterceptor` after the handler returns, outside the transaction.
 
@@ -103,13 +103,15 @@ sequenceDiagram
     participant Database
 
     Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
-    API->>Database: Begin transaction
-    API->>Database: Update DeviceOwnership (isRevoked=true)
-    API->>Database: Update Device (clear notificationToken + notificationProvider)
-    API->>Database: Set isRevoked=true on active session for this device-user pair
-    API->>Database: Create activity log (userRemoveDevice)
-    API->>Database: Commit transaction
-    API->>Redis: Delete session key for this device-user pair
+    API->>Database: Read active sessions for this device-user pair
+    par Transaction
+        API->>Database: Update DeviceOwnership (isRevoked=true)
+        API->>Database: Update Device (clear notificationToken + notificationProvider)
+        API->>Database: Set isRevoked=true on active session for this device-user pair
+        API->>Database: Create activity log (userRemoveDevice)
+    and Redis
+        API->>Redis: Delete the session keys read above
+    end
     Note over Redis: Tokens for this device-user pair are now invalid
     API-->>Client: 200 OK
     Note over Client: Client using this device gets 401 on next request

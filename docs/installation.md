@@ -321,6 +321,20 @@ pnpm db:migrate
 pnpm migration:seed
 ```
 
+**Remove all seeded data:**
+```bash
+pnpm migration:remove
+```
+
+**Reset the database and reseed from scratch:**
+
+> [!WARNING]
+> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+
+```bash
+pnpm migration:fresh
+```
+
 **Seed email:**
 
 Use this to seed email data for testing email sending features.
@@ -376,6 +390,12 @@ pnpm lint:fix
 # Run tests
 pnpm test
 
+# Run tests with coverage
+pnpm test:cov
+
+# Type-check without emitting (also run by the pre-commit hook)
+pnpm typecheck
+
 # Check for dead/unused code
 pnpm deadcode
 
@@ -430,6 +450,7 @@ To verify everything is working correctly:
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
+[ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md

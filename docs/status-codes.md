@@ -77,6 +77,16 @@ Next free hundred: `51900` (verify by scanning enums before claiming).
 | `paramRequired` | `50302` | `paramRequired` | 400 (`BAD_REQUEST`) | `request.error.paramRequired` | Required parameter is missing. |
 | `envForbidden` | `50303` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
 
+`50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
+
+| exception | module | httpStatus | messagePath |
+|---|---|---|---|
+| `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
+| `RequestIsMongoIdException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isMongoId` |
+| `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
+
+Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.
+
 ## `session`
 
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |

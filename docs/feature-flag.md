@@ -9,6 +9,7 @@ Feature flag module provides dynamic feature management for controlling applicat
 ## Related Documents
 
 - [Cache Documentation][ref-doc-cache]
+- [Authorization Documentation][ref-doc-authorization]
 
 ## Table of Contents
 
@@ -103,7 +104,7 @@ export class AuthController {
 }
 ```
 
-`@FeatureFlagProtected()` must sit **below** `@AuthJwtAccessProtected()` in the decorator stack so the flag guard runs after the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert.
+`@FeatureFlagProtected()` must sit **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
 ### With Service
 
@@ -253,5 +254,6 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this
 <!-- REFERENCES -->
 
 [ref-doc-cache]: cache.md
+[ref-doc-authorization]: authorization.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

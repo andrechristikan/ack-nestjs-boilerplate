@@ -94,7 +94,7 @@ The module covers four things: the workspace itself and its membership roles, in
 
 `POST /user/workspace/switch` records the caller's choice on `user.lastWorkspaceId`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
-Four user-scope routes deliberately carry no workspace header, because they act across workspaces or before membership exists: `list`, `create`, `switch`, `invite/claim`, and `join-request/create`.
+Five user-scope routes deliberately carry no workspace header, because they act across workspaces or before membership exists: `list`, `create`, `switch`, `invite/claim`, and `join-request/create`.
 
 ## Guards and Decorators
 
@@ -181,9 +181,9 @@ Mounted under `/public`. Unauthenticated, but still behind `@ApiKeyProtected()` 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/public/workspace/invite/:inviteToken/preview` | Shows workspace name, inviter name, offered role, and expiry for a pending invite. Nothing else |
-| `GET` | `/public/workspace/preview/:slug` | Shows name, slug, and description of a **public** workspace |
+| `GET` | `/public/workspace/preview/:slug` | Shows `id`, `name`, `slug`, `description`, and the `createdAt` / `updatedAt` / `deletedAt` timestamps of a **public** workspace. The `createdBy` / `updatedBy` / `deletedBy` audit columns are excluded, so the preview never names who runs it |
 
-Both previews return `notFound` rather than `forbidden` for a workspace that exists but is not eligible, so a private slug cannot be probed.
+Neither preview answers `forbidden` for a resource that exists but is not eligible, so nothing can be probed: the slug preview collapses "private" and "unknown" into `notFound` (404, `51600`), and the invite preview collapses an unknown, expired, non-pending, or dead-workspace token into `inviteInvalid` (400, `51603`).
 
 ### Admin Scope
 
@@ -205,11 +205,12 @@ Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@Policy
 
 **`owner` short-circuits the role guard.** It is never listed in a route's allowed roles; folding it in would make every `admin`-gated route reject the owner.
 
-**Peer rules** (`assertPeerActionAllowed`, on member role update and member removal) throw `WorkspaceMemberPeerForbiddenException` (403, `51608`) when:
+**Peer rules** throw `WorkspaceMemberPeerForbiddenException` (403, `51608`). `assertPeerActionAllowed`, called on member role update and member removal, covers:
 
 - the target is an `owner`, or
-- the actor is an `admin` and the target is an `admin`, or
-- (removal only) the actor targets themselves. Use leave instead.
+- the actor is an `admin` and the target is an `admin`.
+
+`removeMember` adds one check of its own, ahead of that call: the actor targets themselves. Use leave instead.
 
 **Transfer ownership** demotes the actor to `admin` and promotes the target to `owner` in one transaction. Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51619`); a non-member target throws `WorkspaceMemberNotFoundException` (404, `51606`).
 

@@ -76,7 +76,7 @@ pnpm generate:keys
 pnpm db:generate
 pnpm db:migrate
 
-# Start infrastructure (MongoDB + Redis)
+# Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
 docker-compose up -d
 
 # Run in development mode
@@ -128,18 +128,23 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 | `feat` | New feature |
 | `fix` | Bug fix |
 | `hotfix` | Urgent production fix |
-| `doc` | Documentation changes |
+| `docs` | Documentation changes |
 | `refactor` | Code refactor (no feature/fix) |
+| `perf` | Performance improvement |
+| `style` | Formatting only, no change in code meaning |
 | `test` | Adding or updating tests |
+| `build` | Build system or compiler changes |
 | `ci` | CI/CD pipeline changes |
 | `chore` | Build process, dependencies |
 | `revert` | Revert a previous commit |
+
+The list above is the complete `type-enum` in `.commitlintrc`. Any other type is rejected by the `commit-msg` hook.
 
 **Examples:**
 ```
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
-doc(readme): update docker setup instructions
+docs(readme): update docker setup instructions
 ```
 
 ---
@@ -153,7 +158,7 @@ doc(readme): update docker setup instructions
    git checkout -b feat/your-feature-name
    ```
 2. Make your changes
-3. Ensure husky / local checks pass (`pnpm lint`, `pnpm test`, and whatever else the pre-commit hook runs)
+3. Ensure the husky pre-commit gates pass. The hook runs, in order: `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`
 4. Push and open a PR against `development` (integration branch). `main` stays the release/default line.
 5. Fill in the PR template so a reviewer can follow the work:
    - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?** (required checks + tests + mandatory when applicable)
@@ -166,7 +171,7 @@ The PR template asks for what a reviewer must verify (boot, tests, seed/env, lay
 - Tests are failing
 - Linting errors exist
 - No Summary of what changed and why
-- Scope / How Has This Been Tested? are empty or clearly unrun
+- Scope / How Has This Been Tested? are empty, or describe checks that were clearly never run
 
 ---
 

@@ -67,7 +67,7 @@ if (errors.length > 0) {
 ```
 
 The `AppEnvDto` class is located at `src/app/dtos/app.env.dto.ts`.
-If validation fails, the application will not start and will display detailed error messages showing which environment variables are missing or invalid.
+If validation fails, the application will not start and will display detailed error messages showing which environment variables are missing or invalid. The thrown error is caught by the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`. Shutdown hooks are already registered by the time validation runs, so that forced exit is what keeps a failed boot from hanging on the signal listeners.
 
 ## Example Configuration
 
@@ -206,6 +206,12 @@ APP_TIMEZONE=Asia/Jakarta
 Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (enforced by `@MinLength(32)` / `@MaxLength(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
+```
+
+**`NODE_ENV`** *(optional)*  
+Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`: `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset. It is not part of `AppEnvDto`, and `src/main.ts` overwrites it with `app.env` once the config is loaded.
+```bash
+NODE_ENV=local
 ```
 
 ### Home/Organization Settings
@@ -519,7 +525,7 @@ AWS_S3_PUBLIC_BUCKET=
 ```
 
 **`AWS_S3_PUBLIC_CDN`** *(optional)*  
-CloudFront CDN URL for public bucket.
+CloudFront CDN hostname for the public bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PUBLIC_CDN}`.
 ```bash
 AWS_S3_PUBLIC_CDN=
 ```
@@ -533,7 +539,7 @@ AWS_S3_PRIVATE_BUCKET=
 ```
 
 **`AWS_S3_PRIVATE_CDN`** *(optional)*  
-CloudFront CDN URL for private bucket.
+CloudFront CDN hostname for the private bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PRIVATE_CDN}`.
 ```bash
 AWS_S3_PRIVATE_CDN=
 ```
