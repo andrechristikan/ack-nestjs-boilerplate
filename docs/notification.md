@@ -12,7 +12,7 @@ Key features:
 - **User Preference Control**: Per type+channel opt-in/out settings for each user
 - **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES via `NotificationTemplateService`
 - **Firebase FCM Push**: Multicast delivery with batch chunking, rate limiting, and stale token cleanup
-- **Delivery Tracking**: Per-channel `processedAt`, `sentAt`, and `failureTokens` recorded on each delivery record; `silent` and `inApp` are pre-marked at creation time
+- **Delivery Tracking**: `silent` and `inApp` deliveries are pre-marked at creation time, `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs, and `email` deliveries carry no timestamps at all
 
 ## Related Documents
 
@@ -68,8 +68,8 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 
 | Channel | Delivery | `processedAt` / `sentAt` |
 |---------|----------|--------------------------|
-| `email` | Via AWS SES (queued) | Set by `NotificationEmailProcessorService` after send |
-| `push` | Via Firebase FCM (queued) | Set by `NotificationPushProcessorService` after send |
+| `email` | Via AWS SES (queued) | Never set. `NotificationEmailProcessorService` sends through SES and does not touch the delivery record |
+| `push` | Via Firebase FCM (queued) | Set by `NotificationPushProcessorService`: `processedAt` before the send, `sentAt` after it |
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
@@ -92,11 +92,14 @@ NotificationPushUtil    → EnumQueue.notificationPush   → NotificationPushPro
 **Queue:** `EnumQueue.notification` | **Processor:** `NotificationProcessor` | **Service:** `NotificationProcessorService`
 
 Handles the main event orchestration. When a process job is consumed, `NotificationProcessorService`:
-1. Fetches the target user
-2. Creates the `Notification` record (with delivery rows) in the database
-3. Dispatches jobs to `notificationEmail` and/or `notificationPush` queues as appropriate
 
-Jobs are dispatched via `NotificationUtil`, which applies deduplication per `userId` with a 1-second TTL.
+1. Fetches the target user, and for a push-capable event the user's device tokens alongside it. A user that no longer resolves as active ends the job with a skip message rather than an error, so the job is not retried.
+2. Mints the `notificationId` up front with `DatabaseUtil.createId()`.
+3. Creates the `Notification` record (with its delivery rows) **and** dispatches the `notificationEmail` / `notificationPush` jobs in one `Promise.allSettled` batch, all carrying that pre-minted id.
+
+Step 3 is deliberately not sequential: the id is generated before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user actually has at least one device token.
+
+Jobs are dispatched via `NotificationUtil`, which applies deduplication keyed on `<process>-<userId>` with a 1-second TTL, so two different events for the same user never collapse into one.
 
 **Supported processes (`EnumNotificationProcess`):**
 
@@ -239,8 +242,8 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 | Field | Description |
 |-------|-------------|
-| `processedAt` | When the processor started handling the delivery |
-| `sentAt` | When the message was sent to the provider (FCM / SES) |
+| `processedAt` | When the processor started handling the delivery. Written for `push`, pre-filled for `silent` / `inApp`, never written for `email` |
+| `sentAt` | When the message was handed to FCM. Same coverage as `processedAt` |
 | `failureTokens` | FCM tokens that were invalid (push channel only) |
 
 ### Immediate channels (`silent`, `inApp`)
@@ -249,21 +252,32 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 ### Async channels (`email`, `push`)
 
-`email` and `push` deliveries are initially created with no timestamps and go through the full queue lifecycle:
+`email` and `push` deliveries are created with no timestamps and go through the queue.
+
+**Only the push channel writes them back.** `NotificationEmailProcessorService` sends through SES and never reads or updates the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. Do not read a null `sentAt` on an `email` row as "not delivered".
+
+The push lifecycle:
 
 ```mermaid
 sequenceDiagram
     participant Q as Queue
-    participant P as Processor
+    participant P as NotificationPushProcessorService
     participant DB as Database
-    participant Ext as Firebase / SES
+    participant FCM as Firebase
 
     Q->>P: Job dequeued
+    P->>P: Skip when Firebase is not initialized
     P->>DB: updateProcessAt (processedAt = now)
-    P->>Ext: sendMulticast / send
-    Ext-->>P: result
+    DB-->>P: Delivery row, or null
+    P->>P: Skip when the delivery row is not found
+    P->>FCM: sendMulticast
+    FCM-->>P: result with failureTokens
     P->>DB: updateSentAt (sentAt = now, failureTokens)
 ```
+
+Both skips return a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
+
+The email lifecycle is only: job dequeued, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy.
 
 ## User Notification Settings
 

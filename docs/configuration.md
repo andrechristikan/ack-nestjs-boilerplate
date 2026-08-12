@@ -121,8 +121,11 @@ globalPrefix: string
 http: {
   host: string;                   // Server host address
   port: number;                   // Server port number
+  trustedProxy: string | null;    // Express `trust proxy` network list, from HTTP_TRUSTED_PROXY; null trusts no proxy
 }
 ```
+
+> `trustedProxy` is a trusted-NETWORK list (`proxy-addr` preset names or explicit CIDRs, comma-separated), never a hop count and never `true`. It decides what `req.ip` resolves to, and therefore what the rate limiter keys on. See [Security and Middleware](security-and-middleware.md).
 
 **`urlVersion`** - API versioning configuration
 ```typescript
@@ -418,7 +421,8 @@ timeoutInMs: number             // Request timeout in milliseconds (default: 300
 cors: {
   allowedMethod: string[];        // Allowed HTTP methods (GET, DELETE, PUT, PATCH, POST, HEAD, OPTIONS)
   allowedOrigin: string[];        // Allowed origins, parsed from CORS_ALLOWED_ORIGIN (comma-separated into an array)
-  allowedHeader: string[];        // Allowed headers for CORS requests
+  allowedHeader: string[];        // Request headers a client may send
+  exposedHeader: string[];        // Response headers a browser client may read (Access-Control-Expose-Headers)
 }
 ```
 
@@ -431,18 +435,36 @@ cors: {
 > - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
 > - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
 throttle: {
-  ttlInMs: number;                // Time window in milliseconds (default: 60000ms / 60s)
-  limit: number;                  // Maximum requests per time window (default: 100)
-  keyPattern: string;             // Counter key (default: 'Request:Throttler:{name}:{tracker}')
+  default: IRequestThrottlePolicy;                              // Global per-IP limiter, always on (300 / 60s, block 60s)
+  user: IRequestThrottlePolicy;                                 // Per-userId limiter, opt-in (100 / 60s, block 60s)
+  route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>; // Per-IP-per-handler tiers, opt-in
+  headerPrefix: string;           // Prefix for the suffixed rate-limit headers (default: 'X-RateLimit')
+  keyPattern: string;             // Window log key (default: 'Request:Throttler:{name}:{tracker}')
   blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
+  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttler:Seq:{name}:{tracker}')
+}
+
+interface IRequestThrottlePolicy {
+  ttlInMs: number;                // Sliding window length in milliseconds
+  limit: number;                  // Maximum requests per window
+  blockDurationInMs: number;      // How long a breaching tracker stays blocked
 }
 ```
 
-> `{name}` is the throttler name (default `default`); `{tracker}` is the client IP, or the authenticated user id when `@RequestThrottleByUser()` is applied. See [Security and Middleware](security-and-middleware.md).
+Route tiers (`EnumRequestThrottleRoute`), each with `ttlInMs` 60s and `blockDurationInMs` 5m:
+
+| Tier | `limit` |
+|---|---|
+| `strict` | 5 |
+| `moderate` | 20 |
+| `relaxed` | 60 |
+
+> `{name}` is the limiter name: `default`, `user`, or `route`. `{tracker}` is the client IP for `default`, the authenticated `userId` for `user`, and the composite `{tier}:{ControllerClass}.{handlerName}:{ip}` for `route`. See [Security and Middleware](security-and-middleware.md).
 
 ### Redis Configuration
 

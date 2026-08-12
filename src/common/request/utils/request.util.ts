@@ -1,13 +1,23 @@
 import { IncomingMessage } from 'http';
+import { isIP } from 'net';
 import { Injectable } from '@nestjs/common';
 import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
 import { GeoLocation, UserAgent } from '@generated/prisma-client';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
+import {
+    IRequestApp,
+    IRequestLog,
+} from '@common/request/interfaces/request.interface';
 
 @Injectable()
 export class RequestUtil {
+    resolveThrottleTrackerIp(req: IRequestApp): string {
+        const ip = req.ip ?? '';
+
+        return isIP(ip) ? ip : (req.socket.remoteAddress ?? '');
+    }
+
     /**
      * Build the request-log context (ua / ip / geo) from a raw request.
      * Called once per HTTP request from the request-log middleware.

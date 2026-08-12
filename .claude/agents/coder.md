@@ -184,6 +184,7 @@ Claim a numeric block and create `enums/<feature>.status-code.enum.ts` via the S
 - Register it in the matching `src/router/routes/routes.<scope>.module.ts`: add the controller to `controllers:` and the feature module to `imports:`.
 - Add matching Swagger factories in `docs/<feature>.<scope>.doc.ts` (the module's `docs/` folder), and any `@ApiQuery` / `@ApiParam` arrays as PascalCase constants in `constants/<feature>.doc.constant.ts`.
 - The protection decorator stack is exact — `rules/http.md`.
+- Every JWT-protected handler carries `@RequestThrottle({ user: true })` on the METHOD, never on the class; `public` and `system` scopes carry none. Omitting it fails nothing and is caught by no test — `rules/http.md`.
 
 ### 6. DTOs
 

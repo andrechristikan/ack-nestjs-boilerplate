@@ -40,7 +40,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | Encryption at Rest | AES-256-CBC (2FA secrets), AES-CBC + PKCS7 (general data) |
 | HTTP Security Headers | [Helmet][ref-helmet] v8 — CSP, Strict-Transport-Security, X-Frame-Options, etc. |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
-| Rate Limiting | 100 requests / 60s window — global guard via [@nestjs/throttler][ref-throttler] |
+| Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler] — global 300 req / 60s per IP, plus opt-in 100 req / 60s per user and per-route tiers (5 / 20 / 60 req per 60s) |
 | Authorization | [CASL][ref-casl] — fine-grained ability-based access control (subject + action) |
 | API Key Auth | Machine-to-machine via `x-api-key` header |
 | Sensitive Data | Auto-redacted in logs (password, token, apiKey) via the Pino `redact` option |

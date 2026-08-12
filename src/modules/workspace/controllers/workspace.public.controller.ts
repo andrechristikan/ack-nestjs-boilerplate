@@ -1,3 +1,5 @@
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -25,6 +27,7 @@ export class WorkspacePublicController {
     @Response('workspace.invite.preview')
     @FeatureFlagProtected('workspace')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/invite/:inviteToken/preview')
     async invitePreview(
         @Param('inviteToken', RequestRequiredPipe)
@@ -37,6 +40,7 @@ export class WorkspacePublicController {
     @Response('workspace.preview')
     @FeatureFlagProtected('workspace')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/preview/:slug')
     async preview(
         @Param('slug', RequestRequiredPipe)

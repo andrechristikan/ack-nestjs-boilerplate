@@ -142,6 +142,8 @@ x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
+A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (the global throttler guard, the per-route guard, or the per-user interceptor) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
+
 ## Exception Filters
 
 ### AppBaseExceptionFilter
@@ -216,6 +218,17 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
   "statusCodeKey": "notFound",
   "module": "http",
   "message": "Not Found",
+  "metadata": { ... }
+}
+```
+
+**Rate-limited response**: a breached rate limit throws `ThrottlerException`, which is a framework `HttpException`, so this filter builds its envelope from `HttpStatus.TOO_MANY_REQUESTS` with no application status code involved. The response also carries a `Retry-After` header in seconds.
+```json
+{
+  "statusCode": 429,
+  "statusCodeKey": "tooManyRequests",
+  "module": "http",
+  "message": "Too Many Request",
   "metadata": { ... }
 }
 ```
@@ -364,3 +377,4 @@ export class ExampleSomethingException extends AppBaseException {
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-message]: message.md
 [ref-doc-logger]: logger.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

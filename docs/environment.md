@@ -91,6 +91,7 @@ HOME_NAME=ACKNestJs
 # HTTP Server
 HTTP_HOST=localhost
 HTTP_PORT=3000
+HTTP_TRUSTED_PROXY=
 
 # Logging
 LOGGER_ENABLE=true
@@ -240,6 +241,21 @@ HTTP_HOST=localhost
 Port number for the HTTP server.
 ```bash
 HTTP_PORT=3000
+```
+
+**`HTTP_TRUSTED_PROXY`** *(optional)*  
+Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`. Accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs. It is never a hop count and never `true`.
+
+Leave it empty to trust no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. A deployment behind a CDN or edge proxy that connects from a public address must list that provider's CIDRs, or every client behind it shares one rate-limit bucket.
+```bash
+# no proxy trusted
+HTTP_TRUSTED_PROXY=
+
+# private-network proxies
+HTTP_TRUSTED_PROXY=loopback,uniquelocal
+
+# an edge provider on public addresses
+HTTP_TRUSTED_PROXY=173.245.48.0/20,103.21.244.0/22
 ```
 
 ### Logging Settings

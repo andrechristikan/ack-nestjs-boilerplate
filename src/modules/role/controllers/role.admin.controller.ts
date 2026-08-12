@@ -8,6 +8,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -76,6 +77,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -100,6 +102,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -120,6 +123,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @Body()
@@ -140,6 +144,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:roleId')
     async update(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -162,6 +167,7 @@ export class RoleAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

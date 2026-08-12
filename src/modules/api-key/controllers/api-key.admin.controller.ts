@@ -14,6 +14,7 @@ import {
     PaginationQueryFilterEqualBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -87,6 +88,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -114,6 +116,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @Body() body: ApiKeyCreateRequestDto
@@ -133,6 +136,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -153,6 +157,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
@@ -174,6 +179,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
@@ -195,6 +201,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -216,6 +223,7 @@ export class ApiKeyAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
         @Param('apiKeyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

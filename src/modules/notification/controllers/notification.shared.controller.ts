@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -57,6 +58,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationCursorQuery({
@@ -74,6 +76,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/setting/list')
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
@@ -87,6 +90,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
@@ -106,6 +110,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/update/read')
     async markAllAsRead(
@@ -120,6 +125,7 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/setting/update')
     async updateUserSetting(
         @AuthJwtPayload('userId')

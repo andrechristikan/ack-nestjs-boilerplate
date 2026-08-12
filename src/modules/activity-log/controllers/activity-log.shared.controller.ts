@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma, Workspace } from '@generated/prisma-client';
@@ -40,6 +41,7 @@ export class ActivityLogSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async listSelf(
         @PaginationCursorQuery({
@@ -60,6 +62,7 @@ export class ActivityLogSharedController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/workspace/list')
     async listSelfByWorkspace(
         @PaginationCursorQuery({

@@ -237,7 +237,7 @@ getAdminDashboard(@UserCurrent() user: IUser) {
 }
 
 // Multiple role requirements (user must have one of the specified roles)
-@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)
+@RoleProtected(EnumRoleType.admin, EnumRoleType.user)
 @UserProtected()
 @AuthJwtAccessProtected()
 @Delete('users/:id')
@@ -245,6 +245,8 @@ deleteUser(@Param('id') id: string) {
   return this.userService.delete(id);
 }
 ```
+
+**Never list `superAdmin` in `@RoleProtected()`.** The guard returns before the required-role list is read for a `superAdmin`, so adding it grants nothing and misleads the next reader into thinking the route is gated by an enumeration that is never reached.
 
 ### Getting Current Role
 

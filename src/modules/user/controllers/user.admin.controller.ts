@@ -72,6 +72,7 @@ import {
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { RequestTimeout } from '@common/request/decorators/request.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -101,6 +102,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -137,6 +139,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -157,6 +160,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @Body()
@@ -178,6 +182,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -200,6 +205,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -221,6 +227,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -244,6 +251,7 @@ export class UserAdminController {
     @ApiKeyProtected()
     @FileUploadSingle()
     @RequestTimeout('1m')
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
@@ -273,6 +281,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(

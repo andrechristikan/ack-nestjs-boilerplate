@@ -1,3 +1,5 @@
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
@@ -28,6 +30,7 @@ export class UserUserController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Delete('/self/delete')
     async deleteSelf(@AuthJwtPayload('userId') userId: string): Promise<void> {
         await this.userService.deleteSelf(userId);

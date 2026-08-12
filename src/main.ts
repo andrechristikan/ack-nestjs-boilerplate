@@ -10,6 +10,7 @@ import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from '@app/dtos/app.env.dto';
 import { MessageService } from '@common/message/services/message.service';
 import { Logger as PinoLogger } from 'nestjs-pino';
+import { Express } from 'express';
 
 async function bootstrap(): Promise<void> {
     let app: NestApplication = await NestFactory.create(AppModule, {
@@ -25,6 +26,9 @@ async function bootstrap(): Promise<void> {
     const timezone: string = configService.get<string>('app.timezone')!;
     const host: string = configService.get<string>('app.http.host')!;
     const port: number = configService.get<number>('app.http.port')!;
+    const trustedProxy: string | null = configService.get<string | null>(
+        'app.http.trustedProxy'
+    )!;
     const globalPrefix: string = configService.get<string>('app.globalPrefix')!;
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
@@ -49,6 +53,7 @@ async function bootstrap(): Promise<void> {
     app = app.enableShutdownHooks();
 
     app.setGlobalPrefix(globalPrefix);
+    app.getHttpAdapter().getInstance<Express>().set('trust proxy', trustedProxy);
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     if (versionEnable) {
@@ -99,6 +104,7 @@ async function bootstrap(): Promise<void> {
         `App URL: http://${host}:${port}${globalPrefix}`,
         'NestApplication'
     );
+    logger.log(`App Trusted Proxy: ${trustedProxy}`, 'NestApplication');
     const databaseHost = new URL(databaseUrl).host;
     logger.log(`Database Host: ${databaseHost}`, 'NestApplication');
     logger.log(`Database Debug: ${databaseDebug}`, 'NestApplication');

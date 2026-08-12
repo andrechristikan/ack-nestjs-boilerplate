@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -93,6 +94,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationCursorQuery({
@@ -119,6 +121,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
         @WorkspaceCurrent() workspace: Workspace,
@@ -147,6 +150,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/get/:projectId')
     async get(
         @ProjectCurrent() project: Project
@@ -165,6 +169,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:projectId')
     async update(
         @ProjectCurrent() project: Project,
@@ -189,6 +194,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:projectId/slug')
     async updateSlug(
         @ProjectCurrent() project: Project,
@@ -212,6 +218,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/delete/:projectId')
     async softDelete(
         @ProjectCurrent() project: Project,
@@ -238,6 +245,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/member/:projectId/list')
     async memberList(
         @PaginationCursorQuery({
@@ -260,6 +268,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/member/:projectId/assign')
     async memberAssign(
         @ProjectCurrent() project: Project,
@@ -284,6 +293,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/member/:projectId/:projectMemberId/role/update')
     async memberUpdateRole(
         @ProjectCurrent() project: Project,
@@ -315,6 +325,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/member/:projectId/:projectMemberId/remove')
     async memberRemove(
         @ProjectCurrent() project: Project,
@@ -344,6 +355,7 @@ export class ProjectUserController {
     @FeatureFlagProtected('workspace')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/member/:projectId/leave')
     async memberLeave(

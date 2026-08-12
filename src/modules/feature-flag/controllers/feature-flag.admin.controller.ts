@@ -1,5 +1,6 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -56,6 +57,7 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -78,6 +80,7 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
         @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
@@ -98,6 +101,7 @@ export class FeatureFlagAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:featureFlagId/metadata')
     async update(
         @Param('featureFlagId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

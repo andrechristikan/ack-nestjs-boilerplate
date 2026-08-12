@@ -92,7 +92,7 @@ The module covers four things: the workspace itself and its membership roles, in
 2. `WorkspaceGuard` reads that key, loads the active workspace, and stores the row under `WorkspaceStoreKey`. A missing header and an unknown id both throw `WorkspaceNotFoundException` (404, `51600`).
 3. `WorkspaceMemberGuard` then confirms the caller's membership and stores the `WorkspaceMember` row.
 
-`POST /user/workspace/switch` records the caller's choice on `user.lastWorkspaceId`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
+`POST /user/workspace/switch` takes the target id from the body, re-runs the same two checks the guards would have run (the workspace resolves and is active, the caller is a member of it), then records the choice on `user.lastWorkspaceId` and `lastWorkspaceChangedAt`. It does **not** change how a request is scoped: the client still has to send `x-workspace-id` on every workspace-scoped call.
 
 Five user-scope routes deliberately carry no workspace header, because they act across workspaces or before membership exists: `list`, `create`, `switch`, `invite/claim`, and `join-request/create`.
 
@@ -230,11 +230,11 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 
 **Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestDto`, a `PickType` of the create DTO); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
 
-**Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success the transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted`, sets `user.lastWorkspaceId`, and creates the project membership when the invite carried one.
+**Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success one transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`, sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace, creates the project membership when the invite carried one, and writes a `workspaceInviteAccepted` activity log.
 
 A user who has no account yet redeems the invite through sign-up instead, by passing `workspaceInviteToken`. See [Personal Workspace](#personal-workspace).
 
-**Expiry sweep.** `WorkspaceProcessorService` registers a recurring BullMQ job on module init through `upsertJobScheduler`, on the `workspace` queue, using the cron in `workspace.invite.expirySweepCron` (`0 0 * * *`) in the app timezone. The job flips every `pending` invite past its `expiredAt` to `expired`.
+**Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceInviteUtil.scheduleInviteExpirySweep`, which registers the recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue, using the cron in `workspace.invite.expirySweepCron` (`0 0 * * *`) in the app timezone and at `low` priority. The scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick. The job flips every `pending` invite past its `expiredAt` to `expired`.
 
 ## Join Requests
 
@@ -243,9 +243,11 @@ A user asks to join a workspace they can see; an admin decides.
 - Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51614`).
 - Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51615`); a second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51616`).
 - On create, every reviewer (`owner` and `admin`) is notified. Each reviewer's review link is encrypted with **that reviewer's** user id, so the links are not interchangeable.
-- **Accept always creates a `member` membership.** The role is not configurable on this path.
+- **Accept always creates a `member` membership.** The role is not configurable on this path. The membership creation, the status flip to `accepted` with `reviewedByUserId` / `reviewedAt`, and the activity log all run in one transaction.
+- Accept does **not** point the requester's `lastWorkspaceId` at the workspace they just joined, unlike an invite claim. They still have to switch to it.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
-- Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`).
+- Both outcomes notify the requester after the transaction commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
+- Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`). An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 
 The `cancelled` status is written only by workspace soft-delete. A requester has no endpoint to withdraw their own request.
 

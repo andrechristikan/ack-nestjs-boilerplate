@@ -1,3 +1,5 @@
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -56,6 +58,7 @@ export class UserPublicController {
     @Response('user.loginCredential')
     @FeatureFlagProtected('loginWithCredential')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
@@ -69,6 +72,7 @@ export class UserPublicController {
     @AuthSocialGoogleProtected()
     @FeatureFlagProtected('loginWithGoogle')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/google')
     async loginWithGoogle(
@@ -88,6 +92,7 @@ export class UserPublicController {
     @AuthSocialAppleProtected()
     @FeatureFlagProtected('loginWithApple')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/apple')
     async loginWithApple(
@@ -106,6 +111,7 @@ export class UserPublicController {
     @Response('user.signUp')
     @FeatureFlagProtected('signUp')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Post('/sign-up')
     async signUp(
         @Body()
@@ -117,6 +123,7 @@ export class UserPublicController {
     @UserPublicVerifyEmailDoc()
     @Response('user.verifyEmail')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/email/verify')
     async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
         await this.userService.verifyEmail(body);
@@ -125,6 +132,7 @@ export class UserPublicController {
     @UserPublicSendEmailVerificationDoc()
     @Response('user.sendEmailVerification')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/email/send')
     async sendEmailVerification(
@@ -137,6 +145,7 @@ export class UserPublicController {
     @Response('user.forgotPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/password/forgot')
     async forgotPassword(
@@ -149,6 +158,7 @@ export class UserPublicController {
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/password/reset')
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto
@@ -159,6 +169,7 @@ export class UserPublicController {
     @UserPublicLoginVerifyTwoFactorDoc()
     @Response('user.verifyTwoFactor')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/login/2fa/verify')
     async loginVerifyTwoFactor(
         @Body() body: UserLoginVerifyTwoFactorRequestDto
@@ -169,6 +180,7 @@ export class UserPublicController {
     @UserPublicLoginSetupTwoFactorDoc()
     @Response('user.loginSetupTwoFactor')
     @ApiKeyProtected()
+    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/login/2fa/enable')
     async verifyLoginTwoFactor(

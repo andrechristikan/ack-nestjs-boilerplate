@@ -288,7 +288,9 @@ sequenceDiagram
     participant Cache
     participant Database
 
-    User->>API: PATCH /public/user/login/2fa/verify {backupCode}
+    User->>API: PATCH /public/user/login/2fa/verify {challengeToken, backupCode}
+    API->>Cache: Validate challenge
+    API->>Database: Load user, reject unless active, verified,<br/>2FA enabled, and not awaiting forced setup
     API->>Cache: Check if user is locked
     alt User Locked
         API->>Cache: Get TTL (remaining lock time)
@@ -297,9 +299,9 @@ sequenceDiagram
         API->>Database: Get hashed backup codes
         API->>API: Hash input & compare
         alt Backup Code Valid
-            API->>Database: Remove used backup code
             API->>Database: Reset attempt to 0
-            API->>Database: Update lastUsedAt
+            API->>Database: Create session, remove the used backup code,<br/>update lastUsedAt (one parallel batch)
+            API->>Cache: Delete challenge
             API->>User: Return access + refresh tokens
             Note over User: The response carries tokens only.<br/>Remaining backup codes are read from<br/>GET /shared/user/2fa/status/get
         else Backup Code Invalid
@@ -400,8 +402,14 @@ sequenceDiagram
     User->>API: PATCH /shared/user/password/change<br/>{oldPassword, newPassword, code/backupCode, method}
     API->>Database: Verify old password
     alt Old Password Invalid
+        API->>Database: Increment password attempt counter
         API->>User: Error: Password not match (400)
     else Old Password Valid
+        API->>Database: Reset password attempt counter
+        API->>Database: Check new password against password history
+        alt New Password Reused Within Period
+            API->>User: Error: Password must be new (400)
+        end
         alt User has 2FA enabled
             API->>Cache: Check if user is locked
             alt User Locked
@@ -416,18 +424,22 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Change password
-                    API->>Database: Revoke all sessions
+                    API->>Database: Change password, revoke all sessions,<br/>record the 2FA use (one parallel batch)
+                    API->>Cache: Delete every session key of the user
+                    API->>User: Send password-changed notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Change password
-            API->>Database: Revoke all sessions
+            API->>Database: Change password, revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>User: Send password-changed notification
             API->>User: Success
         end
     end
 ```
+
+The password-history check is what makes the reuse window real: a password still held in history for `periodInMs` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
 
 **Reset Password (Forgot Password):**
 ```mermaid
@@ -438,10 +450,15 @@ sequenceDiagram
     participant Database
 
     User->>API: PATCH /public/user/password/reset<br/>{token, newPassword, code/backupCode, method}
+    API->>API: Require the changePassword feature flag<br/>and its forgotAllowed metadata
     API->>Database: Verify reset token
     alt Token Invalid
         API->>User: Error: User not found (404)
     else Token Valid
+        API->>Database: Check new password against password history
+        alt New Password Reused Within Period
+            API->>User: Error: Password must be new (400)
+        end
         alt User has 2FA enabled
             API->>Cache: Check if user is locked
             alt User Locked
@@ -456,14 +473,16 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Reset password
-                    API->>Database: Revoke all sessions
+                    API->>Database: Reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
+                    API->>Cache: Delete every session key of the user
+                    API->>User: Send password-reset notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Reset password
-            API->>Database: Revoke all sessions
+            API->>Database: Reset password, consume the reset token,<br/>revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>User: Send password-reset notification
             API->>User: Success
         end
     end
@@ -478,6 +497,7 @@ sequenceDiagram
     participant Database
 
     User->>API: DELETE /shared/user/2fa/disable<br/>{code/backupCode, method}
+    API->>API: Reject when 2FA is not enabled (400 twoFactorNotEnabled)
     API->>Cache: Check if user is locked
     alt User Locked
         API->>User: Error: Temporarily locked (429)

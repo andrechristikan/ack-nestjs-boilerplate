@@ -190,7 +190,7 @@ Production-ready authentication system with multiple strategies and security lay
 - **Two-Factor Authentication** - TOTP-based 2FA with backup recovery codes
 - **RBAC & Policies** - Fine-grained role and permission system
 - **API Key Protection** - Secure external API access control
-- **Rate Limiting** - DDoS protection with configurable throttling
+- **Rate Limiting** - Redis-backed sliding window shared across instances: an always-on per-IP limit plus opt-in per-user and per-route tiers
 - **Security Headers** - Helmet integration for HTTP security
 
 ### 📊 Database & Storage

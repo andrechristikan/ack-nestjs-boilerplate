@@ -4,6 +4,8 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { RequestTimeout } from '@common/request/decorators/request.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -92,6 +94,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
@@ -107,6 +110,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/profile/get')
     async profile(
         @AuthJwtPayload('userId')
@@ -121,6 +125,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/profile/update')
     async updateProfile(
         @AuthJwtPayload('userId')
@@ -137,6 +142,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/presign/generate')
     async generatePhotoProfilePresign(
@@ -153,6 +159,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/profile/photo/update')
     async updatePhotoProfile(
         @AuthJwtPayload('userId')
@@ -170,6 +177,7 @@ export class UserSharedController {
     @ApiKeyProtected()
     @FileUploadSingle()
     @RequestTimeout('1m')
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/upload')
     async uploadPhotoProfile(
@@ -195,6 +203,7 @@ export class UserSharedController {
     @FeatureFlagProtected('changePassword')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Patch('/password/change')
     async changePassword(
         @UserCurrent() user: IUser,
@@ -209,6 +218,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Post('/mobile-number/add')
     async addMobileNumber(
         @AuthJwtPayload('userId') userId: string,
@@ -224,6 +234,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
@@ -249,6 +260,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
@@ -268,6 +280,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/username/claim')
     async claimUsername(
@@ -284,6 +297,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/2fa/status/get')
     async getTwoFactorStatus(
         @UserCurrent() user: IUser
@@ -297,6 +311,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/2fa/setup')
     async setupTwoFactor(
@@ -311,6 +326,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @HttpCode(HttpStatus.OK)
     @Post('/2fa/enable')
     async enableTwoFactor(
@@ -326,6 +342,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Delete('/2fa/disable')
     async disableTwoFactor(
         @UserCurrent() user: IUser,
@@ -340,6 +357,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
@@ -354,6 +372,7 @@ export class UserSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/logout')
     async logout(

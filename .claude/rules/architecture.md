@@ -61,7 +61,7 @@ YAGNI never had jurisdiction over breadth. A flat, fully-implemented sibling add
 An export sits on the breadth axis — legitimate, present or future — when ALL hold:
 
 1. It is **exported** from its module: public surface a consumer reaches for, not a private helper nothing can call.
-2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryFilterNotEqual` beside a used `PaginationQueryFilterEqualString`; `DocAllOf` beside a used `DocAnyOf`; `@RequestThrottleByUser()` beside the used IP throttler; `FileUploadMultiple` beside the used single-file upload.
+2. It **belongs to a family that exists and has at least one used member**. `PaginationQueryFilterNotEqual` beside a used `PaginationQueryFilterEqualString`; `DocAllOf` beside a used `DocAnyOf`; `FileUploadMultiple` beside the used single-file upload.
 3. It is **complete and correct on its own terms** — real implementation, real tests where the layer is covered (`rules/testing.md`), same rules as any shipped code. Not a stub, not a sketch.
 
 It falls back onto the complexity axis, where YAGNI DOES reject it, when any of these is true:

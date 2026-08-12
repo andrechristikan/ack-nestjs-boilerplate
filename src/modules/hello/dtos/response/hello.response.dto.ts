@@ -45,38 +45,6 @@ class HelloAppResponseDto {
     timezone: string;
 }
 
-class HelloAuthResponseDto {
-    @ApiProperty({
-        required: true,
-        example: true,
-    })
-    passwordAttempt: boolean;
-
-    @ApiProperty({
-        required: true,
-        example: 10,
-    })
-    passwordMaxAttempt: number;
-
-    @ApiProperty({
-        required: true,
-        example: 86400000,
-    })
-    passwordExpiredInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 3600000,
-    })
-    passwordExpiredTemporaryInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 31536000000,
-    })
-    passwordPeriodInMs: number;
-}
-
 class HelloMessageResponseDto {
     @ApiProperty({
         required: true,
@@ -92,56 +60,6 @@ class HelloMessageResponseDto {
         enum: EnumMessageLanguage,
     })
     defaultLanguage: EnumMessageLanguage;
-}
-
-class HelloRequestResponseDto {
-    @ApiProperty({
-        required: true,
-        example: 5000,
-    })
-    timeoutInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyJsonLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyRawLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyTextLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyUrlencodedLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyApplicationOctetStreamLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 60000,
-    })
-    throttleTtlInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 100,
-    })
-    throttleLimit: number;
 }
 
 export class HelloResponseDto {
@@ -161,22 +79,8 @@ export class HelloResponseDto {
 
     @ApiProperty({
         required: true,
-        type: () => HelloAuthResponseDto,
-    })
-    @Type(() => HelloAuthResponseDto)
-    auth: HelloAuthResponseDto;
-
-    @ApiProperty({
-        required: true,
         type: () => HelloMessageResponseDto,
     })
     @Type(() => HelloMessageResponseDto)
     message: HelloMessageResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: () => HelloRequestResponseDto,
-    })
-    @Type(() => HelloRequestResponseDto)
-    request: HelloRequestResponseDto;
 }

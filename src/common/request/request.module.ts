@@ -22,6 +22,7 @@ import {
 } from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { RequestThrottleUtil } from '@common/request/utils/request.throttle.util';
 import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
@@ -36,10 +37,11 @@ export class RequestModule {
             module: RequestModule,
             global: true,
             controllers: [],
-            exports: [RequestStoreService, RequestUtil],
+            exports: [RequestStoreService, RequestUtil, RequestThrottleUtil],
             providers: [
                 RequestStoreService,
                 RequestUtil,
+                RequestThrottleUtil,
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,

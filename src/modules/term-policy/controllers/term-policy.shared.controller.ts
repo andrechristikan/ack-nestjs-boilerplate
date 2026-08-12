@@ -22,6 +22,7 @@ import {
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -52,6 +53,7 @@ export class TermPolicySharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/acceptance/list')
     async listAccepted(
         @PaginationCursorQuery({
@@ -71,6 +73,7 @@ export class TermPolicySharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(

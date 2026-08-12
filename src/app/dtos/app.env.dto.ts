@@ -89,6 +89,10 @@ export class AppEnvDto {
     @Type(() => Number)
     HTTP_PORT: number;
 
+    @IsOptional()
+    @IsString()
+    HTTP_TRUSTED_PROXY?: string;
+
     @IsBoolean()
     @IsNotEmpty()
     @Type(() => Boolean)

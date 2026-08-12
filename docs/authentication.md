@@ -245,22 +245,19 @@ sequenceDiagram
     API->>Database: Validate credentials
     Database-->>API: User validated
     
-    API->>API: Generate jti (32-char random string)
-    
-    par Store in Database
-        API->>Database: Create session record
-        Database-->>API: Session created
-    and Store in Redis
-        API->>Redis: Store session with TTL
-        Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
-        Redis-->>API: Session cached
-    end
-    
+    API->>API: Generate sessionId and jti (32-char random string)
     API->>API: Generate Access Token (ES256, 1 hour, includes jti)
     API->>API: Generate Refresh Token (ES512, 30 days, includes jti)
     
+    API->>Database: One transaction: upsert device, resolve device ownership,<br/>revoke prior active sessions on that ownership,<br/>update last-login fields, create session record
+    Database-->>API: Session created, superseded session ids returned
+    
+    API->>Redis: Store session with TTL, delete superseded session keys
+    Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
+    Redis-->>API: Session cached
+    
     API-->>Client: Response with tokens
-    Note over Client: data.isTwoFactorEnable: false<br/>data.tokens: { tokenType: Bearer,<br/>roleType: user/admin/superAdmin,<br/>expiresIn: 3600,<br/>accessToken, refreshToken }
+    Note over Client: data.isTwoFactorEnable: false<br/>data.lastWorkspaceId, data.lastWorkspaceChangedAt<br/>data.tokens: { tokenType: Bearer,<br/>roleType: user/admin/superAdmin,<br/>expiresIn: 3600,<br/>accessToken, refreshToken }
     
     Client->>Client: Store tokens securely
     
@@ -281,12 +278,16 @@ sequenceDiagram
     end
 ```
 
-Two branches short-circuit before any session or token is created:
+The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request before any credential is read.
+
+Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the account is set to `inactive` and `UserPasswordAttemptMaxException` is thrown), password matches (the attempt counter is incremented, then `UserPasswordNotMatchException`). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
+
+Two branches then short-circuit before any session or token is created:
 
 - **Email not verified**: a new email verification is issued, the verification email is sent, and the login fails with `UserEmailNotVerifiedException`.
-- **Two-factor enabled**: no session and no tokens are created. The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`. See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
+- **Two-factor enabled**: no session and no tokens are created. The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`. When `isRequiredSetup` is true the secret is provisioned in the same response, which additionally carries `otpauthUrl` and `secret`. See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
 
-Session creation also enforces the device constraint: when the user logs in again from a device they already own, every still-active session bound to that device-user pair is revoked in the database and deleted from Redis before the new session is stored.
+Session creation also enforces the device constraint. The device upsert, the device-ownership lookup, the revocation of every still-active session bound to that device-user pair, and the creation of the new session record all happen inside one database transaction. The Redis side follows afterwards: the new session key is written and the superseded session keys are deleted in the same parallel batch, alongside the new-device login notification when the device ownership was created rather than reused.
 
 #### JWT Refresh Token Flow
 
@@ -663,7 +664,11 @@ sequenceDiagram
     end
 ```
 
-Social login shares the credential login path once the user is resolved, so the same branches apply: a user with two-factor enabled receives a challenge instead of tokens, and the device constraint revokes prior sessions on the same device-user pair. Both routes are additionally gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+Social login joins the credential login path once the user is resolved, so the two-factor branch and the device constraint apply exactly as they do for credential login. The email-verification branch does not: a social user who is not yet verified is marked verified in place before the shared path runs, so `UserEmailNotVerifiedException` is never reached from a social login. A user whose status is not `active` is rejected with `UserInactiveForbiddenException` at the same point, whether the record was just created or already existed.
+
+Both routes are additionally gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+
+When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path: the default user role is resolved, the username is checked against the allowed pattern, the bad-word list, and existing usernames, the workspace context is resolved (from `workspaceInviteToken` when present, otherwise a personal workspace), the record is created, and a welcome email is sent. Supplying a `workspaceInviteToken` additionally requires the `workspace` flag's `invitationAllowed` metadata, and an invite token that resolves to nothing fails with `WorkspaceInviteInvalidException`.
 
 ### Google Authentication
 
@@ -1247,7 +1252,7 @@ When a session is revoked:
 | Logout (`POST /shared/user/logout`) | The current session only |
 | Session revoke, by the user or an admin | The named session only |
 
-A status change (inactive or blocked) does not delete the Redis entries. It is enforced per request instead: `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call and rejects a non-active account.
+A status change (inactive or blocked) does not delete the Redis entries. It is enforced per request instead: `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call and rejects a blocked account (`UserBlockedForbiddenException`), any other non-active status (`UserInactiveForbiddenException`), and an expired password (`UserPasswordExpiredException`). It also rejects an unverified email (`UserEmailNotVerifiedException`) unless the route opts out with `@UserProtected(false)`. The same re-read is why a password that expires mid-session locks the caller out without any session being revoked.
 
 ### Session Validation Flow
 
