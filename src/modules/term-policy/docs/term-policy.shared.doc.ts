@@ -8,6 +8,7 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { applyDecorators } from '@nestjs/common';
@@ -26,6 +27,7 @@ export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
             'termPolicy.accepted',
             {
                 dto: TermPolicyUserAcceptanceResponseDto,
+                availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
                 type: EnumPaginationType.cursor,
             }
         )

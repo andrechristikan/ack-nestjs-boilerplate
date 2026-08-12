@@ -13,7 +13,8 @@ The Pagination module provides a comprehensive solution for handling paginated d
 
 Ordering support is split across two levels:
 - **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`). Multiple entries can be sent as repeated params.
-- **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`)
+- **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`), which is the shape Prisma receives.
+- **Response metadata level**: `metadata.orderBy` is a string array in the same `field:direction` format as the query (e.g., `["createdAt:desc"]`), symmetric with `metadata.availableOrderBy`. `ResponsePagingInterceptor` performs the conversion; an empty order renders `[]`.
 
 The module uses a pipe-based architecture with factory functions for maximum flexibility and type safety.
 
@@ -49,6 +50,7 @@ The module uses a pipe-based architecture with factory functions for maximum fle
             - [@PaginationQueryFilterDate](#paginationqueryfilterdate)
         - [Ordering Configuration](#ordering-configuration)
 - [Pagination Strategies](#pagination-strategies)
+    - [Choosing a Strategy](#choosing-a-strategy)
     - [Offset-Based](#offset-based)
     - [Cursor-Based](#cursor-based)
 - [Filtering System](#filtering-system)
@@ -71,6 +73,19 @@ The module uses a pipe-based architecture with factory functions for maximum fle
 
 Core service that processes pagination operations without redundant validation (pipes already validated input).
 
+**Two tiers of parameter types.** The controller-facing types carry only what a client may influence; the repository-facing types add what only server code may set:
+
+| Tier | Type | Fields |
+|---|---|---|
+| Controller param, produced by the pipes | `IPaginationQueryOffsetParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `skip` |
+| Controller param, produced by the pipes | `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `cursor?`, `cursorField?` |
+| Service args, produced by the repository | `IPaginationOffsetArgs<TArgsWhere>` | the offset params above, plus `include?` |
+| Service args, produced by the repository | `IPaginationCursorArgs<TArgsWhere>` | the cursor params above, plus `include?` and `includeCount?` |
+
+Every one of these types takes a single generic, `TArgsWhere`. `include` and `includeCount` exist only on the repository tier, so a controller signature cannot express them and a client cannot reach them.
+
+There is no `select` in the pagination types. A repository shapes its reads with `include` and a nested select constant, never through a pagination argument.
+
 **Methods:**
 
 #### offset\<TReturn\>()
@@ -78,20 +93,19 @@ Core service that processes pagination operations without redundant validation (
 Executes offset-based pagination.
 
 ```typescript
-async offset<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
+async offset<TReturn, TArgsWhere = unknown>(
     repository: IPaginationRepository,
-    args: IPaginationQueryOffsetParams<TArgsSelect, TArgsWhere>
+    args: IPaginationOffsetArgs<TArgsWhere>
 ): Promise<IPaginationOffsetReturn<TReturn>>
 ```
 
 **Type Parameters:**
 - `TReturn` — shape of each item in the returned `data` array
-- `TArgsSelect` — Prisma `select` type for the model (e.g. `Prisma.UserSelect`). Defaults to `unknown`
 - `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance implementing IPaginationRepository
-- `args`: Validated pagination parameters from pipe
+- `args`: the pipe-validated `IPaginationQueryOffsetParams<TArgsWhere>` the controller received, widened by the repository with `include`
 
 **`args.orderBy` Support:**
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
@@ -121,20 +135,19 @@ async offset<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
 Executes cursor-based pagination.
 
 ```typescript
-async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
+async cursor<TReturn, TArgsWhere = unknown>(
     repository: IPaginationRepository,
-    args: IPaginationQueryCursorParams<TArgsSelect, TArgsWhere>
+    args: IPaginationCursorArgs<TArgsWhere>
 ): Promise<IPaginationCursorReturn<TReturn>>
 ```
 
 **Type Parameters:**
 - `TReturn` — shape of each item in the returned `data` array
-- `TArgsSelect` — Prisma `select` type for the model (e.g. `Prisma.UserSelect`). Defaults to `unknown`
 - `TArgsWhere` — Prisma `where` type for the model (e.g. `Prisma.UserWhereInput`). Defaults to `unknown`
 
 **Parameters:**
 - `repository`: Repository instance
-- `args`: Validated pagination parameters from pipe
+- `args`: the pipe-validated `IPaginationQueryCursorParams<TArgsWhere>` the controller received, widened by the repository with `include` and `includeCount`
 
 **`args.orderBy` Support:**
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
@@ -144,12 +157,31 @@ async cursor<TReturn, TArgsSelect = unknown, TArgsWhere = unknown>(
 - If omitted, defaults to `PaginationDefaultOrderBy`
 - `cursorField`: `'id'` - Field used for cursor positioning
 
+**Cursor Payload:**
+
+The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
+
+```typescript
+{
+    cursor: string,      // the cursor row's `cursorField` value
+    fingerprint: string  // fingerprint of the query the cursor was issued for
+}
+```
+
+- `fingerprint` is the first 16 hex characters (the leading 64 bits, `PaginationCursorFingerprintLength`) of a sha256 over the canonicalized `{ where, orderBy }`. Canonicalization sorts object keys at every depth and converts `Date` values to ISO strings, so two equivalent filters hash the same.
+- The composed `where` is **not** carried on the wire. The cursor stays around 94 characters no matter how large or deeply nested the filter is, and the filter itself is never exposed to the client.
+
 **Cursor Validation:**
-- Cursor contains: cursor value, orderBy, and where conditions
-- If `orderBy` or `where` conditions change: throws `PaginationInvalidCursorPaginationParamsException` (422)
-- Client must request from beginning if conditions change
-- Prevents stale cursor navigation
-- For array-based ordering, the array order must remain exactly the same between requests
+- Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50203, 422).
+- A cursor that is empty or not a string throws `PaginationInvalidCursorFormatException` (50205). One that decodes to an object missing `cursor` or `fingerprint` throws `PaginationInvalidCursorDataException` (50212), and one whose base64 or JSON cannot be parsed at all throws `PaginationFailedToDecodeCursorException` (50214).
+- The client must restart from the first page whenever the filter, the search term, or the ordering changes.
+- For multi-field ordering, the array order feeds the fingerprint, so it must stay exactly the same between requests.
+
+**Cursor Field Tiebreaker:**
+- Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`. The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
+- It is skipped when the client already sorts on `cursorField`.
+- The tiebreaker is what makes the position stable. When the sort key is not unique (several rows sharing one `createdAt`), the cursor row has no deterministic place in the result set, and pages can repeat or skip records. `offset()` does not do this; it anchors on a row count, not on a row.
+- Because the tiebreaker is part of the `orderBy` that gets fingerprinted, it is also part of what a cursor is bound to.
 
 **Returns:**
 ```typescript
@@ -183,6 +215,18 @@ Service (Business Logic)
 
 **Key Principle:** Pipes validate ALL input. Service assumes valid input.
 
+**Query Allow-List:** Every pipe in the chain builds its return value from a fixed list of named keys and never spreads the incoming query object. Anything a client sends that is not on that list is dropped before the handler runs, so `?where=`, `?select=`, `?include=`, and `?includeCount=` cannot reach Prisma. `include` and `includeCount` are set by the repository or not at all.
+
+**Absent Allow-Lists Ignore, They Do Not Reject:** both `availableSearch` and `availableOrderBy` are optional. Absent, `null`, and `[]` all behave identically, and a bare `@PaginationOffsetQuery()` with no options at all compiles and runs.
+
+- `?search=` against an absent or empty `availableSearch` returns 200 and applies no search predicate. The term still appears in the response `metadata.search`.
+- `?orderBy=` against an absent or empty `availableOrderBy` returns 200 and orders by the default `[{ createdAt: 'desc' }]`.
+
+A **configured** allow-list is still enforced. Once `availableOrderBy` is non-empty, the pipe validates against it:
+
+- A field outside the list throws `PaginationOrderByNotAllowedException` (50200, 422).
+- A direction that is neither `asc` nor `desc`, including a missing one, throws `PaginationOrderDirectionNotAllowedException` (50215, 422).
+
 ### Decorators
 
 #### Pagination Query Decorators
@@ -191,10 +235,10 @@ Service (Business Logic)
 
 Decorator for offset-based pagination with search and ordering.
 
-**Options:**
+**Options:** the `options` argument is optional, and so is every key in it.
+- `availableOrderBy`: Array of fields available for ordering. Leave it out to accept `orderBy` without validating it and fall back to the default ordering
+- `availableSearch`: Array of searchable fields. Leave it out to ignore `search` on the route
 - `defaultPerPage`: Items per page (default: 20, max: 100)
-- `availableSearch`: Array of searchable fields
-- `availableOrderBy`: Array of fields available for ordering
 
 **Default Behavior:**
 - If no `orderBy`: sorts by `createdAt: DESC`
@@ -210,37 +254,38 @@ Decorator for offset-based pagination with search and ordering.
 - `PaginationSearchPipe` builds a Prisma `OR` condition across `availableSearch` fields.
 - Each field uses `Prisma.StringFilter` with `mode: 'insensitive'`, so search is case-insensitive.
 - Shape: `{ OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] }`.
+- With no `availableSearch`, the pipe ignores the parameter and applies no search predicate; the request still returns 200.
 
 **Usage:**
 ```typescript
 @PaginationOffsetQuery({
-    availableSearch: ['name', 'email'],
-    availableOrderBy: ['createdAt', 'name', 'email']
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
 })
-pagination: IPaginationQueryOffsetParams
+pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ```
 
 **Transformed to:**
 ```typescript
 {
-    limit: 20,           // from perPage
-    skip: 0,            // (page - 1) * perPage
-    orderBy: [...],     // [{ createdAt: 'desc' }] by default
-    where: { ... },     // filters combined here
-    select: { ... },    // fields to select
-    include: { ... }    // relations to include
+    limit: 20,        // from perPage
+    skip: 0,          // (page - 1) * perPage
+    orderBy: [...],   // [{ createdAt: 'desc' }] by default
+    where: { ... }    // search and filter conditions combined here
 }
 ```
+
+That is the whole surface a handler receives. `include` is absent by design; the repository adds it when it calls `PaginationService`.
 
 ##### @PaginationCursorQuery
 
 Decorator for cursor-based pagination.
 
-**Options:**
+**Options:** the `options` argument is optional, and so is every key in it.
+- `availableOrderBy`: Array of fields available for ordering. Leave it out to accept `orderBy` without validating it and fall back to the default ordering
+- `availableSearch`: Array of searchable fields. Leave it out to ignore `search` on the route
 - `defaultPerPage`: Items per page (default: 20, max: 100)
 - `cursorField`: Field for cursor (default: 'id')
-- `availableSearch`: Array of searchable fields
-- `availableOrderBy`: Array of fields available for ordering
 
 **Default Behavior:**
 - If no `orderBy`: sorts by `createdAt: DESC`
@@ -256,15 +301,18 @@ Decorator for cursor-based pagination.
 - `PaginationSearchPipe` builds a Prisma `OR` condition across `availableSearch` fields.
 - Each field uses `Prisma.StringFilter` with `mode: 'insensitive'`, so search is case-insensitive.
 - Shape: `{ OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] }`.
+- With no `availableSearch`, the pipe ignores the parameter and applies no search predicate; the request still returns 200.
 
 **Usage:**
 ```typescript
 @PaginationCursorQuery({
-    availableSearch: ['name', 'email'],
-    cursorField: 'id'
+    availableSearch: WorkspaceDefaultAvailableSearch,
+    availableOrderBy: WorkspaceCursorAvailableOrderBy,
 })
-pagination: IPaginationQueryCursorParams
+pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
 ```
+
+No controller overrides `cursorField`; every cursor route positions on `id`.
 
 #### Filter Decorators
 
@@ -371,13 +419,15 @@ Filters by string value.
 
 **Usage:**
 ```typescript
-@PaginationQueryFilterEqualString('role')
-role?: Record<string, IPaginationEqual>
+@PaginationQueryFilterEqualString('roleId')
+roleId?: Record<string, IPaginationEqual>
 ```
 
 **Transforms:**
-- Query: `?role=admin`
-- To: `{ role: { equals: 'admin' } }`
+- Query: `?roleId=507f1f77bcf86cd799439011`
+- To: `{ roleId: { equals: '507f1f77bcf86cd799439011' } }`
+
+The field must be a **scalar** column. `equals` is not a valid operator on a Prisma to-one relation (that takes `is` / `isNot`), so filter on the foreign-key scalar (`roleId`, `countryId`) rather than the relation name (`role`, `country`).
 
 ##### @PaginationQueryFilterNotEqual
 
@@ -460,16 +510,16 @@ Ordering is **not** a standalone decorator. It is configured via the `availableO
 **Configuration:**
 ```typescript
 @PaginationOffsetQuery({
-    availableOrderBy: ['createdAt', 'name', 'email']
+    availableOrderBy: UserDefaultAvailableOrderBy,
 })
-pagination: IPaginationQueryOffsetParams
+pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ```
 
 **Default Behavior:**
 - If no `orderBy` query param is sent: falls back to `[{ createdAt: 'desc' }]`
-- If `availableOrderBy` is omitted: any `orderBy` value is ignored and `[{ createdAt: 'desc' }]` is used
-- If the field part of `orderBy` is not in `availableOrderBy`: throws `PaginationOrderByNotAllowedException` (422)
-- If the direction part of `orderBy` is not `asc` or `desc`: throws `PaginationOrderDirectionNotAllowedException` (422)
+- `availableOrderBy` is optional. Absent, `null`, and `[]` behave identically: validation is skipped entirely and any `orderBy` the client sends is discarded in favour of the default ordering
+- Once `availableOrderBy` is non-empty it is enforced. If the field part of `orderBy` is not in it: throws `PaginationOrderByNotAllowedException` (422)
+- If the direction part of `orderBy` is not `asc` or `desc`: throws `PaginationOrderDirectionNotAllowedException` (422). A bare `?orderBy=field` with no direction hits this same error rather than being reinterpreted
 
 **Query Parameters:**
 - `orderBy`: A `field:direction` string (e.g., `name:asc`). Repeat to sort by multiple fields.
@@ -488,6 +538,17 @@ pagination: IPaginationQueryOffsetParams
 - Invalid direction throws error code: `50215 (orderDirectionNotAllowed)`
 
 ## Pagination Strategies
+
+### Choosing a Strategy
+
+The route prefix decides the strategy, not the endpoint. Every `/admin/**` list is offset; every list under `/user`, `/shared`, `/system`, and `/public` is cursor. There is no per-endpoint exception list.
+
+Two consequences a client has to plan around:
+
+- A non-admin list returns no `count`, no `page`, and no `totalPage`. `includeCount` is a repository-side argument, never a query param, so a client cannot ask for a total.
+- Offset cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`). It narrows and browses; it never scans a whole collection.
+
+Cursor routes also constrain what they will sort on: every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll genuinely moves position, and no tiebreaker stabilises that. Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`. When every field is immutable both routes share one constant.
 
 ### Offset-Based
 
@@ -523,7 +584,7 @@ The pagination fields ride inside the `metadata` block of the standard response 
         "nextPage": 2,
         "search": "...",
         "filters": { ... },
-        "orderBy": [{ "createdAt": "desc" }],
+        "orderBy": ["createdAt:desc"],
         "availableSearch": ["name", "email"],
         "availableOrderBy": ["createdAt", "name"]
     },
@@ -534,21 +595,23 @@ The pagination fields ride inside the `metadata` block of the standard response 
 ### Cursor-Based
 
 **How It Works:**
-1. Cursor encodes: cursor value, orderBy, where conditions
-2. Cursor validates conditions match on each request
-3. If conditions change: throws `PaginationInvalidCursorPaginationParamsException` (client must restart)
-4. Prevents navigation with stale conditions
+1. The service resolves `orderBy`, appends the `cursorField` tiebreaker, and hashes the canonicalized `{ where, orderBy }` into a 16-hex-character fingerprint
+2. It reads `limit + 1` rows to decide `hasNext`, then encodes the last returned row's id and that fingerprint as `{ cursor, fingerprint }`
+3. On the next request it recomputes the fingerprint and compares it to the `fingerprint` in the supplied cursor
+4. A mismatch throws `PaginationInvalidCursorPaginationParamsException`, so a client cannot page on with a filter or an ordering that has since changed
 
 **Characteristics:**
 - Cursor-based navigation (no page numbers)
 - Consistent performance (indexed cursor field)
-- Optional count (requests only if needed)
+- Optional count, fetched only when the repository sets `includeCount`
 - Safe for real-time data changes
-- MongoDB ObjectID timestamps prevent duplicates
+- Constant-size cursor (around 94 characters) regardless of filter complexity
+- The appended `cursorField` tiebreaker keeps the position stable even when the sort key repeats
 
 **Constraints:**
 - Max cursor length: 256 characters (`PaginationMaxCursorLength`); longer throws `PaginationCursorTooLongException` (50204)
 - Cursor format: URL-safe base64 (A-Za-z0-9_-); any other character throws `PaginationInvalidCursorFormatException` (50205)
+- Fingerprint mismatch: throws `PaginationInvalidCursorPaginationParamsException` (50203)
 - Max perPage: 100; above it throws `PaginationPerPageExceedsMaximumException` (50210)
 - Min perPage: 1; below it throws `PaginationPerPageCannotBeLessThanOneException` (50211)
 
@@ -562,13 +625,13 @@ The pagination fields ride inside the `metadata` block of the standard response 
     "message": "...",
     "metadata": {
         "type": "cursor",
-        "nextCursor": "eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsidGltZXN0YW1wIjoiZGVzIn0sIndoZXJlIjp7fX0",
+        "nextCursor": "eyJjIjoiNTA3ZjFmNzdiY2Y4NmNkNzk5NDM5MDExIiwiZiI6IjlmMmM0YTFiN2UwZDNhNTYifQ",
         "perPage": 20,
         "hasNext": true,
         "hasPrevious": false,
-        "orderBy": [{ "name": "asc" }],
+        "orderBy": ["createdAt:desc"],
         "availableSearch": ["name", "email"],
-        "availableOrderBy": []
+        "availableOrderBy": ["createdAt"]
     },
     "data": [...]
 }
@@ -633,20 +696,20 @@ age?: Record<string, IPaginationEqual>
 
 **String:**
 ```typescript
-@PaginationQueryFilterEqualString('role')
-role?: Record<string, IPaginationEqual>
+@PaginationQueryFilterEqualString('roleId')
+roleId?: Record<string, IPaginationEqual>
 
-// Query: ?role=admin
-// Database: WHERE role = 'admin'
+// Query: ?roleId=507f1f77bcf86cd799439011
+// Database: WHERE roleId = '507f1f77bcf86cd799439011'
 ```
 
 **Not Equal:**
 ```typescript
-@PaginationQueryFilterNotEqual('country')
-country?: Record<string, IPaginationNotEqual>
+@PaginationQueryFilterNotEqual('countryId')
+countryId?: Record<string, IPaginationNotEqual>
 
-// Query: ?country=US
-// Database: WHERE country != 'US'
+// Query: ?countryId=507f1f77bcf86cd799439012
+// Database: WHERE countryId != '507f1f77bcf86cd799439012'
 ```
 
 ### Date Filters
@@ -691,13 +754,20 @@ orderBy: [
 ]
 ```
 
-All `orderBy` values passed to the service and stored in cursors are arrays. The single-element array `[{ createdAt: 'desc' }]` is the typical default.
+All `orderBy` values passed to the service are arrays. The single-element array `[{ createdAt: 'desc' }]` is the typical default. Cursors do not carry the `orderBy` itself, only a fingerprint of it.
+
+**Response Metadata Format:**
+```json
+"orderBy": ["createdAt:desc", "name:asc"]
+```
+
+The response reports the applied ordering back in the same `field:direction` format the query accepts, not in the internal object form, so a client can echo `metadata.orderBy` straight back as repeated `?orderBy=` params. An empty order renders `[]`.
 
 **Field Whitelist:**
-Must be specified via `availableOrderBy` in the query decorator to prevent injection:
+`availableOrderBy` is optional, but a route that declares it accepts sorting on those fields and nothing else. Every list route in this codebase declares one, from a `<Module>DefaultAvailableOrderBy` or `<Module>CursorAvailableOrderBy` constant:
 ```typescript
 @PaginationOffsetQuery({
-    availableOrderBy: ['createdAt', 'name', 'email']
+    availableOrderBy: UserDefaultAvailableOrderBy,
 })
 ```
 
@@ -707,47 +777,50 @@ Must be specified via `availableOrderBy` in the query decorator to prevent injec
 
 **Controller:**
 ```typescript
-@Get('/users')
+@Get('/list')
 @ResponsePaging('user.list')
-async listUsers(
+async list(
     @PaginationOffsetQuery({
-        availableSearch: ['name', 'email'],
-        availableOrderBy: ['createdAt', 'name']
+        availableSearch: UserDefaultAvailableSearch,
+        availableOrderBy: UserDefaultAvailableOrderBy,
     })
-    pagination: IPaginationQueryOffsetParams
-) {
-    return this.userService.getListOffset(pagination);
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+    return this.userService.getListOffsetByAdmin(pagination);
 }
 ```
 
 **Service:**
 ```typescript
-async getListOffset(
-    pagination: IPaginationQueryOffsetParams
+async getListOffsetByAdmin(
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    const { data, ...others } = 
+    const { data, ...others } =
         await this.userRepository.findWithPaginationOffset(pagination);
-    
-    const users = this.userUtil.mapList(data);
-    
+
+    const users: UserListResponseDto[] = this.userUtil.mapList(data);
+
     return { data: users, ...others };
 }
 ```
 
 **Repository:**
 ```typescript
-async findWithPaginationOffset(
-    pagination: IPaginationQueryOffsetParams
-): Promise<IResponsePagingReturn<IUser>> {
-    return this.paginationService.offset<IUser>(
+async findWithPaginationOffset({
+    where,
+    ...params
+}: IPaginationQueryOffsetParams<Prisma.UserWhereInput>): Promise<
+    IResponsePagingReturn<IUser>
+> {
+    return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
         this.databaseService.client.user,
         {
-            ...pagination,
+            ...params,
             where: {
-                ...pagination.where,
-                deletedAt: null
+                ...where,
+                deletedAt: null,
             },
-            include: { role: true }
+            include: { role: true, twoFactor: true },
         }
     );
 }
@@ -755,124 +828,110 @@ async findWithPaginationOffset(
 
 **API Request:**
 ```
-GET /users?page=1&perPage=20&search=john&orderBy=name:asc
+GET /admin/user/list?page=1&perPage=20&search=john&orderBy=name:asc
 ```
 
 ### Cursor Pagination
 
 **Controller:**
 ```typescript
-@Get('/users')
-@ResponsePaging('user.list')
-async listUsers(
+@Get('/list')
+@ResponsePaging('workspace.list')
+async list(
     @PaginationCursorQuery({
-        availableSearch: ['name', 'email'],
-        cursorField: 'id'
+        availableSearch: WorkspaceDefaultAvailableSearch,
+        availableOrderBy: WorkspaceCursorAvailableOrderBy,
     })
-    pagination: IPaginationQueryCursorParams
-) {
-    return this.userService.getListCursor(pagination);
-}
-```
-
-**Service:**
-```typescript
-async getListCursor(
-    pagination: IPaginationQueryCursorParams
-): Promise<IPaginationCursorReturn<UserListResponseDto>> {
-    const { data, ...others } = 
-        await this.userRepository.findWithPaginationCursor(pagination);
-    
-    const users = this.userUtil.mapList(data);
-    
-    return { data: users, ...others };
+    pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
+    return this.workspaceService.getListForMember(userId, pagination);
 }
 ```
 
 **Repository:**
 ```typescript
-async findWithPaginationCursor(
-    pagination: IPaginationQueryCursorParams
-): Promise<IPaginationCursorReturn<IUser>> {
-    return this.paginationService.cursor<IUser>(
-        this.databaseService.client.user,
-        {
-            ...pagination,
-            where: {
-                ...pagination.where,
-                deletedAt: null
-            },
-            include: { role: true }
-        }
-    );
+async findWithPaginationCursorByMember(
+    userId: string,
+    {
+        where,
+        ...others
+    }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
+): Promise<IPaginationCursorReturn<Workspace>> {
+    return this.paginationService.cursor<
+        Workspace,
+        Prisma.WorkspaceWhereInput
+    >(this.databaseService.client.workspace, {
+        ...others,
+        where: {
+            AND: [
+                where ?? {},
+                { OR: WorkspaceActiveFilter },
+                { members: { some: { userId } } },
+            ],
+        },
+    });
 }
 ```
 
 **API Requests:**
 ```
 # First page
-GET /users?perPage=20&orderBy=name:asc
+GET /user/workspace/list?perPage=20&orderBy=createdAt:asc
 
-# Next page
-GET /users?cursor=eyJjdXJzb3I6IjEyMyIsIm9yZGVyQnkiOnsibmFtZSI6ImFzYyJ9fQ&perPage=20
+# Next page. The same orderBy must be repeated, or the fingerprint check fails
+GET /user/workspace/list?cursor=eyJjIjoiNTA3ZjFmNzdiY2Y4NmNkNzk5NDM5MDExIiwiZiI6IjlmMmM0YTFiN2UwZDNhNTYifQ&perPage=20&orderBy=createdAt:asc
 ```
 
 ### With Filters
 
 **Controller:**
 ```typescript
-@Get('/users')
+@Get('/list')
 @ResponsePaging('user.list')
-async listUsers(
+async list(
     @PaginationOffsetQuery({
-        availableSearch: ['name', 'email'],
-        availableOrderBy: ['createdAt', 'name']
+        availableSearch: UserDefaultAvailableSearch,
+        availableOrderBy: UserDefaultAvailableOrderBy,
     })
-    pagination: IPaginationQueryOffsetParams,
-    @PaginationQueryFilterInEnum(
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
+    @PaginationQueryFilterInEnum<EnumUserStatus>(
         'status',
-        [EnumUserStatus.active, EnumUserStatus.inactive]
+        UserDefaultStatus
     )
     status?: Record<string, IPaginationIn>,
-    @PaginationQueryFilterEqualString('role')
-    role?: Record<string, IPaginationEqual>,
-    @PaginationQueryFilterEqualBoolean('isActive')
-    isActive?: Record<string, IPaginationEqual>,
-    @PaginationQueryFilterDate('createdAt', {
-        type: EnumPaginationFilterDateBetweenType.start
-    })
-    startDate?: Record<string, IPaginationDate>
-) {
-    return this.userService.getListOffset(
+    @PaginationQueryFilterEqualString('roleId')
+    roleId?: Record<string, IPaginationEqual>,
+    @PaginationQueryFilterEqualString('countryId')
+    countryId?: Record<string, IPaginationEqual>
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+    return this.userService.getListOffsetByAdmin(
         pagination,
         status,
-        role,
-        isActive,
-        startDate
+        roleId,
+        countryId
     );
 }
 ```
 
 **Service:**
 ```typescript
-async getListOffset(
-    pagination: IPaginationQueryOffsetParams,
+async getListOffsetByAdmin(
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
     status?: Record<string, IPaginationIn>,
-    role?: Record<string, IPaginationEqual>,
-    isActive?: Record<string, IPaginationEqual>,
-    startDate?: Record<string, IPaginationDate>
+    roleId?: Record<string, IPaginationEqual>,
+    countryId?: Record<string, IPaginationEqual>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    const { data, ...others } = 
+    const { data, ...others } =
         await this.userRepository.findWithPaginationOffset(
             pagination,
             status,
-            role,
-            isActive,
-            startDate
+            roleId,
+            countryId
         );
-    
-    const users = this.userUtil.mapList(data);
-    
+
+    const users: UserListResponseDto[] = this.userUtil.mapList(data);
+
     return { data: users, ...others };
 }
 ```
@@ -880,25 +939,29 @@ async getListOffset(
 **Repository:**
 ```typescript
 async findWithPaginationOffset(
-    { where, ...pagination }: IPaginationQueryOffsetParams,
+    {
+        where,
+        ...params
+    }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
     status?: Record<string, IPaginationIn>,
-    role?: Record<string, IPaginationEqual>,
-    isActive?: Record<string, IPaginationEqual>,
-    startDate?: Record<string, IPaginationDate>
+    roleId?: Record<string, IPaginationEqual>,
+    countryId?: Record<string, IPaginationEqual>
 ): Promise<IResponsePagingReturn<IUser>> {
-    return this.paginationService.offset<IUser>(
+    return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
         this.databaseService.client.user,
         {
-            ...pagination,
+            ...params,
             where: {
                 ...where,
-                ...status,    // Spreads { status: { in: [...] } }
-                ...role,      // Spreads { role: { equals: '...' } }
-                ...isActive,  // Spreads { isActive: { equals: true } }
-                ...startDate, // Spreads { createdAt: { gte: Date } }
-                deletedAt: null
+                ...status,     // Spreads { status: { in: [...] } }
+                ...countryId,  // Spreads { countryId: { equals: '...' } }
+                ...roleId,     // Spreads { roleId: { equals: '...' } }
+                deletedAt: null,
             },
-            include: { role: true }
+            include: {
+                role: true,
+                twoFactor: true,
+            },
         }
     );
 }
@@ -906,12 +969,13 @@ async findWithPaginationOffset(
 
 **API Request:**
 ```
-GET /users?page=1&perPage=20&status=active,inactive&role=admin&isActive=true&createdAt=2024-01-01
+GET /admin/user/list?page=1&perPage=20&status=active,inactive
 ```
 
 ### Complete Example
 
-**Controller with all features:**
+A paginated route in place, with the Swagger doc decorator and the full protection stack around it:
+
 ```typescript
 @ApiTags('modules.admin.user')
 @Controller({
@@ -921,84 +985,99 @@ GET /users?page=1&perPage=20&status=active,inactive&role=admin&isActive=true&cre
 export class UserAdminController {
     constructor(private readonly userService: UserService) {}
 
-    @Get('/list')
+    @UserAdminListDoc()
     @ResponsePaging('user.list')
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected({
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.read],
+    })
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/list')
     async list(
         @PaginationOffsetQuery({
-            availableSearch: ['name', 'email'],
-            availableOrderBy: ['createdAt', 'email', 'name']
+            availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams,
-        @PaginationQueryFilterInEnum(
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
+        @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
-            [EnumUserStatus.active, EnumUserStatus.inactive]
+            UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterNinEnum(
-            'blockedStatus',
-            [EnumUserStatus.blocked]
-        )
-        blockedStatus?: Record<string, IPaginationNin>,
-        @PaginationQueryFilterEqualBoolean('isActive')
-        isActive?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualNumber('age')
-        age?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterNotEqual('country')
-        country?: Record<string, IPaginationNotEqual>,
-        @PaginationQueryFilterDate('createdAt', {
-            type: EnumPaginationFilterDateBetweenType.start
-        })
-        startDate?: Record<string, IPaginationDate>,
-        @PaginationQueryFilterDate('createdAt', {
-            type: EnumPaginationFilterDateBetweenType.end
-        })
-        endDate?: Record<string, IPaginationDate>
-    ) {
-        return this.userService.getListOffset(
+        @PaginationQueryFilterEqualString('roleId')
+        roleId?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('countryId')
+        countryId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
+        return this.userService.getListOffsetByAdmin(
             pagination,
             status,
-            blockedStatus,
-            isActive,
-            age,
-            role,
-            country,
-            startDate,
-            endDate
+            roleId,
+            countryId
         );
     }
 }
 ```
 
+`@ResponsePaging` is what turns the service's `IPaginationOffsetReturn` into the `metadata` block; `@UserAdminListDoc()` wraps `DocResponsePaging` and is where the same allow-list constants reach Swagger.
+
 ## Integration with Doc Module
 
 The Pagination module integrates with the [Doc module][ref-doc-doc] for automatic API documentation.
 
+The allow-list is declared once, in the module's `<module>.list.constant.ts`, and both decorators consume that same constant. A literal array in either place is a second copy of the allow-list, and two copies are how the documented contract and the enforced contract drift apart.
+
 **Example:**
 ```typescript
-@DocResponsePaging<UserListResponseDto>('user.list', {
+// src/modules/user/constants/user.list.constant.ts
+export const UserDefaultAvailableSearch = ['name', 'username', 'email'];
+export const UserDefaultAvailableOrderBy = ['createdAt', 'name'];
+
+// src/modules/user/docs/user.admin.doc.ts
+DocResponsePaging<UserListResponseDto>('user.list', {
     dto: UserListResponseDto,
-    availableSearch: ['name', 'email'],
-    availableOrder: ['createdAt', 'name']
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
+    type: EnumPaginationType.offset,
 })
+
+// src/modules/user/controllers/user.admin.controller.ts
+@UserAdminListDoc()
 @Get('/list')
 async list(
     @PaginationOffsetQuery({
-        availableSearch: ['name', 'email'],
-        availableOrderBy: ['createdAt', 'name']
+        availableSearch: UserDefaultAvailableSearch,
+        availableOrderBy: UserDefaultAvailableOrderBy,
     })
-    pagination: IPaginationQueryOffsetParams
-) {
-    return this.userService.getListOffset(pagination);
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+    return this.userService.getListOffsetByAdmin(pagination);
 }
+```
+
+Both decorators use the same option name, `availableOrderBy`, for the same constant.
+
+`DocResponsePaging` also takes `type: EnumPaginationType`, which selects the query parameters and the error responses it documents. It is **required**: a block that omits it does not compile, so Swagger can never advertise `page` on a route that has no page.
+
+```typescript
+DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
+    dto: WorkspaceResponseDto,
+    type: EnumPaginationType.cursor,
+    availableSearch: WorkspaceDefaultAvailableSearch,
+    availableOrderBy: WorkspaceCursorAvailableOrderBy,
+})
 ```
 
 The `@DocResponsePaging` decorator automatically:
 - Documents paginated response structure
-- Adds standard pagination query parameters
-- Documents search parameter when provided
-- Documents ordering parameters
+- Adds the offset or cursor query parameters, chosen by `type`
+- Adds the shared pagination error responses plus the offset-only or cursor-only set
+- Documents the `search` parameter when `availableSearch` is provided
+- Documents the `orderBy` parameter when `availableOrderBy` is provided
 - Generates OpenAPI/Swagger specification
 
 For detailed Doc module documentation, see [Doc module documentation][ref-doc-doc].
@@ -1012,6 +1091,7 @@ Pagination pipes are singletons (not request-scoped). After parsing query parame
 `ResponsePagingInterceptor` reads the accumulated state back via `RequestStoreService.get(PaginationStoreKey)` to build the `metadata` block on the response. Key points:
 
 - Each pipe merges its parsed values (page, perPage, orderBy, availableOrderBy, search, availableSearch, filters) into the store for the response metadata, in addition to passing them to the handler as method parameters.
+- The store holds `orderBy` in its object form (`IPaginationOrderBy[]`). `ResponsePagingInterceptor` flattens it into `field:direction` strings on the way out, so the stored shape and the wire shape differ.
 - The store never enters a service or repository layer.
 - Per-request isolation is guaranteed by the CLS store opened once per request by `ClsMiddleware`, not by DI scope.
 - Pagination metadata appears on the success path only. On error the interceptor is skipped and no pagination fields are emitted.

@@ -2,7 +2,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -25,46 +24,19 @@ export class RoleRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<Role>> {
-        return this.paginationService.offset<
-            Role,
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >(this.databaseService.client.role, {
-            ...params,
-            where: {
-                ...where,
-                ...type,
-            },
-        });
-    }
-
-    async findWithPaginationCursor(
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<Role>> {
-        return this.paginationService.cursor<
-            Role,
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >(this.databaseService.client.role, {
-            ...params,
-            where: {
-                ...where,
-                ...type,
-            },
-        });
+        return this.paginationService.offset<Role, Prisma.RoleWhereInput>(
+            this.databaseService.client.role,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...type,
+                },
+            }
+        );
     }
 
     async findOneById(id: string): Promise<Role | null> {

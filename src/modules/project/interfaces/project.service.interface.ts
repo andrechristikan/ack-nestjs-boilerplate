@@ -1,4 +1,7 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import {
     IResponsePagingReturn,
     IResponseReturn,
@@ -33,10 +36,7 @@ export interface IProjectService {
     getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePagingReturn<ProjectResponseDto>>;
     createProject(
         workspaceId: string,
@@ -58,10 +58,7 @@ export interface IProjectService {
 
     getMembersList(
         project: Project,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>>;
     assignMember(
         project: Project,
@@ -85,10 +82,7 @@ export interface IProjectService {
     ): Promise<void>;
 
     getListForAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
     ): Promise<IResponsePagingReturn<ProjectResponseDto>>;
     getByIdForAdmin(

@@ -23,7 +23,7 @@ export function ActivityLogSharedListSelfDoc(): MethodDecorator {
         DocGuard({ termPolicy: true }),
         DocResponsePaging<ActivityLogResponseDto>('activityLog.listSelf', {
             dto: ActivityLogResponseDto,
-            availableOrder: ActivityLogDefaultAvailableOrderBy,
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })
     );
@@ -51,7 +51,7 @@ export function ActivityLogSharedListSelfByWorkspaceDoc(): MethodDecorator {
             'activityLog.listSelfByWorkspace',
             {
                 dto: ActivityLogResponseDto,
-                availableOrder: ActivityLogDefaultAvailableOrderBy,
+                availableOrderBy: ActivityLogDefaultAvailableOrderBy,
                 type: EnumPaginationType.cursor,
             }
         )

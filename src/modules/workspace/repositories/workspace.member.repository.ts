@@ -1,6 +1,8 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import {
+    IPaginationCursorReturn,
     IPaginationIn,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -25,6 +27,18 @@ export class WorkspaceMemberRepository {
         private readonly paginationService: PaginationService,
         private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
     ) {}
+
+    private buildWorkspaceScopedWhere(
+        workspaceId: string,
+        where?: Prisma.WorkspaceMemberWhereInput,
+        role?: Record<string, IPaginationIn>
+    ): Prisma.WorkspaceMemberWhereInput {
+        return {
+            ...where,
+            ...(role ?? {}),
+            workspaceId,
+        };
+    }
 
     async findOneByWorkspaceAndUser(
         workspaceId: string,
@@ -93,23 +107,37 @@ export class WorkspaceMemberRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
-            Prisma.WorkspaceMemberWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         return this.paginationService.offset<
             IWorkspaceMember,
-            Prisma.WorkspaceMemberSelect,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: {
-                ...where,
-                ...(role ?? {}),
-                workspaceId,
+            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
             },
+        });
+    }
+
+    async findWithPaginationCursor(
+        workspaceId: string,
+        {
+            where,
+            ...others
+        }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
+        role?: Record<string, IPaginationIn>
+    ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
+        return this.paginationService.cursor<
+            IWorkspaceMember,
+            Prisma.WorkspaceMemberWhereInput
+        >(this.databaseService.client.workspaceMember, {
+            ...others,
+            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
             include: {
                 user: {
                     select: UserRefSelect,

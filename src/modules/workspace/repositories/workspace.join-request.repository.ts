@@ -1,12 +1,12 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationCursorReturn,
     IPaginationIn,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceJoinRejectReason,
@@ -71,20 +71,16 @@ export class WorkspaceJoinRequestRepository {
         });
     }
 
-    async findWithPaginationOffset(
+    async findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceJoinRequestSelect,
-            Prisma.WorkspaceJoinRequestWhereInput
-        >,
+        }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
-        return this.paginationService.offset<
+    ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
+        return this.paginationService.cursor<
             WorkspaceJoinRequest,
-            Prisma.WorkspaceJoinRequestSelect,
             Prisma.WorkspaceJoinRequestWhereInput
         >(this.databaseService.client.workspaceJoinRequest, {
             ...others,

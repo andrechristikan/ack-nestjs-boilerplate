@@ -1,6 +1,7 @@
 import {
     IPaginationEqual,
     IPaginationIn,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -41,10 +42,7 @@ export interface IWorkspaceService {
 
     getListForMember(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>>;
     createWorkspace(
         userId: string,
@@ -82,8 +80,7 @@ export interface IWorkspaceService {
 
     getMembersList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceMemberWhereInput
         >,
         role?: Record<string, IPaginationIn>
@@ -101,10 +98,7 @@ export interface IWorkspaceService {
     ): Promise<void>;
 
     getListForAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>>;
     getByIdForAdmin(
@@ -113,15 +107,13 @@ export interface IWorkspaceService {
     getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
             Prisma.WorkspaceMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>>;
 
     getInvitesList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceInviteSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceInviteWhereInput
         >,
         status?: Record<string, IPaginationIn>
@@ -161,8 +153,7 @@ export interface IWorkspaceService {
     ): Promise<IResponseReturn<WorkspaceJoinRequestResponseDto>>;
     getJoinRequestsList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceJoinRequestSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceJoinRequestWhereInput
         >,
         status?: Record<string, IPaginationIn>

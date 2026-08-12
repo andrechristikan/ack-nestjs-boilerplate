@@ -6,6 +6,7 @@ import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryAdminListDoc } from '@modules/password-history/docs/password-history.admin.doc';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -50,11 +51,10 @@ export class PasswordHistoryAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >,
+        @PaginationOffsetQuery({
+            availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {

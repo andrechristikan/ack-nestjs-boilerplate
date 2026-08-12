@@ -18,27 +18,19 @@ export class FeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
-            Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
         >(this.databaseService.client.featureFlag, pagination);
     }
 
     async findWithPaginationCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.cursor<
             FeatureFlag,
-            Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
         >(this.databaseService.client.featureFlag, pagination);
     }

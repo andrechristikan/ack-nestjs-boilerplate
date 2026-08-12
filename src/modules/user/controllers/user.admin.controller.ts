@@ -41,6 +41,7 @@ import {
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
+    UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
     UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
@@ -104,26 +105,24 @@ export class UserAdminController {
     async list(
         @PaginationOffsetQuery({
             availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('country')
-        country?: Record<string, IPaginationEqual>
+        @PaginationQueryFilterEqualString('roleId')
+        roleId?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('countryId')
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
         return this.userService.getListOffsetByAdmin(
             pagination,
             status,
-            role,
-            country
+            roleId,
+            countryId
         );
     }
 
@@ -282,11 +281,11 @@ export class UserAdminController {
             UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('country')
-        country?: Record<string, IPaginationEqual>
+        @PaginationQueryFilterEqualString('roleId')
+        roleId?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('countryId')
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
-        return this.userService.exportByAdmin(status, role, country);
+        return this.userService.exportByAdmin(status, roleId, countryId);
     }
 }

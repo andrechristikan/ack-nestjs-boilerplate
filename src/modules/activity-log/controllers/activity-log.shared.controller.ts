@@ -45,10 +45,7 @@ export class ActivityLogSharedController {
         @PaginationCursorQuery({
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
         return this.activityLogService.getListCursorByUser(userId, pagination);
@@ -68,10 +65,7 @@ export class ActivityLogSharedController {
         @PaginationCursorQuery({
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {

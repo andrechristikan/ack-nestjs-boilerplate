@@ -105,7 +105,7 @@ This project uses **TypeScript** with strict mode. Please follow these standards
   ```
 - No `any` types unless absolutely unavoidable — justify it in a comment
 - All public methods/functions should have proper TypeScript typings
-- **Strict null convention** — `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppException`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
+- **Strict null convention** — `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
 - Never use `variable?: string | null` — ambiguous; use `?: string` for input boundary or `string | null` for internal layers
 - Response DTO **domain data fields** must use `field: Type | null`, not `field?: Type`. Only structural/wrapper fields (e.g. `data?`, `errors?` on response wrappers) may use `?:`
 - Repository filter params use `Type | null` — normalization `null → {}` is done inside the repository before Prisma, not at the caller

@@ -27,15 +27,15 @@ export interface IPaginationQuery {
 }
 
 export interface IPaginationQueryOffsetOptions {
+    availableOrderBy?: string[];
     availableSearch?: string[];
     defaultPerPage?: number;
-    availableOrderBy?: string[];
 }
 
 export interface IPaginationQueryCursorOptions {
+    availableOrderBy?: string[];
     availableSearch?: string[];
     defaultPerPage?: number;
-    availableOrderBy?: string[];
     cursorField?: string;
 }
 
@@ -44,30 +44,71 @@ export interface IPaginationQueryDefaultWhere {
     [key: string]: unknown;
 }
 
+export interface IPaginationQueryRaw {
+    search?: string;
+    page?: number | string;
+    perPage?: number | string;
+    cursor?: string;
+    orderBy?: string | string[];
+}
+
+export interface IPaginationSearchPipeReturn<TArgsWhere = unknown> extends Omit<
+    IPaginationQueryRaw,
+    'search'
+> {
+    where?: TArgsWhere;
+}
+
+export interface IPaginationPipeReturn<TArgsWhere = unknown> {
+    where?: TArgsWhere;
+    orderBy?: string | string[];
+    limit: number;
+}
+
+export interface IPaginationOffsetPipeReturn<
+    TArgsWhere = unknown,
+> extends IPaginationPipeReturn<TArgsWhere> {
+    skip: number;
+}
+
+export interface IPaginationCursorPipeReturn<
+    TArgsWhere = unknown,
+> extends IPaginationPipeReturn<TArgsWhere> {
+    cursor?: string;
+    cursorField: string;
+}
+
 export interface IPaginationQueryReturn<
     TArgsWhere = IPaginationQueryDefaultWhere,
 > {
     where?: TArgsWhere;
     orderBy?: IPaginationOrderBy[];
     limit: number;
-    include?: unknown;
 }
 
 export interface IPaginationQueryOffsetParams<
-    TArgsSelect = unknown,
     TArgsWhere = unknown,
 > extends IPaginationQueryReturn<TArgsWhere> {
-    select?: TArgsSelect;
     skip: number;
 }
 
 export interface IPaginationQueryCursorParams<
-    TArgsSelect = unknown,
     TArgsWhere = unknown,
 > extends IPaginationQueryReturn<TArgsWhere> {
-    select?: TArgsSelect;
     cursor?: string;
     cursorField?: string;
+}
+
+export interface IPaginationOffsetArgs<
+    TArgsWhere = unknown,
+> extends IPaginationQueryOffsetParams<TArgsWhere> {
+    include?: unknown;
+}
+
+export interface IPaginationCursorArgs<
+    TArgsWhere = unknown,
+> extends IPaginationQueryCursorParams<TArgsWhere> {
+    include?: unknown;
     includeCount?: boolean;
 }
 
@@ -146,6 +187,5 @@ export interface IPaginationRepository {
 
 export interface IPaginationCursorValue {
     cursor: string;
-    orderBy: IPaginationOrderBy[];
-    where: unknown;
+    fingerprint: string;
 }

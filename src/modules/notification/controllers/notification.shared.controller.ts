@@ -23,6 +23,7 @@ import {
     NotificationSharedMarkAsReadDoc,
     NotificationSharedUpdateUserSettingDoc,
 } from '@modules/notification/docs/notification.shared.doc';
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
@@ -58,11 +59,10 @@ export class NotificationSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableOrderBy: NotificationDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
         return this.notificationService.getListCursor(userId, pagination);

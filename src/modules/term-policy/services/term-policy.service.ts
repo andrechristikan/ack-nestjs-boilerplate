@@ -85,10 +85,7 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
@@ -108,10 +105,7 @@ export class TermPolicyService implements ITermPolicyService {
     }
 
     async getListPublished(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
         const { data, ...others } =
@@ -129,7 +123,6 @@ export class TermPolicyService implements ITermPolicyService {
     async getListUserAccepted(
         userId: string,
         pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicyUserAcceptanceSelect,
             Prisma.TermPolicyUserAcceptanceWhereInput
         >
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {

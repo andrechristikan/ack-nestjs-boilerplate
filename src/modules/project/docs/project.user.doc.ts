@@ -12,6 +12,11 @@ import {
     ProjectDocParamsId,
     ProjectMemberDocParamsId,
 } from '@modules/project/constants/project.doc.constant';
+import {
+    ProjectCursorAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+    ProjectMemberDefaultAvailableOrderBy,
+} from '@modules/project/constants/project.list.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -57,7 +62,9 @@ export function ProjectUserListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocResponsePaging<ProjectResponseDto>('project.list', {
             dto: ProjectResponseDto,
-            type: EnumPaginationType.offset,
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectCursorAvailableOrderBy,
+            type: EnumPaginationType.cursor,
         })
     );
 }
@@ -159,7 +166,8 @@ export function ProjectMemberUserListDoc(): MethodDecorator {
         MemberForbiddenDoc,
         DocResponsePaging<ProjectMemberResponseDto>('project.member.list', {
             dto: ProjectMemberResponseDto,
-            type: EnumPaginationType.offset,
+            availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+            type: EnumPaginationType.cursor,
         })
     );
 }

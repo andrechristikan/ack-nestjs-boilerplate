@@ -2,6 +2,8 @@ import { Injectable, Type, mixin } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
+    IPaginationCursorPipeReturn,
+    IPaginationOffsetPipeReturn,
     IPaginationOrderBy,
     IPaginationQuery,
     IPaginationQueryCursorParams,
@@ -17,61 +19,13 @@ import { PaginationOrderByNotAllowedException } from '@common/pagination/excepti
 import { PaginationOrderDirectionNotAllowedException } from '@common/pagination/exceptions/pagination.order-direction-not-allowed.exception';
 
 export function PaginationOrderPipe(
-    defaultAvailableOrder?: string[]
+    defaultAvailableOrder: string[] = []
 ): Type<PipeTransform> {
     @Injectable()
     class MixinPaginationOrderPipe implements PipeTransform {
         constructor(
             private readonly requestStoreService: RequestStoreService
         ) {}
-
-        async transform(
-            value: {
-                orderBy?: string;
-            } & (IPaginationQueryOffsetParams | IPaginationQueryCursorParams)
-        ): Promise<
-            IPaginationQueryOffsetParams | IPaginationQueryCursorParams
-        > {
-            if (
-                !value?.orderBy ||
-                !defaultAvailableOrder ||
-                defaultAvailableOrder.length === 0
-            ) {
-                return {
-                    ...value,
-                    orderBy: PaginationDefaultOrderBy,
-                };
-            }
-
-            const orderByExtractFromRequest = this.extractOrderByToArray(
-                value.orderBy
-            );
-
-            if (orderByExtractFromRequest.length === 0) {
-                return {
-                    ...value,
-                    orderBy: PaginationDefaultOrderBy,
-                };
-            }
-
-            const parsedOrderBy = this.validateOrderBy(
-                orderByExtractFromRequest,
-                defaultAvailableOrder
-            );
-
-            this.requestStoreService.merge<IPaginationQuery>(
-                PaginationStoreKey,
-                {
-                    orderBy: parsedOrderBy,
-                    availableOrderBy: defaultAvailableOrder,
-                }
-            );
-
-            return {
-                ...value,
-                orderBy: parsedOrderBy,
-            };
-        }
 
         private extractOrderByToArray(
             orderBy?: string | string[]
@@ -132,10 +86,10 @@ export function PaginationOrderPipe(
             const fields = Object.keys(flatOrderBy);
             const directions = Object.values(flatOrderBy);
 
-            const invalidField = fields.find(
+            const invalidField = fields.some(
                 field => !availableOrderBy.includes(field)
             );
-            const invalidDirection = directions.find(
+            const invalidDirection = directions.some(
                 direction =>
                     direction !== EnumPaginationOrderDirectionType.asc &&
                     direction !== EnumPaginationOrderDirectionType.desc
@@ -152,6 +106,56 @@ export function PaginationOrderPipe(
             }
 
             return this.parseOrderBy(orderByExtractFromRequest);
+        }
+
+        private resolveOrderBy(
+            orderBy?: string | string[]
+        ): IPaginationOrderBy[] {
+            const orderByExtractFromRequest =
+                this.extractOrderByToArray(orderBy);
+            const parsedOrderBy =
+                orderByExtractFromRequest.length === 0 ||
+                defaultAvailableOrder.length === 0
+                    ? [...PaginationDefaultOrderBy]
+                    : this.validateOrderBy(
+                          orderByExtractFromRequest,
+                          defaultAvailableOrder
+                      );
+
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                {
+                    orderBy: parsedOrderBy,
+                    availableOrderBy: defaultAvailableOrder,
+                }
+            );
+
+            return parsedOrderBy;
+        }
+
+        async transform(
+            value: IPaginationOffsetPipeReturn | IPaginationCursorPipeReturn
+        ): Promise<
+            IPaginationQueryOffsetParams | IPaginationQueryCursorParams
+        > {
+            const orderBy = this.resolveOrderBy(value?.orderBy);
+
+            if ('skip' in value) {
+                return {
+                    where: value.where,
+                    limit: value.limit,
+                    skip: value.skip,
+                    orderBy,
+                };
+            }
+
+            return {
+                where: value.where,
+                limit: value.limit,
+                cursor: value.cursor,
+                cursorField: value.cursorField,
+                orderBy,
+            };
         }
     }
 

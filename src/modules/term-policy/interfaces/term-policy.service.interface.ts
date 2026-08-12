@@ -24,24 +24,17 @@ export interface ITermPolicyService {
         requiredTermPolicies: EnumTermPolicyType[]
     ): Promise<void>;
     getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
     getListPublished(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
     getListUserAccepted(
         userId: string,
         pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicyUserAcceptanceSelect,
             Prisma.TermPolicyUserAcceptanceWhereInput
         >
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>>;

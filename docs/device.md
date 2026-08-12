@@ -153,7 +153,7 @@ Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints
 )
 ```
 
-Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`, but no policy subject check since users can only manage their own devices. The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities, and `DELETE /user/:userId/device/remove/:deviceOwnershipId` also carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`.
+Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`, but no policy subject check since users can only manage their own devices. The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities, and `DELETE /admin/user/:userId/device/remove/:deviceOwnershipId` also carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`.
 
 
 <!-- REFERENCES -->

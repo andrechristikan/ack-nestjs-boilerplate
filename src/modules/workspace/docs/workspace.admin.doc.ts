@@ -15,6 +15,7 @@ import {
 import {
     WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
+    WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
 import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
@@ -31,7 +32,7 @@ export function WorkspaceAdminListDoc(): MethodDecorator {
             dto: WorkspaceResponseDto,
             type: EnumPaginationType.offset,
             availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrder: WorkspaceDefaultAvailableOrderBy,
+            availableOrderBy: WorkspaceDefaultAvailableOrderBy,
         })
     );
 }
@@ -66,6 +67,7 @@ export function WorkspaceAdminMemberListDoc(): MethodDecorator {
             'workspace.admin.member.list',
             {
                 dto: WorkspaceMemberResponseDto,
+                availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }
         )

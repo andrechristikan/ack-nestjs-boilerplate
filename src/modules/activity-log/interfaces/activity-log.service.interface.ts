@@ -9,32 +9,20 @@ import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/acti
 export interface IActivityLogService {
     getListOffsetByUser(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListCursorByUser(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListOffsetByWorkspace(
         workspaceId: string,
         userId: string | null,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
     getListCursorByWorkspace(
         workspaceId: string,
         userId: string | null,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>>;
 }

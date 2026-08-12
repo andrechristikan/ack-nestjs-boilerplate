@@ -8,6 +8,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistorySharedListDoc } from '@modules/password-history/docs/password-history.shared.doc';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -34,11 +35,10 @@ export class PasswordHistorySharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
         return this.passwordHistoryService.getListCursor(userId, pagination);

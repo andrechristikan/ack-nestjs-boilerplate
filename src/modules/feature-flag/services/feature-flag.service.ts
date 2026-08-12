@@ -140,10 +140,7 @@ export class FeatureFlagService implements IFeatureFlagService {
     }
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationOffsetByAdmin(
@@ -159,10 +156,7 @@ export class FeatureFlagService implements IFeatureFlagService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         const { data, ...others } =
             await this.featureFlagRepository.findWithPaginationCursor(

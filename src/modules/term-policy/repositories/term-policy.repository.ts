@@ -40,16 +40,12 @@ export class TermPolicyRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
-            Prisma.TermPolicySelect,
             Prisma.TermPolicyWhereInput
         >(this.databaseService.client.termPolicy, {
             ...others,
@@ -65,15 +61,11 @@ export class TermPolicyRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicy>> {
         return this.paginationService.cursor<
             TermPolicy,
-            Prisma.TermPolicySelect,
             Prisma.TermPolicyWhereInput
         >(this.databaseService.client.termPolicy, {
             ...others,
@@ -90,20 +82,16 @@ export class TermPolicyRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.TermPolicyUserAcceptanceSelect,
-            Prisma.TermPolicyUserAcceptanceWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
         return this.paginationService.cursor<
             ITermPolicyUserAcceptance,
-            Prisma.TermPolicyUserAcceptanceSelect,
             Prisma.TermPolicyUserAcceptanceWhereInput
         >(this.databaseService.client.termPolicyUserAcceptance, {
             ...others,
             where: {
-                userId,
                 ...where,
+                userId,
             },
         });
     }

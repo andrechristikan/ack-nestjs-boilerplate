@@ -12,6 +12,10 @@ import {
     ProjectAdminListDocQueries,
     ProjectDocParamsId,
 } from '@modules/project/constants/project.doc.constant';
+import {
+    ProjectDefaultAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+} from '@modules/project/constants/project.list.constant';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
@@ -27,6 +31,8 @@ export function ProjectAdminListDoc(): MethodDecorator {
         DocGuard({ role: true }),
         DocResponsePaging<ProjectResponseDto>('project.admin.list', {
             dto: ProjectResponseDto,
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
         })
     );

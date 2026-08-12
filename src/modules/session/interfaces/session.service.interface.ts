@@ -13,18 +13,12 @@ import { SessionResponseDto } from '@modules/session/dtos/response/session.respo
 export interface ISessionService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
     getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<SessionResponseDto>>;
     revoke(userId: string, sessionId: string): Promise<void>;
     revokeByAdmin(

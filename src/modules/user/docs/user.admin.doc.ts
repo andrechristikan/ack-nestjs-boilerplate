@@ -15,7 +15,12 @@ import {
     UserDocParamsId,
     UserDocQueryList,
 } from '@modules/user/constants/user.doc.constant';
+import {
+    UserDefaultAvailableOrderBy,
+    UserDefaultAvailableSearch,
+} from '@modules/user/constants/user.list.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -37,6 +42,9 @@ export function UserAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
+            availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

@@ -9,6 +9,7 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
@@ -26,6 +27,7 @@ export function NotificationSharedListDoc(): MethodDecorator {
         DocGuard({ termPolicy: true }),
         DocResponsePaging<NotificationResponseDto>('notification.list', {
             dto: NotificationResponseDto,
+            availableOrderBy: NotificationDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })
     );

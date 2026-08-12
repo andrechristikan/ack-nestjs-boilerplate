@@ -12,7 +12,10 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import {
+    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagDefaultAvailableSearch,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import {
     FeatureFlagAdminListDoc,
     FeatureFlagAdminUpdateMetadataDoc,
@@ -57,11 +60,9 @@ export class FeatureFlagAdminController {
     async list(
         @PaginationOffsetQuery({
             availableSearch: FeatureFlagDefaultAvailableSearch,
+            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         return this.featureFlagService.getListByAdmin(pagination);
     }

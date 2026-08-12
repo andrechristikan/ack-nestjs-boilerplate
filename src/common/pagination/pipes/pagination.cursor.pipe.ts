@@ -8,8 +8,9 @@ import {
     PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
 import {
+    IPaginationCursorPipeReturn,
     IPaginationQuery,
-    IPaginationQueryCursorParams,
+    IPaginationSearchPipeReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -29,38 +30,6 @@ export function PaginationCursorPipe(
         constructor(
             private readonly requestStoreService: RequestStoreService
         ) {}
-
-        async transform(
-            value: {
-                cursor?: string;
-                perPage?: number | string;
-            } & IPaginationQueryCursorParams
-        ): Promise<IPaginationQueryCursorParams> {
-            try {
-                const finalPerPage = this.validatePerPage(value.perPage);
-                const trimmedCursor = this.validateAndSanitizeCursor(
-                    value.cursor
-                );
-
-                this.requestStoreService.merge<IPaginationQuery>(
-                    PaginationStoreKey,
-                    { perPage: finalPerPage, cursor: trimmedCursor }
-                );
-
-                return {
-                    ...value,
-                    limit: finalPerPage,
-                    cursor: trimmedCursor,
-                    cursorField: defaultCursorField,
-                };
-            } catch (error) {
-                if (error instanceof AppBaseException) {
-                    throw error;
-                }
-
-                throw new PaginationInvalidCursorPaginationParamsException();
-            }
-        }
 
         private validatePerPage(perPage?: number | string): number {
             let finalPerPage = perPage ?? defaultPerPage;
@@ -122,6 +91,36 @@ export function PaginationCursorPipe(
             }
 
             return trimmed;
+        }
+
+        async transform(
+            value?: IPaginationSearchPipeReturn
+        ): Promise<IPaginationCursorPipeReturn> {
+            try {
+                const finalPerPage = this.validatePerPage(value?.perPage);
+                const trimmedCursor = this.validateAndSanitizeCursor(
+                    value?.cursor
+                );
+
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { perPage: finalPerPage, cursor: trimmedCursor }
+                );
+
+                return {
+                    where: value?.where,
+                    orderBy: value?.orderBy,
+                    limit: finalPerPage,
+                    cursor: trimmedCursor,
+                    cursorField: defaultCursorField,
+                };
+            } catch (error) {
+                if (error instanceof AppBaseException) {
+                    throw error;
+                }
+
+                throw new PaginationInvalidCursorPaginationParamsException();
+            }
         }
     }
 

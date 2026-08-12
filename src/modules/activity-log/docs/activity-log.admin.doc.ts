@@ -5,6 +5,7 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDocQueryListByWorkspace } from '@modules/activity-log/constants/activity-log.doc.constant';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
@@ -27,7 +28,8 @@ export function ActivityLogAdminListByUserDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<ActivityLogResponseDto>('activityLog.listByUser', {
             dto: ActivityLogResponseDto,
-            availableOrder: ActivityLogDefaultAvailableOrderBy,
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }
@@ -50,7 +52,8 @@ export function ActivityLogAdminListByWorkspaceDoc(): MethodDecorator {
             'activityLog.listByWorkspace',
             {
                 dto: ActivityLogResponseDto,
-                availableOrder: ActivityLogDefaultAvailableOrderBy,
+                availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+                type: EnumPaginationType.offset,
             }
         )
     );

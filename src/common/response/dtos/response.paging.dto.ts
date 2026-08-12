@@ -8,7 +8,6 @@ import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
-import { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 /**
  * Response metadata extended with pagination state (search, filters, order, page/cursor stats).
@@ -110,14 +109,10 @@ export class ResponsePagingMetadataDto extends ResponseMetadataDto {
         required: true,
         isArray: true,
         description:
-            'Active sort order applied to the query. Each entry is a single-key object with direction.',
-        example: [
-            {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
-        ],
+            'Active sort order applied to the query, in `field:direction` format.',
+        example: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
     })
-    orderBy: IPaginationOrderBy[];
+    orderBy: string[];
 
     @ApiProperty({
         required: true,

@@ -225,23 +225,23 @@ Documents paginated response with automatic pagination parameters.
 - `messagePath: string` - i18n message path
 - `options: IDocResponsePagingOptions<T>`
   - `dto: ClassConstructor<T>` - Response DTO class (required)
-  - `type?: EnumPaginationType` - Pagination type: `offset` or `cursor` (default: `offset`)
+  - `type: EnumPaginationType` - Pagination type: `offset` or `cursor` (required, no default)
   - `statusCode?: number` - Custom status code
   - `httpStatus?: HttpStatus` - HTTP status
   - `availableSearch?: string[]` - Searchable fields
-  - `availableOrder?: string[]` - Sortable fields
+  - `availableOrderBy?: string[]` - Sortable fields
 
 **Auto-includes:**
 
 - Standard pagination query parameters (depends on type):
-    - **Offset type (default)**:
+    - **Offset type**:
         - `perPage` - Data per page (max: 100)
         - `page` - Page number (max: 20)
     - **Cursor type**:
         - `perPage` - Data per page (max: 100)
         - `cursor` - The pagination cursor returned from the previous request
 - Optional search query when `availableSearch` provided
-- Optional ordering query when `availableOrder` provided:
+- Optional ordering query when `availableOrderBy` provided:
     - `orderBy` - Field and direction in `field:direction` format (e.g., `name:asc`, `createdAt:desc`). Repeat to sort by multiple fields.
 - Shared error responses (422) for both types:
     - `orderByNotAllowed` (50200), `orderDirectionNotAllowed` (50215), `filterInvalidValue` (50201)
@@ -252,12 +252,15 @@ Documents paginated response with automatic pagination parameters.
 
 **Usage:**
 
+`availableSearch` and `availableOrderBy` are never literal arrays here. Each takes the same `<module>.list.constant.ts` constant the controller passes to `@PaginationOffsetQuery` / `@PaginationCursorQuery`, so the documented allow-list and the enforced allow-list cannot diverge. The doc decorator and the query decorator use the identical option name for the identical constant.
+
 ```typescript
-// Offset pagination (default)
+// Offset pagination
 @DocResponsePaging<UserListResponseDto>('user.list', {
     dto: UserListResponseDto,
-    availableSearch: ['name', 'email'],
-    availableOrder: ['createdAt', 'name']
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
+    type: EnumPaginationType.offset,
 })
 @Get('/list')
 async getUsers() {
@@ -265,17 +268,18 @@ async getUsers() {
 }
 
 // Cursor pagination
-@DocResponsePaging<UserListResponseDto>('user.list', {
-    dto: UserListResponseDto,
+@DocResponsePaging<SessionResponseDto>('session.list', {
+    dto: SessionResponseDto,
     type: EnumPaginationType.cursor,
-    availableSearch: ['name', 'email'],
-    availableOrder: ['createdAt', 'name']
+    availableOrderBy: SessionCursorAvailableOrderBy,
 })
 @Get('/list')
-async getUsers() {
+async getSessions() {
     // implementation
 }
 ```
+
+A cursor route that allows no searchable field simply omits `availableSearch`, and the `search` query parameter is then absent from its Swagger entry.
 
 ### DocResponseFile
 
@@ -667,8 +671,9 @@ export function UserAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
-            availableSearch: ['name', 'email', 'username'],
-            availableOrder: ['createdAt', 'updatedAt', 'name']
+            availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }
@@ -676,15 +681,17 @@ export function UserAdminListDoc(): MethodDecorator {
 @UserAdminListDoc()
 @Get('/list')
 async list(
-    @PaginationOffsetQuery({ availableSearch: UserDefaultAvailableSearch })
-    pagination: IPaginationQueryOffsetParams<
-        Prisma.UserSelect,
-        Prisma.UserWhereInput
-    >
+    @PaginationOffsetQuery({
+        availableSearch: UserDefaultAvailableSearch,
+        availableOrderBy: UserDefaultAvailableOrderBy,
+    })
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ) {
     // implementation
 }
 ```
+
+The doc factory and the controller import the same two constants from `@modules/user/constants/user.list.constant`. The doc factory never restates the allow-list as a literal.
 
 ### File Upload Endpoint
 

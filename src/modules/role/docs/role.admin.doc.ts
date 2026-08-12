@@ -7,10 +7,15 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     RoleDocParamsId,
     RoleDocQueryList,
 } from '@modules/role/constants/role.doc.constant';
+import {
+    RoleDefaultAvailableOrderBy,
+    RoleDefaultAvailableSearch,
+} from '@modules/role/constants/role.list.constant';
 import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
@@ -32,6 +37,9 @@ export function RoleAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<RoleListResponseDto>('role.list', {
             dto: RoleListResponseDto,
+            availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }
@@ -49,7 +57,7 @@ export function RoleAdminGetDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<RoleDto>('role.get', {
+        DocResponse<RoleDto>('role.get', {
             dto: RoleDto,
         })
     );

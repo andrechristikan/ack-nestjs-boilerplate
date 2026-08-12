@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -46,19 +46,15 @@ export class ProjectMemberRepository {
         });
     }
 
-    async findWithPaginationOffset(
+    async findWithPaginationCursor(
         projectId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.paginationService.offset<
+        return this.paginationService.cursor<
             IProjectMember,
-            Prisma.ProjectMemberSelect,
             Prisma.ProjectMemberWhereInput
         >(this.databaseService.client.projectMember, {
             ...others,

@@ -18,6 +18,7 @@ import {
     DeviceSharedRefreshDoc,
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
+import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -51,9 +52,10 @@ export class DeviceSharedController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
+        @PaginationCursorQuery({
+            availableOrderBy: DeviceCursorAvailableOrderBy,
+        })
         pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >,
         @AuthJwtPayload('userId') userId: string,

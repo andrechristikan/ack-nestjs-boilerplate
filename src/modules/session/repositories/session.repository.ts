@@ -34,15 +34,11 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<
             ISession,
-            Prisma.SessionSelect,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -67,14 +63,10 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.cursor<
             ISession,
-            Prisma.SessionSelect,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,

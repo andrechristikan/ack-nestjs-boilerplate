@@ -20,6 +20,7 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import {
+    ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
     ApiKeyDefaultType,
 } from '@modules/api-key/constants/api-key.list.constant';
@@ -90,11 +91,9 @@ export class ApiKeyAdminController {
     async list(
         @PaginationOffsetQuery({
             availableSearch: ApiKeyDefaultAvailableSearch,
+            availableOrderBy: ApiKeyDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         @PaginationQueryFilterEqualBoolean('isActive')
         isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)

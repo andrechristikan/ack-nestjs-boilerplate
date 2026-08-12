@@ -43,10 +43,7 @@ export class ApiKeyService implements IApiKeyService {
     ) {}
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {

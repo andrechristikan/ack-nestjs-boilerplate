@@ -1,5 +1,5 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -35,6 +35,11 @@ import {
     ProjectUserUpdateDoc,
     ProjectUserUpdateSlugDoc,
 } from '@modules/project/docs/project.user.doc';
+import {
+    ProjectCursorAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+    ProjectMemberDefaultAvailableOrderBy,
+} from '@modules/project/constants/project.list.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -90,11 +95,11 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectCursorAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
@@ -235,11 +240,10 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/member/:projectId/list')
     async memberList(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
         @ProjectCurrent() project: Project
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         return this.projectService.getMembersList(project, pagination);

@@ -79,7 +79,7 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 @ProjectProtected()                        // 7.  Project resolution from :projectId
 @WorkspaceMemberProtected(...)             // 8.  Workspace member role
 @WorkspaceProtected()                      // 9.  Workspace resolution from x-workspace-id
-@ActivityLog(EnumActivityLogAction.login)  // 10. Activity log
+@ActivityLog(EnumActivityLogAction.adminUserUpdateStatus) // 10. Activity log
 @UserProtected()                           // 11. User status
 @FeatureFlagProtected('exampleKey')        // 12. Feature flag
 @AuthJwtAccessProtected()                  // 13. JWT access or refresh

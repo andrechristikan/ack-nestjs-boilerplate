@@ -10,6 +10,7 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     ApiKeyDocParamsId,
     ApiKeyDocQueryList,
@@ -19,7 +20,10 @@ import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.cr
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyDefaultAvailableSearch } from '@modules/api-key/constants/api-key.list.constant';
+import {
+    ApiKeyDefaultAvailableOrderBy,
+    ApiKeyDefaultAvailableSearch,
+} from '@modules/api-key/constants/api-key.list.constant';
 import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
@@ -36,6 +40,8 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
         DocResponsePaging<ApiKeyResponseDto>('apiKey.list', {
             dto: ApiKeyResponseDto,
             availableSearch: ApiKeyDefaultAvailableSearch,
+            availableOrderBy: ApiKeyDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

@@ -40,17 +40,13 @@ export class DeviceOwnershipRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipSelect,
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         const today = this.helperService.dateCreate();
 
         return this.paginationService.offset<
             IDeviceOwnership,
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >(this.databaseService.client.deviceOwnership, {
             ...others,
@@ -89,16 +85,12 @@ export class DeviceOwnershipRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipSelect,
-            Prisma.DeviceOwnershipWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         const today = this.helperService.dateCreate();
 
         return this.paginationService.cursor<
             IDeviceOwnership,
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >(this.databaseService.client.deviceOwnership, {
             ...others,

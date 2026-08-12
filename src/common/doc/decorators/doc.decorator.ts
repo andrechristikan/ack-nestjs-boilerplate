@@ -512,16 +512,16 @@ export function DocResponsePaging<T>(
         );
     }
 
-    if (options.availableOrder) {
+    if (options.availableOrderBy) {
         docs.push(
             ApiQuery({
                 name: 'orderBy',
                 required: false,
                 allowEmptyValue: true,
                 isArray: true,
-                example: `${options.availableOrder[0]}:${EnumPaginationOrderDirectionType.desc}`,
+                example: `${options.availableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
                 type: 'string',
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${options.availableOrder.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${options.availableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
             })
         );
     }

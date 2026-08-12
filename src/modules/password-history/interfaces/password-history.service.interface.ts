@@ -9,16 +9,10 @@ import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/respo
 export interface IPasswordHistoryService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;
     getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>>;
 }

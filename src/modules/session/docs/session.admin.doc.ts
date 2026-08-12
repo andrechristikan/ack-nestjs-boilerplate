@@ -7,12 +7,14 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import {
     SessionDocParamsId,
     SessionDocQueryList,
 } from '@modules/session/constants/session.doc.constant';
+import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -30,6 +32,8 @@ export function SessionAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<SessionResponseDto>('session.list', {
             dto: SessionResponseDto,
+            availableOrderBy: SessionDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

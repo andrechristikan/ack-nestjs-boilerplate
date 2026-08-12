@@ -19,6 +19,7 @@ import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
@@ -53,9 +54,10 @@ export class TermPolicySharedController {
     @ApiKeyProtected()
     @Get('/acceptance/list')
     async listAccepted(
-        @PaginationCursorQuery()
+        @PaginationCursorQuery({
+            availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
+        })
         pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicyUserAcceptanceSelect,
             Prisma.TermPolicyUserAcceptanceWhereInput
         >,
         @AuthJwtPayload('userId') userId: string

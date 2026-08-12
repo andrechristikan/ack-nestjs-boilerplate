@@ -1,6 +1,5 @@
 import {
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -38,35 +37,11 @@ export class RoleService implements IRoleService {
     ) {}
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
         const { data, ...others } =
             await this.roleRepository.findWithPaginationOffsetByAdmin(
-                pagination,
-                type
-            );
-
-        const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
-
-        return {
-            data: roles,
-            ...others,
-        };
-    }
-
-    async getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } =
-            await this.roleRepository.findWithPaginationCursor(
                 pagination,
                 type
             );

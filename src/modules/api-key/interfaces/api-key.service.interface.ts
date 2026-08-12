@@ -18,10 +18,7 @@ import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.respon
 
 export interface IApiKeyService {
     getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;

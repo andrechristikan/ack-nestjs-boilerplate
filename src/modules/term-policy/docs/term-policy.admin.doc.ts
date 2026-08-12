@@ -8,11 +8,13 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     TermPolicyDocParamsGetContent,
     TermPolicyDocParamsId,
     TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
+import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
@@ -39,6 +41,8 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
         }),
         DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
             dto: TermPolicyResponseDto,
+            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

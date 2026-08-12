@@ -7,7 +7,7 @@
 - **Identity & auth** — JWT (ES256/ES512, JWKS), social sign-in (Google / Apple), API keys, sessions, devices, password history, two-factor (TOTP + email/SMS challenge).
 - **Access control** — roles, CASL policy abilities, term-policy acceptance gating, feature flags with per-key salt rollout and user targeting.
 - **Workspace & project** — multi-workspace is **mandatory** for every platform user (a personal workspace is created on EVERY user-creation path — self sign-up, admin create, and admin CSV import; `x-workspace-id` header scopes workspace-scoped `/user` routes); invites (hashed token, encrypted link) and public-workspace join requests; projects are workspace-scoped, carry `:projectId` in the path (no header), and have their own member roles.
-- **Platform** — notifications (email via SES, push via Firebase), file upload + S3 presign, activity log (workspace-scoped and user-scoped reads split by `workspaceId` presence), analytics, i18n messages, health checks, country reference data.
+- **Platform** — notifications (email via SES, push via Firebase), file upload + S3 presign, activity log (workspace-scoped and user-scoped reads split by `workspaceId` presence), i18n messages, health checks, country reference data.
 
 ## Stack & runtime
 
@@ -146,7 +146,7 @@ The rest — the asymmetry, mood, and comment rules — is in `rules/authoring.m
 
 `docs/` is tracked, durable project documentation. It stands on its own for a reader with none of this tooling.
 
-`activity-log` · `analytics` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `status-codes` · `term-policy` · `third-party-integration` · `two-factor` · `vault`
+`activity-log` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `status-codes` · `term-policy` · `third-party-integration` · `two-factor` · `vault` · `workspace`
 
 **Read the doc matching the task before changing related code.** When a change makes a document stale, report which document and what now disagrees — documentation is repaired against the code by skill `doc-drift` → `doc-writer` when the owner runs it, not edited alongside the change.
 

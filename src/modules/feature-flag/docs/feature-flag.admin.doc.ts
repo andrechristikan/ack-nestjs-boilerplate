@@ -7,10 +7,15 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     FeatureFlagDocParamsId,
     FeatureFlagDocQueryList,
 } from '@modules/feature-flag/constants/feature-flag.doc';
+import {
+    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagDefaultAvailableSearch,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
@@ -31,6 +36,9 @@ export function FeatureFlagAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
             dto: FeatureFlagResponseDto,
+            availableSearch: FeatureFlagDefaultAvailableSearch,
+            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

@@ -14,7 +14,7 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 - [Authorization][ref-doc-authorization] - Where the project guards sit in the full protection stack
 - [Feature Flag][ref-doc-feature-flag] - The `workspace` flag that gates the whole user-scope surface
 - [Status Codes][ref-doc-status-codes] - The full `51700`-`51707` block
-- [Pagination][ref-doc-pagination] - Offset pagination used by the list endpoints
+- [Pagination][ref-doc-pagination] - Cursor pagination on the `/user` list endpoints, offset on `/admin/project/list`
 
 ## Table of Contents
 
@@ -50,7 +50,7 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 | `deletedAt` | `DateTime?` | Soft-delete marker. There is no `deletedBy` on this model |
 
 - `@@unique([workspaceId, slug])`
-- `@@index([workspaceId, deletedAt, createdAt desc])`
+- `@@index([workspaceId, deletedAt, createdAt desc, id desc])`
 
 ### `ProjectMember` (`ProjectMembers`)
 
@@ -64,7 +64,7 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 | `createdAt` / `createdBy` | `DateTime` / `String?` | |
 | `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
 
-- `@@unique([projectId, userId])`, `@@index([userId])`, `@@index([projectId, role])`
+- `@@unique([projectId, userId])`, `@@index([userId])`, `@@index([projectId, role, createdAt desc, id desc])`, `@@index([projectId, createdAt desc, id desc])`, `@@index([projectId, joinedAt, id])`
 - No soft-delete columns: removing a member is a hard delete of the row.
 
 `EnumProjectMemberRole`: `admin`, `member`, `viewer`.

@@ -37,7 +37,6 @@ export class DeviceService implements IDeviceService {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >,
         isRevoked?: Record<string, IPaginationEqual>
@@ -61,7 +60,6 @@ export class DeviceService implements IDeviceService {
         userId: string,
         sessionId: string,
         pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >
     ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {

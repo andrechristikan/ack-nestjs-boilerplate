@@ -3,7 +3,9 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationCursorReturn,
     IPaginationEqual,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -133,19 +135,15 @@ export class WorkspaceRepository {
         return count > 0;
     }
 
-    async findWithPaginationOffsetByMember(
+    async findWithPaginationCursorByMember(
         userId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >
-    ): Promise<IResponsePagingReturn<Workspace>> {
-        return this.paginationService.offset<
+        }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
+    ): Promise<IPaginationCursorReturn<Workspace>> {
+        return this.paginationService.cursor<
             Workspace,
-            Prisma.WorkspaceSelect,
             Prisma.WorkspaceWhereInput
         >(this.databaseService.client.workspace, {
             ...others,
@@ -163,15 +161,11 @@ export class WorkspaceRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<Workspace>> {
         return this.paginationService.offset<
             Workspace,
-            Prisma.WorkspaceSelect,
             Prisma.WorkspaceWhereInput
         >(this.databaseService.client.workspace, {
             ...others,

@@ -441,7 +441,7 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     count?: number;
     hasNext: boolean;
     hasPrevious: boolean;
-    orderBy: IPaginationOrderBy[];   // e.g. [{ createdAt: 'desc' }]
+    orderBy: string[];   // `field:direction` entries, e.g. ['createdAt:desc']
     availableSearch: string[];
     availableOrderBy: string[];
     
@@ -458,6 +458,8 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
   data: T[];
 }
 ```
+
+`metadata.orderBy` is a string array, symmetric with `availableOrderBy` beside it. `ResponsePagingInterceptor` flattens the service-level `IPaginationOrderBy[]` (`[{ createdAt: 'desc' }]`) into `field:direction` entries (`['createdAt:desc']`), which is also the format the `orderBy` query parameter accepts. An empty order renders `[]`.
 
 Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCursor` from the service's `cursor` field and never assigns `previousCursor`, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Do not build a "previous page" control from either field.
 

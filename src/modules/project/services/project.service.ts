@@ -1,4 +1,7 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -171,17 +174,14 @@ export class ProjectService implements IProjectService {
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
         const memberUserId = this.isWorkspaceOwner(workspaceMember)
             ? null
             : workspaceMember.userId;
 
         const { data, ...others } =
-            await this.projectRepository.findWithPaginationOffsetForWorkspace(
+            await this.projectRepository.findWithPaginationCursorForWorkspace(
                 workspaceId,
                 memberUserId,
                 pagination
@@ -287,13 +287,10 @@ export class ProjectService implements IProjectService {
 
     async getMembersList(
         project: Project,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectMemberSelect,
-            Prisma.ProjectMemberWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
         const { data, ...others } =
-            await this.projectMemberRepository.findWithPaginationOffset(
+            await this.projectMemberRepository.findWithPaginationCursor(
                 project.id,
                 pagination
             );
@@ -423,10 +420,7 @@ export class ProjectService implements IProjectService {
     }
 
     async getListForAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
         const { data, ...others } =

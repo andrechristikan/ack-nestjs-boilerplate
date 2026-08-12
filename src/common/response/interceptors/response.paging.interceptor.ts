@@ -21,7 +21,10 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationOrderBy,
+    IPaginationQuery,
+} from '@common/pagination/interfaces/pagination.interface';
 
 /**
  * Wraps paginated handler results into the standard envelope, merging pagination state from the
@@ -35,6 +38,36 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly requestStoreService: RequestStoreService
     ) {}
+
+    private mapOrderBy(orderBy?: IPaginationOrderBy[]): string[] {
+        return (orderBy ?? []).flatMap(order =>
+            Object.entries(order).map(
+                ([field, direction]) => `${field}:${direction}`
+            )
+        );
+    }
+
+    /**
+     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
+     */
+    private validatePaginationResponse(
+        responseData: IResponsePagingReturn<T>
+    ): void {
+        if (!responseData) {
+            throw new Error('ResponsePaging must instanceof IResponsePaging');
+        }
+
+        if (
+            responseData.type !== EnumPaginationType.offset &&
+            responseData.type !== EnumPaginationType.cursor
+        ) {
+            throw new Error('Field type must be cursor or offset');
+        }
+
+        if (!responseData.data || !Array.isArray(responseData.data)) {
+            throw new Error('Field data must in array and can not be empty');
+        }
+    }
 
     /**
      * Cursor type contributes `nextCursor`; offset type contributes page fields.
@@ -126,7 +159,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
-                        orderBy: pagination.orderBy ?? [],
+                        orderBy: this.mapOrderBy(pagination.orderBy),
                         availableSearch: pagination.availableSearch ?? [],
                         availableOrderBy: pagination.availableOrderBy ?? [],
                     };
@@ -153,27 +186,5 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         return next.handle();
-    }
-
-    /**
-     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
-     */
-    private validatePaginationResponse(
-        responseData: IResponsePagingReturn<T>
-    ): void {
-        if (!responseData) {
-            throw new Error('ResponsePaging must instanceof IResponsePaging');
-        }
-
-        if (
-            responseData.type !== EnumPaginationType.offset &&
-            responseData.type !== EnumPaginationType.cursor
-        ) {
-            throw new Error('Field type must be cursor or offset');
-        }
-
-        if (!responseData.data || !Array.isArray(responseData.data)) {
-            throw new Error('Field data must in array and can not be empty');
-        }
     }
 }

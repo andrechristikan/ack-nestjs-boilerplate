@@ -17,7 +17,7 @@ import {
     WorkspaceMemberDocQueryList,
 } from '@modules/workspace/constants/workspace.doc.constant';
 import {
-    WorkspaceDefaultAvailableOrderBy,
+    WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
@@ -64,9 +64,9 @@ export function WorkspaceUserListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
             dto: WorkspaceResponseDto,
-            type: EnumPaginationType.offset,
+            type: EnumPaginationType.cursor,
             availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrder: WorkspaceDefaultAvailableOrderBy,
+            availableOrderBy: WorkspaceCursorAvailableOrderBy,
         })
     );
 }
@@ -234,8 +234,8 @@ export function WorkspaceMemberUserListDoc(): MethodDecorator {
         MemberForbiddenDoc,
         DocResponsePaging<WorkspaceMemberResponseDto>('workspace.member.list', {
             dto: WorkspaceMemberResponseDto,
-            type: EnumPaginationType.offset,
-            availableOrder: WorkspaceMemberDefaultAvailableOrderBy,
+            type: EnumPaginationType.cursor,
+            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         })
     );
 }
@@ -294,9 +294,9 @@ export function WorkspaceInviteUserListDoc(): MethodDecorator {
         RoleForbiddenDoc,
         DocResponsePaging<WorkspaceInviteResponseDto>('workspace.invite.list', {
             dto: WorkspaceInviteResponseDto,
-            type: EnumPaginationType.offset,
+            type: EnumPaginationType.cursor,
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
-            availableOrder: WorkspaceInviteDefaultAvailableOrderBy,
+            availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
         })
     );
 }
@@ -448,8 +448,8 @@ export function WorkspaceJoinRequestUserListDoc(): MethodDecorator {
             'workspace.joinRequest.list',
             {
                 dto: WorkspaceJoinRequestResponseDto,
-                type: EnumPaginationType.offset,
-                availableOrder: WorkspaceJoinRequestDefaultAvailableOrderBy,
+                type: EnumPaginationType.cursor,
+                availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
             }
         )
     );

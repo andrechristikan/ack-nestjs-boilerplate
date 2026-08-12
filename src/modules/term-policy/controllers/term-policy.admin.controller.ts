@@ -99,10 +99,7 @@ export class TermPolicyAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
             TermPolicyDefaultType

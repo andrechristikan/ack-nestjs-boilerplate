@@ -36,10 +36,7 @@ export class TermPolicyPublicController {
         @PaginationCursorQuery({
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
             TermPolicyDefaultType

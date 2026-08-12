@@ -30,10 +30,7 @@ export class SessionService implements ISessionService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
@@ -52,10 +49,7 @@ export class SessionService implements ISessionService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         const { data, ...others } =
             await this.sessionRepository.findActiveWithPaginationCursor(

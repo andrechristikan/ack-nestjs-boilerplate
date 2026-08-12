@@ -13,7 +13,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionSharedListDoc,
     SessionSharedRevokeDoc,
@@ -42,12 +42,9 @@ export class SessionSharedController {
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableOrderBy: SessionDefaultAvailableOrderBy,
+            availableOrderBy: SessionCursorAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
         return this.sessionService.getListCursor(userId, pagination);

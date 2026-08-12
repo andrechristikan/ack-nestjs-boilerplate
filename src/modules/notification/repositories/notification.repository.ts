@@ -41,14 +41,10 @@ export class NotificationRepository {
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePagingReturn<Notification>> {
         return this.paginationService.cursor<
             Notification,
-            Prisma.NotificationSelect,
             Prisma.NotificationWhereInput
         >(this.databaseService.client.notification, {
             ...params,
@@ -648,7 +644,12 @@ export class NotificationRepository {
                 title: 'notification.notify.workspaceJoinRequest.title',
                 body: 'notification.notify.workspaceJoinRequest.body',
                 userId,
-                metadata: { username, workspaceId, workspaceName, requesterName },
+                metadata: {
+                    username,
+                    workspaceId,
+                    workspaceName,
+                    requesterName,
+                },
                 isRead: false,
                 priority: EnumNotificationPriority.normal,
                 createdBy,

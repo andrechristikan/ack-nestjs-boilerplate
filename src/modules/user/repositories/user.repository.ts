@@ -6,10 +6,8 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperService } from '@common/helper/services/helper.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
-    IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
@@ -106,64 +104,28 @@ export class UserRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<
-            IUser,
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >(this.databaseService.client.user, {
-            ...params,
-            where: {
-                ...where,
-                ...status,
-                ...country,
-                ...role,
-                deletedAt: null,
-            },
-            include: {
-                role: true,
-                twoFactor: true,
-            },
-        });
-    }
-
-    async findWithPaginationCursor(
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IPaginationCursorReturn<IUser>> {
-        return this.paginationService.cursor<
-            IUser,
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >(this.databaseService.client.user, {
-            ...params,
-            where: {
-                ...where,
-                ...status,
-                ...country,
-                ...role,
-                deletedAt: null,
-            },
-            include: {
-                role: true,
-                twoFactor: true,
-            },
-        });
+        return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
+            this.databaseService.client.user,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...status,
+                    ...countryId,
+                    ...roleId,
+                    deletedAt: null,
+                },
+                include: {
+                    role: true,
+                    twoFactor: true,
+                },
+            }
+        );
     }
 
     async findByEmails(emails: string[]): Promise<IUser[]> {
@@ -192,14 +154,14 @@ export class UserRepository {
 
     async findExport(
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 ...status,
-                ...country,
-                ...role,
+                ...countryId,
+                ...roleId,
                 deletedAt: null,
             },
             include: {

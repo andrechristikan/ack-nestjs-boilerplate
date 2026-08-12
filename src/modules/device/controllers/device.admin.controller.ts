@@ -31,6 +31,7 @@ import {
     DeviceAdminListDoc,
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
+import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -71,9 +72,10 @@ export class DeviceAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
+        @PaginationOffsetQuery({
+            availableOrderBy: DeviceDefaultAvailableOrderBy,
+        })
         pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipSelect,
             Prisma.DeviceOwnershipWhereInput
         >,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)

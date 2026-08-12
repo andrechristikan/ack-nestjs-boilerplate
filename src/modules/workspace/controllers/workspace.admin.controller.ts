@@ -30,6 +30,7 @@ import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
+    WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
 import {
     WorkspaceAdminGetDoc,
@@ -67,10 +68,7 @@ export class WorkspaceAdminController {
             availableSearch: WorkspaceDefaultAvailableSearch,
             availableOrderBy: WorkspaceDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         @PaginationQueryFilterEqualBoolean('isPublic')
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
@@ -111,9 +109,10 @@ export class WorkspaceAdminController {
     async membersList(
         @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         workspaceId: string,
-        @PaginationOffsetQuery()
+        @PaginationOffsetQuery({
+            availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
+        })
         pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
             Prisma.WorkspaceMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {

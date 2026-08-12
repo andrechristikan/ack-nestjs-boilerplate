@@ -4,7 +4,10 @@ import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { FeatureFlagDefaultAvailableSearch } from '@modules/feature-flag/constants/feature-flag.list.constant';
+import {
+    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagDefaultAvailableSearch,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import { FeatureFlagSystemListDoc } from '@modules/feature-flag/docs/feature-flag.system.doc';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -26,11 +29,9 @@ export class FeatureFlagSystemController {
     async list(
         @PaginationCursorQuery({
             availableSearch: FeatureFlagDefaultAvailableSearch,
+            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
         return this.featureFlagService.getListCursor(pagination);
     }

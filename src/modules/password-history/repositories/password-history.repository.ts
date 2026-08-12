@@ -24,14 +24,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.offset<
             IPasswordHistory,
-            Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -52,14 +48,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.cursor<
             IPasswordHistory,
-            Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,

@@ -1,10 +1,10 @@
 import {
-    PaginationOffsetQuery,
+    PaginationCursorQuery,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
     IPaginationIn,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
@@ -33,7 +33,7 @@ import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-f
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
-    WorkspaceDefaultAvailableOrderBy,
+    WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
@@ -121,14 +121,11 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableSearch: WorkspaceDefaultAvailableSearch,
-            availableOrderBy: WorkspaceDefaultAvailableOrderBy,
+            availableOrderBy: WorkspaceCursorAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
         return this.workspaceService.getListForMember(userId, pagination);
@@ -316,11 +313,10 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/member/list')
     async memberList(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceMemberWhereInput
         >,
         @WorkspaceCurrent() workspace: Workspace,
@@ -404,12 +400,11 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/invite/list')
     async inviteList(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
             availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceInviteSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceInviteWhereInput
         >,
         @WorkspaceCurrent() workspace: Workspace,
@@ -548,11 +543,10 @@ export class WorkspaceUserController {
     @ApiKeyProtected()
     @Get('/join-request/list')
     async joinRequestList(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceJoinRequestSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceJoinRequestWhereInput
         >,
         @WorkspaceCurrent() workspace: Workspace,

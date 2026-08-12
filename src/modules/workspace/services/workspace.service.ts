@@ -1,6 +1,7 @@
 import {
     IPaginationEqual,
     IPaginationIn,
+    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
@@ -377,13 +378,10 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getListForMember(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
         const { data, ...others } =
-            await this.workspaceRepository.findWithPaginationOffsetByMember(
+            await this.workspaceRepository.findWithPaginationCursorByMember(
                 userId,
                 pagination
             );
@@ -572,14 +570,13 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getMembersList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceMemberWhereInput
         >,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
         const { data, ...others } =
-            await this.workspaceMemberRepository.findWithPaginationOffset(
+            await this.workspaceMemberRepository.findWithPaginationCursor(
                 workspaceId,
                 pagination,
                 role
@@ -651,10 +648,7 @@ export class WorkspaceService implements IWorkspaceService {
     }
 
     async getListForAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceSelect,
-            Prisma.WorkspaceWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
         const { data, ...others } =
@@ -684,7 +678,6 @@ export class WorkspaceService implements IWorkspaceService {
     async getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberSelect,
             Prisma.WorkspaceMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
@@ -709,8 +702,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getInvitesList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceInviteSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceInviteWhereInput
         >,
         status?: Record<string, IPaginationIn>
@@ -718,7 +710,7 @@ export class WorkspaceService implements IWorkspaceService {
         await this.assertInvitationAllowed();
 
         const { data, ...others } =
-            await this.workspaceInviteRepository.findWithPaginationOffset(
+            await this.workspaceInviteRepository.findWithPaginationCursor(
                 workspaceId,
                 pagination,
                 status
@@ -979,8 +971,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getJoinRequestsList(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceJoinRequestSelect,
+        pagination: IPaginationQueryCursorParams<
             Prisma.WorkspaceJoinRequestWhereInput
         >,
         status?: Record<string, IPaginationIn>
@@ -988,7 +979,7 @@ export class WorkspaceService implements IWorkspaceService {
         await this.assertJoinRequestAllowed();
 
         const { data, ...others } =
-            await this.workspaceJoinRequestRepository.findWithPaginationOffset(
+            await this.workspaceJoinRequestRepository.findWithPaginationCursor(
                 workspaceId,
                 pagination,
                 status

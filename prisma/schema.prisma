@@ -196,6 +196,7 @@ model PasswordHistory {
   createdBy String?  @db.ObjectId
 
   @@index(fields: [userId, expiredAt(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("PasswordHistories")
 }
 
@@ -216,7 +217,8 @@ model ActivityLog {
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
 
-  @@index(fields: [userId, workspaceId, createdAt(sort: Desc)])
+  @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc)])
   @@map("ActivityLogs")
 }
@@ -245,6 +247,7 @@ model Session {
 
   @@unique(fields: [userId, jti])
   @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
+  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
   @@index(fields: [userId, deviceOwnershipId, isRevoked])
   @@index(fields: [deviceOwnershipId])
@@ -296,7 +299,7 @@ model DeviceOwnership {
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
   @@index(fields: [deviceId, revokedAt])
-  @@index(fields: [userId, isRevoked])
+  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, revokedAt])
   @@index(fields: [deviceId, userId, revokedAt])
   @@map("DeviceOwnerships")
@@ -359,6 +362,7 @@ model TermPolicyUserAcceptance {
 
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("TermPolicyUserAcceptances")
 }
 
@@ -420,6 +424,7 @@ model Notification {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, isRead, createdAt(sort: Desc)])
   @@index(fields: [userId, type, createdAt(sort: Desc)])
   @@index(fields: [userId, priority, isRead, createdAt(sort: Desc)])
@@ -484,7 +489,7 @@ model Workspace {
 
   @@unique(fields: [slug])
   @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
-  @@index(fields: [deletedAt, createdAt(sort: Desc)])
+  @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [deletedAt, name])
   @@map("Workspaces")
 }
@@ -506,8 +511,9 @@ model WorkspaceMember {
 
   @@unique(fields: [workspaceId, userId])
   @@index(fields: [userId])
-  @@index(fields: [workspaceId, role])
-  @@index(fields: [workspaceId, joinedAt])
+  @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, joinedAt, id])
   @@map("WorkspaceMembers")
 }
 
@@ -536,7 +542,8 @@ model WorkspaceInvite {
 
   @@unique(fields: [token])
   @@unique(fields: [reference])
-  @@index(fields: [workspaceId, status, createdAt(sort: Desc)])
+  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [email, status])
   @@index(fields: [token, expiredAt, status])
   @@index(fields: [workspaceId, expiredAt])
@@ -561,7 +568,8 @@ model WorkspaceJoinRequest {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  @@index(fields: [workspaceId, status, createdAt(sort: Desc)])
+  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, status])
   @@map("WorkspaceJoinRequests")
 }
@@ -584,7 +592,7 @@ model Project {
   deletedAt DateTime?
 
   @@unique(fields: [workspaceId, slug])
-  @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc)])
+  @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
   @@map("Projects")
 }
 
@@ -605,7 +613,9 @@ model ProjectMember {
 
   @@unique(fields: [projectId, userId])
   @@index(fields: [userId])
-  @@index(fields: [projectId, role])
+  @@index(fields: [projectId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, joinedAt, id])
   @@map("ProjectMembers")
 }
 

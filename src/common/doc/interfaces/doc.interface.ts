@@ -59,8 +59,8 @@ export interface IDocResponsePagingOptions<
 > extends IDocResponseOptions<T> {
     dto: ClassConstructor<T>;
     availableSearch?: string[];
-    availableOrder?: string[];
-    type?: EnumPaginationType;
+    availableOrderBy?: string[];
+    type: EnumPaginationType;
 }
 
 export interface IDocResponseFileOptions extends Omit<

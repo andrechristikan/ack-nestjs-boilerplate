@@ -75,10 +75,7 @@ export class SessionAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')

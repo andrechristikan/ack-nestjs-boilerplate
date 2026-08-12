@@ -7,8 +7,9 @@ import {
     PaginationStoreKey,
 } from '@common/pagination/constants/pagination.constant';
 import {
+    IPaginationOffsetPipeReturn,
     IPaginationQuery,
-    IPaginationQueryOffsetParams,
+    IPaginationSearchPipeReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -28,38 +29,6 @@ export function PaginationOffsetPipe(
         constructor(
             private readonly requestStoreService: RequestStoreService
         ) {}
-
-        transform(
-            value: {
-                page?: number | string;
-                perPage?: number | string;
-            } & IPaginationQueryOffsetParams
-        ): IPaginationQueryOffsetParams {
-            try {
-                const finalPage = this.validateAndParsePage(value.page);
-                const finalPerPage = this.validateAndParsePerPage(
-                    value.perPage
-                );
-
-                const skip = (finalPage - 1) * finalPerPage;
-                this.requestStoreService.merge<IPaginationQuery>(
-                    PaginationStoreKey,
-                    { page: finalPage, perPage: finalPerPage }
-                );
-
-                return {
-                    ...value,
-                    limit: finalPerPage,
-                    skip: skip,
-                };
-            } catch (error) {
-                if (error instanceof AppBaseException) {
-                    throw error;
-                }
-
-                throw new PaginationInvalidOffsetPaginationParamsException();
-            }
-        }
 
         private validateAndParsePage(page?: number | string): number {
             let finalPage = page ?? 1;
@@ -118,6 +87,36 @@ export function PaginationOffsetPipe(
             }
 
             return finalPerPage;
+        }
+
+        transform(
+            value?: IPaginationSearchPipeReturn
+        ): IPaginationOffsetPipeReturn {
+            try {
+                const finalPage = this.validateAndParsePage(value?.page);
+                const finalPerPage = this.validateAndParsePerPage(
+                    value?.perPage
+                );
+
+                const skip = (finalPage - 1) * finalPerPage;
+                this.requestStoreService.merge<IPaginationQuery>(
+                    PaginationStoreKey,
+                    { page: finalPage, perPage: finalPerPage }
+                );
+
+                return {
+                    where: value?.where,
+                    orderBy: value?.orderBy,
+                    limit: finalPerPage,
+                    skip,
+                };
+            } catch (error) {
+                if (error instanceof AppBaseException) {
+                    throw error;
+                }
+
+                throw new PaginationInvalidOffsetPaginationParamsException();
+            }
         }
     }
 

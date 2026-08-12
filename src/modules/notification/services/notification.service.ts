@@ -28,10 +28,7 @@ export class NotificationService implements INotificationService {
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
         const { data, ...others } =
             await this.notificationRepository.findWithPaginationCursor(

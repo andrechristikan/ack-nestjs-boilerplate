@@ -22,16 +22,10 @@ export interface IFeatureFlagService {
         metadataKey: string
     ): Promise<void>;
     getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
     getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
     updateStatusByAdmin(
         id: string,

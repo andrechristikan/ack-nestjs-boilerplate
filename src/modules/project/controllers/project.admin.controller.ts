@@ -19,6 +19,10 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import {
+    ProjectDefaultAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+} from '@modules/project/constants/project.list.constant';
+import {
     ProjectAdminGetDoc,
     ProjectAdminListDoc,
 } from '@modules/project/docs/project.admin.doc';
@@ -51,11 +55,11 @@ export class ProjectAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >,
+        @PaginationOffsetQuery({
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
         workspaceId?: string
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {

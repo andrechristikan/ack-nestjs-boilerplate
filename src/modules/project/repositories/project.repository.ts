@@ -1,7 +1,10 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -75,57 +78,49 @@ export class ProjectRepository {
         return count > 0;
     }
 
-    async findWithPaginationOffsetForWorkspace(
+    async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePagingReturn<Project>> {
-        return this.paginationService.offset<
-            Project,
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >(this.databaseService.client.project, {
-            ...others,
-            where: {
-                AND: [
-                    where ?? {},
-                    { workspaceId },
-                    { OR: ProjectActiveFilter },
-                    ...(memberUserId
-                        ? [{ members: { some: { userId: memberUserId } } }]
-                        : []),
-                ],
-            },
-        });
+        return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
+            this.databaseService.client.project,
+            {
+                ...others,
+                where: {
+                    AND: [
+                        where ?? {},
+                        { workspaceId },
+                        { OR: ProjectActiveFilter },
+                        ...(memberUserId
+                            ? [{ members: { some: { userId: memberUserId } } }]
+                            : []),
+                    ],
+                },
+            }
+        );
     }
 
     async findWithPaginationOffsetForAdmin(
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
     ): Promise<IResponsePagingReturn<Project>> {
-        return this.paginationService.offset<
-            Project,
-            Prisma.ProjectSelect,
-            Prisma.ProjectWhereInput
-        >(this.databaseService.client.project, {
-            ...others,
-            where: {
-                ...where,
-                ...(workspaceId ? { workspaceId } : {}),
-            },
-        });
+        return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
+            this.databaseService.client.project,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...(workspaceId ? { workspaceId } : {}),
+                },
+            }
+        );
     }
 
     async createWithSlug(

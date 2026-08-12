@@ -54,7 +54,6 @@ import { HelperService } from '@common/helper/services/helper.service';
 import {
     IPaginationEqual,
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -228,44 +227,17 @@ export class UserService implements IUserService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
         const { data, ...others } =
             await this.userRepository.findWithPaginationOffset(
                 pagination,
                 status,
-                role,
-                country
-            );
-
-        const users: UserListResponseDto[] = this.userUtil.mapList(data);
-        return {
-            data: users,
-            ...others,
-        };
-    }
-
-    async getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        const { data, ...others } =
-            await this.userRepository.findWithPaginationCursor(
-                pagination,
-                status,
-                role,
-                country
+                roleId,
+                countryId
             );
 
         const users: UserListResponseDto[] = this.userUtil.mapList(data);
@@ -2066,8 +2038,8 @@ export class UserService implements IUserService {
 
     async exportByAdmin(
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
         // TODO: Optimize by doing
         // - in background job with bullmq
@@ -2076,8 +2048,8 @@ export class UserService implements IUserService {
 
         const data = await this.userRepository.findExport(
             status,
-            role,
-            country
+            roleId,
+            countryId
         );
 
         const users: UserExportResponseDto[] = this.userUtil.mapExport(data);

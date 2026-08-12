@@ -159,21 +159,25 @@ Pass variables through the `properties` option:
 ```json
 // src/languages/en/user.json
 {
-    "greeting": "Hello, {name}!",
-    "itemCount": "You have {count} items"
+    "error": {
+        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
+    }
 }
 ```
 
 ```typescript
-const greeting = this.messageService.setMessage('user.greeting', {
-    properties: { name: 'John' }
-});
-// Output: "Hello, John!"
+const resendLimit = this.messageService.setMessage(
+    'user.error.verificationEmailResendLimitExceeded',
+    { properties: { minutes: 5 } }
+);
+// Output: "You have exceeded the limit for resending verification emails. Try again after 5 minutes."
 
-const itemCount = this.messageService.setMessage('user.itemCount', {
-    properties: { count: 5 }
-});
-// Output: "You have 5 items"
+const importExist = this.messageService.setMessage(
+    'user.error.importEmailExist',
+    { properties: { emails: 'a@example.com, b@example.com' } }
+);
+// Output: "There are existing users with the provided email addresses. Email: a@example.com, b@example.com"
 ```
 
 ### Custom Language

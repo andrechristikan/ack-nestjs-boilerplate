@@ -55,10 +55,7 @@ export class ActivityLogAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
@@ -87,10 +84,7 @@ export class ActivityLogAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         workspaceId: string,
         @Query('userId', new RequestIsValidObjectIdPipe({ optional: true }))

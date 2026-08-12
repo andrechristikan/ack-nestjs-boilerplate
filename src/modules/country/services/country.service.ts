@@ -1,4 +1,4 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
@@ -14,14 +14,11 @@ export class CountryService implements ICountryService {
         private readonly countryUtil: CountryUtil
     ) {}
 
-    async getList(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
+    async getListCursor(
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePagingReturn<CountryResponseDto>> {
         const { data, ...others } =
-            await this.countryRepository.findWithPagination(pagination);
+            await this.countryRepository.findWithPaginationCursor(pagination);
         const countries: CountryResponseDto[] = this.countryUtil.mapList(data);
 
         return {

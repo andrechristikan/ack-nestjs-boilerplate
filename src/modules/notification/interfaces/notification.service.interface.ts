@@ -11,10 +11,7 @@ import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/r
 export interface INotificationService {
     getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePagingReturn<NotificationResponseDto>>;
     getListUserSetting(
         userId: string

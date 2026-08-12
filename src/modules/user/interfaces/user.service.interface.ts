@@ -4,7 +4,6 @@ import { IFile } from '@common/file/interfaces/file.interface';
 import {
     IPaginationEqual,
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -61,22 +60,10 @@ export interface IUserService {
         requiredVerified: boolean
     ): Promise<IUser>;
     getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>>;
-    getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>>;
     getOne(id: string): Promise<IResponseReturn<UserProfileResponseDto>>;
     createByAdmin(
@@ -208,8 +195,8 @@ export interface IUserService {
     ): Promise<void>;
     exportByAdmin(
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn>;
     logout(
         userId: string,

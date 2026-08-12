@@ -1,12 +1,12 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperService } from '@common/helper/services/helper.service';
 import {
+    IPaginationCursorReturn,
     IPaginationIn,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
@@ -102,15 +102,13 @@ export class WorkspaceInviteRepository {
         workspaceId: string,
         email: string
     ): Promise<boolean> {
-        const count = await this.databaseService.client.workspaceInvite.count(
-            {
-                where: {
-                    workspaceId,
-                    email,
-                    status: EnumWorkspaceInviteStatus.pending,
-                },
-            }
-        );
+        const count = await this.databaseService.client.workspaceInvite.count({
+            where: {
+                workspaceId,
+                email,
+                status: EnumWorkspaceInviteStatus.pending,
+            },
+        });
 
         return count > 0;
     }
@@ -144,20 +142,16 @@ export class WorkspaceInviteRepository {
         });
     }
 
-    async findWithPaginationOffset(
+    async findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceInviteSelect,
-            Prisma.WorkspaceInviteWhereInput
-        >,
+        }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
-        return this.paginationService.offset<
+    ): Promise<IPaginationCursorReturn<WorkspaceInvite>> {
+        return this.paginationService.cursor<
             WorkspaceInvite,
-            Prisma.WorkspaceInviteSelect,
             Prisma.WorkspaceInviteWhereInput
         >(this.databaseService.client.workspaceInvite, {
             ...others,

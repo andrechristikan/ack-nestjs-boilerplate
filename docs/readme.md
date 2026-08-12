@@ -89,8 +89,7 @@ Additional features and integrations for production-grade deployments.
 27. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
 28. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
 29. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
-30. [Analytics][ref-doc-analytics] — Planned analytics design using MongoDB aggregation pipelines
-31. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
+30. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
 
 
 
@@ -123,7 +122,6 @@ Additional features and integrations for production-grade deployments.
 [ref-doc-presign]: presign.md
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-doc]: doc.md
-[ref-doc-analytics]: analytics.md
 [ref-doc-vault]: vault.md
 
 [ref-12factor]: https://12factor.net

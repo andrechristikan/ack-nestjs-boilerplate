@@ -112,7 +112,7 @@ This boilerplate is perfect for:
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
-- [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])
+- [ ] Analytics Dashboard
 - [ ] Verification Mobile Number, whatsapp or/and sms
 - [ ] Versioning System (Force frontend to update, especially mobile)
 
@@ -408,7 +408,6 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
-[ref-doc-analytics]: docs/analytics.md
 [ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
 [ref-doc-doc]: docs/doc.md
