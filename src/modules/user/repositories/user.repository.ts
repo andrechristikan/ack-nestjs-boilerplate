@@ -18,7 +18,7 @@ import {
     IAuthPassword,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import { IRole } from '@modules/role/interfaces/role.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';

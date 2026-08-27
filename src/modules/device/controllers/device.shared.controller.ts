@@ -20,7 +20,7 @@ import {
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceService } from '@modules/device/services/device.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';

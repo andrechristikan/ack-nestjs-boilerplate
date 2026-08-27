@@ -82,7 +82,5 @@ Response shape is `ResponseErrorDto`: `{ statusCode, statusCodeKey, module, mess
 
 ## i18n messages
 
-- `messagePath` is a **nested** JSON key, and the filename is the prefix: `user.error.notFound` → `src/languages/en/user.json` → `{ "error": { "notFound": "..." } }`.
-- **Flat keys are forbidden.** `"error.notFound": "..."` as a single string key does not resolve.
-- Every new exception needs its key added to every language file, not just `en`.
-- Placeholders use `{name}` and are fed by `messageProperties`.
+`messagePath` is a nested JSON key whose FIRST segment is the language filename, and every new
+exception needs its key in every language file. The full rule set is `rules/i18n.md`.

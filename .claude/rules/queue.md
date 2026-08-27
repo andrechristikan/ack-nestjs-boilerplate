@@ -1,12 +1,12 @@
 # Queues — BullMQ
 
-Detail in `docs/queue.md`. Redis `db:1` carries BullMQ; `db:0` carries the cache. **One Redis connection, shared** — never open a second.
+Detail in `docs/queue.md`. Redis `db:1` carries BullMQ; `db:0` carries the cache (`rules/cache.md`). **One Redis connection, shared** — never open a second.
 
 ## Where things live
 
 - **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`.
 - **`queue.register.module.ts`** — `@Global()`; every `BullModule.registerQueue` and per-queue job default lives here, nowhere else.
-- **`queue.module.ts`** — provides every processor class. It does **not** import feature modules today (`imports: []`); processors resolve collaborators because their feature modules are already global / imported elsewhere (e.g. `NotificationModule` via `CommonModule`). Do not invent a second composition root.
+- **`queue.module.ts`** — the composition root that provides every processor class, and imports a feature module only where the processor's collaborators are not already reachable (`WorkspaceModule` today; `NotificationModule` is not listed because `CommonModule` already makes it global). Do not invent a second composition root, and do not register a processor in its own feature module (`rules/nest-wiring.md`).
 - **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`). Only their REGISTRATION lives in `src/queues/`. A `processors/` folder under `src/queues/` is drift.
 
 ## Writing a processor
@@ -38,3 +38,13 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 - A service enqueues through the injected BullMQ queue; a controller never does.
 - Priority comes from `EnumQueuePriority` (`high` / `medium` / `low`), not a raw number.
 - One moment, one mechanism: do not enqueue a job AND emit an event for the same thing. Pick the one that matches whether the caller needs the result.
+
+## Retries make a job repeatable
+
+`queue.register.module.ts` sets `attempts` plus an exponential `backoff` per queue from config,
+so a processor's work runs again on failure. A handler that is not safe to repeat needs the
+repeat to be harmless — a conditional write, an upsert, a state check (`rules/concurrency.md`).
+
+`QueueProcessorBase` reports to Sentry once, on the LAST attempt only, and only when the error
+is fatal. A processor extending `WorkerHost` directly loses that and double-reports across
+retries (`rules/logging.md`).

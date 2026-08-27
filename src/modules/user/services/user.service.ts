@@ -107,7 +107,7 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import {
     IUser,
     IUserVerificationEmailCreate,
@@ -141,7 +141,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';

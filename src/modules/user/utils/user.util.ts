@@ -5,7 +5,7 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import {
     IUser,
     IUserForgotPasswordCreate,

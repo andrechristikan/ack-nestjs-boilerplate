@@ -53,13 +53,13 @@ Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `Pag
 
 **Set one wherever the endpoint has a defensible sort order or a real search column — and leave it out where it does not.** A device list, a join-request list, or a member list whose searchable identity lives on the joined `user` has nothing worth a `contains` search. An allow-list added so a field is non-empty is speculative generality.
 
-**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePaging` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list is how the docs and the route drift apart, and it is how 16 routes ended up silently undocumented.
+**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePaging` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
 
 **`DocResponsePaging` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
 
 ## Two protections, and only one of them is the allow-lists
 
-Keep these apart. Conflating them is how this rule went wrong once already.
+Keep these apart. Conflating them makes the allow-lists look mandatory for a protection they do not provide, and the pipes' own key discipline then reads as optional.
 
 | Protection | Defends against | Needs an allow-list? |
 |---|---|---|
@@ -103,7 +103,7 @@ The cursor is URL-safe base64 over exactly two fields:
 
 Two obligations follow:
 
-- **Never put a value in the payload.** The `where` used to be embedded, which published the scope IDs, the soft-delete convention and the search field names to anyone holding a cursor, and made the token grow with the filter until it blew past `PaginationMaxCursorLength`. The payload is now fixed-size regardless of filter complexity. Keep it that way.
+- **Never put a value in the payload.** A `where` carried inside the token publishes the scope IDs, the soft-delete convention and the search field names to anyone holding a cursor, and grows the token with the filter until it passes `PaginationMaxCursorLength`. The payload stays fixed-size regardless of filter complexity.
 - **Canonicalize before hashing.** Object keys are sorted recursively and `Date` is normalised to ISO before the hash. `JSON.stringify` is key-order dependent; without this, a reordered `where` would read as a changed query, and an un-normalised `Date` would hash to `{}` and let a changed date filter slip through the guard.
 
 Renaming a payload field still invalidates every cursor a client holds. **This repo has no consumer**, so that is free here — take the clean shape and change every call site, per `.claude/CLAUDE.md` #7. Nothing about it fails at `tsc`.

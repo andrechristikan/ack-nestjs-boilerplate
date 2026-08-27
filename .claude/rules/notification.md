@@ -23,7 +23,7 @@ A notification job payload is a BullMQ `job.data` shape, so its interface follow
 ## Templates
 
 - A rendered notification (email body, term-policy document) is a **Handlebars template** (`.hbs`, `EnumFileExtensionTemplate`) rendered through the template service — never string-concatenated in a service.
-- Template content is **seeded initial data** (`rules/migration.md`): the `migration.template-notification.seed.ts` / `migration.template-term-policy.seed.ts` seeds populate it. Adding a template means adding it to the seed, not hardcoding it in a processor.
+- Template content is **seeded initial data** (`rules/seeding.md`): the `migration.template-notification.seed.ts` / `migration.template-term-policy.seed.ts` seeds populate it. Adding a template means adding it to the seed, not hardcoding it in a processor.
 - The template service resolves and renders; the processor-service calls it and hands the result to the channel client (`AwsSESService` / `FirebaseService`). A processor does not build markup.
 
 ## Layering inside the module

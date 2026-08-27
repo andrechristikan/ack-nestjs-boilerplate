@@ -4,10 +4,12 @@ import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Exclude, Expose } from 'class-transformer';
 
 export class DeviceResponseDto extends DatabaseResponseDto {
+    @Exclude()
+    @ApiHideProperty()
     fingerprint: string;
 
     @ApiProperty({
@@ -16,7 +18,7 @@ export class DeviceResponseDto extends DatabaseResponseDto {
         example: faker.commerce.productName(),
     })
     @Expose()
-    name?: string;
+    name: string | null;
 
     @ApiProperty({
         required: true,
@@ -35,7 +37,9 @@ export class DeviceResponseDto extends DatabaseResponseDto {
     @Expose()
     lastActiveAt: Date;
 
-    notificationToken?: string;
+    @Exclude()
+    @ApiHideProperty()
+    notificationToken: string | null;
 
     @ApiProperty({
         required: false,
@@ -44,5 +48,5 @@ export class DeviceResponseDto extends DatabaseResponseDto {
         enum: EnumDeviceNotificationProvider,
     })
     @Expose()
-    notificationProvider?: EnumDeviceNotificationProvider;
+    notificationProvider: EnumDeviceNotificationProvider | null;
 }

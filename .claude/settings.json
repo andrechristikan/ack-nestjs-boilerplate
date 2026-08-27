@@ -1,40 +1,101 @@
 {
     "permissions": {
-        "allow": [],
-        "additionalDirectories": [
-            "/tmp"
-        ]
+        "allow": [
+            "Bash(pnpm *)",
+            "Bash(npx prisma *)",
+            "Bash(npx tsc *)",
+            "Bash(npx eslint *)",
+            "Bash(npx prettier *)",
+            "Bash(npx jest *)",
+            "Bash(npx cspell *)",
+            "Bash(docker-compose *)",
+            "Bash(docker compose *)",
+            "Bash(graphify query *)",
+            "Bash(rg *)",
+            "Bash(grep *)",
+            "Bash(awk *)",
+            "Bash(sed -n *)",
+            "Bash(ls *)",
+            "Bash(find *)",
+            "Bash(git status*)",
+            "Bash(git diff*)",
+            "Bash(git log*)",
+            "Bash(git show*)",
+            "Bash(git branch*)",
+            "Bash(git fetch*)",
+            "Bash(git add*)",
+            "Bash(git commit*)",
+            "Bash(git reset*)",
+            "Bash(git checkout*)",
+            "Bash(git restore*)",
+            "Bash(git clean*)",
+            "Bash(git stash*)",
+            "Bash(git rm*)",
+            "Bash(git push*)",
+            "Edit(docs/**)"
+        ],
+        "ask": ["Bash(rm -rf *)"],
+        "deny": [
+            "Bash(pnpm db:migrate*)",
+            "Bash(pnpm db:generate*)",
+            "Bash(pnpm db:push*)",
+            "Bash(pnpm migration:*)",
+            "Bash(npx prisma db push*)",
+            "Bash(npx prisma migrate*)",
+            "Bash(npx prisma generate*)",
+            "Edit(prisma/schema.prisma)",
+            "Write(prisma/schema.prisma)",
+            "Skill(caveman:caveman-compress)",
+            "Skill(caveman:caveman-compress *)",
+            "Skill(caveman:caveman-init)",
+            "Skill(caveman:caveman-init *)",
+            "Skill(caveman:caveman-setup)",
+            "Skill(caveman:caveman-setup *)",
+            "Skill(caveman:caveman-discover)",
+            "Skill(caveman:caveman-discover *)",
+            "Skill(caveman:caveman-commit)",
+            "Skill(caveman:caveman-commit *)",
+            "Skill(caveman:lean-build)",
+            "Skill(caveman:lean-build *)",
+            "Skill(caveman:safe-refactor)",
+            "Skill(caveman:safe-refactor *)",
+            "Skill(caveman:migration)",
+            "Skill(caveman:migration *)",
+            "Skill(caveman:surgical-patch)",
+            "Skill(caveman:surgical-patch *)",
+            "Skill(caveman:verify-and-stop)",
+            "Skill(caveman:verify-and-stop *)",
+            "Skill(caveman:investigate-first)",
+            "Skill(caveman:investigate-first *)",
+            "Skill(caveman:caveman-explore)",
+            "Skill(caveman:caveman-explore *)",
+            "Skill(caveman:caveman-review)",
+            "Skill(caveman:caveman-review *)",
+            "Skill(caveman:cavecrew)",
+            "Skill(caveman:cavecrew *)",
+            "Skill(caveman:caveman-learn)",
+            "Skill(caveman:caveman-learn *)",
+            "Skill(caveman:caveman-manage)",
+            "Skill(caveman:caveman-manage *)",
+            "Skill(caveman:caveman-optimize)",
+            "Skill(caveman:caveman-optimize *)",
+            "Skill(caveman:caveman-stats)",
+            "Skill(caveman:caveman-stats *)",
+            "Skill(caveman:caveman-evidence-review)",
+            "Skill(caveman:caveman-evidence-review *)",
+            "Agent(caveman:cavecrew-builder)",
+            "Agent(caveman:cavecrew-investigator)",
+            "Agent(caveman:cavecrew-reviewer)",
+            "Agent(caveman:docs:AGENTS)",
+            "Agent(caveman:docs:CLAUDE)"
+        ],
+        "additionalDirectories": ["/tmp"]
     },
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
-        "document-skills@anthropic-agent-skills": false,
-        "taste-skill@taste-skill": false,
-        "ui-ux-pro-max@ui-ux-pro-max-skill": false,
-        "impeccable@impeccable": false,
-        "frontend-design@claude-plugins-official": false
+        "caveman@caveman": true
     },
-    "claudeMdExcludes": [
-        "**/.claude/rules/agent-communication.md",
-        "**/.claude/rules/architecture.md",
-        "**/.claude/rules/authoring.md",
-        "**/.claude/rules/database.md",
-        "**/.claude/rules/exceptions.md",
-        "**/.claude/rules/feature-flag.md",
-        "**/.claude/rules/file.md",
-        "**/.claude/rules/http.md",
-        "**/.claude/rules/migration.md",
-        "**/.claude/rules/naming.md",
-        "**/.claude/rules/notification.md",
-        "**/.claude/rules/null-safety.md",
-        "**/.claude/rules/operational.md",
-        "**/.claude/rules/orientation.md",
-        "**/.claude/rules/pagination.md",
-        "**/.claude/rules/queue.md",
-        "**/.claude/rules/security.md",
-        "**/.claude/rules/status-code.md",
-        "**/.claude/rules/testing.md",
-        "**/.claude/rules/validation.md"
-    ],
+    "claudeMdExcludes": ["**/.claude/rules/*.md"],
     "hooks": {
         "PreToolUse": [
             {
@@ -43,6 +104,26 @@
                     {
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/deny-docs-superpowers.sh"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/deny-npm-yarn.sh"
+                    }
+                ]
+            }
+        ],
+        "SessionStart": [
+            {
+                "matcher": "startup|clear",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-skills.sh"
                     }
                 ]
             }

@@ -24,6 +24,7 @@ This is a critical security mechanism. It allows users (and admins) to forcibly 
 - [DeviceOwnership Model](#deviceownership-model)
 - [Device-Session Relationship](#device-session-relationship)
 - [What Happens When a Device Ownership is Removed](#what-happens-when-a-device-ownership-is-removed)
+- [Refreshing Device Info](#refreshing-device-info)
 - [Endpoints](#endpoints)
   - [Shared (User Self-Service)](#shared-user-self-service)
   - [Admin](#admin)
@@ -34,11 +35,14 @@ This is a critical security mechanism. It allows users (and admins) to forcibly 
 A Device represents a physical or virtual client. It is identified by a globally unique `fingerprint` that can be owned by multiple users.
 
 **Fields:**
-- `fingerprint` — Globally unique identifier for the device. This value should be generated on the frontend and sent with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
+- `fingerprint` — Globally unique identifier for the device. The frontend generates this value and sends it with every login request; the device row is upserted on it. It is not sent on refresh, which identifies the device from the `deviceOwnershipId` in the access token. The recommended library is [FingerprintJS](https://fingerprint.com) (or its open-source variant [`@fingerprintjs/fingerprintjs`](https://github.com/fingerprintjs/fingerprintjs))
 - `name` — Human-readable device name (optional, e.g. `"iPhone 15"`, `"Chrome on Windows"`)
 - `platform` — Platform of the device. See `EnumDevicePlatform` below
-- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on device removal and by the stale-token cleanup
+- `lastActiveAt` — Stamped on login, on device refresh, and on device removal. The stale-token cleanup uses it to decide which push tokens are dead
+- `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on device removal, by the stale-token cleanup cron, and by the invalid-token cleanup job that runs after a push provider rejects a token
 - `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
+
+`fingerprint` and `notificationToken` carry `@Exclude()` and `@ApiHideProperty()` on `DeviceResponseDto`, so neither reaches a response payload nor the OpenAPI schema.
 
 ### Enums
 
@@ -52,7 +56,7 @@ A Device represents a physical or virtual client. It is identified by a globally
 
 **`EnumDeviceNotificationProvider`**
 
-Automatically derived from `platform` when a `notificationToken` is present. Not set for `web` platform.
+Derived from `platform`, on login and on every refresh. It stays `null` for the `web` platform.
 
 | Value | Platform | Description |
 |-------|----------|-------------|
@@ -62,9 +66,11 @@ Automatically derived from `platform` when a `notificationToken` is present. Not
 ## DeviceOwnership Model
 
 The `DeviceOwnership` model represents the relationship between a `User` and a `Device`. It tracks:
-- Which device a user owns
-- Device revocation status and history
-- Session count for that device-user pair
+- Which device a user owns (`deviceId`, `userId`)
+- Revocation status and history (`isRevoked`, `revokedAt`, `revokedById`)
+- `lastActiveAt` for that device-user pair, stamped on login and on device refresh
+
+`activeSessionCount` in a response is computed per read by a `_count` on `sessions`, counting only sessions that are neither revoked nor expired.
 
 ## Device-Session Relationship
 
@@ -85,15 +91,17 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 ## What Happens When a Device Ownership is Removed
 
-Removing a device ownership (device per user) runs a transaction (steps 1 to 4) alongside a Redis delete (step 5):
+Removing a device ownership (device per user) issues one nested `deviceOwnership.update` (steps 1 to 4) alongside a Redis delete (step 5). The four database effects travel as a single Prisma nested write and land atomically.
 
-1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity.
+1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user: the owner on the self-service path, the admin on the admin path) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity.
 2. **Updates the `Device` record** — clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`. These fields live on the shared `Device` row, not on the ownership, so the push token is invalidated for every user owning that device.
-3. **Revokes the active session** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`)
-4. **Creates an activity log** entry with action `userRemoveDevice`, inside the same transaction
-5. **Deletes the session keys from Redis** — causing immediate 401 on any subsequent request using those tokens. This runs concurrently with the transaction, not after it, and the session list it deletes is read before the transaction opens.
+3. **Revokes the active sessions** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user)
+4. **Creates an activity log** entry with action `userRemoveDevice` against the device owner, inside the same nested write. Its `createdBy` is the acting user, so an admin removal is still traceable to the admin.
+5. **Deletes the session keys from Redis** — causing immediate 401 on any subsequent request using those tokens. This runs concurrently with the database write, over a session list read before that write starts.
 
-The admin endpoint records a second log with action `adminDeviceRemove`. That one is written by `ActivityLogInterceptor` after the handler returns, outside the transaction.
+`DeviceOwnershipRepository.remove()` backs the self-service path and `removeByAdmin()` the admin path. Both delegate to one private write that records action `userRemoveDevice` on the owner's activity log, with `createdBy` and `revokedById` set to the acting user.
+
+The admin endpoint carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`, and `ActivityLogInterceptor` writes that record against the admin after the handler returns, outside the nested write. One admin removal therefore leaves two activity-log records with different subjects: `userRemoveDevice` on the target user and `adminDeviceRemove` on the admin.
 
 ```mermaid
 sequenceDiagram
@@ -104,7 +112,7 @@ sequenceDiagram
 
     Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
     API->>Database: Read active sessions for this device-user pair
-    par Transaction
+    par Nested update
         API->>Database: Update DeviceOwnership (isRevoked=true)
         API->>Database: Update Device (clear notificationToken + notificationProvider)
         API->>Database: Set isRevoked=true on active session for this device-user pair
@@ -118,21 +126,32 @@ sequenceDiagram
     Note over Client: Sessions of other users owning the same device are unaffected
 ```
 
+## Refreshing Device Info
+
+`POST /shared/user/device/refresh` updates the device the caller's access token already points at. The body (`DeviceRefreshRequestDto`) carries `name`, `platform`, and `notificationToken`; it omits `fingerprint`, because the ownership is taken from the `deviceOwnershipId` claim in the token.
+
+- The ownership is looked up first. One that does not exist, belongs to another user, or is already revoked produces a 404 with status code `51300` (`EnumDeviceStatusCodeError.notFound`).
+- `notificationProvider` is re-derived from `platform` and written together with `name` and `notificationToken` on the shared `Device` row.
+- `lastActiveAt` is stamped on both the `DeviceOwnership` and the `Device`.
+- An activity log entry with action `userDeviceRefresh` is written for the user, and `updatedBy` is stamped on the user row.
+- The refresh write leaves `lastLoginAt` and `lastIPAddress` on `User` untouched; the login path stamps those.
+- The handler returns `200 OK` with no data payload.
+
 ## Endpoints
 
 ### Shared (User Self-Service)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/shared/user/device/list` | List own active devices (cursor-based); each entry carries `activeSessionCount` and an `isCurrentDevice` flag |
-| `POST` | `/shared/user/device/refresh` | Update device info (name, push token, platform) |
+| `GET` | `/shared/user/device/list` | List own active devices (cursor-based, ordered by `createdAt`); each entry carries `activeSessionCount` and an `isCurrentDevice` flag matched against the calling session |
+| `POST` | `/shared/user/device/refresh` | Update device info (name, push token, platform); returns no data |
 | `DELETE` | `/shared/user/device/remove/:deviceOwnershipId` | Remove own device; revokes all its sessions immediately |
 
 ### Admin
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/admin/user/:userId/device/list` | List a user's devices (offset-based), filterable by `isRevoked` |
+| `GET` | `/admin/user/:userId/device/list` | List a user's devices, revoked ones included (offset-based, orderable by `createdAt` or `lastActiveAt`), filterable by `isRevoked`. The query loads no sessions, so `isCurrentDevice` is `false` on every entry |
 | `DELETE` | `/admin/user/:userId/device/remove/:deviceOwnershipId` | Remove a user's device; revokes all its sessions immediately |
 
 ## Policy Control

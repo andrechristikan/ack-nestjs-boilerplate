@@ -29,7 +29,7 @@ import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserSharedRefreshDoc(): MethodDecorator {

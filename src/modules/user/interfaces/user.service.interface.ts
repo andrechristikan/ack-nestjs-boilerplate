@@ -40,7 +40,7 @@ import {
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumUserLoginWith, Prisma } from '@generated/prisma-client';
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';

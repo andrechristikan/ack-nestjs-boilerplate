@@ -8,5 +8,8 @@ export interface IDeviceOwnership extends DeviceOwnership {
     _count: {
         sessions: number;
     };
-    sessions?: Session[];
+}
+
+export interface IDeviceOwnershipWithSession extends IDeviceOwnership {
+    sessions: Session[];
 }

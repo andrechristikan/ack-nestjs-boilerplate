@@ -18,6 +18,48 @@ code at that moment.
 What does NOT move down into a rule: flow narrative, long code samples, catalogs. Those
 are `docs/`.
 
+## Final state only (HARD)
+
+**Binds `docs/*.md` AND `.claude/**` alike.** Both trees describe how the project works NOW,
+and nothing else.
+
+Never written in either tree: an issue, a bug, a bug fix, a defect that was repaired, a change,
+a decision and its reasoning, a rejected alternative, a migration note, a date, a version, or a
+changelog line.
+
+**The ban is on comparing against a FORMER STATE, not on a vocabulary.** "previously", "used
+to", "no longer", "now", "instead of" and "rather than" are banned where they contrast this
+version of the system with an earlier one, and perfectly correct where they contrast two
+options a reader is choosing between right now: `a repository is injected as a class rather
+than behind a token` is a rule doing its job; `the repository is no longer injected behind a
+token` is a changelog line. Grep finds the word; only reading finds the violation.
+
+**The test:** would this sentence exist if the thing had ALWAYS been this way? If it only makes
+sense because something used to be different, it is history. History lives in `git log`, in the
+PR description, and in the issue tracker.
+
+### The negation trap
+
+A sentence phrased as a fact can still be history. This is the form that survives every other
+check, so it gets its own test.
+
+- A negation that states a **CONTRACT** is a fact, and it stays. It tells the reader what to
+  send, what to expect, or what a guard will not do: `the refresh request carries no
+  fingerprint`; `an admin route carries no workspace guard`; `the cursor payload carries no
+  query`.
+- A negation that **REBUTS a former state or a corrected claim** is history wearing a fact's
+  clothes, and it goes: `there is no explicit $transaction wrapper around it`; `the session
+  count is not stored on the model`; `derived from platform, whether or not a token came with
+  the request`; `both paths pass the same action, so only createdBy differs`.
+
+The difference is who the sentence serves. The first serves a reader building against the
+system. The second serves only a reader who remembers what it used to say — and that reader
+should be reading the diff.
+
+**Rewrite, do not delete the information.** `the session count is not stored on the model`
+becomes `activeSessionCount is computed per read by a _count on sessions`. State what IS, drop
+the contrast.
+
 ## Mood
 
 `docs/` is written in the indicative. Rewrite an obligation as a fact plus a pointer.
@@ -38,30 +80,24 @@ criterion is "no obligation SENTENCE in `docs/` prose".
 
 Every artifact is written in ENGLISH — code, identifiers, comments, commit messages,
 `docs/*.md`, `.claude/**`, `.superpowers/**`, PR descriptions. Conversation with the owner
-may be Bahasa Indonesia; artifacts are never mixed. When recording something the owner
-said, PARAPHRASE it in English; do not paste the original-language quote for provenance.
-The date and the "owner decision" attribution carry the provenance.
+may be Bahasa Indonesia; artifacts are never mixed. Something the owner said reaches an
+artifact only as the RULE or the FACT it produced, in English — never as a quote, never with
+a date, and never attributed. "Final state only" governs that: an artifact carries what is
+true, not who decided it or when.
 
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
 
-## Private methods sit above public ones
+## Documentation prose (`docs/*.md`)
 
-Inside a class, every `private` method is declared ABOVE the public methods, directly under the constructor. A reader meets the helpers before the code that calls them, and the public surface of the class stays in one uninterrupted block instead of being cut apart by helpers.
+- **No em-dash (`—`) in documentation prose.** Use a period, comma, semicolon, colon, or
+  parentheses. Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not
+  overuse them. The one exception is an existing structured list whose every entry already uses
+  `—` as a separator: match it rather than breaking the pattern on one line.
+- Simple, firm, and pointed. Bullets first, prose where prose is needed. Keep the existing
+  section structure intact rather than reorganizing around a small correction.
 
-This is a layout rule, not a visibility rule — it does not change what is private.
+## What is NOT here
 
-## Comments
-
-- **Minimal comments** — default zero. Types, names, and structure are the contract.
-- **Every comment states FINAL STATE only (HARD).** This governs JSDoc and inline comments alike. A comment describes what the symbol or statement IS or DOES right now, present tense, as if it had always been that way. It never narrates history ("moved from X", "corrected 2026-08-05", "was Y, now Z"), never records a decision ("chosen over X because Y", "no verifyTwoFactor here because it would overwrite", "owner decided to merge/split"), never defends a rule, and never carries changelog or plan notes. A comment that stops making sense the moment something else in the codebase changes is written wrong, regardless of whether it happens to be accurate today. Deprecation is the one exception, and only when the symbol itself carries an explicit deprecation signal (a real `@deprecated` marker or equivalent) — never prose speculating that something might be going away.
-- **`@note` is BANNED (HARD).** `// @note:` is not a form this codebase has. It is not "rare", it is gone. Delete every occurrence on sight; do not preserve, reword, or relocate one. Anything that genuinely has to be written down goes in JSDoc.
-- **JSDoc is where a written explanation belongs.** Prefer it over an inline comment whenever the subject is a whole symbol.
-  - **Optional one-line class JSDoc** when the class name alone does not say what the Nest provider/command is for.
-  - **Method JSDoc is the exception, not the habit.** A service, repository, controller, seed `seed()`/`remove()`, guard, pipe, or processor method normally carries none. One line is permitted only when a caller cannot see the behaviour from the signature and getting it wrong breaks something — and it still states what the method DOES, never why it was written that way.
-  - **No JSDoc on interfaces**, including per-field comments.
-  - **Banned tags on any JSDoc that exists:** `@example` `@param` `@returns` `@template` `@throws` `@private` `@export` `@class` `@implements` `@constraint` `@remarks`.
-- **Inline `//` comments are allowed but VERY RARE (HARD).** Reserved for something a reader cannot see from the code at that exact statement and that causes real damage when missed. Zero per file is the normal count; more than one in a file is a smell. It sits on the statement it describes, never on the line above a method or class declaration — that position is symbol-level commentary and belongs in JSDoc. No trailing comments to the right of code.
-- **The test:** finish "…otherwise". If it ends in a concrete breakage that the code itself does not show, it may stay. If it ends in "…because that is allowed", or it explains a choice rather than a behaviour, leave it out.
-- **`TODO` / `FIXME` are work markers, not explanations.** They are allowed, name outstanding work, and are exempt from the final-state rule because they describe what is missing. `NOTE` / `XXX` / `HACK` are not used.
-- **Re-test every comment AFTER a change lands.** Delete the ones whose subject the change removed.
+Comment policy is `rules/comments.md`. Class member layout is `rules/code-style.md`. Neither
+is restated here.

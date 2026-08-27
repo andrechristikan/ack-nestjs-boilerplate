@@ -1,28 +1,34 @@
 # ACK NestJS Boilerplate
 
-`ack-nestjs-boilerplate` — an opinionated, production-shaped NestJS starter. It is a BOILERPLATE: no external client depends on it, so breaking changes are cheap and the clean design always wins over the compatible one.
+`ack-nestjs-boilerplate` — an opinionated, production-shaped NestJS starter. It is a
+BOILERPLATE: no external client depends on it, so a breaking change is cheap and the clean
+design always wins over the compatible one. Four domain groups: identity and auth (JWT with
+JWKS, social sign-in, API keys, sessions, devices, two-factor), access control (roles, CASL
+policy abilities, term-policy gating, feature flags), workspace and project (mandatory
+multi-workspace, invites, join requests, workspace-scoped projects), and platform
+(notifications, file upload and S3 presign, activity log, i18n, health, country data).
 
-## Domains
+## Stack
 
-- **Identity & auth** — JWT (ES256/ES512, JWKS), social sign-in (Google / Apple), API keys, sessions, devices, password history, two-factor (TOTP + email/SMS challenge).
-- **Access control** — roles, CASL policy abilities, term-policy acceptance gating, feature flags with per-key salt rollout and user targeting.
-- **Workspace & project** — multi-workspace is **mandatory** for every platform user (a personal workspace is created on EVERY user-creation path — self sign-up, admin create, and admin CSV import; `x-workspace-id` header scopes workspace-scoped `/user` routes); invites (hashed token, encrypted link) and public-workspace join requests; projects are workspace-scoped, carry `:projectId` in the path (no header), and have their own member roles.
-- **Platform** — notifications (email via SES, push via Firebase), file upload + S3 presign, activity log (workspace-scoped and user-scoped reads split by `workspaceId` presence), i18n messages, health checks, country reference data.
+- NestJS 11 · TypeScript strict · Node >= 24.11 · **PNPM only** — `npm` and `yarn` are
+  blocked by `engines` and by a `npx only-allow pnpm` preinstall guard
+- Prisma 6 + **MongoDB 8 replica set** — a replica set is required, transactions do not work
+  without one. There are NO migration files: schema shape is applied by `prisma db push`
+- Redis: cache on `db:0`, BullMQ on `db:1`, both through ONE shared connection
+- HTTP with Swagger under the configured `doc.prefix`; request validation is `class-validator`
+  through a global pipe; i18n through `nestjs-i18n` reading `src/languages/`
+- Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
+- Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
-## Stack & runtime
+## Layout
 
-- NestJS 11, TypeScript strict, Node >= 24.11, **PNPM only** (`npm` and `yarn` are blocked by `engines`).
-- Prisma 6 → **MongoDB 8 replica set** (a replica set is required — transactions do not work without one).
-- Redis: cache on `db:0`, BullMQ on `db:1`, shared through one connection.
-- Pino logging, Sentry instrumentation, Swagger docs, nest-commander migration CLI.
-
-## Ports (docker-compose)
-
-API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS server 3011 · Vault 8200 · Swagger under the configured `doc.prefix`
-
----
-
-## Repository layout
+Feature modules live in `src/modules/<feature>/` and all carry ONE shape — the repository
+pattern, `Controller → Service → Repository`, with flat folder-per-concern directories
+(`controllers/`, `services/`, `repositories/`, `dtos/request/`, `dtos/response/`, `enums/`,
+`exceptions/`, `interfaces/`, `constants/`, `utils/`, and `decorators/` `docs/` `guards/`
+`factories/` `indicators/` `interceptors/` `processors/` `templates/` `validations/` where the
+feature needs them). There is no layered folder scheme on top of it and no second shape to
+detect — do not invent one.
 
 ```
 src/
@@ -30,180 +36,175 @@ src/
 ├── migration.ts        # nest-commander entrypoint — boots MigrationModule, runs seeders
 ├── instrument.ts       # Sentry init (imported first by main.ts)
 ├── swagger.ts          # Swagger/OpenAPI document builder
-├── app/                # framework layer — app.module + the global filter chain
-├── common/             # shared kit used by every module
+├── app/                # framework layer — app.module + the APP_FILTER chain
+├── common/             # the shared module — database, cache, redis, pagination, request,
+│                       #   response, logger, message, helper, file, doc, aws, firebase
 ├── configs/            # registerAs config files + index.ts barrel
-├── languages/          # nestjs-i18n translation JSON, one file per module prefix
-├── migration/          # seeders — data/, seeds/, bases/, enums/, interfaces/
+├── languages/          # nestjs-i18n JSON, one file per module prefix
+├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
 ├── queues/             # BullMQ framework layer + composition root
-└── router/             # route prefix modules
+└── router/             # route prefix modules (/public /system /admin /user /shared)
 
-prisma/                 # schema.prisma (OFF-LIMITS — see Mandatory rules)
-generated/              # prisma client, swagger, vault init, agent reports under generated/docs/ (gitignored)
+prisma/schema.prisma    # OFF-LIMITS — see "How work happens here"
+generated/              # prisma client, swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
 test/                   # jest.json + specs mirroring src/
 scripts/ · ci/ · keys/
 ```
 
-**The shape is the repository pattern**: Controller → Service → Repository. Feature modules hold flat folder-per-concern directories (`controllers/`, `services/`, `repositories/`, `dtos/`, …). Keep that shape; do not invent a layered folder scheme on top of it.
-
-### `src/app/` — framework layer
-
-```
-src/app/
-├── app.module.ts       # root module; registers the APP_FILTER chain
-├── dtos/               # app.env.dto.ts
-├── enums/              # app.enum.ts, app.status-code.enum.ts (EnumAppStatusCodeError)
-├── exceptions/         # app.base.exception.ts (AppBaseException) + app.unknown.exception.ts
-├── filters/            # general · http · base-exception · validation · validation-import
-└── interfaces/         # app.interface.ts
-```
-
-`app.module.ts` registers the `APP_FILTER` providers in this array order: general → base-exception → http → validation → validation-import. NestJS evaluates them in reverse, so the most specific catch runs first.
-
-### `src/common/` — shared kit
-
-Every folder is NestJS-coupled and/or performs I/O. It stays thin; it is not a parking lot.
-
-- **Persistence / transport** — `database/`, `redis/`, `cache/`, `pagination/`, `request/`, `response/`
-- **Cross-cutting** — `logger/`, `message/`, `helper/`, `file/`, `doc/`
-- **Integration** — `aws/` (S3, SES), `firebase/`
-- `common.module.ts` — the `forRoot()` composition that wires the global modules.
-
-### `src/modules/` — feature modules
-
-`activity-log` · `api-key` · `auth` · `country` · `device` · `feature-flag` · `health` · `hello` · `notification` · `password-history` · `policy` · `project` · `role` · `session` · `term-policy` · `user` · `workspace`
-
-No module carries every folder. Take only what the feature needs, from three tiers:
-
-```
-src/modules/<feature>/
-  # Core — present in almost every module
-  ├── constants/ · controllers/ · dtos/{request,response}/ · enums/
-  ├── exceptions/ · interfaces/ · repositories/ · services/ · utils/
-  # Common — when the feature needs them
-  ├── decorators/ · docs/ · guards/
-  # Specialized — a few modules only
-  └── factories/ · indicators/ · interceptors/ · processors/ · templates/ · validations/
-```
-
-Read `docs/project-structure.md` before scaffolding a new module — do not invent structure.
-
-### `src/queues/` — BullMQ framework layer
-
-```
-src/queues/
-├── bases/queue.processor.base.ts     # processor base
-├── constants/ · enums/queue.enum.ts  # EnumQueue + EnumQueuePriority
-├── decorators/queue.decorator.ts     # @QueueProcessor(EnumQueue.<x>)
-├── exceptions/ · interfaces/
-├── queue.module.ts                   # composition root — imports feature modules, provides processors
-└── queue.register.module.ts          # @Global(); every BullModule.registerQueue + job defaults
-```
-
-Processor **files** live in their owning feature module (`<feature>/processors/`); only their **registration** lives here.
-
-### `src/router/` — route prefixes
-
-`router.module.ts` plus `routes/routes.{admin,public,user,system,shared}.module.ts`. Controllers live in their feature module; the router registers them under a prefix.
-
----
-
-## Where a sentence lives
-
-Four content trees, each defined by its CONSUMER, not by its topic.
-
-| Tree | Consumer | Load | Holds |
-|---|---|---|---|
-| `.claude/rules/` | model, via agent import | NOT auto-loaded — `claudeMdExcludes` in `.claude/settings.json` keeps them out of the main context; agents pull them with `@`-imports. `git.md` is the exception and stays loaded, because committing happens in the main session | obligations + the minimum rationale needed to apply them correctly |
-| `.claude/skills/` | model, on demand | name + description standby | the ordered steps of ONE whole job, behind a trigger condition |
-| `.claude/agents/` | model, isolated | never in main context | an agent's role, scope boundary, tool budget, rule imports |
-| `docs/` | human, on demand | never auto-loaded | how the system behaves TODAY: flows, catalogs, runbooks |
-
-**The test (HARD):**
-
-- A sentence saying **what must / must not be done** → `rules/`
-- A sentence giving **the ordered steps of one whole job** → `skills/`
-- A sentence saying **how the system behaves today** → `docs/`
-- A sentence defining **an agent's role or limits** → `agents/`
-
-One sentence, one home. If it seems to belong in two files, it is two different sentences and one of them belongs somewhere else.
-
-The rest — the asymmetry, mood, and comment rules — is in `rules/authoring.md`, reached by agents via `@`-import.
-
----
-
-## Doc editing ownership
-
-**`doc-drift` (skill) → `doc-writer` (agent) is the ONLY path that may write `docs/*.md`.** Subject is docs vs code on the **current checkout** — never inter-branch drift. The skill's origin gate asks the owner for permission when fetch/pull fails or ahead/behind is non-zero; it never rejects. `coder`, `unit-test-writer`, `reviewer-flow`, and `pr-doc-writer` are forbidden from the whole tree. A stale doc they notice is named in their hand-back; the owner runs `doc-drift` when they want the repair. The owner may still edit `docs/` directly. **Owner-triggered only** — `coding`, `migration-seed`, and every other skill never invoke `doc-drift` or dispatch `doc-writer`.
-
-**`pr-doc` (skill) → `pr-doc-writer` (agent) owns PR description documents only** — living markdown at `generated/docs/pr-<feature>.md`, body filled to match `.github/pull_request_template.md`. **Owner-triggered only** — `coding`, `migration-seed`, `doc-drift`, and every other skill never invoke `pr-doc` or dispatch `pr-doc-writer`. They never create or edit a GitHub pull request. Neither edits `docs/*.md`.
-
----
-
-## Documentation
-
-`docs/` is tracked, durable project documentation. It stands on its own for a reader with none of this tooling.
-
-`activity-log` · `authentication` · `authorization` · `cache` · `configuration` · `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` · `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` · `presign` · `project` · `project-structure` · `queue` · `readme` · `request-validation` · `response` · `security-and-middleware` · `status-codes` · `term-policy` · `third-party-integration` · `two-factor` · `vault` · `workspace`
-
-**Read the doc matching the task before changing related code.** When a change makes a document stale, report which document and what now disagrees — documentation is repaired against the code by skill `doc-drift` → `doc-writer` when the owner runs it, not edited alongside the change.
-
----
+`src/app/app.module.ts` registers the `APP_FILTER` providers in array order general →
+base-exception → http → validation → validation-import. NestJS evaluates them in reverse, so
+the most specific catch runs first.
 
 ## Commands
 
-```bash
-pnpm install
-pnpm db:generate         # prisma generate → generated/prisma-client
-pnpm db:migrate          # prisma db push (MongoDB has no migration files)
-pnpm migration:seed      # seed all modules; :remove, :fresh also exist
-pnpm start:dev | build | start:prod
-pnpm test                # TZ=UTC jest --config test/jest.json
-pnpm typecheck           # tsc --noEmit
-pnpm lint | lint:fix | format
-pnpm deadcode | spell
-pnpm db:studio
-docker-compose up -d     # MongoDB replica set + Redis + BullBoard + JWKS + Vault
+- `pnpm install` · `pnpm start:dev` · `pnpm build` · `pnpm start:prod`
+- `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
+- `pnpm test` — `TZ=UTC jest --config test/jest.json`; `pnpm test:cov` adds coverage
+- `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
+- `pnpm db:studio` · `pnpm vault:pull`
+- `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
+- `pre-commit` runs lint-staged → typecheck → deadcode → spell → the test suite.
+  `commit-msg` runs commitlint. Both are BLOCKING.
+
+**`deadcode` and `spell` always exit 0.** `spell` ends in `|| true` and `ts-prune` never
+signals. Their exit code means nothing: READ the output and report what it says.
+
+## Skills
+
+Never invoke, suggest, or auto-start a skill the owner has not named. A normal (cold) session
+answers questions, explores, and edits code directly. Ordered end-to-end jobs live in skills,
+and the owner calls them.
+
+Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches agents:
+
+| Skill | For |
+|---|---|
+| `ack-feature` | new behaviour, end to end — interrogate, plan, build spec-first, gate, all checks green |
+| `ack-fix` | one narrow named change, no plan |
+| `ack-fix-test` | repair or backfill unit specs against code that exists |
+| `ack-debug` | find the cause of a symptom — root cause and evidence, no fix |
+| `ack-seed` | initial-data seeders under `src/migration/` |
+| `ack-gate` | check a scope against the rule set |
+| `ack-verify` | prove something works against the running app |
+| `ack-docs` | check and repair `docs/*.md` |
+| `ack-pr-doc` | write the PR description document — runs alone, at the end |
+| `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
+
+The roster prints to the terminal at session start — a `SessionStart` hook derives it from
+`.claude/skills/*/SKILL.md`, so adding a skill needs no second edit anywhere.
+
+Each skill ends with a **Next** section naming what usually follows it. Nothing chains
+automatically: a skill never invokes another skill, so every hop is the owner's call.
+
+```
+                     ┌─ /ack-verify ─┐
+   /ack-feature ─────┤               ├──→ /ack-docs
+                     └───────────────┘
+                             ▲
+   /ack-debug ──→ /ack-fix ──┘
+
+   /ack-gate  ──→ /ack-fix
+
+   /ack-seed  ──→ /ack-docs
+
+   /ack-pr-doc          alone, at the end — it fetches and moves a local ref
+   /ack-claude-config   alone — the subject is the configuration an agent would read
 ```
 
-Git hooks (`.husky/`): `pre-commit` runs lint-staged → typecheck → deadcode → spell → tests; `commit-msg` runs commitlint. Both are blocking.
+`/ack-fix` changes code, and the specs for what it changed come with it. `/ack-fix-test`
+changes no `src/` at all. When a suite is red: the code is wrong → `/ack-debug` then
+`/ack-fix`; the spec is wrong → `/ack-fix-test`.
 
----
+Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
+`planner`, `coder`, `test-writer`, `seed-writer`, `explorer`, `researcher`, `reviewer-rules`,
+`reviewer-e2e`, `verifier`, `doc-writer`, `pr-doc-writer`.
 
-## Normal session (HARD)
+External skills this project relies on. They live outside the repository, so each machine
+installs them once:
 
-**This file is loaded in a normal (cold) session. A normal session does NOT invoke any skill.** The owner calls skills manually when they want a whole job run end to end. Do not start `coding`, `migration-seed`, `spec-coverage`, `pr-doc`, `doc-drift`, `anti-pattern-gate`, `repository-pattern-gate`, or any other skill unless the owner asked for that skill by name (or an equivalent explicit trigger). Do not dispatch skill-only agents (`coder`, `reviewer-flow`, `unit-test-writer`, `doc-writer`, `pr-doc-writer`) from a cold session — those agents are reached only while a skill is already running.
+- `superpowers` — `claude plugin install superpowers@claude-plugins-official`. Enabling it in
+  `.claude/settings.json` does not install it.
+- `graphify` — a knowledge graph over the codebase, written to `graphify-out/`. Install with
+  `uv tool install graphifyy`, then `graphify claude install`. Prefer
+  `graphify query "<question>"` to find a file, locate code, map a flow, or find the docs
+  covering it. Fall back to ordinary search when it is missing.
+- `caveman` — the reply style every agent uses when reporting back. Install with
+  `claude plugin marketplace add JuliusBrussee/caveman`, then
+  `claude plugin install caveman@caveman`.
 
-Answer questions, explore the repo, and edit code directly when asked. Ordered end-to-end jobs live in skills; the catalog below is reference only — not a trigger to open one.
+## How work happens here
 
-| The work is… | Skill (owner-invoked) |
-|---|---|
-| a feature, endpoint, service change, queue work, or a refactor of existing code | `coding` |
-| a new or edited **initial-data seed** under `src/migration/` (data / template / aws-s3 commands, or `migration:seed` / `migration:remove` order) | `migration-seed` |
-| bringing ONE named module's unit specs back to 100% — `test/` only, no `src/` behavior change | `spec-coverage` |
-| a pull-request title + description for the current branch (`generated/docs/pr-<feature>.md`) | `pr-doc` |
-| repairing `docs/*.md` against code on the **current checkout** (not inter-branch; origin gate asks permission on fetch/pull failure or ahead/behind — never rejects) | `doc-drift` |
+- **`prisma/schema.prisma` is OFF-LIMITS, and so is every schema or DB command** —
+  `db:migrate`, `db:push`, `db:generate`, `migration:seed`, `migration:remove`,
+  `migration:fresh`. Describe the delta; the owner applies it. This is why there is no
+  schema-writing agent.
+- Coding rules live in `.claude/rules/`. They are NOT loaded into this session — the agent
+  that needs a rule loads it.
+- `docs/` is documentation written for people to read, describing how the system behaves
+  today. It is tracked in git, never loaded automatically, and written only by the
+  `doc-writer` agent.
+- Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
+  for agent reports and PR description documents, `graphify-out/` for the knowledge graph.
+- **A commit message is one conventional subject line**, `<type>(<scope>): <description>`,
+  with no body and no footer — no blank line, no paragraph, no trailer, not even a co-author
+  or tool trailer. Detail that does not fit the subject goes in the PR description. `type` is
+  one of `build` `chore` `ci` `docs` `feat` `fix` `hotfix` `perf` `refactor` `revert` `style`
+  `test`. Scope is optional but conventional here — use the module name. Imperative mood, no
+  trailing period, 100 characters max. `subject-case` permits sentence / start / pascal /
+  upper / lower / camel case and forbids kebab-case and snake_case. `commitlint` rejects
+  anything else, so read `.commitlintrc` before proposing a message.
+- **Never commit unless the owner asks for a commit in that exchange.** Finishing a task is
+  not a reason to commit it, and neither is a clean tree, a green gate, or a commit the owner
+  asked for one message earlier — that permission covered that commit and expired with it.
+  PROPOSE the message and WAIT for approval. The work is handed back dirty; the owner reads
+  the diff and decides. `git add` and `git commit` are `ask` in `.claude/settings.json`, so
+  each one raises an approval prompt: the prompt is the permission system doing its job, never
+  the request itself, and answering it is the owner's decision, not a formality to route
+  around by widening `settings.local.json`.
+- **Never touch the owner's index.** No `git add`, no `git stash`, no staging or unstaging
+  command on your own. Already-staged files stay staged; unstaged stay unstaged. Stage only
+  the files the owner names. Branch before committing when sitting on `main`.
+- Commit through the git hooks. **`--no-verify` is not a default and is not a standing
+  order**; pass it only when the owner asks for it in that exchange. A red gate is fixed, not
+  skipped.
+- `lint-staged` restages what `prettier --write` touches, so the index does not survive the
+  hook and a granular commit series is not possible here. Say so before planning one.
+- **Diff base.** Always diff with no second ref and no `..` — `git diff <base>` includes
+  uncommitted and staged work, which `<base>..HEAD` silently omits. Reviewing inward (code
+  review, gates, spec work) stays on the current checkout with git READ-ONLY: no fetch, no
+  pull, no invented merge base. Publishing outward (a PR document) is the one exception, and
+  it diffs a LOCAL `main` / `develop` ref, never `origin/*`.
 
-When a skill **is** running (because the owner invoked it): agents are dispatched BY that skill, never from a cold session; agents never dispatch each other; an agent never invokes a workflow skill. `coding` does not invoke `spec-coverage`, `migration-seed`, `pr-doc`, or `doc-drift`. `pr-doc` and `doc-drift` are owner-triggered only and do not invoke each other. Artifact paths below still apply when a skill produces them.
+## How to work here
 
-| Artifact | Location |
-|---|---|
-| Spec, plan, sdd note | `.superpowers/` (gitignored; never `docs/`) |
-| Agent reports | `generated/docs/report-*-<feature>.md` |
-| PR document | `generated/docs/pr-<feature>.md` |
-| Knowledge graph | `graphify-out/` |
-
-A `PreToolUse` hook in `.claude/settings.json` denies writes to `docs/superpowers/`.
-
-## Mandatory rules
-
-1. **No `prisma/schema.prisma` edits, and no schema/DB commands** (`db:migrate`, `db:push`, `db:generate`, `migration:*`). Describe the schema change; the owner applies it.
-2. **Never touch the user's git tree.** No `git add`, no `git commit`, no staging or unstaging, unless the owner explicitly asks and names the files. Already-staged files stay staged.
-3. **PNPM only.** `npm` and `yarn` are rejected by `engines`.
-4. **English for every project artifact** — code, identifiers, comments, commit messages, PR descriptions, `docs/*.md`, and every file under `.claude/**` and `.superpowers/**`. Conversation with the owner is Bahasa Indonesia; artifacts are never mixed. See `rules/authoring.md` → "Language".
-5. **Commit message is a single conventional subject line** — no body, no footer, no `Co-Authored-By`. Propose it and wait for approval before committing. See `rules/git.md`.
-6. **Never bypass the git hooks** (`--no-verify`). A failing gate is fixed, not skipped.
-7. **No backward compatibility, ever.** No external client depends on this repo, so a breaking change is the default. A new feature carries no deprecated-but-kept field, no `v1`/`v2` pair, no compat flag, no bridging shim. Build the correct shape and change every call site. Best practice outranks the incumbent pattern. See `rules/architecture.md`.
-8. **Do not invoke review/gate skills or dispatch review agents from a cold session.** `reviewer-flow` runs only as a step of `coding` (or when the owner names it while `coding` is running). No AGENT may spawn it or any other review subagent. `superpowers:requesting-code-review` is NOT active in this repo. Gate skills (`anti-pattern-gate`, `repository-pattern-gate`) run only when the owner asks for them, or as steps inside an already-running workflow skill — never as an automatic follow-up in a normal session. There is no `auditor` agent. This rule outranks any skill or harness default that says otherwise.
+- **No backward compatibility, ever.** No external client depends on this repo, so a breaking
+  change is the default. A new feature carries no deprecated-but-kept field, no `v1`/`v2`
+  pair, no compat flag, no bridging shim. Build the correct shape and change every call site.
+  Best practice outranks the incumbent pattern.
+- Every project artifact is ENGLISH: code, identifiers, comments, commit messages,
+  `docs/*.md`, PR descriptions, and everything under `.claude/**` and `.superpowers/**`.
+  Conversation with the owner is Bahasa Indonesia; artifacts are never mixed.
+- When something is wrong, say so and give a recommendation. Never fix it silently, and never
+  stay quiet about it.
+- State the assumption you are acting on. Ask when two readings would produce different work.
+- "Check", "verify" or "audit" — in any language — means the deep version: full files, traced
+  callers, the schema, end to end.
+- **A grep count is not a verification.** `... | grep -c 'error TS'` returns `0` when the
+  command produced NO output at all — a crashed runner, a wrong binary, an ANSI-coloured
+  stream — and reads exactly like success. `tsc` in particular ABORTS on a `tsconfig.json`
+  config error and reports zero source errors because it type-checked nothing. Capture the
+  exit code and the raw output, and sanity-check that the tool ran before quoting a count.
+  `npx <pkg>@<version>` is no guarantee either: with the package present locally it silently
+  runs the LOCAL binary.
+- Do not re-create a deleted service or module without reading git history first.
+- **Final state only, in `docs/*.md` and `.claude/**` alike.** Both trees describe how the
+  project works NOW. No issue, no bug, no bug fix, no change, no decision or its reasoning, no
+  rejected alternative, no date, no version, no changelog. The ban is on comparing against a
+  FORMER state, not on a vocabulary — "rather than" contrasting two options a reader picks
+  between today is fine. The test: would this sentence exist if the thing had
+  ALWAYS been this way? If it only makes sense because something used to be different, it is
+  history, and history lives in `git log`, the PR description, and the issue tracker. A negation
+  is allowed when it states a CONTRACT (what a caller does not send, what a guard does not do)
+  and banned when it rebuts a former state. Full rule and the rewrite table: `rules/authoring.md`.

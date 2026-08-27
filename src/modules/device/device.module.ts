@@ -6,7 +6,7 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 /** Device ownership tracking and notification-token lifecycle; exports providers for consumers, registers no routes of its own. */
 @Module({
     imports: [],
-    exports: [DeviceService, DeviceUtil, DeviceOwnershipRepository],
+    exports: [DeviceService, DeviceOwnershipRepository],
     providers: [DeviceService, DeviceUtil, DeviceOwnershipRepository],
     controllers: [],
 })

@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { RoleDto } from '@modules/role/dtos/role.dto';
 import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { UserDto } from '@modules/user/dtos/user.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
+import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 
 export class UserProfileResponseDto extends UserDto {
     @ApiProperty({

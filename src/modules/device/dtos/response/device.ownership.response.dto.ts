@@ -38,7 +38,7 @@ export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
         example: faker.date.recent(),
     })
     @Expose()
-    revokedAt?: Date;
+    revokedAt: Date | null;
 
     @ApiProperty({
         required: true,
@@ -54,7 +54,7 @@ export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
         example: faker.database.mongodbObjectId(),
     })
     @Expose()
-    revokedById?: string;
+    revokedById: string | null;
 
     @ApiProperty({
         required: false,
@@ -63,7 +63,7 @@ export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
     })
     @Expose()
     @Type(() => UserRefResponseDto)
-    revokedBy?: UserRefResponseDto;
+    revokedBy: UserRefResponseDto | null;
 
     @ApiProperty({
         required: true,

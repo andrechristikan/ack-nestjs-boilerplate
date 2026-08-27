@@ -9,7 +9,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
@@ -138,8 +138,7 @@ export class DeviceService implements IDeviceService {
                 this.deviceOwnershipRepository.remove(
                     userId,
                     existDeviceOwnership.id,
-                    requestLog,
-                    userId
+                    requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);
@@ -175,11 +174,11 @@ export class DeviceService implements IDeviceService {
                 );
 
             const [removed] = await Promise.all([
-                this.deviceOwnershipRepository.remove(
+                this.deviceOwnershipRepository.removeByAdmin(
                     userId,
                     existDeviceOwnership.id,
-                    requestLog,
-                    removedBy
+                    removedBy,
+                    requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(userId, sessions),
             ]);

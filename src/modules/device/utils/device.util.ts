@@ -21,7 +21,7 @@ export class DeviceUtil {
             deviceId: deviceOwnership.device.id,
             userId: deviceOwnership.userId,
             userUsername: deviceOwnership.user.username,
-            timestamp: deviceOwnership.updatedAt ?? deviceOwnership.createdAt,
+            timestamp: deviceOwnership.updatedAt,
             sessionCount: deviceOwnership._count.sessions,
         };
     }

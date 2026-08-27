@@ -43,6 +43,6 @@ A feature flag is progressive-exposure machinery: canary, load control, staged l
 
 ## Restrictions
 
-- Flags cannot be created or deleted through the admin API — they are seeded (`migration.feature-flag.data.ts`, `rules/migration.md`).
+- Flags cannot be created or deleted through the admin API — they are seeded (`migration.feature-flag.data.ts`, `rules/seeding.md`).
 - Cache is best-effort: a read/write/delete failure falls through to the database.
 - **An unknown flag key is a SERVER misconfiguration, not a disabled feature.** It throws `predefinedKeyNotFound` (HTTP 500), distinct from the 503 that a disabled flag, a false metadata sub-key, or a lost rollout bucket returns. There is no fail-open in either direction.

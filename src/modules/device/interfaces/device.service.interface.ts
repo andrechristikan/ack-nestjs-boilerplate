@@ -8,7 +8,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
+import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 
 export interface IDeviceService {

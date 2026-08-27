@@ -23,7 +23,7 @@ Controller ──▶ Service ──▶ Repository ──▶ DatabaseService (Pri
 - Injects repositories as classes — **one or many** (cross-module repos allowed when the feature module imports them). Injects other services as classes.
 - **NEVER injects `DatabaseService`.** Data access goes through the repository, always. This is the single hardest rule in the file.
 - **NEVER opens a Prisma `$transaction`.** Transactions live in the repository (`rules/database.md`).
-- **Service interface REQUIRED.** `interfaces/<feature>[.<name>].service.interface.ts` with `I<Feature>[<Name>]Service`; the class `implements` it. Injection is still by class unless a real token seam exists. See `rules/operational.md`.
+- **Service interface REQUIRED.** `interfaces/<feature>[.<name>].service.interface.ts` with `I<Feature>[<Name>]Service`; the class `implements` it. Injection is still by class unless a real token seam exists. See "Service interface required" below.
 
 ## Controller
 
@@ -36,7 +36,7 @@ Controller ──▶ Service ──▶ Repository ──▶ DatabaseService (Pri
 - **S** — the three roles above. A service method that builds a Prisma `where` has crossed into the repository; a repository that throws `UserNotFoundException` has crossed into the service.
 - **O** — extend with a new class, strategy, or decorator. Never add an `if (type === 'x')` branch to stable code to make it handle one more case.
 - **L** — a subclass or implementation must be drop-in for its base. No narrowing behavior, no surprise throws a caller cannot see coming.
-- **I** — a service exposes `I*Service` shaped by what callers need; repositories do not get an `I*Repository`. Data-shape interfaces stay consumer-driven (`rules/operational.md`).
+- **I** — a service exposes `I*Service` shaped by what callers need; repositories do not get an `I*Repository`. Data-shape interfaces stay consumer-driven.
 - **D** — inject services and repositories as **classes**. The service still `implements I*Service`. A DI token is only for a real swappable seam.
 
 **DRY** — zero copy-paste logic. Written twice is a signal, written three times is a defect. One source of truth per config value, connection, and constant.
@@ -77,38 +77,42 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 - Do not raise "unused / dead code / YAGNI violation" against an export meeting the three conditions — in a review, a PR description, an audit, or a plan. If it fails one, name WHICH one and argue that. "It has no call sites" is not a finding, and neither is "it is new".
 - When the two axes genuinely both apply, **complexity wins**: reject the structure, keep the breadth. The answer is a flatter sibling, never a dropped one.
 
-## Independent awaits run concurrently (HARD)
+## Service interface required; repository interface forbidden (HARD)
 
-When two or more `await`s in the same scope do not depend on each other's result, they run in one `Promise.all([...])`. Sequential `await`s there are not a style choice — they add every call's latency together for no reason, and the cost is invisible in review because each line looks correct on its own.
+**Every feature / kit business service MUST have a header interface** at
+`interfaces/<feature>[.<name>].service.interface.ts`, named `I<Feature>[<Name>]Service`, and the
+class `implements` it. Primary services use the short form (`user.service.interface.ts` /
+`IUserService`); a second service in the same module adds the concern
+(`notification.push.processor.service.interface.ts` / `INotificationPushProcessorService`).
+Injection stays by **class** (`UserService`) unless a real DI token seam exists — the interface
+is still required.
 
-The exceptions are real, so name them when they apply: an await whose argument uses an earlier result, a write that must not happen if an earlier step throws, and anything already inside a Prisma `$transaction` (which sequences by design).
+**A repository MUST NOT get a header interface.** Inject the repository class. One implementor,
+one Prisma surface — an `I<Feature>Repository` beside it is ceremony. Do not confuse that ban
+with data-shape ports such as `IPaginationRepository` in `pagination.interface.ts` — those
+describe a duck type, not a feature repository.
 
-## Path aliases — relative imports are forbidden
+An interface still earns a place for **data shapes** (`IUser`, payloads, option bags) and for a
+**real multi-implementor seam** (rare). Framework lifecycle contracts (`OnModuleInit`,
+`CanActivate`, …) stay required. Pure Nest plumbing that is not a business service
+(`DatabaseService`, `LoggerOptionService`, framework storage adapters) does not need an
+`I*Service`.
 
-```
-@app/*  @common/*  @config  @configs/*  @modules/*  @queues/*
-@routes/*  @router  @migration/*  @test/*  @generated/*  @package
-```
+**The test for repositories and data shapes:** if deleting the interface leaves every call site
+compiling unchanged **and** it is not a required `I*Service`, delete it.
 
-`@prisma/client` resolves to `generated/prisma-client`. A `../` in an import is a defect, including inside the same module.
+Every feature service already `implements I*Service`. Keep that. Do not add `I*Repository`, and
+do not remove a service interface as a cleanup side effect of an unrelated change.
 
-## Module wiring
+## Where the rest lives
 
-- A feature module exports what other modules consume — normally its service, sometimes a guard-backing service. Internal helpers stay unexported.
-- **Never `forwardRef` between feature modules.** That is a broken boundary to re-architect, not a hazard to work around.
-- Shared kit pieces come from `src/common/` via a plain `CommonModule` import at the app root (its children use `forRoot()` / `forRootAsync()`). **Never open a second Redis connection** — share through the cache/queue modules that already own one.
-- Controllers are registered by `src/router/routes/routes.<scope>.module.ts`, and BullMQ processors by `src/queues/queue.module.ts`. Registration is external; the files live in the feature module.
-
-## `src/common/` IS the shared module
-
-`src/common/` is the project's **shared module** — the one place cross-cutting, module-agnostic capability lives: database, cache, redis, pagination, request, response, logger, message, helper, file, doc, aws, firebase. `AppModule` imports `CommonModule` once; `CommonModule` composes the global pieces (each child module brings its own `forRoot()`).
-
-Being shared is exactly why it must stay thin. It is not a parking lot for anything that happens to be imported in several places.
-
-- A shape with a natural owner module **stays in that module** and is imported across, however many modules import it. **A natural owner disqualifies promotion on its own — caller count is not the test.**
-- Promote into `src/common/` only when the concept is genuinely module-agnostic (no natural owner) AND has three or more external callers.
-- `src/common/` MAY import a feature module for composition (`common.module.ts` wiring) or a feature's compile-time enum. It MUST NOT import a feature's runtime code or bind a feature type as a generic default — a shared module that knows one feature's internals is no longer shared.
-- A feature module NEVER re-implements what the shared module already provides. Reach for `HelperService`, `PaginationService`, `ResponseUtil`, `MessageService`, `DatabaseService` before writing your own.
+| Concern | Rule file |
+|---|---|
+| module `imports` / `providers` / `exports`, global modules, DI tokens | `rules/nest-wiring.md` |
+| what one module may reach for in another, `forwardRef` | `rules/cross-module.md` |
+| `src/common/` promotion and import direction | `rules/common.md` |
+| path aliases, `Promise.all` on independent awaits, mirrored types | `rules/code-style.md` |
+| transactions, atomicity, idempotency | `rules/concurrency.md` |
 
 ## No backward compatibility — ever
 
