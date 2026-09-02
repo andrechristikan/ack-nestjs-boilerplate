@@ -12,6 +12,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the workspace the invite belongs to',
     })
     @Expose()
     workspaceId: string;
@@ -19,6 +20,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.internet.email(),
+        description: 'Email address the invite is sent to',
     })
     @Expose()
     email: string;
@@ -27,6 +29,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         required: true,
         example: EnumWorkspaceMemberRole.member,
         enum: EnumWorkspaceMemberRole,
+        description: 'Workspace role granted when the invite is accepted',
     })
     @Expose()
     workspaceRole: EnumWorkspaceMemberRole;
@@ -35,6 +38,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the project the invite also grants, if any',
     })
     @Expose()
     projectId: string | null;
@@ -44,6 +48,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         nullable: true,
         example: EnumProjectMemberRole.member,
         enum: EnumProjectMemberRole,
+        description: 'Project role granted when the invite is accepted, if any',
     })
     @Expose()
     projectRole: EnumProjectMemberRole | null;
@@ -51,6 +56,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: 'WIN-abc123',
+        description: 'Human-readable reference of the invite',
     })
     @Expose()
     reference: string;
@@ -58,6 +64,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.date.future(),
+        description: 'When the invite expires',
     })
     @Expose()
     expiredAt: Date;
@@ -66,6 +73,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         required: true,
         example: EnumWorkspaceInviteStatus.pending,
         enum: EnumWorkspaceInviteStatus,
+        description: 'Current status of the invite',
     })
     @Expose()
     status: EnumWorkspaceInviteStatus;
@@ -73,6 +81,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who sent the invite',
     })
     @Expose()
     invitedByUserId: string;
@@ -81,6 +90,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.date.recent(),
+        description: 'When the invite was accepted',
     })
     @Expose()
     acceptedAt: Date | null;
@@ -89,6 +99,7 @@ export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who accepted the invite',
     })
     @Expose()
     acceptedByUserId: string | null;

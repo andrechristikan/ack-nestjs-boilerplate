@@ -63,6 +63,14 @@ not belong in the schema either (`rules/dto.md`).
 A field hidden from the JSON with `@Exclude()` also carries `@ApiHideProperty()` — both, so the
 response and the schema agree (`rules/dto.md`).
 
+## `@ApiProperty` options
+
+Every `@ApiProperty` options object carries `description` and either `example` or `examples`.
+`example` uses `@faker-js/faker` when a realistic value exists; a literal is correct for enums,
+booleans, and fixed shapes. Do not call `faker.seed()`. Description is one English sentence
+naming what the field means to an API consumer. A `format: 'binary'` field is the exception: it
+carries `description` alone, because its value is the file bytes and no literal represents them.
+
 ## Comments
 
 Doc factories carry no method JSDoc (`rules/comments.md`).

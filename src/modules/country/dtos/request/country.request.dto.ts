@@ -69,6 +69,7 @@ export class CountryRequestDto {
     @ApiProperty({
         required: true,
         example: faker.location.country(),
+        description: 'Continent the country belongs to',
     })
     @IsNotEmpty()
     @IsString()
@@ -77,6 +78,7 @@ export class CountryRequestDto {
     @ApiProperty({
         required: true,
         example: faker.location.timeZone(),
+        description: 'Timezone of the country',
     })
     @IsNotEmpty()
     @IsString()

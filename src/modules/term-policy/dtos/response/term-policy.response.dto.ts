@@ -30,6 +30,8 @@ export class TermPolicyResponseDto extends DatabaseResponseDto {
         required: true,
         type: [TermContentDto],
         isArray: true,
+        description: 'Localized contents of the terms or policy',
+        example: [],
     })
     @Expose()
     @Type(() => TermContentDto)

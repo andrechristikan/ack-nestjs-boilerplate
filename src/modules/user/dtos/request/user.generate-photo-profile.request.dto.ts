@@ -11,6 +11,8 @@ export class UserGeneratePhotoProfileRequestDto extends PickType(
         type: 'string',
         enum: EnumFileExtensionImage,
         default: EnumFileExtensionImage.jpg,
+        example: EnumFileExtensionImage.jpg,
+        description: 'Image file extension of the profile photo',
     })
     @IsString()
     @IsEnum(EnumFileExtensionImage)

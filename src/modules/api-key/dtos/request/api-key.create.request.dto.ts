@@ -36,6 +36,7 @@ export class ApiKeyCreateRawRequestDto extends OmitType(
         name: 'key',
         example: faker.string.alphanumeric(10),
         required: true,
+        description: 'Public key of the API key',
     })
     @IsNotEmpty()
     @IsString()
@@ -46,6 +47,7 @@ export class ApiKeyCreateRawRequestDto extends OmitType(
         name: 'secret',
         example: faker.string.alphanumeric(20),
         required: true,
+        description: 'Secret of the API key',
     })
     @IsNotEmpty()
     @IsString()

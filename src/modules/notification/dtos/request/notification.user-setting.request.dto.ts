@@ -14,6 +14,7 @@ export class NotificationUserSettingRequestDto {
             EnumNotificationChannel.inApp,
         ],
         example: EnumNotificationChannel.email,
+        description: 'Notification channel to update',
     })
     @IsEnum([
         EnumNotificationChannel.email,
@@ -30,6 +31,7 @@ export class NotificationUserSettingRequestDto {
             EnumNotificationType.marketing,
         ],
         example: EnumNotificationType.userActivity,
+        description: 'Notification type to update',
     })
     @IsEnum([EnumNotificationType.userActivity, EnumNotificationType.marketing])
     @IsNotEmpty()
@@ -38,6 +40,7 @@ export class NotificationUserSettingRequestDto {
     @ApiProperty({
         required: true,
         example: true,
+        description: 'Whether notifications of this type and channel are active',
     })
     @IsBoolean()
     @IsNotEmpty()

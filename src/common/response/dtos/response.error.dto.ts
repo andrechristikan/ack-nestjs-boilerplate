@@ -1,13 +1,16 @@
+import { MessageValidationErrorDto } from '@common/message/dtos/message.validation-error.dto';
+import { MessageValidationImportErrorDto } from '@common/message/dtos/message.validation-import-error.dto';
 import {
     IMessageValidationError,
     IMessageValidationImportError,
 } from '@common/message/interfaces/message.interface';
 import { ResponseDto } from '@common/response/dtos/response.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 
 /**
  * Error response envelope adding an optional list of validation errors.
  */
+@ApiExtraModels(MessageValidationErrorDto, MessageValidationImportErrorDto)
 export class ResponseErrorDto extends ResponseDto<unknown> {
     @ApiProperty({
         type: String,
@@ -26,9 +29,19 @@ export class ResponseErrorDto extends ResponseDto<unknown> {
     statusCodeKey?: string;
 
     @ApiProperty({
-        type: 'array',
-        description: 'List of validation errors',
+        description:
+            'Field errors of a request body, or row errors of an imported file',
         required: false,
+        oneOf: [
+            {
+                type: 'array',
+                items: { $ref: getSchemaPath(MessageValidationErrorDto) },
+            },
+            {
+                type: 'array',
+                items: { $ref: getSchemaPath(MessageValidationImportErrorDto) },
+            },
+        ],
     })
     errors?: IMessageValidationError[] | IMessageValidationImportError[];
 }

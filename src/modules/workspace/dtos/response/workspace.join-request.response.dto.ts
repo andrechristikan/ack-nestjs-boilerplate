@@ -11,6 +11,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the workspace the join request targets',
     })
     @Expose()
     workspaceId: string;
@@ -18,6 +19,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who submitted the join request',
     })
     @Expose()
     userId: string;
@@ -26,6 +28,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
         required: true,
         example: EnumWorkspaceJoinRequestStatus.pending,
         enum: EnumWorkspaceJoinRequestStatus,
+        description: 'Current status of the join request',
     })
     @Expose()
     status: EnumWorkspaceJoinRequestStatus;
@@ -34,6 +37,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.lorem.sentence(),
+        description: 'Optional message from the requester',
     })
     @Expose()
     message: string | null;
@@ -43,6 +47,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
         nullable: true,
         example: EnumWorkspaceJoinRejectReason.wrongWorkspace,
         enum: EnumWorkspaceJoinRejectReason,
+        description: 'Coded reason when the join request was rejected',
     })
     @Expose()
     rejectReasonCode: EnumWorkspaceJoinRejectReason | null;
@@ -51,6 +56,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who reviewed the join request',
     })
     @Expose()
     reviewedByUserId: string | null;
@@ -59,6 +65,7 @@ export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
         required: false,
         nullable: true,
         example: faker.date.recent(),
+        description: 'When the join request was reviewed',
     })
     @Expose()
     reviewedAt: Date | null;

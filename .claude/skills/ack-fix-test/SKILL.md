@@ -33,36 +33,61 @@ pnpm test --testPathPatterns '<scope>'
 ## 2 — Dispatch
 
 Dispatch `test-writer` in **BACKFILL** mode, naming the scope. Say the mode explicitly — the
-agent runs two modes that invert the same question, and it will ask rather than guess.
+agent runs two modes that invert the same question, and if the dispatch names none it writes
+nothing and hands the gap back.
 
 ## 3 — Confirm
 
-Re-run the suite and the coverage for that scope. Report the numbers with the command that
-produced them.
+Re-run the suite for that scope. Report the numbers with the command that produced them.
 
-**Then run the FULL suite — this skill is the only one that does (HARD).**
+**Then run the FULL coverage suite — this skill is the only one that does (HARD).**
 
 ```bash
 pnpm test:cov
 ```
 
-Every other skill runs `--testPathPatterns '<module>'` and stops there. A spec repair reaches
-past its own scope: a global mock in the jest setup file, a shared fixture, a relocated helper,
-and the **100% global coverage threshold, which is measured across the whole run**. The scoped
-run cannot see any of that. Report the totals with the command.
+Every other skill runs `--testPathPatterns '<module>'` without coverage and stops there. A
+spec repair reaches past its own scope: a global mock, a shared fixture, a relocated helper,
+and the **100% global coverage threshold, which is measured only when `--coverage` is on**.
+`collectCoverage` is `false` in `test/jest.json`, so `pnpm test` never applies the threshold;
+`pre-commit` runs `pnpm test` and would not catch a coverage gap. Report the totals with the
+command.
 
-Controllers and repositories are deliberately outside `collectCoverageFrom` — a gap there is not
-a gap (`rules/testing.md`).
+Controllers and repositories are deliberately outside `collectCoverageFrom` — a gap there is
+not a gap (`rules/testing.md`).
+
+### Coverage short of 100% is the OWNER's call (HARD)
+
+**Never repair a coverage gap silently, and never widen the scope to chase one.** When a file
+you touched does not reach 100%, stop and put it to the owner with `AskUserQuestion`, naming
+the file, the uncovered lines, and why they are uncovered.
+
+Read the PER-FILE rows for the files you touched. The global summary on a scoped coverage run
+means nothing, because the threshold is measured across the whole `src/` tree.
+
+Two answers are legitimate, and both belong to the owner:
+
+| They pick | You do |
+|---|---|
+| fix it | one more `test-writer` dispatch on those files, still inside this module |
+| leave it | nothing here — `pre-commit` does not collect coverage, so the threshold is not a hook gate |
+
+**`--no-verify` is never yours to choose.** You do not pass it, suggest it as a default, or
+assume a previous answer still holds.
 
 ## Boundaries
 
+- **No gate, no review, no boot.** This skill dispatches `test-writer` and nothing else. It
+  writes no `src/`, so there is nothing for `reviewer-rules`, `reviewer-e2e` or `verifier` to
+  judge.
 - **No `src/` changes.** A business defect is pinned green and reported; the fix is a separate
   `/ack-fix` run, decided by the owner. The only sanctioned `src/` edit is a typo or syntax
   error that blocks compilation and cannot change behaviour for any input.
 - Never delete or skip a spec to reach green.
 - Never lower the coverage threshold, exclude a file from `collectCoverageFrom`, or add an
   ignore comment.
-- Never `--no-verify`. Never stage or commit unless the owner asks in that exchange.
+- **Never `--no-verify` on your own initiative.**
+- Never stage or commit unless the owner asks in that exchange.
 
 ## Hand back
 

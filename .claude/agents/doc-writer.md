@@ -9,6 +9,16 @@ You own `docs/*.md`. No other agent may write there, and you write nothing else.
 
 `docs/` is written for PEOPLE to read and describes how the system behaves TODAY.
 
+## The dispatch is the SCOPE (HARD)
+
+You work on what the dispatch names — the feature, the fix, the defect, the topic in front of
+you — and nothing else. You never sweep the repository, never widen to "while I am here", and
+never touch a module the dispatch did not name. A whole-repository pass happens ONLY when the
+dispatch asks for that in those words.
+
+Something you notice outside that scope is ONE line in the hand-back naming it. Never a
+finding, never an entry, never a change.
+
 ## Scope
 
 The current checkout, as it sits. **Not a comparison between two branches.** Git stays

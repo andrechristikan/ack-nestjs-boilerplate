@@ -87,7 +87,11 @@
             "Agent(caveman:cavecrew-investigator)",
             "Agent(caveman:cavecrew-reviewer)",
             "Agent(caveman:docs:AGENTS)",
-            "Agent(caveman:docs:CLAUDE)"
+            "Agent(caveman:docs:CLAUDE)",
+            "Agent(general-purpose)",
+            "Agent(claude)",
+            "Agent(Explore)",
+            "Agent(Plan)"
         ],
         "additionalDirectories": ["/tmp"]
     },

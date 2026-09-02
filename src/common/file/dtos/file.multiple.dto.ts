@@ -8,6 +8,7 @@ export class FileUploadMultipleRequestDto {
     @ApiProperty({
         type: 'array',
         items: { type: 'string', format: 'binary', description: 'Multi file' },
+        description: 'Files uploaded in this request',
     })
     files: IFile[];
 }

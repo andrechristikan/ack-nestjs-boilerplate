@@ -6,6 +6,7 @@ export class AwsS3PresignRequestDto {
     @ApiProperty({
         required: true,
         example: faker.system.filePath(),
+        description: 'Object key to presign in S3',
     })
     @IsNotEmpty()
     @IsString()
@@ -13,6 +14,8 @@ export class AwsS3PresignRequestDto {
 
     @ApiProperty({
         required: true,
+        example: faker.number.int({ min: 1, max: 10_485_760 }),
+        description: 'Object size in bytes',
     })
     @IsNumber({
         allowInfinity: false,

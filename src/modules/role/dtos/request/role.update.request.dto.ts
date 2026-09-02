@@ -40,6 +40,7 @@ export class RoleUpdateRequestDto {
         description: 'Ability list of role',
         isArray: true,
         type: [RoleAbilityRequestDto],
+        example: [],
     })
     @Type(() => RoleAbilityRequestDto)
     @IsNotEmpty()

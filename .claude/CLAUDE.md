@@ -81,10 +81,10 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 
 | Skill | For |
 |---|---|
-| `ack-feature` | new behaviour, end to end — interrogate, plan, build spec-first, gate, all checks green |
-| `ack-fix` | one narrow named change, no plan |
+| `ack-feature` | new behaviour, end to end — interrogate, plan, build spec-first, offer reviews, all checks green |
+| `ack-fix` | one narrow named change; uses a plan when handed one, never writes its own |
 | `ack-fix-test` | repair or backfill unit specs against code that exists |
-| `ack-debug` | find the cause of a symptom — root cause and evidence, no fix |
+| `ack-debug` | find the cause of a symptom — root cause, evidence, and a repair plan, no fix |
 | `ack-seed` | initial-data seeders under `src/migration/` |
 | `ack-gate` | check a scope against the rule set |
 | `ack-verify` | prove something works against the running app |
@@ -99,16 +99,12 @@ Each skill ends with a **Next** section naming what usually follows it. Nothing 
 automatically: a skill never invokes another skill, so every hop is the owner's call.
 
 ```
-                     ┌─ /ack-verify ─┐
-   /ack-feature ─────┤               ├──→ /ack-docs
-                     └───────────────┘
-                             ▲
-   /ack-debug ──→ /ack-fix ──┘
+   /ack-debug ──→ /ack-fix ──→ /ack-docs
+   /ack-feature ─────┘
+   /ack-seed    ──→ /ack-docs
 
-   /ack-gate  ──→ /ack-fix
-
-   /ack-seed  ──→ /ack-docs
-
+   /ack-gate            alone — the owner's compliance pass, started by nothing else
+   /ack-verify          alone — the owner's proof against the running app
    /ack-pr-doc          alone, at the end — it fetches and moves a local ref
    /ack-claude-config   alone — the subject is the configuration an agent would read
 ```
@@ -117,9 +113,48 @@ automatically: a skill never invokes another skill, so every hop is the owner's 
 changes no `src/` at all. When a suite is red: the code is wrong → `/ack-debug` then
 `/ack-fix`; the spec is wrong → `/ack-fix-test`.
 
+**The reviews are OFFERED, never automatic.** `ack-feature` and `ack-fix` end by asking the
+owner which of `reviewer-rules`, `reviewer-e2e` and `verifier` to run, once the work is done
+and the diff is visible. `ack-seed` offers `reviewer-rules` only. **`reviewer-e2e` never runs
+unasked, anywhere**, including inside `ack-debug` where it is the natural tool.
+`ack-fix-test`, `ack-gate`, `ack-verify`, `ack-docs`, `ack-pr-doc` and `ack-claude-config`
+run no review and no gate of their own.
+
+**A test run is always scoped to the module the work actually CHANGED** —
+`pnpm test --testPathPatterns '<module>'`. No skill except `/ack-fix-test` runs the full
+suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
+`collectCoverage` is `false` in `test/jest.json`, so a scoped `pnpm test` does not apply the
+100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
+spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
+not the exit code and not the global summary.
+
+**A coverage gap is never closed silently.** A skill that finds a touched file short of 100%
+on a coverage run stops and asks the owner: another `test-writer` pass on those files, or
+leave the gap. Both are the owner's to pick, in that exchange. `--no-verify` is never the
+model's choice — and `pre-commit` does not collect coverage, so it is also not a way past
+the threshold.
+
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `planner`, `coder`, `test-writer`, `seed-writer`, `explorer`, `researcher`, `reviewer-rules`,
 `reviewer-e2e`, `verifier`, `doc-writer`, `pr-doc-writer`.
+
+An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
+project skill is `disable-model-invocation: true`. The generic built-ins that WOULD have
+carried it — `general-purpose`, `claude`, `Explore`, `Plan` — are denied in
+`.claude/settings.json`, because the project agents above already cover what they do.
+`coder` is the only agent holding the `Agent` tool, and it dispatches `test-writer` and
+nothing else — at most once per spec, so a spec that comes back still wrong becomes an open
+item instead of a third dispatch.
+
+**Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
+unless the dispatch asks for that in those words. Anything noticed outside the scope is one
+line in the hand-back, never a finding and never a change.
+
+**No agent can ask you anything** — not one of them carries `AskUserQuestion`. An agent that
+is missing something stops, does nothing, and hands the question back; the session that
+dispatched it asks you and dispatches again. That is why a dispatch carries the mode, the
+scope and the expected outcomes up front, and why `verifier` never starts a container it
+found stopped.
 
 External skills this project relies on. They live outside the repository, so each machine
 installs them once:
@@ -141,7 +176,9 @@ installs them once:
   `migration:fresh`. Describe the delta; the owner applies it. This is why there is no
   schema-writing agent.
 - Coding rules live in `.claude/rules/`. They are NOT loaded into this session — the agent
-  that needs a rule loads it.
+  that needs a rule loads it. Two rules are split by WHO reads them: `testing.md` (where
+  specs live, jest facts) versus `testing-spec-style.md` (how a spec is written —
+  `test-writer` only).
 - `docs/` is documentation written for people to read, describing how the system behaves
   today. It is tracked in git, never loaded automatically, and written only by the
   `doc-writer` agent.

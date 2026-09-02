@@ -37,6 +37,8 @@ export class RoleDto extends DatabaseResponseDto {
         required: true,
         isArray: true,
         default: [],
+        description: 'CASL abilities granted by this role',
+        example: [],
     })
     @Expose()
     @Type(() => RoleAbilityDto)

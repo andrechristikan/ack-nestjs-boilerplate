@@ -15,6 +15,7 @@ export class UserAddMobileNumberRequestDto extends PickType(
         required: true,
         maxLength: 20,
         minLength: 8,
+        description: 'Mobile number without the country phone code',
     })
     @IsString()
     @IsNotEmpty()
@@ -27,6 +28,7 @@ export class UserAddMobileNumberRequestDto extends PickType(
         required: true,
         maxLength: 6,
         minLength: 1,
+        description: 'Country calling code of the mobile number',
     })
     @IsString()
     @IsNotEmpty()

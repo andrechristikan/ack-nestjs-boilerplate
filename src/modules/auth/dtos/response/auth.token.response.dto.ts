@@ -1,3 +1,4 @@
+import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client';
 
@@ -5,6 +6,7 @@ export class AuthTokenResponseDto {
     @ApiProperty({
         example: 'Bearer',
         required: true,
+        description: 'Token type prefix sent with the access token',
     })
     tokenType: string;
 
@@ -13,6 +15,7 @@ export class AuthTokenResponseDto {
         enum: EnumRoleType,
         type: String,
         required: true,
+        description: 'Role type encoded in the issued tokens',
     })
     roleType: EnumRoleType;
 
@@ -25,11 +28,15 @@ export class AuthTokenResponseDto {
 
     @ApiProperty({
         required: true,
+        example: faker.string.alphanumeric(64),
+        description: 'JWT access token',
     })
     accessToken: string;
 
     @ApiProperty({
         required: true,
+        example: faker.string.alphanumeric(64),
+        description: 'JWT refresh token',
     })
     refreshToken: string;
 }

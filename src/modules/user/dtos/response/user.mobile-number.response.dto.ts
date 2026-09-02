@@ -13,6 +13,7 @@ export class UserMobileNumberResponseDto extends DatabaseResponseDto {
         required: true,
         maxLength: 20,
         minLength: 8,
+        description: 'Mobile number without the country phone code',
     })
     @Expose()
     number: string;
@@ -22,6 +23,7 @@ export class UserMobileNumberResponseDto extends DatabaseResponseDto {
         required: true,
         maxLength: 6,
         minLength: 1,
+        description: 'Country calling code of the mobile number',
     })
     @Expose()
     phoneCode: string;
@@ -29,6 +31,22 @@ export class UserMobileNumberResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         type: CountryResponseDto,
+        description: 'Country of the mobile number',
+        example: {
+            id: faker.database.mongodbObjectId(),
+            createdAt: faker.date.recent(),
+            createdBy: faker.database.mongodbObjectId(),
+            updatedAt: faker.date.recent(),
+            updatedBy: faker.database.mongodbObjectId(),
+            deletedAt: faker.date.recent(),
+            deletedBy: faker.database.mongodbObjectId(),
+            name: faker.location.country(),
+            alpha2Code: faker.location.countryCode('alpha-2'),
+            alpha3Code: faker.location.countryCode('alpha-3'),
+            phoneCode: [faker.helpers.arrayElement(['62', '65'])],
+            continent: faker.location.country(),
+            timezone: faker.location.timeZone(),
+        },
     })
     @Expose()
     @Type(() => CountryResponseDto)

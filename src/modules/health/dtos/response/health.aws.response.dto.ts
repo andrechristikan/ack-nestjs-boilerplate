@@ -5,16 +5,18 @@ export class HealthAwsResponseDto {
     @ApiProperty({
         required: true,
         examples: ['error', 'ok', 'shutting_down'],
+        description: 'Overall health status of the checked AWS indicators',
     })
     status: HealthCheckStatus;
 
     @ApiProperty({
         required: true,
+        description: 'AWS indicators that reported up',
         example: {
-            awsPublicBucket: {
+            s3PublicBucket: {
                 status: 'up',
             },
-            awsPrivateBucket: {
+            s3PrivateBucket: {
                 status: 'up',
             },
             ses: {
@@ -26,11 +28,12 @@ export class HealthAwsResponseDto {
 
     @ApiProperty({
         required: true,
+        description: 'AWS indicators that reported down',
         example: {
-            awsPublicBucket: {
+            s3PublicBucket: {
                 status: 'down',
             },
-            awsPrivateBucket: {
+            s3PrivateBucket: {
                 status: 'down',
             },
             ses: {
@@ -42,11 +45,12 @@ export class HealthAwsResponseDto {
 
     @ApiProperty({
         required: true,
+        description: 'Combined AWS indicator results for this check',
         example: {
-            awsPublicBucket: {
+            s3PublicBucket: {
                 status: 'up',
             },
-            awsPrivateBucket: {
+            s3PrivateBucket: {
                 status: 'up',
             },
             ses: {

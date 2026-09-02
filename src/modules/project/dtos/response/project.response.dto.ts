@@ -7,6 +7,7 @@ export class ProjectResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the workspace the project belongs to',
     })
     @Expose()
     workspaceId: string;

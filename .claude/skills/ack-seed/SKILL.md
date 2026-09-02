@@ -35,10 +35,22 @@ its `migration.module.ts` provider, and its position in both bundled scripts.
 **No TDD here.** `src/migration/` is outside `collectCoverageFrom` and a seed has no behaviour
 to prove in a unit spec (`rules/testing.md`). Do not dispatch `test-writer`.
 
-## 3 — Gate
+## 3 — Review (ASK, and only at the END)
 
-Dispatch `reviewer-rules` over `src/migration/**` and the `package.json` scripts. The findings
-that matter here:
+The seed is written and the diff is visible. **Nothing in this step runs unasked (HARD).**
+
+Ask once, with `AskUserQuestion`:
+
+| Offer | Recommend it when |
+|---|---|
+| `reviewer-rules` | almost always — the findings that matter here are listed below |
+
+**`reviewer-e2e` and `verifier` are not offered.** A seed writes rows; there is no request, job,
+or notification flow to trace, and seeds are not run from here.
+
+Nothing picked means nothing dispatched. **Name every check that was skipped in the hand-back.**
+
+The findings that matter if `reviewer-rules` runs:
 
 - a `seed()` with no matching `remove()`
 - a blind `create` with no existence guard, upsert, or `skipDuplicates`
@@ -59,6 +71,8 @@ No test run — there are no specs for this tree.
 
 ## Boundaries
 
+- **Never fix anything yourself.** You dispatch and you report.
+- **Never dispatch `reviewer-e2e` unasked.**
 - **Never run `pnpm migration`, `migration:seed`, `migration:remove`, `migration:fresh`,
   `db:migrate`, or `db:generate`.** Write the seed; the owner runs it. `migration:fresh` runs
   `prisma db push --force-reset` and drops the database.
@@ -68,7 +82,8 @@ No test run — there are no specs for this tree.
 ## Hand back
 
 The seed, its data file, its registration site, its position in each bundled script and why,
-**the exact command the owner runs**, and any operator cost the seed introduces.
+**the exact command the owner runs**, any operator cost the seed introduces, and **which
+optional checks were offered, picked, and skipped**.
 
 ## Next
 

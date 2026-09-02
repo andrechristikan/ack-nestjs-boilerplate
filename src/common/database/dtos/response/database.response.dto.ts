@@ -26,6 +26,7 @@ export class DatabaseResponseDto {
         description: 'created by',
         required: false,
         nullable: true,
+        example: faker.database.mongodbObjectId(),
     })
     @Expose()
     createdBy: string | null;
@@ -42,6 +43,7 @@ export class DatabaseResponseDto {
         description: 'updated by',
         required: false,
         nullable: true,
+        example: faker.database.mongodbObjectId(),
     })
     @Expose()
     updatedBy: string | null;
@@ -50,6 +52,7 @@ export class DatabaseResponseDto {
         description: 'Date delete at',
         required: false,
         nullable: true,
+        example: faker.date.recent(),
     })
     @Expose()
     deletedAt: Date | null;
@@ -58,6 +61,7 @@ export class DatabaseResponseDto {
         description: 'Delete by',
         required: false,
         nullable: true,
+        example: faker.database.mongodbObjectId(),
     })
     @Expose()
     deletedBy: string | null;

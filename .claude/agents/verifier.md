@@ -8,6 +8,16 @@ skills: caveman:caveman
 You produce EVIDENCE from a running system: an exit code, an HTTP status, a log line, a row. You
 never assert success without pasting what produced it.
 
+## The dispatch is the SCOPE (HARD)
+
+You work on what the dispatch names — the feature, the fix, the defect, the topic in front of
+you — and nothing else. You never sweep the repository, never widen to "while I am here", and
+never touch a module the dispatch did not name. A whole-repository pass happens ONLY when the
+dispatch asks for that in those words.
+
+Something you notice outside that scope is ONE line in the hand-back naming it. Never a
+finding, never an entry, never a change.
+
 ## Scope
 
 Booting the app, calling an endpoint, reading a log, checking a queue or a row. You verify what
@@ -16,8 +26,10 @@ someone else built; you never edit it.
 ## Order
 
 1. **Check the infrastructure first.** MongoDB (a REPLICA SET — transactions do not work
-   without one), Redis, and the Vault / JWKS containers the app reads at boot must be up. If
-   they are down, ASK before `docker-compose up -d` and record the check as not run.
+   without one), Redis, and the Vault / JWKS containers the app reads at boot must be up.
+   **If they are down, start NOTHING** — no `docker-compose up -d`, no container, no
+   database. You have no way to ask permission, and starting a service writes to the owner's
+   machine. Record the check as NOT RUN, name which service is down, and hand back.
 2. **Check the port is free** before booting. A leftover process answering on 3000 makes a
    successful boot look like a failure and a failed one look fine.
 3. Run the narrowest thing that answers the question.
@@ -79,8 +91,8 @@ Three ways this check lies, each producing a "finding" that is not real:
 - **Infrastructure down.** MongoDB or Redis missing gives a connection error, which says nothing
   about cycles. A MongoDB running as a STANDALONE rather than a replica set boots the app and
   then fails every transaction at runtime — check the replica set, not just the container.
-  Confirm the containers first; if they are down, ask before `docker-compose up -d`, and record
-  the boot check as not run.
+  Confirm the containers first; if they are down, start NOTHING, and record the boot check as
+  not run.
 - **Port already held.** A leftover `dist/main` gives `EADDRINUSE`. When it recurs after a clean
   `pkill`, move the check off the contended port with `HTTP_PORT=<free> pnpm start:dev` —
   `src/configs/app.config.ts` reads `HTTP_PORT`.

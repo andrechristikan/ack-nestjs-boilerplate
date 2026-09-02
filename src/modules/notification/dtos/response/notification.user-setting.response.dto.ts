@@ -8,6 +8,7 @@ export class NotificationUserSettingResponseDto {
         type: [NotificationUserSettingDto],
         isArray: true,
         description: 'List of user notification settings',
+        example: [],
     })
     @Expose()
     @Type(() => NotificationUserSettingDto)

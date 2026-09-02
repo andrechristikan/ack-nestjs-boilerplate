@@ -10,6 +10,7 @@ export class RoleAbilityDto {
         required: true,
         description: 'Ability subject',
         enum: EnumPolicySubject,
+        example: EnumPolicySubject.user,
     })
     @Expose()
     subject: EnumPolicySubject;
@@ -20,6 +21,7 @@ export class RoleAbilityDto {
         isArray: true,
         default: [EnumPolicyAction.manage],
         enum: EnumPolicyAction,
+        example: [EnumPolicyAction.manage],
     })
     @Expose()
     action: EnumPolicyAction[];

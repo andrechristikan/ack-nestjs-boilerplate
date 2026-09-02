@@ -37,6 +37,7 @@ export class NotificationUserSettingDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         default: true,
+        example: true,
         description: 'Whether the notification is active',
     })
     @Expose()

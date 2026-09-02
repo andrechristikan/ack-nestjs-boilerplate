@@ -1,6 +1,6 @@
 ---
 name: ack-feature
-description: Build a new feature end to end — interrogate the requirement, plan it, write it spec-first, gate it, and leave every check green. Use when the owner asks for new behaviour. NOT for a narrow fix (ack-fix), NOT for repairing specs (ack-fix-test), NOT for seed data (ack-seed).
+description: Build a new feature end to end — interrogate the requirement, plan it, write it spec-first, offer the reviews at the end, and leave every check green. Use when the owner asks for new behaviour. NOT for a narrow fix (ack-fix), NOT for repairing specs (ack-fix-test), NOT for seed data (ack-seed).
 disable-model-invocation: true
 ---
 
@@ -46,13 +46,30 @@ dispatch `test-writer` from here.
 **When the plan needs new baseline rows, dispatch `seed-writer`** after the schema lands. It
 writes the seed; nobody runs it — the owner does.
 
-## 5 — Gate
+## 5 — Review (ASK, and only at the END)
 
-Dispatch `reviewer-rules` over what changed. Then `reviewer-e2e` when the feature crosses a
-transport, enqueues a job, or sends a notification — it follows the hand-offs to their terminal
-point, which is where those defects live.
+The work is done and the diff is visible — that is the point at which the owner can judge which
+checks are worth their time. **Nothing in this step runs unasked (HARD).**
+
+Ask once, with `AskUserQuestion`, multi-select, and dispatch only what comes back:
+
+| Offer | Recommend it when |
+|---|---|
+| `reviewer-rules` | almost always — static, needs no running infrastructure, cheapest of the three |
+| `reviewer-e2e` | the feature crossed a transport, enqueued a job, or sent a notification |
+| `verifier` | the feature touched `imports:`, a route, or a processor — a cycle surfaces nowhere else |
+
+**`reviewer-e2e` NEVER runs on your own initiative (HARD).** It runs when the owner picks it
+here, or when they named it explicitly at the start of the run. Say in the offer WHY it might
+matter this time; do not decide for them.
+
+Nothing picked means nothing dispatched. **Name every check that was skipped in the hand-back**,
+so nobody reads silence as a pass.
 
 Findings go back to `coder`. Do not fix anything here.
+
+**One round of findings, then stop.** What `coder` does not resolve in that round goes to the
+owner as an open item. A second automatic round is how a run stops converging.
 
 ## 6 — Everything green (HARD)
 
@@ -66,36 +83,67 @@ pnpm spell
 pnpm test --testPathPatterns '<module>'
 ```
 
-**The test run is SCOPED to the modules the feature touched, never the whole suite (HARD).**
-Name each one — the flag takes several patterns. A full `pnpm test` belongs to `/ack-fix-test`
-and to the `pre-commit` hook, which runs it on every commit anyway.
+**The test run is SCOPED to the modules the feature actually CHANGED, never the whole suite
+(HARD).** Name each one — the flag takes several patterns. A module you only read is not in
+scope. A full `pnpm test` belongs to `/ack-fix-test` and to the `pre-commit` hook, which runs
+it on every commit anyway.
 
-Then boot the app — dispatch `verifier`, which carries the boot procedure. A cycle surfaces
-nowhere else.
+**`collectCoverage` is `false`.** A scoped `pnpm test` does not apply the 100% threshold.
+Coverage is `pnpm test:cov`. A scoped coverage run exits 1 while every spec passes because the
+threshold is GLOBAL — read the `Tests:` line, not the exit code.
 
 **`deadcode` and `spell` ALWAYS exit 0.** `spell` ends in `|| true` and `ts-prune` never
 signals. Their exit code means nothing: READ the output and report what it says. `ts-prune`
 reports the whole kit surface by design — its entries are not findings
 (`rules/architecture.md`).
 
+`pnpm build` compiles but does NOT type-check on its own in a way that replaces `pnpm
+typecheck` here.
+
+**Booting the app is NOT part of this step.** That is `verifier`, offered in §5 and dispatched
+only when the owner picks it.
+
+### Coverage short of 100% is the OWNER's call (HARD)
+
+**Never repair a coverage gap silently, and never widen the scope to chase one.** When a
+coverage run on a file you touched does not reach 100%, stop and put it to the owner with
+`AskUserQuestion`, naming the file, the uncovered lines, and why they are uncovered.
+
+Read the PER-FILE rows for the files you touched. The global summary means nothing on a scoped
+coverage run.
+
+Two answers are legitimate, and both belong to the owner:
+
+| They pick | You do |
+|---|---|
+| fix it | one more `test-writer` dispatch on those files, still inside this module |
+| leave it | nothing here — `pre-commit` runs `pnpm test` without coverage, so the threshold is not a hook gate |
+
+**`--no-verify` is never yours to choose.** You do not pass it, suggest it as a default, or
+assume a previous answer still holds.
+
 ## Boundaries
 
 - **Never fix anything yourself.** You dispatch and you report.
+- **Never dispatch `reviewer-e2e` unasked.**
 - Never edit `prisma/schema.prisma`, and never run a schema, DB, or seed command.
-- Never `--no-verify`. Never stage or commit unless the owner asks in that exchange.
+- **Never `--no-verify` on your own initiative.**
+- Never stage or commit unless the owner asks in that exchange.
 - No `docs/*.md` — that is `/ack-docs`.
 
 ## Hand back
 
 The settled requirement, the plan path, the schema delta the owner applied, what each agent
 produced, every status code allocated, every finding and whether it was resolved, every
-operational step a rename introduced, and the output of all five checks plus the boot.
+operational step a rename introduced, the output of all five checks, and **which optional
+checks were offered, which the owner picked, and which were skipped**.
 
 ## Next
 
 | Then run | When |
 |---|---|
-| `/ack-verify` | the change touched a route, module wiring, or a processor — a green suite does not prove those |
+| `/ack-verify` | the owner declined `verifier` here and now wants the running app checked |
+| `/ack-gate` | the owner declined `reviewer-rules` here and now wants the compliance pass |
 | `/ack-docs` | the behaviour this changed is described in `docs/` |
 
 `/ack-pr-doc` is NOT a step here. Run it on its own once the branch is settled — it fetches and

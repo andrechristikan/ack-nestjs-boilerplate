@@ -29,6 +29,7 @@ export class TermPolicyContentsRequestDto {
         description: 'Contents of the terms policy',
         type: [TermPolicyContentRequestDto],
         isArray: true,
+        example: [],
     })
     @Type(() => TermPolicyContentRequestDto)
     @IsNotEmpty({ each: true })

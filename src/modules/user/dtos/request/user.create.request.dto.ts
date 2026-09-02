@@ -17,6 +17,7 @@ export class UserCreateRequestDto extends UserClaimUsernameRequestDto {
         example: faker.internet.email(),
         required: true,
         maxLength: 100,
+        description: 'Email address of the user to create',
     })
     @IsCustomEmail()
     @IsNotEmpty()
@@ -27,6 +28,7 @@ export class UserCreateRequestDto extends UserClaimUsernameRequestDto {
     @ApiProperty({
         example: faker.database.mongodbObjectId(),
         required: true,
+        description: 'Identifier of the role to assign',
     })
     @IsString()
     @IsNotEmpty()
@@ -38,6 +40,7 @@ export class UserCreateRequestDto extends UserClaimUsernameRequestDto {
         required: false,
         maxLength: 100,
         minLength: 1,
+        description: 'Display name of the user to create',
     })
     @IsString()
     @IsOptional()
@@ -48,6 +51,7 @@ export class UserCreateRequestDto extends UserClaimUsernameRequestDto {
     @ApiProperty({
         example: faker.database.mongodbObjectId(),
         required: true,
+        description: 'Identifier of the user country',
     })
     @IsString()
     @IsNotEmpty()

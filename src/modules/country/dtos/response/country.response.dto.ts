@@ -48,6 +48,7 @@ export class CountryResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.location.country(),
+        description: 'Continent the country belongs to',
     })
     @Expose()
     continent: string;
@@ -55,6 +56,7 @@ export class CountryResponseDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.location.timeZone(),
+        description: 'Timezone of the country',
     })
     @Expose()
     timezone: string;

@@ -10,7 +10,6 @@ import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.i
 import { HelperService } from '@common/helper/services/helper.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
@@ -41,12 +40,7 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
             'firebase.privateKey'
         )!;
         if (rawKey) {
-            const privateKeyBuffer = Buffer.from(rawKey, 'base64');
-            this.privateKey = createPrivateKey({
-                key: privateKeyBuffer,
-                format: 'der',
-                type: 'pkcs8',
-            }).export({ type: 'pkcs8', format: 'pem' }) as string;
+            this.privateKey = rawKey;
         } else {
             this.privateKey = null;
         }

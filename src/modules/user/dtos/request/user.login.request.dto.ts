@@ -2,7 +2,10 @@ import { IsCustomEmail } from '@common/request/validations/request.custom-email.
 import { faker } from '@faker-js/faker';
 import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { EnumUserLoginFrom } from '@generated/prisma-client';
+import {
+    EnumDevicePlatform,
+    EnumUserLoginFrom,
+} from '@generated/prisma-client';
 import { Transform, Type } from 'class-transformer';
 import {
     IsEnum,
@@ -17,6 +20,7 @@ export class UserLoginRequestDto {
     @ApiProperty({
         required: true,
         example: faker.internet.email(),
+        description: 'Email address used to log in',
     })
     @IsString()
     @IsNotEmpty()
@@ -47,6 +51,12 @@ export class UserLoginRequestDto {
         description: 'Device information',
         required: true,
         type: DeviceRequestDto,
+        example: {
+            fingerprint: 'abc123def456ghi789jkl012mno345pq',
+            name: "John's iPhone 12",
+            platform: EnumDevicePlatform.ios,
+            notificationToken: 'fcm_token_1234567890abcdef',
+        },
     })
     @Type(() => DeviceRequestDto)
     @IsNotEmpty()

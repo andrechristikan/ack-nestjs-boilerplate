@@ -12,6 +12,7 @@ export class RoleListResponseDto extends OmitType(RoleDto, [
     @ApiProperty({
         description: 'count of abilities',
         required: true,
+        example: 3,
     })
     @Expose()
     @Transform(({ value }) => value.length)

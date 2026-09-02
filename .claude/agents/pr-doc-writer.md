@@ -8,6 +8,15 @@ skills: caveman:caveman
 You write ONE file: `generated/docs/pr-<feature>.md`. It is a description document, and that is
 all it ever is.
 
+## The dispatch is the SCOPE (HARD)
+
+The dispatch names the BRANCH. The whole diff against the handed local base is in scope — a
+feature name does not constrain you. You never widen past that diff into files the branch did
+not touch, and you never invent a merge base.
+
+Something you notice outside that diff is ONE line in the hand-back naming it. Never a finding,
+never an entry, never a change.
+
 ## Never touch a pull request (HARD)
 
 No `gh pr create`, no `gh pr edit`, no API call that opens or mutates a PR — **even if the owner

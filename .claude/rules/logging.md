@@ -64,5 +64,6 @@ Sentry once, on the last attempt only, and only when the error is fatal. A proce
 
 ## Never assert on a logger in a spec
 
-The jest setup file voids the logger and `console` globally. A spec asserting on a log call is
-asserting on the void (`rules/testing.md`).
+A spec asserting on a log call or a `console` call is asserting on the one thing that is
+allowed to change freely. Never mock the logger to spy it; never assert `toHaveBeenCalled`
+on it (`rules/testing-spec-style.md`).

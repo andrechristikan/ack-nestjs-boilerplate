@@ -7,6 +7,7 @@ export class UserTwoFactorDto extends DatabaseResponseDto {
     @ApiProperty({
         required: true,
         example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who owns this two-factor record',
     })
     @Expose()
     userId: string;
@@ -42,6 +43,7 @@ export class UserTwoFactorDto extends DatabaseResponseDto {
     @ApiProperty({
         required: false,
         example: faker.date.past(),
+        description: 'When two-factor authentication was confirmed',
     })
     @Expose()
     confirmedAt?: Date;

@@ -16,6 +16,7 @@ export class RoleAbilityRequestDto {
         required: true,
         description: 'Ability subject',
         enum: EnumPolicySubject,
+        example: EnumPolicySubject.user,
     })
     @IsNotEmpty()
     @IsString()
@@ -28,6 +29,7 @@ export class RoleAbilityRequestDto {
         isArray: true,
         default: [EnumPolicyAction.manage],
         enum: EnumPolicyAction,
+        example: [EnumPolicyAction.manage],
     })
     @IsString({ each: true })
     @IsEnum(EnumPolicyAction, { each: true })

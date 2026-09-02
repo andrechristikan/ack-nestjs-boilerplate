@@ -63,6 +63,8 @@ export class AwsS3MultipartResponseDto extends AwsS3ResponseDto {
     @ApiProperty({
         required: true,
         type: [AwsS3MultipartPartResponseDto],
+        description: 'Uploaded parts of the multipart object',
+        example: [],
     })
     @Expose()
     parts: AwsS3MultipartPartResponseDto[];

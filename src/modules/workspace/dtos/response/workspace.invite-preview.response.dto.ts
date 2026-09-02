@@ -25,6 +25,7 @@ export class WorkspaceInvitePreviewResponseDto {
         required: true,
         example: EnumWorkspaceMemberRole.member,
         enum: EnumWorkspaceMemberRole,
+        description: 'Workspace role the invite grants',
     })
     @Expose()
     workspaceRole: EnumWorkspaceMemberRole;
@@ -32,6 +33,7 @@ export class WorkspaceInvitePreviewResponseDto {
     @ApiProperty({
         required: true,
         example: faker.date.future(),
+        description: 'When the invite expires',
     })
     @Expose()
     expiredAt: Date;
