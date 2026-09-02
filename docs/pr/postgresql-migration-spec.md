@@ -1,5 +1,48 @@
 # MongoDB to PostgreSQL Migration Spec
 
+## Table of Contents
+
+- [Context](#context)
+- [Issue Alignment](#issue-alignment)
+- [Scope](#scope)
+- [Executive Summary](#executive-summary)
+- [Provider-Level Incompatibilities](#provider-level-incompatibilities)
+  - [Datasource](#datasource)
+  - [ObjectId Native Types](#objectid-native-types)
+  - [Collection Mapping](#collection-mapping)
+- [Model Rework Inventory](#model-rework-inventory)
+  - [ApiKey](#apikey)
+  - [Role, RoleAbility](#role-roleability)
+  - [Country, CountryPhoneCode](#country-countryphonecode)
+  - [User](#user)
+  - [UserMobileNumber](#usermobilenumber)
+  - [Verification and ForgotPassword](#verification-and-forgotpassword)
+  - [PasswordHistory](#passwordhistory)
+  - [ActivityLog](#activitylog)
+  - [Session](#session)
+  - [Device and DeviceOwnership](#device-and-deviceownership)
+  - [TwoFactor and Backup Codes](#twofactor-and-backup-codes)
+  - [TermPolicy, TermPolicyContent, TermPolicyUserAcceptance](#termpolicy-termpolicycontent-termpolicyuseracceptance)
+  - [FeatureFlag and Target Users](#featureflag-and-target-users)
+  - [Notification and NotificationDelivery](#notification-and-notificationdelivery)
+  - [NotificationUserSetting](#notificationusersetting)
+- [Cross-Cutting Code Refactors](#cross-cutting-code-refactors)
+- [PostgreSQL Best-Practice Design Issues](#postgresql-best-practice-design-issues)
+  - [Embedded Domain Entities](#embedded-domain-entities)
+  - [Array Fields as Relationships](#array-fields-as-relationships)
+  - [Boolean State Duplicating Timestamp State](#boolean-state-duplicating-timestamp-state)
+  - [Soft Delete and Uniqueness](#soft-delete-and-uniqueness)
+  - [Native Types](#native-types)
+  - [Table and Column Naming](#table-and-column-naming)
+- [Suggested Migration Phases](#suggested-migration-phases)
+  - [Phase 1: Schema Redesign](#phase-1-schema-redesign)
+  - [Phase 2: Common Database and Request Infrastructure](#phase-2-common-database-and-request-infrastructure)
+  - [Phase 3: Repository Refactor](#phase-3-repository-refactor)
+  - [Phase 4: Service and Mapper Refactor](#phase-4-service-and-mapper-refactor)
+  - [Phase 5: Seeds and Data Transfer](#phase-5-seeds-and-data-transfer)
+  - [Phase 6: Test and Runtime Verification](#phase-6-test-and-runtime-verification)
+- [Acceptance Checklist](#acceptance-checklist)
+
 ## Context
 
 The current Prisma schema is MongoDB-first. It uses MongoDB `ObjectId` native types, collection names mapped from PascalCase model names, Prisma composite `type` blocks, embedded object arrays, scalar arrays, and MongoDB health checks.
@@ -16,6 +59,8 @@ Primary Prisma compatibility facts used for this review:
 References:
 
 - https://github.com/andrechristikan/ack-nestjs-boilerplate/issues/644
+- https://www.prisma.io/docs/orm/v7/reference/prisma-schema-reference#naming-conventions
+- https://www.prisma.io/docs/orm/v7/prisma-client/setup-and-configuration/custom-model-and-field-names
 - https://www.prisma.io/docs/orm/v6/prisma-client/special-fields-and-types/composite-types
 - https://www.prisma.io/docs/orm/v6/overview/databases/postgresql
 - https://www.prisma.io/docs/orm/v6/prisma-client/special-fields-and-types/working-with-scalar-lists-arrays
@@ -120,9 +165,9 @@ Do not use `gen_random_uuid()` for new primary keys. It generates UUIDv4, which 
 
 ### Collection Mapping
 
-The schema maps model names to PascalCase collection names, for example `@@map("Users")`. PostgreSQL conventions favor lower snake case table names. The target schema can use `@@map("users")`, `@@map("api_keys")`, and matching field-level `@map("created_at")` mappings.
+The schema currently maps Prisma models to PascalCase collection names, for example `@@map("Users")`. In the PostgreSQL version, the Prisma schema should follow Prisma conventions first: singular `PascalCase` model names and `camelCase` field names.
 
-This is a breaking cleanup opportunity. Keeping PascalCase table names works technically, but it creates quoted identifiers and awkward SQL ergonomics.
+If the physical PostgreSQL tables and columns use `snake_case`, express that with `@@map("users")`, `@@map("api_keys")`, and field-level `@map("created_at")`. The Prisma API should stay ergonomic even when the underlying database naming differs.
 
 ## Model Rework Inventory
 
@@ -724,6 +769,8 @@ Better delivery history:
 - `NotificationDeliveryAttempt` represents each processing/send attempt with provider response metadata.
 - Failures belong to an attempt. In that design, name the child model `NotificationDeliveryAttemptFailure`.
 
+That attempt-history expansion is out of scope for the migration. Phase 1 should only preserve the current capability by replacing `failureTokens` with `NotificationDeliveryFailure` rows.
+
 Affected code:
 
 - `src/modules/notification/repositories/notification.repository.ts`
@@ -932,13 +979,15 @@ These pairs duplicate state:
 - `Verification.isUsed` and `Verification.verifiedAt`
 - `ForgotPassword.isUsed` and `ForgotPassword.resetAt`
 
-The target design can keep booleans when they materially simplify application code, but PostgreSQL can use timestamp nullability and partial indexes. Removing duplicate booleans reduces inconsistent states such as `isRevoked = true` with `revokedAt = null`.
+This is better treated as follow-up cleanup than as a Phase 1 migration requirement. The PostgreSQL migration should preserve existing behavior first, then a later spec can decide whether `revokedAt`, `verifiedAt`, and `resetAt` become the only source of truth.
+
+For `Session` and `DeviceOwnership`, that decision fits naturally with the Prisma partial-index work tracked in [prisma-v7-upgrade-spec.md](/Users/dantoniolc/ghq/github.com/andrechristikan/ack-nestjs-boilerplate/docs/pr/prisma-v7-upgrade-spec.md). For `Verification` and `ForgotPassword`, the lifecycle-field cleanup remains follow-up work in `postgresql-post-migration-improvements.md`.
 
 ### Soft Delete and Uniqueness
 
 `User.email` and `User.username` are globally unique today. With soft delete, that means deleted users keep reserving those values forever. PostgreSQL supports partial unique indexes for "unique among active rows" if reuse after soft delete is desired.
 
-Upgrade to Prisma v7.4+ before modeling active-row uniqueness. Partial indexes are supported through Prisma schema `where` clauses behind the `partialIndexes` preview feature, so the target design should use Prisma schema support instead of hand-written migration SQL.
+That is not a Phase 1 migration concern. The initial PostgreSQL migration should keep the current uniqueness semantics unless the product explicitly decides otherwise. If active-row uniqueness is wanted later, model it in Prisma schema through the Prisma v7 follow-up tracked in [prisma-v7-upgrade-spec.md](/Users/dantoniolc/ghq/github.com/andrechristikan/ack-nestjs-boilerplate/docs/pr/prisma-v7-upgrade-spec.md), not with hand-written migration SQL.
 
 ### Native Types
 
@@ -951,7 +1000,9 @@ PostgreSQL-specific native types improve correctness:
 
 ### Table and Column Naming
 
-PascalCase collection names are normal in MongoDB but awkward in PostgreSQL. The target schema uses lower snake case tables and columns through `@@map` and `@map`.
+Prisma schema naming should follow Prisma conventions rather than database conventions. Use singular `PascalCase` for model names and `camelCase` for field names so the generated Prisma Client stays idiomatic.
+
+Treat database table and column names as a mapping concern. If PostgreSQL tables/columns are created as `snake_case`, keep the Prisma schema readable with `@@map` and `@map` instead of mirroring database names directly in model and field identifiers.
 
 ## Suggested Migration Phases
 
@@ -961,7 +1012,8 @@ Deliverables:
 
 - PostgreSQL datasource.
 - UUID ids and foreign keys across all models.
-- Lower snake case table and column mappings.
+- Prisma-conventional schema naming: singular `PascalCase` models and `camelCase` fields.
+- `@map` and `@@map` only where the physical PostgreSQL naming intentionally differs from the Prisma schema naming.
 - Replacement models:
   - `RoleAbility`
   - `CountryPhoneCode`
@@ -970,11 +1022,9 @@ Deliverables:
   - `UserTermPolicyStatus`
   - `FeatureFlagUser`
   - `TwoFactorBackupCode`
-  - optional `NotificationDeliveryAttempt`
-  - optional `NotificationDeliveryFailure`
+  - `NotificationDeliveryFailure`
 - JSON or flattened replacement for `UserAgent` and `GeoLocation`.
-- Prisma schema partial indexes for active-row uniqueness.
-- Prisma v7.4+ upgrade for partial-index schema support.
+- Keep current uniqueness and lifecycle semantics unless a separate follow-up spec changes them.
 - Tenant ownership columns and tenant-aware uniqueness once the multi-tenant branch is landed and its data model is final.
 
 ### Phase 2: Common Database and Request Infrastructure
@@ -999,7 +1049,7 @@ Deliverables by module:
 - User repositories create acceptance status rows, photo rows, backup-code rows, and JSON/flattened request-log fields.
 - Term policy repositories write content rows and update relational acceptance status.
 - Feature flag repositories replace target-user relations transactionally.
-- Notification repositories write delivery attempts/failure rows.
+- Notification repositories write failure rows instead of `failureTokens` arrays.
 - Session/device repositories align revoke logic with the final timestamp/boolean decision.
 
 ### Phase 4: Service and Mapper Refactor
@@ -1052,7 +1102,7 @@ Deliverables:
 - User term-policy current state is relational or derived, not embedded on `User`.
 - Feature flag target users are relational and foreign-keyed.
 - Two-factor backup codes support per-code lifecycle.
-- Notification delivery failures are represented as child rows or delivery attempts.
-- Soft-delete uniqueness is decided explicitly for user email and username.
+- Notification delivery failures are represented as child rows.
+- Soft-delete uniqueness follow-up is tracked separately in `prisma-v7-upgrade-spec.md`.
 - Seed data runs against PostgreSQL without MongoDB-specific id assumptions.
 - Seed removal order is foreign-key safe for PostgreSQL.
