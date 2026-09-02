@@ -18,7 +18,7 @@ services:
         depends_on:
             redis:
                 condition: service_healthy
-            mongo:
+            postgres:
                 condition: service_healthy
             jwks-server:
                 condition: service_healthy
@@ -41,7 +41,7 @@ services:
             resources:
                 limits:
                     cpus: '1'
-                    memory: 2G
+                    memory: 1G
 
     jwks-server:
         image: nginx:alpine
@@ -164,37 +164,37 @@ services:
                     cpus: '0.3'
                     memory: 128M
 
-    mongo:
-        image: mongo:latest
-        hostname: mongo
+    postgres:
+        image: postgres:18
+        hostname: postgres
         ports:
-            - '27017:27017'
+            - '5432:5432'
         networks:
             - app-network
         volumes:
-            - mongo_data:/data/db
-            - ./ci/mongo/entrypoint.sh:/entrypoint.sh:ro
-        entrypoint: ['/bin/bash', '/entrypoint.sh']
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
+            - postgres_data:/var/lib/postgresql
+        environment:
+            POSTGRES_DB: ACKNestJs
+            POSTGRES_USER: ack
+            POSTGRES_PASSWORD: ack_password
         deploy:
             resources:
                 limits:
-                    cpus: '1'
-                    memory: 1GB
+                    cpus: '0.5'
+                    memory: 512M
         healthcheck:
             test:
                 [
                     'CMD-SHELL',
-                    "mongosh --quiet --eval \"quit(db.hello().isWritablePrimary ? 0 : 1)\"",
+                    'pg_isready -q -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
                 ]
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 40s
+            start_period: 10s
 
 volumes:
-    mongo_data:
+    postgres_data:
     redis_data:
     vault_data:
 
