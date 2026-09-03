@@ -13,7 +13,7 @@
 - [Model Rework Inventory](#model-rework-inventory)
   - [ApiKey](#apikey)
   - [Role, RoleAbility](#role-roleability)
-  - [Country, CountryPhoneCode](#country-countryphonecode)
+  - [Country](#country)
   - [User](#user)
   - [UserMobileNumber](#usermobilenumber)
   - [Verification and ForgotPassword](#verification-and-forgotpassword)
@@ -108,7 +108,7 @@ The migration is not a provider-only schema change. The following model groups n
 | Identifiers and audit ids | `String @db.ObjectId`, `@map("_id")` | `String @db.Uuid`, UUID defaults, no Mongo `_id` mapping |
 | Embedded policy acceptance state | `User.termPolicy UserTermPolicy` plus `TermPolicyUserAcceptance` history | one relational acceptance/status model per user and policy type/version |
 | Role abilities | `Role.abilities RoleAbility[]` with `action String[]` | normalized `RoleAbility` and `RoleAbilityAction`, or one row per role/subject/action |
-| Country phone codes | `Country.phoneCode String[]` | `CountryPhoneCode` child table |
+| Country phone codes | `Country.phoneCode String[]` | `Country.phoneCodes String[]` |
 | User photo | `User.photo UserPhoto?` | `UserPhoto` one-to-one table, or `Json` if deliberately opaque |
 | Term policy contents | `TermPolicy.contents TermPolicyContent[]` | `TermPolicyContent` child table with unique `(termPolicyId, language)` |
 | User agent and geolocation | embedded composite values on `Session` and `ActivityLog` | flattened columns or `Json` snapshots |
@@ -266,12 +266,12 @@ Repository/service refactor:
 - Updates replace the role ability set inside a transaction: delete removed rows, create new rows, and keep role metadata update atomic.
 - Policy factory consumes relational ability rows instead of embedded composite objects.
 
-### Country, CountryPhoneCode
+### Country
 
 Current issues:
 
-- `Country.phoneCode String[]` is a PostgreSQL-supported scalar array, but it models a repeatable child concept.
-- Phone codes are referenced by user mobile numbers but have no foreign-key relationship.
+- `Country.phoneCode String[]` uses a singular field name for multiple values.
+- Phone codes are referenced by user mobile numbers as a free-text snapshot.
 
 Target design:
 
@@ -284,18 +284,7 @@ model Country {
   continent  String
   timezone   String
 
-  phoneCodes CountryPhoneCode[]
-}
-
-model CountryPhoneCode {
-  id        String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  countryId String @db.Uuid
-  code      String
-
-  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
-
-  @@unique([countryId, code])
-  @@index([code])
+  phoneCodes String[]
 }
 ```
 
@@ -309,9 +298,9 @@ Affected code:
 
 Repository/service refactor:
 
-- Country reads include `phoneCodes`.
-- User mobile number validation checks `(countryId, code)` against `CountryPhoneCode`.
-- User mobile number can either continue storing `phoneCode` as a snapshot or reference `countryPhoneCodeId`. Referencing the code row gives stronger integrity.
+- Country reads return `phoneCodes` directly.
+- User mobile number validation checks the requested `phoneCode` against `Country.phoneCodes`.
+- A relational `CountryPhoneCode` model can be added later if the application needs per-code metadata, independent phone-code queries, or a direct reference from `UserMobileNumber`.
 
 ### User
 
@@ -959,16 +948,17 @@ PostgreSQL can store JSON, but JSON is a better fit for snapshots or opaque meta
 
 ### Array Fields as Relationships
 
-The following arrays are not good PostgreSQL relationship models:
+The following arrays are not good PostgreSQL relationship models and are normalized in the initial migration:
 
 - `FeatureFlag.targetUserIds`
 - `TwoFactor.backupCodes`
 - `NotificationDelivery.failureTokens`
-- `Country.phoneCode`
 - `RoleAbility.action`
 - `TermPolicy.contents`
 
 PostgreSQL supports arrays, but arrays do not create foreign keys, per-item timestamps, per-item uniqueness, or query plans as clean as child tables.
+
+`Country.phoneCodes` is intentionally kept as a scalar list for this migration because the application only validates a requested mobile-number `phoneCode` against the country-level options. A relational phone-code table can be introduced later if the app needs independent code management or stronger mobile-number references.
 
 ### Boolean State Duplicating Timestamp State
 
@@ -1016,7 +1006,6 @@ Deliverables:
 - `@map` and `@@map` only where the physical PostgreSQL naming intentionally differs from the Prisma schema naming.
 - Replacement models:
   - `RoleAbility`
-  - `CountryPhoneCode`
   - `UserPhoto`
   - `TermPolicyContent`
   - `UserTermPolicyStatus`

@@ -7,7 +7,7 @@
 [![NestJs][nestjs-shield]][ref-nestjs]
 [![NodeJs][nodejs-shield]][ref-nodejs]
 [![Typescript][typescript-shield]][ref-typescript]
-[![MongoDB][mongodb-shield]][ref-mongodb]
+[![PostgreSQL][postgresql-shield]][ref-postgresql]
 [![JWT][jwt-shield]][ref-jwt]
 [![Jest][jest-shield]][ref-jest]
 [![PNPM][pnpm-shield]][ref-pnpm]
@@ -64,7 +64,7 @@ This boilerplate is perfect for:
 ## Important
 
 - Stateful Authorization, using Redis-backed sessions and `JWT`.
-- Must run MongoDB as a `replication set` for `database transactions`.
+- PostgreSQL is the primary database; run migrations before seeding or starting a fresh environment.
 - If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 - In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
 - When using multiple protection decorators, they must be applied in the correct order. A route takes only the slots it needs; the relative order of the ones it takes never changes:
@@ -135,7 +135,7 @@ I assume that everyone who comes here is a **`programmer with intermediate knowl
 1. **[NestJs Fundamentals][ref-nestjs]** - Main framework with decorators, modules, services, and dependency injection
 2. **[TypeScript][ref-typescript]** - Strong typing, interfaces, generics, and advanced TypeScript features
 3. **[Prisma ORM][ref-prisma]** - Modern database toolkit for schema design, migrations, and type-safe queries
-4. **[MongoDB][ref-mongodb]** - NoSQL database concepts, especially **replication sets** for transactions
+4. **[PostgreSQL][ref-postgresql]** - Relational database concepts, transactions, indexes, and constraints
 5. **[Redis][ref-redis]** - Caching strategies, session storage, and queue management
 6. **Repository Design Pattern** - Data access layer abstraction for maintainable code
 7. **SOLID Principles** - Clean code architecture and dependency management
@@ -154,8 +154,8 @@ The project is built using the following technologies and versions. We always st
 | PNPM           | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8+ (compose: `mongo:latest`)   |
-| Redis          | v8+ (compose: `redis:latest`)   |
+| PostgreSQL     | v18.x    |
+| Redis          | v8.0.x   |
 | Docker         | v28.5.x  |
 | Docker Compose | v2.40.x  |
 
@@ -195,10 +195,10 @@ Production-ready authentication system with multiple strategies and security lay
 - **Security Headers** - Helmet integration for HTTP security
 
 ### 📊 Database & Storage
-Modern ORM with NoSQL database and file storage capabilities.
+Modern ORM with relational database and file storage capabilities.
 
 - **Prisma ORM** - Type-safe database toolkit with schema-driven queries
-- **MongoDB** - NoSQL database with transaction support (replica set required)
+- **PostgreSQL** - Relational database with transaction support
 - **Redis Caching** - Multi-level caching strategies for performance
 - **AWS S3 Integration** - File storage with presigned URLs
 - **Repository Pattern** - Clean separation of data access layer
@@ -286,11 +286,21 @@ To run the API inside Compose as well, start with the `apis` profile: `docker-co
 
 ## Database
 
-This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`). Schema sync uses `pnpm db:migrate` (`prisma db push`). There is no `prisma migrate` script.
+| Database | Best For | Transaction Support |
+|----------|----------|---------------------|
+| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
 
-Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. Prefer forking that work deliberately rather than treating it as a one-command switch.
+**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
 
-For MongoDB setup and seeding, see [Database Documentation][ref-doc-database].
+**Migration typically requires:**
+- Updating `prisma/schema.prisma` provider
+- Adjusting ID strategy and native types when changing providers. Update the `DatabaseUtil` helpers when request ID validation changes.
+- Running `pnpm prisma migrate dev`
+- Running `pnpm migration:seed`
+
+**Business logic stays unchanged** - services, controllers, and authentication work as-is.
+
+For detailed migration guides, see [Database Documentation][ref-doc-database].
 
 ## Installation
 
@@ -345,7 +355,7 @@ If you find this project helpful and would like to support its development, plea
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
+[postgresql-shield]: https://img.shields.io/badge/PostgreSQL-white?style=for-the-badge&logo=postgresql&logoColor=4169E1
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
 [pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
@@ -374,7 +384,7 @@ If you find this project helpful and would like to support its development, plea
 
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
-[ref-mongodb]: https://docs.mongodb.com/
+[ref-postgresql]: https://www.postgresql.org/docs/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
 [ref-nodejs]: https://nodejs.org/

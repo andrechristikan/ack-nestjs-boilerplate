@@ -48,13 +48,10 @@ Before starting, install the following tools and packages. We recommend using th
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org) | v24.11.0+ |
-| [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
-| [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
-| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.25.0`) |
+| [PostgreSQL](https://www.postgresql.org/docs/) | v18.x |
+| [Redis](https://redis.io) | v8.8.0 |
+| [PNPM](http://pnpm.io) | v11.5.x |
 | [Git](https://git-scm.com) | v2.39.x |
-
-> [!IMPORTANT]
-> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#-installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
 
 ## Clone Repository
 
@@ -153,7 +150,7 @@ Docker provides the fastest and most reliable way to set up the ACK NestJS Boile
 ### What's Included
 
 The Docker setup provides:
-- **MongoDB replica set** - Configured for transactions
+- **PostgreSQL** - Primary relational database
 - **Redis** - Single instance serving both caching (`db:0`) and queues (`db:1`)
 - **JWKS server** - Hosts your JWT public keys automatically
 - **BullMQ Dashboard** - Queue monitoring interface
@@ -187,8 +184,8 @@ For Docker installation, ensure these specific values in your `.env` file:
 
 **Database Configuration:**
 ```bash
-# MongoDB (Docker containers)
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# PostgreSQL (Docker containers)
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 ```
 
 **Redis Configuration:**
@@ -242,11 +239,11 @@ The Docker setup includes a JWKS server that automatically hosts the generated k
 Now you're ready to start the complete Docker environment with all services.
 
 > [!NOTE]
-> By default, Docker installation only sets up dependencies (MongoDB, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `apis` profile.
+> By default, Docker installation only sets up dependencies (PostgreSQL, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `apis` profile.
 
 **Start only dependencies:**
 ```bash
-# Start MongoDB, Redis, JWKS, and BullMQ dashboard
+# Start PostgreSQL, Redis, JWKS, and BullMQ dashboard
 docker-compose up -d
 ```
 
@@ -257,7 +254,7 @@ docker-compose --profile apis up -d
 ```
 
 **What this command does:**
-- Starts MongoDB single-node replica set (port 27017)
+- Starts PostgreSQL (port 5432)
 - Launches Redis server for caching and queues (port 6379)
 - Starts JWKS server to host your JWT public keys (port 3011)
 - Runs BullMQ dashboard for queue monitoring (port 3010)
@@ -279,9 +276,9 @@ The Docker setup includes comprehensive health checks for all services, ensuring
 
 ### Troubleshooting
 
-- **Port conflicts**: Ensure ports 27017, 6379, 3010, 3011 are not in use by other applications
+- **Port conflicts**: Ensure ports 5432, 6379, 3010, 3011 are not in use by other applications
 - **Host resolution issues**: Add `127.0.0.1 host.docker.internal` to your `/etc/hosts` file if needed
-- **MongoDB replica set initialization**: Wait 1-2 minutes for complete setup
+- **PostgreSQL startup**: Wait for the database health check to pass before running migrations or seeds
 - **Permission issues**: Ensure Docker has proper permissions to create volumes and networks
 
 
@@ -311,7 +308,7 @@ pnpm db:generate
 
 ## Database Migration & Seeding
 
-**Migrate schema to MongoDB:**
+**Run PostgreSQL migrations:**
 ```bash
 pnpm db:migrate
 ```
@@ -356,7 +353,7 @@ For a complete guide and module details, see [Database Documentation][ref-doc-da
 
 ## Run Project
 
-Congratulations! You're now ready to start the project. Make sure all your services (MongoDB, Redis) are running before starting the application.
+Congratulations! You're now ready to start the project. Make sure all your services (PostgreSQL, Redis) are running before starting the application.
 
 ```bash
 # Start in development mode with hot reload
