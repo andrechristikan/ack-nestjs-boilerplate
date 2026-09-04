@@ -11,6 +11,17 @@ export const FeatureFlagDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+export const FeatureFlagDocParamsTargetUser: ApiParamOptions[] = [
+    ...FeatureFlagDocParamsId,
+    {
+        name: 'userId',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
+
 export const FeatureFlagDocQueryList: ApiQueryOptions[] = [
     {
         name: 'key',

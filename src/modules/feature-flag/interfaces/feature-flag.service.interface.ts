@@ -4,10 +4,9 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlag, Prisma } from '@generated/prisma-client';
-import {
-    IFeatureFlagUpdateMetadata,
-    IFeatureFlagUpdateStatus,
-} from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { FeatureFlagTargetUserRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.target-user.request';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 
 export interface IFeatureFlagService {
     checkRolloutPercentage(
@@ -32,10 +31,15 @@ export interface IFeatureFlagService {
     ): Promise<IResponsePagingReturn<FeatureFlag>>;
     updateStatusByAdmin(
         id: string,
-        data: IFeatureFlagUpdateStatus
+        data: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag>;
     updateMetadataByAdmin(
         id: string,
-        data: IFeatureFlagUpdateMetadata
+        data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<FeatureFlag>;
+    addTargetUserByAdmin(
+        id: string,
+        data: FeatureFlagTargetUserRequestDto
+    ): Promise<FeatureFlag>;
+    removeTargetUserByAdmin(id: string, userId: string): Promise<FeatureFlag>;
 }
