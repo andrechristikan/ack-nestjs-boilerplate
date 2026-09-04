@@ -9,7 +9,7 @@ import { FeatureFlagHttpModule } from '@modules/feature-flag/feature-flag.http.m
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
 import { ProjectAdminController } from '@modules/project/controllers/project.admin.controller';
-import { ProjectModule } from '@modules/project/project.module';
+import { ProjectHttpModule } from '@modules/project/project.http.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
 import { RoleHttpModule } from '@modules/role/role.http.module';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
@@ -54,7 +54,7 @@ import { Module } from '@nestjs/common';
         SessionHttpModule,
         TermPolicyHttpModule,
         WorkspaceModule,
-        ProjectModule,
+        ProjectHttpModule,
     ],
 })
 export class RouterHttpAdminModule {}

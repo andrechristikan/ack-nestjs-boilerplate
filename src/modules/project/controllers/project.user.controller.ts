@@ -54,7 +54,8 @@ import {
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
-import { ProjectService } from '@modules/project/services/project.service';
+import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
+import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -83,7 +84,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/project',
 })
 export class ProjectUserController {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(
+        private readonly projectHttpService: ProjectHttpService,
+        private readonly projectMemberHttpService: ProjectMemberHttpService
+    ) {}
 
     @ProjectUserListDoc()
     @ResponsePaging('project.list')
@@ -105,7 +109,7 @@ export class ProjectUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        return this.projectService.getListForMember(
+        return this.projectHttpService.getListForMember(
             workspace.id,
             workspaceMember,
             pagination
@@ -128,7 +132,7 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body() body: ProjectCreateRequestDto
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.createProject(
+        return this.projectHttpService.createProject(
             workspace.id,
             workspaceMember.userId,
             body
@@ -155,7 +159,7 @@ export class ProjectUserController {
     async get(
         @ProjectCurrent() project: Project
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.getProject(project);
+        return this.projectHttpService.getProject(project);
     }
 
     @ProjectUserUpdateDoc()
@@ -176,7 +180,7 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body() body: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.updateProject(
+        return this.projectHttpService.updateProject(
             project,
             workspaceMember.userId,
             body
@@ -201,10 +205,10 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body() body: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.updateProjectSlug(
+        return this.projectHttpService.updateProjectSlug(
             project,
             workspaceMember.userId,
-            body.slug
+            body
         );
     }
 
@@ -224,7 +228,7 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
     ): Promise<void> {
-        await this.projectService.softDeleteProject(
+        await this.projectHttpService.softDeleteProject(
             project,
             workspaceMember.userId
         );
@@ -254,7 +258,10 @@ export class ProjectUserController {
         pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
         @ProjectCurrent() project: Project
     ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
-        return this.projectService.getMembersList(project, pagination);
+        return this.projectMemberHttpService.getMembersList(
+            project,
+            pagination
+        );
     }
 
     @ProjectMemberUserAssignDoc()
@@ -275,7 +282,7 @@ export class ProjectUserController {
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
         @Body() body: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<ProjectMemberResponseDto>> {
-        return this.projectService.assignMember(
+        return this.projectMemberHttpService.assignMember(
             project,
             workspaceMember.userId,
             body
@@ -306,11 +313,11 @@ export class ProjectUserController {
         projectMemberId: string,
         @Body() body: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
-        await this.projectService.updateMemberRole(
+        await this.projectMemberHttpService.updateMemberRole(
             project,
             workspaceMember.userId,
             projectMemberId,
-            body.role
+            body
         );
     }
 
@@ -337,7 +344,7 @@ export class ProjectUserController {
         )
         projectMemberId: string
     ): Promise<void> {
-        await this.projectService.removeMember(
+        await this.projectMemberHttpService.removeMember(
             project,
             workspaceMember.userId,
             projectMemberId
@@ -362,6 +369,9 @@ export class ProjectUserController {
         @ProjectCurrent() project: Project,
         @ProjectMemberCurrent() projectMember: ProjectMember
     ): Promise<void> {
-        await this.projectService.leaveProject(project, projectMember);
+        await this.projectMemberHttpService.leaveProject(
+            project,
+            projectMember
+        );
     }
 }

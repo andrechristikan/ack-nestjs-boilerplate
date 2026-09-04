@@ -1,20 +1,15 @@
-import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
-import { ProjectRepository } from '@modules/project/repositories/project.repository';
+import { ProjectRepositoryModule } from '@modules/project/project.repository.module';
+import { ProjectUtilModule } from '@modules/project/project.util.module';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { ProjectService } from '@modules/project/services/project.service';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
-/** Project guard/service layer backing `@Project*Protected`; HTTP controllers are wired through the router modules. */
+/** Project domain services backing `@Project*Protected` guards and the project HTTP layer. */
 @Module({
-    imports: [WorkspaceModule],
-    exports: [ProjectService, ProjectRepository, ProjectMemberRepository],
-    providers: [
-        ProjectService,
-        ProjectRepository,
-        ProjectMemberRepository,
-        ProjectUtil,
-    ],
     controllers: [],
+    providers: [ProjectService, ProjectMemberService],
+    exports: [ProjectService, ProjectMemberService],
+    imports: [ProjectRepositoryModule, ProjectUtilModule, WorkspaceModule],
 })
 export class ProjectModule {}

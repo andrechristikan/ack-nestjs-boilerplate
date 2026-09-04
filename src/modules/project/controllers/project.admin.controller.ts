@@ -28,7 +28,7 @@ import {
     ProjectAdminListDoc,
 } from '@modules/project/docs/project.admin.doc';
 import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
-import { ProjectService } from '@modules/project/services/project.service';
+import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -41,7 +41,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/project',
 })
 export class ProjectAdminController {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(private readonly projectHttpService: ProjectHttpService) {}
 
     @ProjectAdminListDoc()
     @ResponsePaging('project.admin.list')
@@ -62,10 +62,13 @@ export class ProjectAdminController {
             availableOrderBy: ProjectDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+        @Query(
+            'workspaceId',
+            new RequestIsValidObjectIdPipe({ optional: true })
+        )
         workspaceId?: string
     ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
-        return this.projectService.getListForAdmin(pagination, workspaceId);
+        return this.projectHttpService.getListForAdmin(pagination, workspaceId);
     }
 
     @ProjectAdminGetDoc()
@@ -85,6 +88,6 @@ export class ProjectAdminController {
         @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         projectId: string
     ): Promise<IResponseReturn<ProjectResponseDto>> {
-        return this.projectService.getByIdForAdmin(projectId);
+        return this.projectHttpService.getByIdForAdmin(projectId);
     }
 }
