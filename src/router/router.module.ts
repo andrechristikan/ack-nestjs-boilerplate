@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { RouterModule as NestJsRouterModule } from '@nestjs/core';
-import { RoutesAdminModule } from '@routes/routes.admin.module';
-import { RoutesPublicModule } from '@routes/routes.public.module';
-import { RoutesSharedModule } from '@routes/routes.shared.module';
-import { RoutesSystemModule } from '@routes/routes.system.module';
-import { RoutesUserModule } from '@routes/routes.user.module';
+import { RouterHttpAdminModule } from '@router/http/router.http.admin.module';
+import { RouterHttpPublicModule } from '@router/http/router.http.public.module';
+import { RouterHttpSharedModule } from '@router/http/router.http.shared.module';
+import { RouterHttpSystemModule } from '@router/http/router.http.system.module';
+import { RouterHttpUserModule } from '@router/http/router.http.user.module';
 
 /**
  * Root router that mounts the access-level route modules under their path prefixes
@@ -15,31 +15,31 @@ import { RoutesUserModule } from '@routes/routes.user.module';
     exports: [],
     controllers: [],
     imports: [
-        RoutesPublicModule,
-        RoutesSystemModule,
-        RoutesUserModule,
-        RoutesAdminModule,
-        RoutesSharedModule,
+        RouterHttpPublicModule,
+        RouterHttpSystemModule,
+        RouterHttpUserModule,
+        RouterHttpAdminModule,
+        RouterHttpSharedModule,
         NestJsRouterModule.register([
             {
                 path: '/public',
-                module: RoutesPublicModule,
+                module: RouterHttpPublicModule,
             },
             {
                 path: '/system',
-                module: RoutesSystemModule,
+                module: RouterHttpSystemModule,
             },
             {
                 path: '/admin',
-                module: RoutesAdminModule,
+                module: RouterHttpAdminModule,
             },
             {
                 path: '/user',
-                module: RoutesUserModule,
+                module: RouterHttpUserModule,
             },
             {
                 path: '/shared',
-                module: RoutesSharedModule,
+                module: RouterHttpSharedModule,
             },
         ]),
     ],

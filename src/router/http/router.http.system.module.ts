@@ -21,4 +21,4 @@ import { Module } from '@nestjs/common';
     exports: [],
     imports: [UserModule, HealthModule],
 })
-export class RoutesSystemModule {}
+export class RouterHttpSystemModule {}

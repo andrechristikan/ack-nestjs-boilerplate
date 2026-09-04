@@ -45,4 +45,4 @@ import { Module } from '@nestjs/common';
         ProjectModule,
     ],
 })
-export class RoutesAdminModule {}
+export class RouterHttpAdminModule {}

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CommonModule } from '@common/common.module';
-import { RouterModule } from '@router';
+import { RouterModule } from '@router/router.module';
 import { APP_FILTER } from '@nestjs/core';
 import { AppBaseExceptionFilter } from '@app/filters/app.base-exception.filter';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';

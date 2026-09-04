@@ -34,4 +34,4 @@ import { Module } from '@nestjs/common';
         WorkspaceModule,
     ],
 })
-export class RoutesSharedModule {}
+export class RouterHttpSharedModule {}
