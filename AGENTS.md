@@ -10,7 +10,7 @@ Use this file as the default contract, then read the relevant canonical rule fil
 
 - NestJS 11, TypeScript strict, Node `>= 24.11`
 - PNPM only
-- Prisma 6 with MongoDB 8 replica set
+- Prisma 6 with PostgreSQL 18
 - Redis for cache and BullMQ
 - Pino logging, Sentry instrumentation, Swagger, nest-commander migration CLI
 
@@ -100,7 +100,7 @@ Use these `.claude` files as the source of truth:
 - `.claude/rules/architecture.md`: repository pattern, shared-kit rules, path aliases
 - `.claude/rules/testing.md`: TDD, coverage scope, spec placement
 - `.claude/rules/git.md`: git behavior, commit-message policy, diff base
-- `.claude/rules/database.md`: Prisma and MongoDB rules
+- `.claude/rules/database.md`: Prisma and PostgreSQL rules
 - `.claude/rules/authoring.md`: language, comments, where a sentence lives
 - `.claude/rules/*.md`: task-specific constraints for HTTP, validation, exceptions, queues, naming, security, pagination, notifications, migrations, and feature flags
 - `.claude/skills/*.md`: workflow-level procedures when the task matches one of those jobs

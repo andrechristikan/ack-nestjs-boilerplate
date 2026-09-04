@@ -32,7 +32,7 @@ This documentation explains the database architecture and features in ACK NestJS
 - [Relational and JSON Data Shapes](#relational-and-json-data-shapes)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
-	- [UserTermPolicy](#usertermpolicy)
+	- [User Term Policy Acceptance](#user-term-policy-acceptance)
 	- [UserPhoto](#userphoto)
 	- [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
@@ -116,7 +116,7 @@ Run the command:
 **Available Modules:**
 
 - `apiKey`: Inserts default and system API keys for authentication and service access.
-- `country`: Inserts country data (name, codes, phone code, continent, timezone).
+- `country`: Inserts country data (name, codes, phone codes, continent, timezone).
 - `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
 - `role`: Inserts user roles (superadmin, admin, user).
 - `policy`: Inserts the policy rows attached to each seeded role.
@@ -365,32 +365,39 @@ Resolved once per request into the request store (`RequestLogStoreKey`, as part 
 
 ---
 
-### UserTermPolicyStatus
+### User Term Policy Acceptance
 
-Represents the user's acceptance state for each term policy type.
+The current acceptance state is stored directly on `User`, with one boolean column for each term policy type. Publishing a new policy version resets the corresponding column for every active, non-deleted user.
 
 ```prisma
-model UserTermPolicyStatus {
-  id               String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId           String             @db.Uuid
-  type             EnumTermPolicyType
-  latestPolicyId   String?            @db.Uuid
-  isAccepted       Boolean            @default(false)
-  acceptedPolicyId String?            @db.Uuid
-  acceptedAt       DateTime?
+model User {
+  termsOfServiceAccepted Boolean @default(false)
+  privacyAccepted        Boolean @default(false)
+  cookiesAccepted        Boolean @default(false)
+  marketingAccepted      Boolean @default(false)
+
+  acceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+}
+
+model TermPolicyUserAcceptance {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId       String   @db.Uuid
+  termPolicyId String   @db.Uuid
+  acceptedAt   DateTime @default(now())
+
+  user       User       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
+  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  @@unique(fields: [userId, termPolicyId])
+  @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
+  @@map("term_policy_user_acceptances")
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `type` | `EnumTermPolicyType` | Term policy category |
-| `latestPolicyId` | `String? @db.Uuid` | Latest published policy for the type |
-| `isAccepted` | `Boolean` | Current acceptance flag |
-| `acceptedPolicyId` | `String? @db.Uuid` | Policy version the user accepted |
-| `acceptedAt` | `DateTime?` | Acceptance timestamp |
-
-**Used in:**
-- `User.termPolicyStatuses`
+The boolean columns are used for access checks. `TermPolicyUserAcceptance` records which policy version the user accepted and when, preserving acceptance history through `User.acceptances`.
 
 ---
 
@@ -507,7 +514,7 @@ The same interface file exports `IDatabaseTransactionClient`, the `tx` type for 
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
-- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
+- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, `$queryRaw`, and `$executeRaw` all work on `client`.
 - `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes or must branch on an intermediate result. Both run on `client`, so audit stamping still fires inside them. In the callback form use the `tx` client for every operation; a call back to `databaseService.client` escapes the transaction.
 - The PostgreSQL health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
 

@@ -134,7 +134,7 @@ async list(
     availableOrderBy: ProjectDefaultAvailableOrderBy,
   })
   pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-  @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+  @Query('workspaceId', new RequestIsValidUuidPipe({ optional: true }))
   workspaceId?: string
 ) {
   return this.projectHttpService.getListForAdmin(pagination, workspaceId);

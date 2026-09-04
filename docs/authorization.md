@@ -543,7 +543,7 @@ The `TermPolicyAcceptanceProtected` decorator follows this validation sequence:
 
 1. **User Validation**: Verifies that the stored user (`RequestStoreService.get(UserStoreKey)`) exists
 2. **Default Policy Check**: If no required policies specified, sets defaults to `termsOfService` and `privacy`
-3. **Term Policy Lookup**: Retrieves user's term policy acceptance status from the stored user's `termPolicy`
+3. **Term Policy Lookup**: Reads the required acceptance columns from the stored user (`termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, or `marketingAccepted`)
 4. **Acceptance Validation**: Checks if all required term policies are accepted
 5. **Access Decision**: Grants access only if all required policies are accepted
 
@@ -561,7 +561,7 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Set default policies:<br/>termsOfService and privacy]
     CheckRequired -->|Yes| UseSpecified[Use specified policies]
     
-    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    SetDefault --> GetTermPolicy[Read required User<br/>acceptance columns]
     UseSpecified --> GetTermPolicy
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}

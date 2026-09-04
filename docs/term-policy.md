@@ -78,7 +78,7 @@ Term policies follow a two-stage status:
 
 Both paths resolve to the same key. Publishing changes the bucket, not the key.
 
-**Important**: When a new version is published, `termPolicy[type]` is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
+**Important**: When a new version is published, the matching `User` acceptance column (`termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, or `marketingAccepted`) is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
 
 ## Flow
 
@@ -115,7 +115,7 @@ sequenceDiagram
     API->>Database: Reject an already-published policy, then a policy with no content
     API->>S3 Public: Move all content files
     par
-        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to public keys,<br/>active users termPolicy[type] = false
+        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to public keys,<br/>matching active users acceptance column = false
     and
         API->>S3 Private: Delete the private content directory
     end
@@ -148,7 +148,7 @@ sequenceDiagram
     User->>API: Accept policy (type)
     API->>Database: Check latest published exists (404 otherwise)
     API->>Database: Check that version not already accepted (409 otherwise)
-    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true,<br/>log activity (IP, userAgent)
+    API->>Database: One transaction: create acceptance record,<br/>set matching User acceptance column = true,<br/>log activity (IP, userAgent)
     API->>User: Queue userAcceptTermPolicy notification
     API->>User: Acceptance recorded
     
@@ -156,7 +156,7 @@ sequenceDiagram
     
     User->>API: Request protected endpoint
     API->>Guard: Check term policy requirement
-    Guard->>Database: Verify user.termPolicy[type]=true
+    Guard->>Database: Verify required User acceptance columns are true
     alt Policy Accepted
         Guard->>API: Allow access
         API->>User: Return response
@@ -271,7 +271,7 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files live in the public bucket while the private copy is deleted.
+**Critical**: Publishing sets the matching `User` acceptance column to `false` for every active, non-deleted user, requiring re-acceptance. Existing `TermPolicyUserAcceptance` records remain as acceptance history. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files live in the public bucket while the private copy is deleted.
 
 ### List Policies
 
@@ -367,7 +367,7 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
     CheckRequired -->|Yes| UseSpecified[Use Specified Policies]
     
-    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    SetDefault --> GetTermPolicy[Read required User<br/>acceptance columns]
     UseSpecified --> GetTermPolicy
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}

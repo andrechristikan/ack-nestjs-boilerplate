@@ -1,6 +1,6 @@
-# Database — Prisma + MongoDB
+# Database — Prisma + PostgreSQL
 
-Setup, seeding, and composite types are in `docs/database.md`. This file is the code rule set.
+Setup, seeding, and relational or JSON data shapes are in `docs/database.md`. This file is the code rule set.
 
 ## Access
 
@@ -17,7 +17,7 @@ Setup, seeding, and composite types are in `docs/database.md`. This file is the 
 
   Two obligations when you take this route. Filter to rows that are still live (`OR: <Model>ActiveFilter`) — an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their real deletion time. And stamp `updatedBy` by hand, since nothing else will.
 - `DatabaseModule` is global through `CommonModule` (imported once at the app root; `DatabaseModule.forRoot()` is composed inside it). A feature module does not import it.
-- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the Mongo `ObjectId` helpers. Use it rather than hand-rolling id validation.
+- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) validates and creates UUIDs and converts values to Prisma JSON input shapes. Use it rather than hand-rolling those operations.
 
 ## Queries
 
@@ -38,7 +38,7 @@ This is the one exception to "a repository never throws a typed exception". It i
 
 ## Transactions
 
-MongoDB transactions require the replica set — that is why `docker-compose` runs one. Two forms:
+PostgreSQL transactions use two forms:
 
 - **Array form** for a simple sequential batch with no branching: `databaseService.client.$transaction([opA, opB])`.
 - **Callback form** when the work has conditional logic, needs a read between writes, or must branch on an intermediate result: `databaseService.client.$transaction(async tx => { … })`.

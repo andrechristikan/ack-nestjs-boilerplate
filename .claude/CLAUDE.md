@@ -22,7 +22,7 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
   (`zod` 4 + `zod-openapi`), validated through the global `RequestSchemaValidationPipe` on the way
   in and `ResponseInterceptor` on the way out; i18n through `nestjs-i18n` reading `src/languages/`
 - Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
-- Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
+- Ports: API 3000 · PostgreSQL 5432 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
 ## Layout
 
@@ -82,8 +82,8 @@ the most specific catch runs first.
 - `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
 - `pnpm test` — `TZ=UTC jest --config test/jest.json`; `pnpm test:cov` adds coverage
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
-- `pnpm db:studio` · `pnpm vault:pull`
-- `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
+- `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:studio` · `pnpm vault:pull`
+- `docker-compose up -d` — PostgreSQL, Redis, BullBoard, JWKS server, Vault
 - `pre-commit` runs lint-staged → typecheck → deadcode → spell → the test suite.
   `commit-msg` runs commitlint. Both are BLOCKING.
 
