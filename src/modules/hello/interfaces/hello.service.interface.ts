@@ -1,6 +1,9 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
+import {
+    IHelloApp,
+    IHelloMessage,
+} from '@modules/hello/interfaces/hello.interface';
 
 export interface IHelloService {
-    hello(): Promise<IResponseReturn<HelloResponseDto>>;
+    getApp(): IHelloApp;
+    getMessage(): IHelloMessage;
 }

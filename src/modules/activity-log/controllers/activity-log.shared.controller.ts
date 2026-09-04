@@ -10,7 +10,7 @@ import {
     ActivityLogSharedListSelfDoc,
 } from '@modules/activity-log/docs/activity-log.shared.doc';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -33,7 +33,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/activity-log',
 })
 export class ActivityLogSharedController {
-    constructor(private readonly activityLogService: ActivityLogService) {}
+    constructor(
+        private readonly activityLogHttpService: ActivityLogHttpService
+    ) {}
 
     @ActivityLogSharedListSelfDoc()
     @ResponsePaging('activityLog.listSelf')
@@ -50,7 +52,7 @@ export class ActivityLogSharedController {
         pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursorByUser(userId, pagination);
+        return this.activityLogHttpService.getListCursorByUser(userId, pagination);
     }
 
     @ActivityLogSharedListSelfByWorkspaceDoc()
@@ -72,7 +74,7 @@ export class ActivityLogSharedController {
         @AuthJwtPayload('userId') userId: string,
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursorByWorkspace(
+        return this.activityLogHttpService.getListCursorByWorkspace(
             workspace.id,
             userId,
             pagination

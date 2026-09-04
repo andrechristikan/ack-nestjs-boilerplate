@@ -1,15 +1,16 @@
-import { Global, Module } from '@nestjs/common';
+import { ApiKeyRepositoryModule } from '@modules/api-key/api-key.repository.module';
+import { ApiKeyUtilModule } from '@modules/api-key/api-key.util.module';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
-import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { Global, Module } from '@nestjs/common';
 
 /**
- * Global module exposing API key services, repository, and utilities app-wide.
+ * Global so the x-api-key guards reach the API key domain service app-wide.
  */
 @Global()
 @Module({
-    providers: [ApiKeyService, ApiKeyRepository, ApiKeyUtil],
-    exports: [ApiKeyService, ApiKeyRepository, ApiKeyUtil],
-    imports: [],
+    controllers: [],
+    providers: [ApiKeyService],
+    exports: [ApiKeyService],
+    imports: [ApiKeyRepositoryModule, ApiKeyUtilModule],
 })
 export class ApiKeyModule {}

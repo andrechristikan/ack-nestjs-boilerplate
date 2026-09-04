@@ -1,5 +1,5 @@
 import { AwsModule } from '@common/aws/aws.module';
-import { DeviceModule } from '@modules/device/device.module';
+import { DeviceRepositoryModule } from '@modules/device/device.repository.module';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
 import { NotificationProcessorService } from '@modules/notification/services/notification.processor.service';
@@ -14,7 +14,7 @@ import { Global, Module } from '@nestjs/common';
 
 @Global()
 @Module({
-    imports: [UserModule, DeviceModule, AwsModule],
+    imports: [UserModule, DeviceRepositoryModule, AwsModule],
     exports: [
         NotificationService,
         NotificationTemplateService,

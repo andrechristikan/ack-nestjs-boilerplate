@@ -10,7 +10,7 @@ import {
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 import { FeatureFlagSystemListDoc } from '@modules/feature-flag/docs/feature-flag.system.doc';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -20,7 +20,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/feature-flag',
 })
 export class FeatureFlagSystemController {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+    constructor(
+        private readonly featureFlagHttpService: FeatureFlagHttpService
+    ) {}
 
     @FeatureFlagSystemListDoc()
     @ResponsePaging('featureFlag.list')
@@ -33,6 +35,6 @@ export class FeatureFlagSystemController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.getListCursor(pagination);
+        return this.featureFlagHttpService.getListCursor(pagination);
     }
 }

@@ -2,15 +2,8 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { FeatureFlag, Prisma } from '@generated/prisma-client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
@@ -18,48 +11,22 @@ import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/featur
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
 import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
 import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
-import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import {
+    IFeatureFlagMetadata,
+    IFeatureFlagUpdateMetadata,
+    IFeatureFlagUpdateStatus,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagService } from '@modules/feature-flag/interfaces/feature-flag.service.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class FeatureFlagService implements IFeatureFlagService {
-    private readonly anonymousHeaderName: string;
-    private readonly anonymousIdMaxLength: number;
-    private readonly anonymousIdPattern: RegExp;
-
     constructor(
         private readonly featureFlagRepository: FeatureFlagRepository,
-        private readonly featureFlagUtil: FeatureFlagUtil,
-        private readonly configService: ConfigService
-    ) {
-        this.anonymousHeaderName = this.configService.get<string>(
-            'featureFlag.anonymous.headerName'
-        )!;
-        this.anonymousIdMaxLength = this.configService.get<number>(
-            'featureFlag.anonymous.idMaxLength'
-        )!;
-        this.anonymousIdPattern = this.configService.get<RegExp>(
-            'featureFlag.anonymous.idPattern'
-        )!;
-    }
-
-    private resolveAnonymousId(request: IRequestApp): string | null {
-        const anonymousId = request.headers[this.anonymousHeaderName];
-        if (
-            typeof anonymousId !== 'string' ||
-            anonymousId.length === 0 ||
-            anonymousId.length > this.anonymousIdMaxLength ||
-            !this.anonymousIdPattern.test(anonymousId)
-        ) {
-            return null;
-        }
-
-        return anonymousId;
-    }
+        private readonly featureFlagUtil: FeatureFlagUtil
+    ) {}
 
     private assertRollout(
         rolloutPercent: number,
@@ -76,9 +43,10 @@ export class FeatureFlagService implements IFeatureFlagService {
         }
     }
 
-    async validateFeatureFlagGuard(
-        request: IRequestApp,
-        keyPath: string
+    async validateFeatureFlag(
+        keyPath: string,
+        userId: string | null,
+        anonymousId: string | null
     ): Promise<void> {
         const keys = keyPath.split('.');
         if (keys.some(segment => segment.length === 0)) {
@@ -95,13 +63,12 @@ export class FeatureFlagService implements IFeatureFlagService {
             throw new FeatureFlagServiceUnavailableException();
         }
 
-        const { user } = request;
-        if (user) {
-            if (featureFlag.targetUserIds.includes(user.userId)) {
+        if (userId) {
+            if (featureFlag.targetUserIds.includes(userId)) {
                 return;
             }
 
-            this.assertRollout(featureFlag.rolloutPercent, key, user.userId);
+            this.assertRollout(featureFlag.rolloutPercent, key, userId);
 
             return;
         }
@@ -110,7 +77,6 @@ export class FeatureFlagService implements IFeatureFlagService {
             return;
         }
 
-        const anonymousId = this.resolveAnonymousId(request);
         if (!anonymousId) {
             throw new FeatureFlagServiceUnavailableException();
         }
@@ -141,40 +107,22 @@ export class FeatureFlagService implements IFeatureFlagService {
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        const { data, ...others } =
-            await this.featureFlagRepository.findWithPaginationOffsetByAdmin(
-                pagination
-            );
-
-        const featureFlags: FeatureFlagResponseDto[] =
-            this.featureFlagUtil.mapList(data);
-        return {
-            data: featureFlags,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+        return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
+            pagination
+        );
     }
 
     async getListCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        const { data, ...others } =
-            await this.featureFlagRepository.findWithPaginationCursor(
-                pagination
-            );
-
-        const featureFlags: FeatureFlagResponseDto[] =
-            this.featureFlagUtil.mapList(data);
-        return {
-            data: featureFlags,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+        return this.featureFlagRepository.findWithPaginationCursor(pagination);
     }
 
     async updateStatusByAdmin(
         id: string,
-        data: FeatureFlagUpdateStatusRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
+        data: IFeatureFlagUpdateStatus
+    ): Promise<FeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
@@ -185,18 +133,13 @@ export class FeatureFlagService implements IFeatureFlagService {
             this.featureFlagUtil.deleteCacheByKey(featureFlag.key),
         ]);
 
-        const mapped: FeatureFlagResponseDto =
-            this.featureFlagUtil.mapOne(updated);
-
-        return {
-            data: mapped,
-        };
+        return updated;
     }
 
     async updateMetadataByAdmin(
         id: string,
-        data: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
+        data: IFeatureFlagUpdateMetadata
+    ): Promise<FeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
@@ -215,11 +158,6 @@ export class FeatureFlagService implements IFeatureFlagService {
             this.featureFlagUtil.deleteCacheByKey(featureFlag.key),
         ]);
 
-        const mapped: FeatureFlagResponseDto =
-            this.featureFlagUtil.mapOne(updated);
-
-        return {
-            data: mapped,
-        };
+        return updated;
     }
 }

@@ -20,7 +20,7 @@ import {
     SessionSharedRevokeDoc,
 } from '@modules/session/docs/session.shared.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionService } from '@modules/session/services/session.service';
+import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
@@ -32,7 +32,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/session',
 })
 export class SessionSharedController {
-    constructor(private readonly sessionService: SessionService) {}
+    constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionSharedListDoc()
     @ResponsePaging('session.list')
@@ -49,7 +49,7 @@ export class SessionSharedController {
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListCursor(userId, pagination);
+        return this.sessionHttpService.getListCursor(userId, pagination);
     }
 
     @SessionSharedRevokeDoc()
@@ -65,6 +65,6 @@ export class SessionSharedController {
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        await this.sessionService.revoke(userId, sessionId);
+        await this.sessionHttpService.revoke(userId, sessionId);
     }
 }

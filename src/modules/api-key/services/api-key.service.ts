@@ -1,37 +1,31 @@
-import { Injectable } from '@nestjs/common';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { IApiKeyService } from '@modules/api-key/interfaces/api-key.service.interface';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
-import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
-import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
-import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
-import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
-import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
-import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
-import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
-import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
-import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
-import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
-import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
+import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
+import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
+import { ApiKeyXApiKeyPredefinedNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-predefined-not-found.exception';
+import { ApiKeyXApiKeyRequiredException } from '@modules/api-key/exceptions/api-key.x-api-key-required.exception';
+import {
+    IApiKeyCreate,
+    IApiKeyWithSecret,
+} from '@modules/api-key/interfaces/api-key.interface';
+import { IApiKeyService } from '@modules/api-key/interfaces/api-key.service.interface';
+import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
+import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -42,32 +36,45 @@ export class ApiKeyService implements IApiKeyService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
+    private validateApiKey(
+        apiKey?: ApiKey | null,
+        includeActive: boolean = false
+    ): void {
+        if (!apiKey) {
+            throw new ApiKeyNotFoundException();
+        } else if (includeActive && !this.apiKeyUtil.isActive(apiKey)) {
+            throw new ApiKeyInactiveException();
+        }
+
+        return;
+    }
+
+    private storeActivityLogMetadata(apiKey: ApiKey): void {
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.apiKeyUtil.mapActivityLogMetadata(apiKey)
+        );
+
+        return;
+    }
+
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
-        const { data, ...others } =
-            await this.apiKeyRepository.findWithPagination(
-                pagination,
-                isActive,
-                type
-            );
-        const apiKeys: ApiKeyResponseDto[] = this.apiKeyUtil.mapList(data);
-
-        return {
-            data: apiKeys,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<ApiKey>> {
+        return this.apiKeyRepository.findWithPagination(
+            pagination,
+            isActive,
+            type
+        );
     }
 
     async createByAdmin({
         startAt,
         endAt,
         ...others
-    }: ApiKeyCreateRequestDto): Promise<
-        IResponseReturn<ApiKeyCreateResponseDto>
-    > {
+    }: IApiKeyCreate): Promise<IApiKeyWithSecret> {
         const { key, secret, hash } = this.apiKeyUtil.generateCredential();
         const created = await this.apiKeyRepository.create(
             {
@@ -89,20 +96,12 @@ export class ApiKeyService implements IApiKeyService {
             hash
         );
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(created)
-        );
+        this.storeActivityLogMetadata(created);
 
-        return {
-            data: this.apiKeyUtil.mapCreate(created, secret),
-        };
+        return { apiKey: created, secret };
     }
 
-    async updateStatusByAdmin(
-        id: string,
-        data: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    async updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey> {
         const today = this.helperDateService.create();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
@@ -122,24 +121,16 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const [updated] = await Promise.all([
-            this.apiKeyRepository.updateStatus(id, data),
+            this.apiKeyRepository.updateStatus(id, { isActive }),
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(updated)
-        );
+        this.storeActivityLogMetadata(updated);
 
-        return {
-            data: this.apiKeyUtil.mapOne(updated),
-        };
+        return updated;
     }
 
-    async updateByAdmin(
-        id: string,
-        { name }: ApiKeyUpdateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    async updateByAdmin(id: string, name?: string): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -150,20 +141,16 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(updated)
-        );
+        this.storeActivityLogMetadata(updated);
 
-        return {
-            data: this.apiKeyUtil.mapOne(updated),
-        };
+        return updated;
     }
 
     async updateDatesByAdmin(
         id: string,
-        { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+        startAt: Date,
+        endAt: Date
+    ): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -182,19 +169,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(updated)
-        );
+        this.storeActivityLogMetadata(updated);
 
-        return {
-            data: this.apiKeyUtil.mapOne(updated),
-        };
+        return updated;
     }
 
-    async resetByAdmin(
-        id: string
-    ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
+    async resetByAdmin(id: string): Promise<IApiKeyWithSecret> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
@@ -205,19 +185,12 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(updated)
-        );
+        this.storeActivityLogMetadata(updated);
 
-        return {
-            data: this.apiKeyUtil.mapCreate(updated, secret),
-        };
+        return { apiKey: updated, secret };
     }
 
-    async deleteByAdmin(
-        id: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    async deleteByAdmin(id: string): Promise<ApiKey> {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
@@ -228,27 +201,9 @@ export class ApiKeyService implements IApiKeyService {
             this.apiKeyUtil.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(deleted)
-        );
+        this.storeActivityLogMetadata(deleted);
 
-        return {
-            data: this.apiKeyUtil.mapOne(deleted),
-        };
-    }
-
-    private validateApiKey(
-        apiKey?: ApiKey | null,
-        includeActive: boolean = false
-    ): void {
-        if (!apiKey) {
-            throw new ApiKeyNotFoundException();
-        } else if (includeActive && !this.apiKeyUtil.isActive(apiKey)) {
-            throw new ApiKeyInactiveException();
-        }
-
-        return;
+        return deleted;
     }
 
     async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
@@ -265,15 +220,13 @@ export class ApiKeyService implements IApiKeyService {
         return apiKey;
     }
 
-    async validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey> {
-        const xApiKeyHeader = this.apiKeyUtil
-            .extractKeyFromRequest(request)
-            .trim();
-        if (!xApiKeyHeader) {
+    async validateXApiKey(xApiKeyHeader: string | null): Promise<ApiKey> {
+        const xApiKeyTrimmed = xApiKeyHeader?.trim();
+        if (!xApiKeyTrimmed) {
             throw new ApiKeyXApiKeyRequiredException();
         }
 
-        const xApiKey: string[] = xApiKeyHeader.split(':');
+        const xApiKey: string[] = xApiKeyTrimmed.split(':');
         if (
             xApiKey.length !== 2 ||
             !xApiKey[0]?.trim() ||

@@ -1,5 +1,7 @@
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -10,6 +12,7 @@ import { Reflector } from '@nestjs/core';
 export class FeatureFlagGuard implements CanActivate {
     constructor(
         private readonly featureFlagService: FeatureFlagService,
+        private readonly featureFlagUtil: FeatureFlagUtil,
         private readonly reflector: Reflector
     ) {}
 
@@ -19,10 +22,13 @@ export class FeatureFlagGuard implements CanActivate {
             context.getHandler()
         );
 
-        const request = context.switchToHttp().getRequest();
-        await this.featureFlagService.validateFeatureFlagGuard(
-            request,
-            featureFlagKeyPath
+        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const anonymousId = this.featureFlagUtil.resolveAnonymousId(request);
+
+        await this.featureFlagService.validateFeatureFlag(
+            featureFlagKeyPath,
+            request.user?.userId ?? null,
+            anonymousId
         );
 
         return true;

@@ -35,7 +35,7 @@ import {
     SessionAdminRevokeDoc,
 } from '@modules/session/docs/session.admin.doc';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionService } from '@modules/session/services/session.service';
+import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
@@ -52,7 +52,7 @@ import {
     path: '/user/:userId/session',
 })
 export class SessionAdminController {
-    constructor(private readonly sessionService: SessionService) {}
+    constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionAdminListDoc()
     @ResponsePaging('session.list')
@@ -83,7 +83,7 @@ export class SessionAdminController {
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByAdmin(
+        return this.sessionHttpService.getListOffsetByAdmin(
             userId,
             pagination,
             isRevoked
@@ -117,6 +117,10 @@ export class SessionAdminController {
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionService.revokeByAdmin(userId, sessionId, revokedBy);
+        return this.sessionHttpService.revokeByAdmin(
+            userId,
+            sessionId,
+            revokedBy
+        );
     }
 }

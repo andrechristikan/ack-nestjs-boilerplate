@@ -1,8 +1,9 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
+import {
+    IHelloApp,
+    IHelloMessage,
+} from '@modules/hello/interfaces/hello.interface';
 import { IHelloService } from '@modules/hello/interfaces/hello.service.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -16,10 +17,7 @@ export class HelloService implements IHelloService {
     private readonly messageAvailableLanguage: EnumMessageLanguage[];
     private readonly messageDefaultLanguage: EnumMessageLanguage;
 
-    constructor(
-        private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.appName = this.configService.get<string>('app.name')!;
         this.appEnv = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.appTimezone = this.configService.get<string>('app.timezone')!;
@@ -31,28 +29,18 @@ export class HelloService implements IHelloService {
             this.configService.get<EnumMessageLanguage>('message.language')!;
     }
 
-    async hello(): Promise<IResponseReturn<HelloResponseDto>> {
-        const date = this.helperDateService.create();
-        const dateIso = this.helperDateService.formatToIso(date);
-        const dateTimestamp = this.helperDateService.getTimestamp(date);
-
+    getApp(): IHelloApp {
         return {
-            data: {
-                date: {
-                    date,
-                    iso: dateIso,
-                    timestamp: dateTimestamp,
-                },
-                app: {
-                    name: this.appName,
-                    env: this.appEnv,
-                    timezone: this.appTimezone,
-                },
-                message: {
-                    availableLanguage: this.messageAvailableLanguage,
-                    defaultLanguage: this.messageDefaultLanguage,
-                },
-            },
+            name: this.appName,
+            env: this.appEnv,
+            timezone: this.appTimezone,
+        };
+    }
+
+    getMessage(): IHelloMessage {
+        return {
+            availableLanguage: this.messageAvailableLanguage,
+            defaultLanguage: this.messageDefaultLanguage,
         };
     }
 }

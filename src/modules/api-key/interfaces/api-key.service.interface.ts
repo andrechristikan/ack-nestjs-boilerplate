@@ -3,48 +3,31 @@ import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
-import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import {
+    IApiKeyCreate,
+    IApiKeyWithSecret,
+} from '@modules/api-key/interfaces/api-key.interface';
 
 export interface IApiKeyService {
     getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>>;
-    createByAdmin({
-        startAt,
-        endAt,
-        ...others
-    }: ApiKeyCreateRequestDto): Promise<
-        IResponseReturn<ApiKeyCreateResponseDto>
-    >;
-    updateStatusByAdmin(
-        id: string,
-        data: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>>;
-    updateByAdmin(
-        id: string,
-        { name }: ApiKeyUpdateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>>;
+    ): Promise<IResponsePagingReturn<ApiKey>>;
+    createByAdmin(data: IApiKeyCreate): Promise<IApiKeyWithSecret>;
+    updateStatusByAdmin(id: string, isActive: boolean): Promise<ApiKey>;
+    updateByAdmin(id: string, name?: string): Promise<ApiKey>;
     updateDatesByAdmin(
         id: string,
-        { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>>;
-    resetByAdmin(id: string): Promise<IResponseReturn<ApiKeyCreateResponseDto>>;
-    deleteByAdmin(id: string): Promise<IResponseReturn<ApiKeyResponseDto>>;
+        startAt: Date,
+        endAt: Date
+    ): Promise<ApiKey>;
+    resetByAdmin(id: string): Promise<IApiKeyWithSecret>;
+    deleteByAdmin(id: string): Promise<ApiKey>;
     findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null>;
-    validateXApiKeyGuard(request: IRequestApp): Promise<ApiKey>;
+    validateXApiKey(xApiKeyHeader: string | null): Promise<ApiKey>;
     validateXApiKeyTypeGuard(
         apiKey: ApiKey | null,
         apiKeyTypes: EnumApiKeyType[]

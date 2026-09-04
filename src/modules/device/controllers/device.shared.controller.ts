@@ -22,7 +22,7 @@ import {
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
-import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -43,7 +43,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/device',
 })
 export class DeviceSharedController {
-    constructor(private readonly deviceService: DeviceService) {}
+    constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
     @DeviceSharedListDoc()
     @ResponsePaging('device.list')
@@ -63,7 +63,7 @@ export class DeviceSharedController {
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('sessionId') sessionId: string
     ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        return this.deviceService.getListCursor(userId, sessionId, pagination);
+        return this.deviceHttpService.getListCursor(userId, sessionId, pagination);
     }
 
     @DeviceSharedRefreshDoc()
@@ -80,7 +80,7 @@ export class DeviceSharedController {
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
         @Body() body: DeviceRefreshRequestDto
     ): Promise<void> {
-        await this.deviceService.refresh(userId, deviceOwnershipId, body);
+        await this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
     }
 
     @DeviceSharedRemoveDoc()
@@ -100,6 +100,6 @@ export class DeviceSharedController {
         )
         deviceOwnershipId: string
     ): Promise<void> {
-        await this.deviceService.remove(userId, deviceOwnershipId);
+        await this.deviceHttpService.remove(userId, deviceOwnershipId);
     }
 }

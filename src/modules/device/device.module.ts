@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
+import { DeviceRepositoryModule } from '@modules/device/device.repository.module';
+import { DeviceUtilModule } from '@modules/device/device.util.module';
 import { DeviceService } from '@modules/device/services/device.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
+import { Module } from '@nestjs/common';
 
-/** Device ownership tracking and notification-token lifecycle; exports providers for consumers, registers no routes of its own. */
+/** Device ownership tracking and notification-token lifecycle. */
 @Module({
-    imports: [],
-    exports: [DeviceService, DeviceOwnershipRepository],
-    providers: [DeviceService, DeviceUtil, DeviceOwnershipRepository],
     controllers: [],
+    providers: [DeviceService],
+    exports: [DeviceService],
+    imports: [DeviceRepositoryModule, DeviceUtilModule],
 })
 export class DeviceModule {}

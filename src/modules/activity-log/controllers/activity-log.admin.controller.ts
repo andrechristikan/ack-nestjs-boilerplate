@@ -11,7 +11,7 @@ import {
     ActivityLogAdminListByWorkspaceDoc,
 } from '@modules/activity-log/docs/activity-log.admin.doc';
 import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
@@ -32,7 +32,9 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client';
     path: '/activity-log',
 })
 export class ActivityLogAdminController {
-    constructor(private readonly activityLogService: ActivityLogService) {}
+    constructor(
+        private readonly activityLogHttpService: ActivityLogHttpService
+    ) {}
 
     @ActivityLogAdminListByUserDoc()
     @ResponsePaging('activityLog.listByUser')
@@ -61,7 +63,7 @@ export class ActivityLogAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByUser(userId, pagination);
+        return this.activityLogHttpService.getListOffsetByUser(userId, pagination);
     }
 
     @ActivityLogAdminListByWorkspaceDoc()
@@ -93,7 +95,7 @@ export class ActivityLogAdminController {
         @Query('userId', new RequestIsValidObjectIdPipe({ optional: true }))
         userId?: string
     ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListOffsetByWorkspace(
+        return this.activityLogHttpService.getListOffsetByWorkspace(
             workspaceId,
             userId ?? null,
             pagination

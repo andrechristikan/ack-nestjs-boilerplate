@@ -1,14 +1,19 @@
+import { ActivityLogHttpModule } from '@modules/activity-log/activity-log.http.module';
 import { ActivityLogAdminController } from '@modules/activity-log/controllers/activity-log.admin.controller';
+import { ApiKeyHttpModule } from '@modules/api-key/api-key.http.module';
 import { ApiKeyAdminController } from '@modules/api-key/controllers/api-key.admin.controller';
 import { DeviceAdminController } from '@modules/device/controllers/device.admin.controller';
-import { DeviceModule } from '@modules/device/device.module';
+import { DeviceHttpModule } from '@modules/device/device.http.module';
 import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/feature-flag.admin.controller';
+import { FeatureFlagHttpModule } from '@modules/feature-flag/feature-flag.http.module';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
 import { ProjectAdminController } from '@modules/project/controllers/project.admin.controller';
 import { ProjectModule } from '@modules/project/project.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
+import { RoleHttpModule } from '@modules/role/role.http.module';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
+import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
@@ -38,9 +43,14 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
+        ActivityLogHttpModule,
+        ApiKeyHttpModule,
         UserModule,
-        PasswordHistoryModule,
-        DeviceModule,
+        PasswordHistoryHttpModule,
+        DeviceHttpModule,
+        FeatureFlagHttpModule,
+        RoleHttpModule,
+        SessionHttpModule,
         WorkspaceModule,
         ProjectModule,
     ],

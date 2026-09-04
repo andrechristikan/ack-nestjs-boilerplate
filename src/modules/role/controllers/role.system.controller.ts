@@ -5,7 +5,7 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RoleSystemGetAbilitiesDoc } from '@modules/role/docs/role.system.doc';
 import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
-import { RoleService } from '@modules/role/services/role.service';
+import { RoleHttpService } from '@modules/role/services/role.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -15,7 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/role',
 })
 export class RoleSystemController {
-    constructor(private readonly roleService: RoleService) {}
+    constructor(private readonly roleHttpService: RoleHttpService) {}
 
     @RoleSystemGetAbilitiesDoc()
     @Response('role.getAbilities')
@@ -25,6 +25,6 @@ export class RoleSystemController {
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
     ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
-        return this.roleService.getAbilities(roleId);
+        return this.roleHttpService.getAbilities(roleId);
     }
 }

@@ -25,7 +25,7 @@ import {
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
@@ -44,7 +44,9 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client';
     path: '/feature-flag',
 })
 export class FeatureFlagAdminController {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+    constructor(
+        private readonly featureFlagHttpService: FeatureFlagHttpService
+    ) {}
 
     @FeatureFlagAdminListDoc()
     @ResponsePaging('featureFlag.list')
@@ -66,7 +68,7 @@ export class FeatureFlagAdminController {
         })
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.getListByAdmin(pagination);
+        return this.featureFlagHttpService.getListByAdmin(pagination);
     }
 
     @FeatureFlagAdminUpdateStatusDoc()
@@ -87,7 +89,10 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateStatusByAdmin(featureFlagId, body);
+        return this.featureFlagHttpService.updateStatusByAdmin(
+            featureFlagId,
+            body
+        );
     }
 
     @FeatureFlagAdminUpdateMetadataDoc()
@@ -108,7 +113,7 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body() body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlagResponseDto>> {
-        return this.featureFlagService.updateMetadataByAdmin(
+        return this.featureFlagHttpService.updateMetadataByAdmin(
             featureFlagId,
             body
         );

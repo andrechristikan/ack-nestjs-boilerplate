@@ -34,7 +34,7 @@ import {
 } from '@modules/device/docs/device.admin.doc';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
-import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
@@ -52,7 +52,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/:userId/device',
 })
 export class DeviceAdminController {
-    constructor(private readonly deviceService: DeviceService) {}
+    constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
     @DeviceAdminListDoc()
     @ResponsePaging('device.list')
@@ -85,7 +85,7 @@ export class DeviceAdminController {
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        return this.deviceService.getListOffsetByAdmin(
+        return this.deviceHttpService.getListOffsetByAdmin(
             userId,
             pagination,
             isRevoked
@@ -123,7 +123,7 @@ export class DeviceAdminController {
         )
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceService.removeByAdmin(
+        return this.deviceHttpService.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy

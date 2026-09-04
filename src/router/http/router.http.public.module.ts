@@ -1,7 +1,7 @@
 import { CountryPublicController } from '@modules/country/controllers/country.public.controller';
-import { CountryModule } from '@modules/country/country.module';
+import { CountryHttpModule } from '@modules/country/country.http.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
-import { HelloModule } from '@modules/hello/hello.module';
+import { HelloHttpModule } from '@modules/hello/hello.http.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
@@ -22,6 +22,6 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [CountryModule, HelloModule, UserModule, WorkspaceModule],
+    imports: [CountryHttpModule, HelloHttpModule, UserModule, WorkspaceModule],
 })
 export class RouterHttpPublicModule {}

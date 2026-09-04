@@ -18,7 +18,7 @@ import {
     EnumPolicySubject,
 } from '@modules/policy/enums/policy.enum';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleService } from '@modules/role/services/role.service';
+import { RoleHttpService } from '@modules/role/services/role.http.service';
 import {
     RoleAdminCreateDoc,
     RoleAdminDeleteDoc,
@@ -64,7 +64,7 @@ import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.respo
     path: '/role',
 })
 export class RoleAdminController {
-    constructor(private readonly roleService: RoleService) {}
+    constructor(private readonly roleHttpService: RoleHttpService) {}
 
     @RoleAdminListDoc()
     @Response('role.list')
@@ -88,7 +88,7 @@ export class RoleAdminController {
         @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        return this.roleService.getListOffsetByAdmin(pagination, type);
+        return this.roleHttpService.getListOffsetByAdmin(pagination, type);
     }
 
     @RoleAdminGetDoc()
@@ -108,7 +108,7 @@ export class RoleAdminController {
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.getOne(roleId);
+        return this.roleHttpService.getOne(roleId);
     }
 
     @RoleAdminCreateDoc()
@@ -129,7 +129,7 @@ export class RoleAdminController {
         @Body()
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.createByAdmin(body);
+        return this.roleHttpService.createByAdmin(body);
     }
 
     @RoleAdminUpdateDoc()
@@ -152,7 +152,7 @@ export class RoleAdminController {
         @Body()
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleService.updateByAdmin(roleId, body);
+        return this.roleHttpService.updateByAdmin(roleId, body);
     }
 
     @RoleAdminDeleteDoc()
@@ -173,6 +173,6 @@ export class RoleAdminController {
         @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         roleId: string
     ): Promise<IResponseReturn<void>> {
-        return this.roleService.deleteByAdmin(roleId);
+        return this.roleHttpService.deleteByAdmin(roleId);
     }
 }

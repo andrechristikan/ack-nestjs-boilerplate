@@ -2,20 +2,18 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { FeatureFlag, Prisma } from '@generated/prisma-client';
 import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+    IFeatureFlagUpdateMetadata,
+    IFeatureFlagUpdateStatus,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 
 export interface IFeatureFlagService {
-    validateFeatureFlagGuard(
-        request: IRequestApp,
-        keyPath: string
+    validateFeatureFlag(
+        keyPath: string,
+        userId: string | null,
+        anonymousId: string | null
     ): Promise<void>;
     validateFeatureFlagMetadata(
         key: string,
@@ -23,16 +21,16 @@ export interface IFeatureFlagService {
     ): Promise<void>;
     getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
+    ): Promise<IResponsePagingReturn<FeatureFlag>>;
     getListCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlagResponseDto>>;
+    ): Promise<IResponsePagingReturn<FeatureFlag>>;
     updateStatusByAdmin(
         id: string,
-        data: FeatureFlagUpdateStatusRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>>;
+        data: IFeatureFlagUpdateStatus
+    ): Promise<FeatureFlag>;
     updateMetadataByAdmin(
         id: string,
-        data: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<IResponseReturn<FeatureFlagResponseDto>>;
+        data: IFeatureFlagUpdateMetadata
+    ): Promise<FeatureFlag>;
 }

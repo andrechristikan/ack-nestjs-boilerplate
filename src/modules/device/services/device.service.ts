@@ -4,24 +4,24 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import {
+    IDeviceOwnership,
+    IDeviceOwnershipWithSession,
+    IDeviceRefresh,
+} from '@modules/device/interfaces/device.interface';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -40,20 +40,12 @@ export class DeviceService implements IDeviceService {
             Prisma.DeviceOwnershipWhereInput
         >,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        const { data, ...others } =
-            await this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
-                userId,
-                pagination,
-                isRevoked
-            );
-
-        const deviceOwnerships: DeviceOwnershipResponseDto[] =
-            this.deviceUtil.mapList(data);
-        return {
-            data: deviceOwnerships,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
+        return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
+            userId,
+            pagination,
+            isRevoked
+        );
     }
 
     async getListCursor(
@@ -62,27 +54,18 @@ export class DeviceService implements IDeviceService {
         pagination: IPaginationQueryCursorParams<
             Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        const { data, ...others } =
-            await this.deviceOwnershipRepository.findActiveWithPaginationCursor(
-                userId,
-                sessionId,
-                pagination
-            );
-
-        const deviceOwnerships: DeviceOwnershipResponseDto[] =
-            this.deviceUtil.mapList(data);
-
-        return {
-            data: deviceOwnerships,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>> {
+        return this.deviceOwnershipRepository.findActiveWithPaginationCursor(
+            userId,
+            sessionId,
+            pagination
+        );
     }
 
     async refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto
+        data: IDeviceRefresh
     ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
@@ -95,16 +78,15 @@ export class DeviceService implements IDeviceService {
 
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+        const notificationProvider =
+            this.deviceUtil.resolveNotificationProvider(data.platform ?? null);
 
         try {
             await this.deviceOwnershipRepository.refresh(
                 userId,
                 existDeviceOwnership.id,
-                {
-                    name,
-                    notificationToken,
-                    platform,
-                },
+                data,
+                notificationProvider,
                 requestLog
             );
 
@@ -153,7 +135,7 @@ export class DeviceService implements IDeviceService {
         userId: string,
         deviceOwnershipId: string,
         removedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const existDeviceOwnership =
             await this.deviceOwnershipRepository.existActive(
                 userId,
@@ -188,7 +170,7 @@ export class DeviceService implements IDeviceService {
                 this.deviceUtil.mapActivityLogMetadata(removed)
             );
 
-            return {};
+            return;
         } catch (err: unknown) {
             throw new AppUnknownException(err);
         }

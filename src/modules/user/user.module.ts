@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { UserService } from '@modules/user/services/user.service';
 import { AwsModule } from '@common/aws/aws.module';
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { PasswordHistoryRepositoryModule } from '@modules/password-history/password-history.repository.module';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { CountryModule } from '@modules/country/country.module';
+import { CountryRepositoryModule } from '@modules/country/country.repository.module';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 
 /**
@@ -12,7 +12,12 @@ import { WorkspaceModule } from '@modules/workspace/workspace.module';
  * (`routes.shared` / `routes.admin`), not registered here.
  */
 @Module({
-    imports: [PasswordHistoryModule, AwsModule, CountryModule, WorkspaceModule],
+    imports: [
+        PasswordHistoryRepositoryModule,
+        AwsModule,
+        CountryRepositoryModule,
+        WorkspaceModule,
+    ],
     exports: [UserService, UserRepository, UserUtil],
     providers: [UserService, UserRepository, UserUtil],
     controllers: [],

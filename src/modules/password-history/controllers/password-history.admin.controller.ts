@@ -10,7 +10,7 @@ import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decora
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryAdminListDoc } from '@modules/password-history/docs/password-history.admin.doc';
 import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
@@ -30,7 +30,7 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client';
 })
 export class PasswordHistoryAdminController {
     constructor(
-        private readonly passwordHistoryService: PasswordHistoryService
+        private readonly passwordHistoryHttpService: PasswordHistoryHttpService
     ) {}
 
     @PasswordHistoryAdminListDoc()
@@ -60,7 +60,7 @@ export class PasswordHistoryAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
-        return this.passwordHistoryService.getListOffsetByAdmin(
+        return this.passwordHistoryHttpService.getListOffsetByAdmin(
             userId,
             pagination
         );

@@ -15,14 +15,13 @@ import {
     DeviceOwnership,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
     Prisma,
 } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import {
     IDeviceOwnership,
     IDeviceOwnershipWithSession,
+    IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
@@ -257,23 +256,11 @@ export class DeviceOwnershipRepository {
     async refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto,
+        { name, notificationToken, platform }: IDeviceRefresh,
+        notificationProvider: EnumDeviceNotificationProvider | null,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
         const today = this.helperDateService.create();
-
-        let notificationProvider: EnumDeviceNotificationProvider | null = null;
-        switch (platform) {
-            case EnumDevicePlatform.android:
-                notificationProvider = EnumDeviceNotificationProvider.fcm;
-                break;
-            case EnumDevicePlatform.ios:
-                notificationProvider = EnumDeviceNotificationProvider.apns;
-                break;
-            default:
-                notificationProvider = null;
-                break;
-        }
 
         await this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },

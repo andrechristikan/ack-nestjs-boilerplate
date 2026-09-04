@@ -1,4 +1,9 @@
-import { Device, DeviceOwnership, Session } from '@generated/prisma-client';
+import {
+    Device,
+    DeviceOwnership,
+    EnumDevicePlatform,
+    Session,
+} from '@generated/prisma-client';
 import { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceOwnership extends DeviceOwnership {
@@ -12,4 +17,10 @@ export interface IDeviceOwnership extends DeviceOwnership {
 
 export interface IDeviceOwnershipWithSession extends IDeviceOwnership {
     sessions: Session[];
+}
+
+export interface IDeviceRefresh {
+    name?: string;
+    platform?: EnumDevicePlatform;
+    notificationToken?: string;
 }

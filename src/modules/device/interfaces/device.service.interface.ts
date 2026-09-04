@@ -3,13 +3,13 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import {
+    IDeviceOwnership,
+    IDeviceOwnershipWithSession,
+    IDeviceRefresh,
+} from '@modules/device/interfaces/device.interface';
 
 export interface IDeviceService {
     getListOffsetByAdmin(
@@ -18,23 +18,23 @@ export interface IDeviceService {
             Prisma.DeviceOwnershipWhereInput
         >,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+    ): Promise<IResponsePagingReturn<IDeviceOwnership>>;
     getListCursor(
         userId: string,
         sessionId: string,
         pagination: IPaginationQueryCursorParams<
             Prisma.DeviceOwnershipWhereInput
         >
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>>;
     refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto
+        data: IDeviceRefresh
     ): Promise<void>;
     remove(userId: string, deviceOwnershipId: string): Promise<void>;
     removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
         removedBy: string
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
 }

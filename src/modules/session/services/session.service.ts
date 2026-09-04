@@ -3,22 +3,19 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable } from '@nestjs/common';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class SessionService implements ISessionService {
@@ -32,37 +29,22 @@ export class SessionService implements ISessionService {
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        const { data, ...others } =
-            await this.sessionRepository.findWithPaginationOffsetByAdmin(
-                userId,
-                pagination,
-                isRevoked
-            );
-
-        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
-        return {
-            data: sessions,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.sessionRepository.findWithPaginationOffsetByAdmin(
+            userId,
+            pagination,
+            isRevoked
+        );
     }
 
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        const { data, ...others } =
-            await this.sessionRepository.findActiveWithPaginationCursor(
-                userId,
-                pagination
-            );
-
-        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
-
-        return {
-            data: sessions,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.sessionRepository.findActiveWithPaginationCursor(
+            userId,
+            pagination
+        );
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
@@ -89,7 +71,7 @@ export class SessionService implements ISessionService {
         userId: string,
         sessionId: string,
         revokedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
@@ -115,6 +97,6 @@ export class SessionService implements ISessionService {
             this.sessionUtil.mapActivityLogMetadata(removed)
         );
 
-        return {};
+        return;
     }
 }

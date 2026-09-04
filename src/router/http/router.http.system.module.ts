@@ -1,7 +1,9 @@
 import { FeatureFlagSystemController } from '@modules/feature-flag/controllers/feature-flag.system.controller';
+import { FeatureFlagHttpModule } from '@modules/feature-flag/feature-flag.http.module';
 import { HealthSystemController } from '@modules/health/controllers/health.system.controller';
-import { HealthModule } from '@modules/health/health.module';
+import { HealthHttpModule } from '@modules/health/health.http.module';
 import { RoleSystemController } from '@modules/role/controllers/role.system.controller';
+import { RoleHttpModule } from '@modules/role/role.http.module';
 import { UserSystemController } from '@modules/user/controllers/user.system.controller';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
@@ -19,6 +21,11 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, HealthModule],
+    imports: [
+        UserModule,
+        HealthHttpModule,
+        FeatureFlagHttpModule,
+        RoleHttpModule,
+    ],
 })
 export class RouterHttpSystemModule {}

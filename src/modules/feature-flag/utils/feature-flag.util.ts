@@ -1,5 +1,6 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import {
@@ -17,6 +18,9 @@ export class FeatureFlagUtil {
     private readonly logger = new Logger(FeatureFlagUtil.name);
     private readonly keyPattern: string;
     private readonly cacheTtlInMs: number;
+    private readonly anonymousHeaderName: string;
+    private readonly anonymousIdMaxLength: number;
+    private readonly anonymousIdPattern: RegExp;
 
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
@@ -31,6 +35,29 @@ export class FeatureFlagUtil {
         this.cacheTtlInMs = this.configService.get<number>(
             'featureFlag.cacheTtlInMs'
         )!;
+        this.anonymousHeaderName = this.configService.get<string>(
+            'featureFlag.anonymous.headerName'
+        )!;
+        this.anonymousIdMaxLength = this.configService.get<number>(
+            'featureFlag.anonymous.idMaxLength'
+        )!;
+        this.anonymousIdPattern = this.configService.get<RegExp>(
+            'featureFlag.anonymous.idPattern'
+        )!;
+    }
+
+    resolveAnonymousId(request: IRequestApp): string | null {
+        const anonymousId = request.headers[this.anonymousHeaderName];
+        if (
+            typeof anonymousId !== 'string' ||
+            anonymousId.length === 0 ||
+            anonymousId.length > this.anonymousIdMaxLength ||
+            !this.anonymousIdPattern.test(anonymousId)
+        ) {
+            return null;
+        }
+
+        return anonymousId;
     }
 
     async getCacheByKey(key: string): Promise<FeatureFlag | null> {
