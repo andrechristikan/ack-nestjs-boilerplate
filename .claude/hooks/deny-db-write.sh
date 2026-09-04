@@ -34,6 +34,11 @@ if printf '%s' "$cmd" | grep -qE 'dist/migration\.js'; then
     deny "This runs the nest-commander seeder against MongoDB. The owner runs it. Write the seed class and hand it back."
 fi
 
+# Prisma Studio — a live browser session against MongoDB, and it never exits on its own
+if printf '%s' "$cmd" | grep -qE '(prisma[[:space:]]+studio|(^|[;&|(])[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*pnpm([[:space:]]+-[^[:space:]]+)*([[:space:]]+run)?([[:space:]]+-[^[:space:]]+)*[[:space:]]+db:studio)([[:space:]]|$)'; then
+    deny "db:studio opens a live Prisma Studio session against MongoDB and blocks until it is killed. The owner runs it. Read data through the application instead, and hand back what you need looked at."
+fi
+
 # direct database shells
 if printf '%s' "$cmd" | grep -qE '(^|[;&|(]|\$\()[[:space:]]*(mongosh|mongo|redis-cli)([[:space:]]|$)'; then
     deny "A direct database shell is the owner's. Read the data through the application or through Prisma in application code."

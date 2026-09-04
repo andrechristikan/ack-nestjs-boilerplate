@@ -190,13 +190,14 @@ installs them once:
   (`prisma format`), `prisma validate` — are yours. Anything that opens a connection is the
   owner's and is DENIED by `.claude/hooks/deny-db-write.sh`: `db:migrate` (`prisma db push`),
   `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`, `migration:seed`,
-  `migration:remove`, `migration:fresh`, `node dist/migration.js`, and the `mongosh` /
-  `redis-cli` shells. Edit the schema, then hand back the two commands the owner must run.
+  `migration:remove`, `migration:fresh`, `node dist/migration.js`, `db:studio`
+  (`prisma studio`), and the `mongosh` / `redis-cli` shells. Edit the schema, then hand
+  back the two commands the owner must run.
 - **The permission posture is "inward is silent, outward asks".** Everything that stays in
   this repository — pnpm, the local toolchain, shell reads and writes, `git add`, `git commit`
   — is `allow` in `.claude/settings.json` and raises no prompt. What leaves the directory or
   the machine is `ask`: `git push`, `git pull`, the writing `gh` subcommands, `pnpm publish`,
-  `pnpm dlx`, `db:studio`, `vault:pull`, `ssh`, `scp`, `rsync`, a writing `curl`, `rm -rf`,
+  `pnpm dlx`, `vault:pull`, `ssh`, `scp`, `rsync`, a writing `curl`, `rm -rf`,
   `git reset --hard`, `git clean`, a docker removal, and edits to `~/.claude/**`. An `ask`
   rule prompts even under `bypassPermissions`, so the list is deliberately short — the prompt
   is the permission system doing its job, never a formality to route around by widening
