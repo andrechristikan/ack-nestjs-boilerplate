@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -31,7 +31,7 @@ export class TermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil
     ) {}
@@ -167,7 +167,7 @@ export class TermPolicyRepository {
         type: EnumTermPolicyType,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<ITermPolicyUserAcceptance> {
-        const acceptedAt = this.helperService.dateCreate();
+        const acceptedAt = this.helperDateService.create();
         const [userAcceptance] = await this.databaseService.client.$transaction(
             [
                 this.databaseService.client.termPolicyUserAcceptance.create({
@@ -329,7 +329,7 @@ export class TermPolicyRepository {
                 },
                 data: {
                     status: EnumTermPolicyStatus.published,
-                    publishedAt: this.helperService.dateCreate(),
+                    publishedAt: this.helperDateService.create(),
                     contents,
                     updatedBy,
                 },

@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -16,7 +16,7 @@ export class PasswordHistoryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -68,7 +68,7 @@ export class PasswordHistoryRepository {
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.passwordHistory.findMany({
             where: {
                 userId,

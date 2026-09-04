@@ -1,5 +1,7 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { RequestContextService } from '@common/request/services/request.context.service';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
@@ -43,7 +45,9 @@ export class NotificationProcessorService implements INotificationProcessorServi
         private readonly notificationRepository: NotificationRepository,
         private readonly userRepository: UserRepository,
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
-        private readonly helperService: HelperService,
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
+        private readonly requestContextService: RequestContextService,
         private readonly configService: ConfigService,
         private readonly notificationPushUtil: NotificationPushUtil,
         private readonly databaseUtil: DatabaseUtil,
@@ -323,7 +327,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 notificationId,
                 user.id,
                 user.username,
-                this.helperService.dateCreateFromIso(data!.passwordExpiredAt),
+                this.helperDateService.createFromIso(data!.passwordExpiredAt),
                 proceedBy
             ),
             this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
@@ -571,10 +575,10 @@ export class NotificationProcessorService implements INotificationProcessorServi
             username: user.username,
             notificationId,
         };
-        const device = this.helperService.resolveDevice(
+        const device = this.requestContextService.resolveDevice(
             data!.requestLog.userAgent
         );
-        const city = this.helperService.resolveCity(
+        const city = this.requestContextService.resolveCity(
             data!.requestLog.geoLocation ?? undefined
         );
 
@@ -587,7 +591,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 data!.loginWith,
                 device,
                 city,
-                this.helperService.dateCreateFromIso(data!.loginAt)
+                this.helperDateService.createFromIso(data!.loginAt)
             ),
             this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data!),
         ];
@@ -641,7 +645,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
             };
         }
 
-        const chunks = this.helperService.arrayChunk(
+        const chunks = this.helperArrayService.chunk(
             filteredUsers,
             this.emailBatchSize
         );
@@ -722,7 +726,8 @@ export class NotificationProcessorService implements INotificationProcessorServi
 
         if (!user) {
             return {
-                message: 'User not found, skipping workspace invite notification',
+                message:
+                    'User not found, skipping workspace invite notification',
             };
         }
 
@@ -744,10 +749,7 @@ export class NotificationProcessorService implements INotificationProcessorServi
                 data!.inviterName,
                 proceedBy
             ),
-            this.notificationEmailUtil.sendWorkspaceInvite(
-                emailPayload,
-                data!
-            ),
+            this.notificationEmailUtil.sendWorkspaceInvite(emailPayload, data!),
         ];
 
         if (devices.length > 0) {

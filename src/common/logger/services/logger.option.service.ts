@@ -2,7 +2,9 @@ import { HttpException, Injectable, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { RequestContextService } from '@common/request/services/request.context.service';
 import {
     LoggerAutoContext,
     LoggerExcludedRoutes,
@@ -39,7 +41,9 @@ export class LoggerOptionService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
+        private readonly requestContextService: RequestContextService
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.name = this.configService.get<string>('app.name')!;
@@ -162,8 +166,8 @@ export class LoggerOptionService {
     ) => Record<string, unknown> {
         return (obj: Record<string, unknown>) => {
             const pid = process.pid;
-            const hostname = this.helperService.getHostname();
-            const today = this.helperService.dateCreate();
+            const hostname = this.requestContextService.getHostname();
+            const today = this.helperDateService.create();
 
             const {
                 time: _time,
@@ -421,7 +425,7 @@ export class LoggerOptionService {
         return this.autoLogger === true
             ? {
                   ignore: (req: IRequestApp) =>
-                      this.helperService.checkUrlMatchesPatterns(
+                      this.helperStringService.checkUrlMatchesPatterns(
                           req.url,
                           LoggerExcludedRoutes
                       ),

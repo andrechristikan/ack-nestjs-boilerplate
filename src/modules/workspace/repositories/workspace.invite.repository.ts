@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationCursorReturn,
     IPaginationIn,
@@ -41,14 +41,14 @@ export interface IWorkspaceInviteCreateData {
 export class WorkspaceInviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
     ) {}
 
     /** Flips truly-expired `pending` invites to `expired`; returns the count updated. */
     async expireStalePending(): Promise<number> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         const { count } =
             await this.databaseService.client.workspaceInvite.updateMany({
@@ -70,7 +70,7 @@ export class WorkspaceInviteRepository {
     async findPendingByHashedToken(
         hashedToken: string
     ): Promise<WorkspaceInvite | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.workspaceInvite.findFirst({
             where: {
@@ -255,7 +255,7 @@ export class WorkspaceInviteRepository {
         role: EnumWorkspaceMemberRole,
         requestLog: IRequestLog
     ): Promise<WorkspaceMember> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.$transaction(async tx => {
             const member = await tx.workspaceMember.create({

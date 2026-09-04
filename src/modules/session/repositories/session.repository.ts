@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -23,7 +23,7 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil
@@ -96,7 +96,7 @@ export class SessionRepository {
                 userId,
                 isRevoked: false,
                 expiredAt: {
-                    gte: this.helperService.dateCreate(),
+                    gte: this.helperDateService.create(),
                 },
             },
             select: {
@@ -118,7 +118,7 @@ export class SessionRepository {
                 userId,
                 isRevoked: false,
                 expiredAt: {
-                    gte: this.helperService.dateCreate(),
+                    gte: this.helperDateService.create(),
                 },
                 deviceOwnershipId,
             },
@@ -132,7 +132,7 @@ export class SessionRepository {
         userId: string,
         sessionId: string
     ): Promise<Session | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.session.findFirst({
             where: {
@@ -158,7 +158,7 @@ export class SessionRepository {
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
+                revokedAt: this.helperDateService.create(),
                 revokedBy: {
                     connect: {
                         id: userId,
@@ -203,7 +203,7 @@ export class SessionRepository {
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
+                revokedAt: this.helperDateService.create(),
                 revokedBy: {
                     connect: {
                         id: revokedBy,

@@ -1,6 +1,7 @@
 import { Injectable, Type, mixin } from '@nestjs/common';
 import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationDate,
     IPaginationEqual,
@@ -28,7 +29,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
     @Injectable()
     class MixinPaginationFilterInEnumPipe implements PipeTransform {
         constructor(
-            private readonly helperService: HelperService,
+            private readonly helperArrayService: HelperArrayService,
             private readonly requestStoreService: RequestStoreService
         ) {}
 
@@ -45,7 +46,7 @@ export function PaginationQueryFilterInEnumPipe<T>(
                 return;
             }
 
-            const finalValue = this.helperService.arrayUnique(
+            const finalValue = this.helperArrayService.unique(
                 value
                     .split(',')
                     .map(v => v.trim())
@@ -102,7 +103,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
     @Injectable()
     class MixinPaginationFilterNinEnumPipe implements PipeTransform {
         constructor(
-            private readonly helperService: HelperService,
+            private readonly helperArrayService: HelperArrayService,
             private readonly requestStoreService: RequestStoreService
         ) {}
 
@@ -119,7 +120,7 @@ export function PaginationQueryFilterNinEnumPipe<T>(
                 return;
             }
 
-            const finalValue = this.helperService.arrayUnique(
+            const finalValue = this.helperArrayService.unique(
                 value
                     .split(',')
                     .map(v => v.trim())
@@ -319,7 +320,7 @@ export function PaginationQueryFilterDatePipe(
     @Injectable()
     class MixinPaginationFilterDatePipe implements PipeTransform {
         constructor(
-            private readonly helperService: HelperService,
+            private readonly helperDateService: HelperDateService,
             private readonly requestStoreService: RequestStoreService
         ) {}
 
@@ -331,11 +332,11 @@ export function PaginationQueryFilterDatePipe(
                 return;
             }
 
-            if (!this.helperService.dateCheckIso(value)) {
+            if (!this.helperDateService.checkIso(value)) {
                 throw new PaginationFilterInvalidValueException(metadata.data!);
             }
 
-            const finalValue = this.helperService.dateCreateFromIso(value, {
+            const finalValue = this.helperDateService.createFromIso(value, {
                 dayOf: options?.dayOf,
             });
 

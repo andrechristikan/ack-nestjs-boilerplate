@@ -7,7 +7,7 @@ import {
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
 import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
@@ -27,7 +27,7 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperArrayService: HelperArrayService
     ) {
         this.projectId = this.configService.get<string | null>(
             'firebase.projectId'
@@ -146,7 +146,7 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
             );
         }
 
-        const chunkedTokens = this.helperService.arrayChunk(tokens, chunkSize);
+        const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);
 
         const promises = chunkedTokens.map(chunk =>
             this.messaging!.sendEachForMulticast({

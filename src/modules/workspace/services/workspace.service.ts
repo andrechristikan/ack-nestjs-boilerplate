@@ -11,7 +11,10 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
@@ -92,7 +95,10 @@ export class WorkspaceService implements IWorkspaceService {
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
         private readonly workspaceUtil: WorkspaceUtil,
-        private readonly helperService: HelperService,
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
         private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService,
         private readonly notificationUtil: NotificationUtil,
@@ -173,13 +179,13 @@ export class WorkspaceService implements IWorkspaceService {
     private createInviteTokenData(
         expiryDurationInDays?: number
     ): IWorkspaceInviteTokenData {
-        const token = this.helperService.randomString(this.inviteTokenLength);
-        const hashedToken = this.helperService.sha256Hash(token);
-        const reference = `${this.inviteReferencePrefix}-${this.helperService.randomString(
+        const token = this.helperStringService.random(this.inviteTokenLength);
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const reference = `${this.inviteReferencePrefix}-${this.helperStringService.random(
             this.inviteReferenceRandomLength
         )}`;
-        const expiredAt = this.helperService.dateForward(
-            this.helperService.dateCreate(),
+        const expiredAt = this.helperDateService.forward(
+            this.helperDateService.create(),
             Duration.fromObject({
                 days: expiryDurationInDays ?? this.inviteExpiredInDays,
             })
@@ -211,14 +217,14 @@ export class WorkspaceService implements IWorkspaceService {
             inviterName,
             workspaceMemberRole: invite.workspaceRole,
             reference: invite.reference,
-            expiredAt: this.helperService.dateFormatToIso(invite.expiredAt),
+            expiredAt: this.helperDateService.formatToIso(invite.expiredAt),
         };
 
         if (existingUser) {
             // Encrypted here rather than through UserUtil: WorkspaceModule
             // cannot import UserModule.
             const encryptedInviteAcceptLink =
-                this.helperService.aes256EncryptSimple(
+                this.helperEncryptionService.aes256EncryptSimple(
                     tokenData.link,
                     existingUser.id
                 );
@@ -233,7 +239,7 @@ export class WorkspaceService implements IWorkspaceService {
         }
 
         const encryptedInviteAcceptLink =
-            this.helperService.aes256EncryptSimple(
+            this.helperEncryptionService.aes256EncryptSimple(
                 tokenData.link,
                 invite.reference
             );
@@ -266,7 +272,7 @@ export class WorkspaceService implements IWorkspaceService {
                 // Encrypted once per reviewer: the key is the reviewer's own
                 // userId, so one shared ciphertext decrypts for nobody else.
                 const encryptedJoinRequestReviewLink =
-                    this.helperService.aes256EncryptSimple(
+                    this.helperEncryptionService.aes256EncryptSimple(
                         link,
                         reviewer.userId
                     );
@@ -364,7 +370,7 @@ export class WorkspaceService implements IWorkspaceService {
     }
 
     async validateInviteToken(token: string): Promise<WorkspaceInvite> {
-        const hashedToken = this.helperService.sha256Hash(token);
+        const hashedToken = this.helperHashService.sha256Hash(token);
         const invite =
             await this.workspaceInviteRepository.findPendingByHashedToken(
                 hashedToken
@@ -404,9 +410,7 @@ export class WorkspaceService implements IWorkspaceService {
 
         const [ownedCount, slugTaken] = await Promise.all([
             this.workspaceMemberRepository.countOwnedActiveByUser(userId),
-            dto.slug
-                ? this.workspaceRepository.existsBySlug(dto.slug)
-                : false,
+            dto.slug ? this.workspaceRepository.existsBySlug(dto.slug) : false,
         ]);
         if (ownedCount >= this.maxWorkspacesPerUser) {
             throw new WorkspaceCapReachedException();
@@ -570,9 +574,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getMembersList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceMemberWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
         const { data, ...others } =
@@ -677,9 +679,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getMembersListForAdmin(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
         const [workspace, paginated] = await Promise.all([
             this.workspaceRepository.findByIdForAdmin(workspaceId),
@@ -702,9 +702,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getInvitesList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceInviteWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceInviteResponseDto>> {
         await this.assertInvitationAllowed();
@@ -971,9 +969,7 @@ export class WorkspaceService implements IWorkspaceService {
 
     async getJoinRequestsList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceJoinRequestWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceJoinRequestResponseDto>> {
         await this.assertJoinRequestAllowed();

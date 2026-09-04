@@ -1,4 +1,4 @@
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { Injectable } from '@nestjs/common';
 import {
     ValidationArguments,
@@ -9,12 +9,12 @@ import {
 } from 'class-validator';
 
 /**
- * Validates password strength (length, uppercase, lowercase, digit) via `HelperService`.
+ * Validates password strength (length, uppercase, lowercase, digit) via `HelperStringService`.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsPasswordConstraint implements ValidatorConstraintInterface {
-    constructor(protected readonly helperService: HelperService) {}
+    constructor(protected readonly helperStringService: HelperStringService) {}
 
     validate(
         value: string,
@@ -27,7 +27,7 @@ export class IsPasswordConstraint implements ValidatorConstraintInterface {
         const minLength = validationArguments?.constraints?.[0];
         const options = minLength ? { length: minLength } : undefined;
 
-        return this.helperService.checkPasswordStrength(value, options);
+        return this.helperStringService.checkPasswordStrength(value, options);
     }
 
     defaultMessage(validationArguments?: ValidationArguments): string {

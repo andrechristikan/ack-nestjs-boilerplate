@@ -3,7 +3,9 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationEqual,
@@ -83,7 +85,9 @@ export class UserRepository {
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
         private readonly configService: ConfigService
     ) {
         this.personalWorkspaceNamePattern = this.configService.get<string>(
@@ -264,7 +268,7 @@ export class UserRepository {
     async findOneActiveByForgotPasswordToken(
         token: string
     ): Promise<(ForgotPassword & { user: IUser }) | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.forgotPassword.findFirst({
             where: {
@@ -309,7 +313,7 @@ export class UserRepository {
     async findOneActiveByVerificationEmailToken(
         token: string
     ): Promise<Verification | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.verification.findFirst({
             where: {
@@ -438,7 +442,7 @@ export class UserRepository {
                             roleType === EnumRoleType.user ? false : true,
                         status: EnumUserStatus.active,
                         lastWorkspaceId: workspaceContext.workspaceId,
-                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        lastWorkspaceChangedAt: this.helperDateService.create(),
                         termPolicy: {
                             [EnumTermPolicyType.cookies]: false,
                             [EnumTermPolicyType.marketing]: false,
@@ -640,7 +644,7 @@ export class UserRepository {
         userId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        const deletedAt = this.helperService.dateCreate();
+        const deletedAt = this.helperDateService.create();
         return this.databaseService.client.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
@@ -1027,7 +1031,7 @@ export class UserRepository {
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUserLoginResult> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         let action: EnumActivityLogAction =
             EnumActivityLogAction.userLoginCredential;
@@ -1203,8 +1207,8 @@ export class UserRepository {
         token: string,
         email: string
     ): Promise<IUserSignUpWorkspaceInvite | null> {
-        const hashedToken = this.helperService.sha256Hash(token);
-        const today = this.helperService.dateCreate();
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const today = this.helperDateService.create();
 
         const invite =
             await this.databaseService.client.workspaceInvite.findFirst({
@@ -1239,7 +1243,7 @@ export class UserRepository {
         while (attemptsLeft > 0) {
             attemptsLeft -= 1;
 
-            const slug = this.helperService.generateSlug(
+            const slug = this.helperStringService.generateSlug(
                 this.workspaceSlugPrefix,
                 this.workspaceSlugMaxLength
             );
@@ -1320,7 +1324,7 @@ export class UserRepository {
                 where: { id: workspaceContext.workspaceInviteId },
                 data: {
                     status: EnumWorkspaceInviteStatus.accepted,
-                    acceptedAt: this.helperService.dateCreate(),
+                    acceptedAt: this.helperDateService.create(),
                     acceptedByUserId: userId,
                     updatedBy: actorId,
                 },
@@ -1419,7 +1423,7 @@ export class UserRepository {
                         isVerified: true,
                         status: EnumUserStatus.active,
                         lastWorkspaceId: workspaceContext.workspaceId,
-                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        lastWorkspaceChangedAt: this.helperDateService.create(),
                         termPolicy: {
                             [EnumTermPolicyType.cookies]: cookies,
                             [EnumTermPolicyType.marketing]: marketing,
@@ -1595,7 +1599,7 @@ export class UserRepository {
                         password: passwordHash,
                         passwordAttempt: 0,
                         lastWorkspaceId: workspaceContext.workspaceId,
-                        lastWorkspaceChangedAt: this.helperService.dateCreate(),
+                        lastWorkspaceChangedAt: this.helperDateService.create(),
                         passwordHistories: {
                             create: {
                                 password: passwordHash,
@@ -1843,7 +1847,7 @@ export class UserRepository {
         userId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Verification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.verification.update({
             where: {
@@ -1885,7 +1889,7 @@ export class UserRepository {
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.$transaction(async tx => {
             const [_, newVerification] = await Promise.all([
@@ -1948,7 +1952,7 @@ export class UserRepository {
         { loginFrom, loginWith, sessionId, jti }: IUserLogin,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
@@ -2015,14 +2019,14 @@ export class UserRepository {
         { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 twoFactor: {
                     update: {
-                        lastUsedAt: this.helperService.dateCreate(),
+                        lastUsedAt: this.helperDateService.create(),
                         ...(method === EnumAuthTwoFactorMethod.backupCodes && {
                             backupCodes: newBackupCodes,
                         }),
@@ -2056,7 +2060,7 @@ export class UserRepository {
         iv: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
@@ -2097,7 +2101,7 @@ export class UserRepository {
         backupCodesHashed: string[],
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.$transaction<IUser>(async tx => {
             const twoFactor = await tx.twoFactor.findUnique({
@@ -2149,7 +2153,7 @@ export class UserRepository {
         userId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
@@ -2207,7 +2211,7 @@ export class UserRepository {
         backupCodesHashed: string[],
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
@@ -2246,7 +2250,7 @@ export class UserRepository {
         updatedBy: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
@@ -2404,7 +2408,7 @@ export class UserRepository {
                                 status: EnumUserStatus.active,
                                 lastWorkspaceId: workspaceContext.workspaceId,
                                 lastWorkspaceChangedAt:
-                                    this.helperService.dateCreate(),
+                                    this.helperDateService.create(),
                                 termPolicy: {
                                     [EnumTermPolicyType.cookies]: false,
                                     [EnumTermPolicyType.marketing]: false,
@@ -2530,7 +2534,7 @@ export class UserRepository {
         deviceOwnershipId: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<User> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
@@ -2554,7 +2558,7 @@ export class UserRepository {
                         },
                         data: {
                             isRevoked: true,
-                            revokedAt: this.helperService.dateCreate(),
+                            revokedAt: this.helperDateService.create(),
                             revokedBy: {
                                 connect: {
                                     id: userId,

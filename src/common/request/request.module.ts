@@ -21,6 +21,7 @@ import {
     LessThanOtherPropertyConstraint,
 } from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
+import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestThrottleUtil } from '@common/request/utils/request.throttle.util';
 import { RequestUtil } from '@common/request/utils/request.util';
@@ -37,9 +38,15 @@ export class RequestModule {
             module: RequestModule,
             global: true,
             controllers: [],
-            exports: [RequestStoreService, RequestUtil, RequestThrottleUtil],
+            exports: [
+                RequestStoreService,
+                RequestContextService,
+                RequestUtil,
+                RequestThrottleUtil,
+            ],
             providers: [
                 RequestStoreService,
+                RequestContextService,
                 RequestUtil,
                 RequestThrottleUtil,
                 {

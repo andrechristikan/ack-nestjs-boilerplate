@@ -1,5 +1,6 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { RequestContextService } from '@common/request/services/request.context.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
@@ -29,7 +30,8 @@ export class NotificationPushProcessorService
         private readonly firebaseService: FirebaseService,
         private readonly notificationRepository: NotificationRepository,
         private readonly messageService: MessageService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
+        private readonly requestContextService: RequestContextService,
         private readonly notificationPushUtil: NotificationPushUtil,
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository
     ) {}
@@ -67,14 +69,14 @@ export class NotificationPushProcessorService
             };
         }
 
-        const device = this.helperService.resolveDevice(
+        const device = this.requestContextService.resolveDevice(
             data!.requestLog.userAgent
         );
-        const city = this.helperService.resolveCity(
+        const city = this.requestContextService.resolveCity(
             data!.requestLog.geoLocation ?? undefined
         );
-        const loginAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data!.loginAt)
+        const loginAt = this.helperDateService.formatToRFC2822(
+            this.helperDateService.createFromIso(data!.loginAt)
         );
         const title = this.messageService.setMessage(notification.title);
         const body = this.messageService.setMessage(notification.body, {
@@ -197,8 +199,8 @@ export class NotificationPushProcessorService
             };
         }
 
-        const passwordExpiredAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data!.passwordExpiredAt)
+        const passwordExpiredAt = this.helperDateService.formatToRFC2822(
+            this.helperDateService.createFromIso(data!.passwordExpiredAt)
         );
 
         const title = this.messageService.setMessage(notification.title);

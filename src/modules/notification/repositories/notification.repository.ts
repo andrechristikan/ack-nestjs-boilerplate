@@ -1,6 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -31,7 +32,8 @@ export class NotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil
     ) {}
@@ -74,7 +76,7 @@ export class NotificationRepository {
         username: string,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -115,7 +117,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification[]> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.$transaction([
             this.databaseService.client.notification.create({
@@ -185,7 +187,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -227,7 +229,7 @@ export class NotificationRepository {
         passwordExpiredAt: Date,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -261,7 +263,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -294,7 +296,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -329,7 +331,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -365,7 +367,7 @@ export class NotificationRepository {
         username: string,
         mobileNumber: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -375,7 +377,7 @@ export class NotificationRepository {
                 userId,
                 metadata: {
                     username,
-                    mobileNumber: this.helperService.censorString(mobileNumber),
+                    mobileNumber: this.helperStringService.censor(mobileNumber),
                 },
                 isRead: false,
                 priority: EnumNotificationPriority.normal,
@@ -403,7 +405,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -437,7 +439,7 @@ export class NotificationRepository {
         userId: string,
         username: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -472,7 +474,7 @@ export class NotificationRepository {
         username: string,
         updatedBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -511,7 +513,7 @@ export class NotificationRepository {
         city: string,
         loginAt: Date
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -552,7 +554,7 @@ export class NotificationRepository {
         { type, version }: INotificationPublishTermPolicyPayload,
         proceedBy: string
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         await Promise.all(
             payloads.map(payload =>
                 this.databaseService.client.notification.create({
@@ -593,7 +595,7 @@ export class NotificationRepository {
         inviterName: string,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -636,7 +638,7 @@ export class NotificationRepository {
         requesterName: string,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -683,7 +685,7 @@ export class NotificationRepository {
         workspaceName: string,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -726,7 +728,7 @@ export class NotificationRepository {
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         createdBy: string
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -777,7 +779,7 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperService.dateCreate(),
+                readAt: this.helperDateService.create(),
             },
         });
     }
@@ -789,7 +791,7 @@ export class NotificationRepository {
         type: EnumTermPolicyType,
         version: number
     ): Promise<Notification> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.create({
             data: {
                 id: notificationId,
@@ -825,7 +827,7 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperService.dateCreate(),
+                readAt: this.helperDateService.create(),
             },
         });
     }
@@ -860,7 +862,7 @@ export class NotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel
     ): Promise<{ title: string; body: string } | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
             data: {
@@ -888,7 +890,7 @@ export class NotificationRepository {
         channel: EnumNotificationChannel,
         failureTokens: string[]
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         await this.databaseService.client.notification.update({
             where: { id: notificationId, userId },
             data: {

@@ -1,7 +1,8 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -36,7 +37,8 @@ export class WorkspaceRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly paginationService: PaginationService,
         private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil,
         private readonly configService: ConfigService
@@ -190,7 +192,7 @@ export class WorkspaceRepository {
             );
         }
 
-        let slug = this.helperService.generateSlug(
+        let slug = this.helperStringService.generateSlug(
             this.slugPrefix,
             this.slugMaxLength
         );
@@ -217,7 +219,7 @@ export class WorkspaceRepository {
                     throw new DatabaseUniqueValueGenerationFailedException();
                 }
 
-                slug = this.helperService.generateSlug(
+                slug = this.helperStringService.generateSlug(
                     this.slugPrefix,
                     this.slugMaxLength
                 );
@@ -313,7 +315,7 @@ export class WorkspaceRepository {
         actorId: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         await this.databaseService.client.$transaction([
             this.databaseService.client.workspace.update({
@@ -369,7 +371,7 @@ export class WorkspaceRepository {
         workspaceId: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         await this.databaseService.client.$transaction([
             this.databaseService.client.user.update({

@@ -6,7 +6,7 @@ import {
     IDatabaseRow,
     IDatabaseSoftDeleteArgs,
 } from '@common/database/interfaces/database.extension.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
@@ -17,7 +17,7 @@ export class DatabaseExtensionUtil {
 
     constructor(
         private readonly requestStoreService: RequestStoreService,
-        private readonly helperService: HelperService
+        private readonly helperDateService: HelperDateService
     ) {
         this.modelFields = new Map(
             Prisma.dmmf.datamodel.models.map(model => [
@@ -45,7 +45,7 @@ export class DatabaseExtensionUtil {
     build() {
         const getActor = (): string | null =>
             this.requestStoreService.get<string>(RequestActorStoreKey);
-        const getNow = (): Date => this.helperService.dateCreate();
+        const getNow = (): Date => this.helperDateService.create();
 
         return Prisma.defineExtension({
             name: 'audit-actor',

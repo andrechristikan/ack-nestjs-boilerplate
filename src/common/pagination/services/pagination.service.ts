@@ -17,7 +17,7 @@ import {
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
@@ -28,7 +28,7 @@ import { PaginationFailedToDecodeCursorException } from '@common/pagination/exce
 
 @Injectable()
 export class PaginationService implements IPaginationService {
-    constructor(private readonly helperService: HelperService) {}
+    constructor(private readonly helperHashService: HelperHashService) {}
 
     private canonicalize(value: unknown): unknown {
         if (value instanceof Date) {
@@ -55,7 +55,7 @@ export class PaginationService implements IPaginationService {
     }
 
     private fingerprint(where: unknown, orderBy: IPaginationOrderBy[]): string {
-        return this.helperService
+        return this.helperHashService
             .sha256Hash(JSON.stringify(this.canonicalize({ where, orderBy })))
             .slice(0, PaginationCursorFingerprintLength);
     }

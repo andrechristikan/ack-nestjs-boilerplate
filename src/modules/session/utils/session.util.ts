@@ -1,4 +1,4 @@
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
@@ -19,7 +19,7 @@ export class SessionUtil {
     constructor(
         @Inject(SessionCacheProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly responseUtil: ResponseUtil
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
@@ -48,7 +48,7 @@ export class SessionUtil {
             .replace('{userId}', userId)
             .replace('{sessionId}', sessionId);
         const ttl = Math.floor(
-            expiredAt.getTime() - this.helperService.dateCreate().getTime()
+            expiredAt.getTime() - this.helperDateService.create().getTime()
         );
 
         await this.cacheManager.set<ISessionCache>(

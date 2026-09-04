@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -32,7 +32,7 @@ import { Duration } from 'luxon';
 export class DeviceOwnershipRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil
@@ -45,7 +45,7 @@ export class DeviceOwnershipRepository {
         removedBy: string,
         action: EnumActivityLogAction
     ): Promise<IDeviceOwnership> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.deviceOwnership.update({
             where: {
@@ -138,7 +138,7 @@ export class DeviceOwnershipRepository {
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.paginationService.offset<
             IDeviceOwnership,
@@ -182,7 +182,7 @@ export class DeviceOwnershipRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.paginationService.cursor<
             IDeviceOwnershipWithSession,
@@ -260,7 +260,7 @@ export class DeviceOwnershipRepository {
         { name, notificationToken, platform }: DeviceRefreshRequestDto,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         let notificationProvider: EnumDeviceNotificationProvider | null = null;
         switch (platform) {
@@ -380,8 +380,8 @@ export class DeviceOwnershipRepository {
     }
 
     async cleanupStaleTokens(): Promise<Prisma.BatchPayload> {
-        const today = this.helperService.dateCreate();
-        const thresholdDate = this.helperService.dateBackward(
+        const today = this.helperDateService.create();
+        const thresholdDate = this.helperDateService.backward(
             today,
             Duration.fromObject({
                 days: FirebaseStaleTokenThresholdInDays,

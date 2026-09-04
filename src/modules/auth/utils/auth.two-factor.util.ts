@@ -1,5 +1,7 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { TwoFactor } from '@generated/prisma-client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import {
@@ -46,7 +48,9 @@ export class AuthTwoFactorUtil {
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService
     ) {
         this.strategy = this.configService.get<OTPStrategy>(
             'auth.twoFactor.strategy'
@@ -130,25 +134,33 @@ export class AuthTwoFactorUtil {
 
     /** Encrypts the TOTP secret with AES-256 before persistence. */
     encryptSecret(secret: string, iv: string): string {
-        return this.helperService.aes256Encrypt(secret, this.encryptionKey, iv);
+        return this.helperEncryptionService.aes256Encrypt(
+            secret,
+            this.encryptionKey,
+            iv
+        );
     }
 
     /** Decrypts the stored AES-256 TOTP secret. */
     decryptSecret(secret: string, iv: string): string {
-        return this.helperService.aes256Decrypt(secret, this.encryptionKey, iv);
+        return this.helperEncryptionService.aes256Decrypt(
+            secret,
+            this.encryptionKey,
+            iv
+        );
     }
 
     /** Generates recovery backup codes plus their SHA-256 hashes for storage. */
     generateBackupCodes(): IAuthTwoFactorBackupCodes {
         const codes = Array.from({ length: this.backupCodesCount }, () =>
-            this.helperService
-                .randomString(this.backupCodesLength)
+            this.helperStringService
+                .random(this.backupCodesLength)
                 .toUpperCase()
         );
 
         return {
             codes,
-            hashes: codes.map(code => this.helperService.sha256Hash(code)),
+            hashes: codes.map(code => this.helperHashService.sha256Hash(code)),
         };
     }
 
@@ -157,9 +169,9 @@ export class AuthTwoFactorUtil {
         backupCodes: string[],
         input: string
     ): IAuthTwoFactorBackupCodesVerifyResult {
-        const codeHash = this.helperService.sha256Hash(input);
+        const codeHash = this.helperHashService.sha256Hash(input);
         const index = backupCodes.findIndex(hash =>
-            this.helperService.sha256Compare(hash, codeHash)
+            this.helperHashService.sha256Compare(hash, codeHash)
         );
 
         return {
@@ -172,7 +184,7 @@ export class AuthTwoFactorUtil {
     async createChallenge(
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
-        const challengeToken = this.helperService.randomString(48);
+        const challengeToken = this.helperStringService.random(48);
         const key = this.challengeKeyPattern.replace('{token}', challengeToken);
         await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
             key,

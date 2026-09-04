@@ -50,7 +50,7 @@ import {
 } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -161,7 +161,7 @@ export class UserService implements IUserService {
         private readonly roleRepository: RoleRepository,
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
         private readonly awsS3Service: AwsS3Service,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly fileService: FileService,
         private readonly notificationUtil: NotificationUtil,
         private readonly authUtil: AuthUtil,
@@ -320,10 +320,10 @@ export class UserService implements IUserService {
                 created.id,
                 {
                     password: password.passwordEncrypted,
-                    passwordCreatedAt: this.helperService.dateFormatToIso(
+                    passwordCreatedAt: this.helperDateService.formatToIso(
                         password.passwordCreated
                     ),
-                    passwordExpiredAt: this.helperService.dateFormatToIso(
+                    passwordExpiredAt: this.helperDateService.formatToIso(
                         password.passwordExpired
                     ),
                 },
@@ -790,10 +790,10 @@ export class UserService implements IUserService {
                 updated.id,
                 {
                     password: password.passwordEncrypted,
-                    passwordCreatedAt: this.helperService.dateFormatToIso(
+                    passwordCreatedAt: this.helperDateService.formatToIso(
                         password.passwordCreated
                     ),
-                    passwordExpiredAt: this.helperService.dateFormatToIso(
+                    passwordExpiredAt: this.helperDateService.formatToIso(
                         password.passwordExpired
                     ),
                 },
@@ -845,7 +845,7 @@ export class UserService implements IUserService {
             );
             if (passwordCheck) {
                 throw new UserPasswordMustNewException(
-                    this.helperService.dateFormatToRFC2822(
+                    this.helperDateService.formatToRFC2822(
                         passwordCheck.expiredAt
                     )
                 );
@@ -933,7 +933,7 @@ export class UserService implements IUserService {
             device,
             from,
             EnumUserLoginWith.credential,
-            this.helperService.dateCreate()
+            this.helperDateService.create()
         );
     }
 
@@ -1026,7 +1026,7 @@ export class UserService implements IUserService {
             device,
             from,
             loginWith,
-            this.helperService.dateCreate()
+            this.helperDateService.create()
         );
     }
 
@@ -1169,7 +1169,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendWelcome(created.id, {
-                expiredAt: this.helperService.dateFormatToIso(
+                expiredAt: this.helperDateService.formatToIso(
                     emailVerification.expiredAt
                 ),
                 reference: emailVerification.reference,
@@ -1233,8 +1233,8 @@ export class UserService implements IUserService {
         const lastVerification =
             await this.userRepository.findOneLatestByVerificationEmail(user.id);
         if (lastVerification) {
-            const today = this.helperService.dateCreate();
-            const canResendAt = this.helperService.dateForward(
+            const today = this.helperDateService.create();
+            const canResendAt = this.helperDateService.forward(
                 lastVerification.createdAt,
                 Duration.fromObject({
                     minutes: this.userUtil.verificationExpiredInMinutes,
@@ -1243,7 +1243,7 @@ export class UserService implements IUserService {
 
             if (today < canResendAt) {
                 throw new UserVerificationEmailResendLimitExceededException(
-                    this.helperService.dateDiff(today, canResendAt).minutes
+                    this.helperDateService.diff(today, canResendAt).minutes
                 );
             }
         }
@@ -1263,7 +1263,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendVerificationEmail(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
+                expiredAt: this.helperDateService.formatToIso(
                     emailVerification.expiredAt
                 ),
                 reference: emailVerification.reference,
@@ -1293,8 +1293,8 @@ export class UserService implements IUserService {
         const lastForgotPassword =
             await this.userRepository.findOneLatestByForgotPassword(user.id);
         if (lastForgotPassword) {
-            const today = this.helperService.dateCreate();
-            const canResendAt = this.helperService.dateForward(
+            const today = this.helperDateService.create();
+            const canResendAt = this.helperDateService.forward(
                 lastForgotPassword.createdAt,
                 Duration.fromObject({
                     minutes: this.userUtil.forgotResendInMinutes,
@@ -1303,7 +1303,7 @@ export class UserService implements IUserService {
 
             if (today < canResendAt) {
                 throw new UserForgotPasswordRequestLimitExceededException(
-                    this.helperService.dateDiff(today, canResendAt).minutes
+                    this.helperDateService.diff(today, canResendAt).minutes
                 );
             }
         }
@@ -1319,7 +1319,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendForgotPassword(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
+                expiredAt: this.helperDateService.formatToIso(
                     resetPassword.expiredAt
                 ),
                 link: resetPassword.encryptedLink,
@@ -1433,7 +1433,7 @@ export class UserService implements IUserService {
             loginFrom,
             loginWith
         );
-        const expiredAt = this.helperService.dateForward(
+        const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
                 milliseconds: this.authUtil.jwtRefreshTokenExpirationTimeInMs,
@@ -1473,7 +1473,7 @@ export class UserService implements IUserService {
                     requestLog,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperService.dateFormatToIso(loginAt),
+                    loginAt: this.helperDateService.formatToIso(loginAt),
                 })
             );
         }
@@ -1508,7 +1508,7 @@ export class UserService implements IUserService {
             );
 
             await this.notificationUtil.sendVerificationEmail(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
+                expiredAt: this.helperDateService.formatToIso(
                     emailVerification.expiredAt
                 ),
                 reference: emailVerification.reference,
@@ -1666,7 +1666,7 @@ export class UserService implements IUserService {
         });
 
         try {
-            const loginAt = this.helperService.dateCreate();
+            const loginAt = this.helperDateService.create();
             const [tokens] = await Promise.all([
                 this.createTokenAndSession(
                     user,
@@ -2015,11 +2015,11 @@ export class UserService implements IUserService {
                         {
                             password: passwordHasheds[index].passwordEncrypted,
                             passwordCreatedAt:
-                                this.helperService.dateFormatToIso(
+                                this.helperDateService.formatToIso(
                                     passwordHasheds[index].passwordCreated
                                 ),
                             passwordExpiredAt:
-                                this.helperService.dateFormatToIso(
+                                this.helperDateService.formatToIso(
                                     passwordHasheds[index].passwordExpired
                                 ),
                         },

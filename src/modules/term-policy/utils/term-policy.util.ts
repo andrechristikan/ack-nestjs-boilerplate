@@ -1,7 +1,7 @@
 import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -25,7 +25,7 @@ export class TermPolicyUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperArrayService: HelperArrayService,
         private readonly fileService: FileService,
         private readonly responseUtil: ResponseUtil
     ) {
@@ -56,7 +56,7 @@ export class TermPolicyUtil {
 
     validateUniqueLanguages(contents: TermPolicyContentRequestDto[]): boolean {
         const languages = contents.map(content => content.language);
-        const uniqueLanguages = this.helperService.arrayUnique(languages);
+        const uniqueLanguages = this.helperArrayService.unique(languages);
         return uniqueLanguages.length === languages.length;
     }
 

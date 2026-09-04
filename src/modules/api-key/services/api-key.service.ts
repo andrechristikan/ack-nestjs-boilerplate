@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
@@ -36,7 +36,7 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     constructor(
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly requestStoreService: RequestStoreService
@@ -74,13 +74,13 @@ export class ApiKeyService implements IApiKeyService {
                 ...others,
                 startAt:
                     startAt && endAt
-                        ? this.helperService.dateCreate(startAt, {
+                        ? this.helperDateService.create(startAt, {
                               dayOf: EnumHelperDateDayOf.start,
                           })
                         : undefined,
                 endAt:
                     startAt && endAt
-                        ? this.helperService.dateCreate(endAt, {
+                        ? this.helperDateService.create(endAt, {
                               dayOf: EnumHelperDateDayOf.end,
                           })
                         : undefined,
@@ -103,7 +103,7 @@ export class ApiKeyService implements IApiKeyService {
         id: string,
         data: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<ApiKeyResponseDto>> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         const apiKey = await this.apiKeyRepository.findOneById(id);
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
@@ -167,10 +167,10 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
-        const newStartAt = this.helperService.dateCreate(startAt, {
+        const newStartAt = this.helperDateService.create(startAt, {
             dayOf: EnumHelperDateDayOf.start,
         });
-        const newEndAt = this.helperService.dateCreate(endAt, {
+        const newEndAt = this.helperDateService.create(endAt, {
             dayOf: EnumHelperDateDayOf.end,
         });
 
@@ -283,7 +283,7 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const [key, secret] = xApiKey;
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         const apiKey = await this.findOneActiveByKeyAndCache(key);
 
         if (!apiKey) {

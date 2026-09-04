@@ -1,4 +1,4 @@
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Injectable } from '@nestjs/common';
 import {
     ValidationArguments,
@@ -14,7 +14,7 @@ import {
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstraintInterface {
-    constructor(private readonly helperService: HelperService) {}
+    constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
@@ -72,12 +72,12 @@ export class GreaterThanEqualOtherPropertyConstraint implements ValidatorConstra
         }
 
         if (typeof value === 'string') {
-            const date = this.helperService.dateCreateFromIso(value);
+            const date = this.helperDateService.createFromIso(value);
             return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         if (typeof value === 'number') {
-            const date = this.helperService.dateCreateFromTimestamp(value);
+            const date = this.helperDateService.createFromTimestamp(value);
             return !Number.isNaN(date.getTime()) ? date : null;
         }
 
@@ -107,7 +107,7 @@ export function GreaterThanEqualOtherProperty(
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintInterface {
-    constructor(private readonly helperService: HelperService) {}
+    constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: unknown, args: ValidationArguments): boolean {
         if (value === null || value === undefined) {
@@ -165,12 +165,12 @@ export class GreaterThanOtherPropertyConstraint implements ValidatorConstraintIn
         }
 
         if (typeof value === 'string') {
-            const date = this.helperService.dateCreateFromIso(value);
+            const date = this.helperDateService.createFromIso(value);
             return !Number.isNaN(date.getTime()) ? date : null;
         }
 
         if (typeof value === 'number') {
-            const date = this.helperService.dateCreateFromTimestamp(value);
+            const date = this.helperDateService.createFromTimestamp(value);
             return !Number.isNaN(date.getTime()) ? date : null;
         }
 

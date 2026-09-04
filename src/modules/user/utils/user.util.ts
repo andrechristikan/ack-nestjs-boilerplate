@@ -1,6 +1,10 @@
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
@@ -54,7 +58,11 @@ export class UserUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
         private readonly fileService: FileService,
         private readonly responseUtil: ResponseUtil
     ) {
@@ -196,7 +204,7 @@ export class UserUtil {
     }
 
     forgotPasswordCreateReference(): string {
-        const random = this.helperService.randomString(
+        const random = this.helperStringService.random(
             this.forgotPasswordReferenceLength
         );
 
@@ -204,13 +212,13 @@ export class UserUtil {
     }
 
     forgotPasswordCreateToken(): string {
-        return this.helperService.randomString(this.forgotTokenLength);
+        return this.helperStringService.random(this.forgotTokenLength);
     }
 
     forgotPasswordSetExpiredDate(): Date {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
-        return this.helperService.dateForward(
+        return this.helperDateService.forward(
             now,
             Duration.fromObject({ minutes: this.forgotExpiredInMinutes })
         );
@@ -218,7 +226,7 @@ export class UserUtil {
 
     forgotPasswordCreate(userId: string): IUserForgotPasswordCreate {
         const token = this.forgotPasswordCreateToken();
-        const hashedToken = this.helperService.sha256Hash(token);
+        const hashedToken = this.helperHashService.sha256Hash(token);
         const link = `${this.homeUrl}/${this.forgotLinkBaseUrl}/${token}`;
         const encryptedLink = this.encryptedLink(userId, link);
 
@@ -235,7 +243,7 @@ export class UserUtil {
     }
 
     verificationCreateReference(): string {
-        const random = this.helperService.randomString(
+        const random = this.helperStringService.random(
             this.verificationReferenceLength
         );
 
@@ -243,17 +251,19 @@ export class UserUtil {
     }
 
     verificationCreateOtp(): string {
-        return this.helperService.randomDigits(this.verificationOtpLength);
+        return this.helperNumberService.randomDigits(
+            this.verificationOtpLength
+        );
     }
 
     verificationCreateToken(): string {
-        return this.helperService.randomString(this.verificationTokenLength);
+        return this.helperStringService.random(this.verificationTokenLength);
     }
 
     verificationSetExpiredDate(): Date {
-        const now = this.helperService.dateCreate();
+        const now = this.helperDateService.create();
 
-        return this.helperService.dateForward(
+        return this.helperDateService.forward(
             now,
             Duration.fromObject({ minutes: this.verificationExpiredInMinutes })
         );
@@ -298,16 +308,19 @@ export class UserUtil {
     }
 
     hashedToken(token: string): string {
-        return this.helperService.sha256Hash(token);
+        return this.helperHashService.sha256Hash(token);
     }
 
     /** Encrypts a verification link using the userId as the key. */
     encryptedLink(userId: string, token: string): string {
-        return this.helperService.aes256EncryptSimple(token, userId);
+        return this.helperEncryptionService.aes256EncryptSimple(token, userId);
     }
 
     /** Decrypts a verification link encrypted with the userId as the key. */
     decryptedLink(userId: string, encoded: string): string {
-        return this.helperService.aes256DecryptSimple(encoded, userId);
+        return this.helperEncryptionService.aes256DecryptSimple(
+            encoded,
+            userId
+        );
     }
 }

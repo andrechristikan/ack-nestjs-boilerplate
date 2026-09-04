@@ -13,7 +13,10 @@ import {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -69,7 +72,10 @@ export class AuthUtil {
 
     constructor(
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperService: HelperService,
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperHashService: HelperHashService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService
     ) {
@@ -326,7 +332,10 @@ export class AuthUtil {
 
     /** Compares a plain password against its bcrypt hash. */
     validatePassword(passwordString: string, passwordHash: string): boolean {
-        return this.helperService.bcryptCompare(passwordString, passwordHash);
+        return this.helperHashService.bcryptCompare(
+            passwordString,
+            passwordHash
+        );
     }
 
     /** True when the user exceeded the max password attempts; always false if attempt tracking is off. */
@@ -342,22 +351,22 @@ export class AuthUtil {
         password: string,
         options?: IAuthPasswordOptions
     ): IAuthPassword {
-        const today = this.helperService.dateCreate();
-        const salt: string = this.helperService.bcryptGenerateSalt(
+        const today = this.helperDateService.create();
+        const salt: string = this.helperHashService.bcryptGenerateSalt(
             this.passwordSaltLength
         );
-        const passwordExpired: Date = this.helperService.dateForward(
+        const passwordExpired: Date = this.helperDateService.forward(
             today,
-            this.helperService.dateCreateDuration({
+            this.helperDateService.createDuration({
                 milliseconds: options?.temporary
                     ? this.passwordExpiredTemporaryInMs
                     : this.passwordExpiredInMs,
             })
         );
-        const passwordHash = this.helperService.bcryptHash(password, salt);
-        const passwordPeriodExpired: Date = this.helperService.dateForward(
+        const passwordHash = this.helperHashService.bcryptHash(password, salt);
+        const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
-            this.helperService.dateCreateDuration({
+            this.helperDateService.createDuration({
                 milliseconds: this.passwordPeriodInMs,
             })
         );
@@ -377,16 +386,22 @@ export class AuthUtil {
 
     /** Reversibly encrypts the password (AES-256, keyed by user ID) for recovery purposes. */
     encryptPassword(userId: string, password: string): string {
-        return this.helperService.aes256EncryptSimple(password, userId);
+        return this.helperEncryptionService.aes256EncryptSimple(
+            password,
+            userId
+        );
     }
 
     /** Decrypts the AES-256 encrypted password keyed by user ID. */
     decryptPassword(userId: string, encrypted: string): string {
-        return this.helperService.aes256DecryptSimple(encrypted, userId);
+        return this.helperEncryptionService.aes256DecryptSimple(
+            encrypted,
+            userId
+        );
     }
 
     createPasswordRandom(): string {
-        return this.helperService.randomString(10);
+        return this.helperStringService.random(10);
     }
 
     /** True when the expiry date has passed; false when no expiry is set. */
@@ -395,7 +410,7 @@ export class AuthUtil {
             return false;
         }
 
-        const today: Date = this.helperService.dateCreate();
+        const today: Date = this.helperDateService.create();
         return today > passwordExpired;
     }
 
@@ -451,7 +466,7 @@ export class AuthUtil {
 
     /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
-        return this.helperService.randomString(32);
+        return this.helperStringService.random(32);
     }
 
     /** Splits the configured JWT header by its prefix; returns an empty array when absent. */
@@ -469,7 +484,7 @@ export class AuthUtil {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith
     ): IAuthAccessTokenGenerate {
-        const loginDate = this.helperService.dateCreate();
+        const loginDate = this.helperDateService.create();
 
         const sessionId = this.databaseUtil.createId();
         const deviceOwnershipId = this.databaseUtil.createId();
@@ -547,12 +562,12 @@ export class AuthUtil {
         const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.createPayloadRefreshToken(payloadAccessToken);
 
-        const today = this.helperService.dateCreate();
-        const expiredAt = this.helperService.dateCreateFromTimestamp(
+        const today = this.helperDateService.create();
+        const expiredAt = this.helperDateService.createFromTimestamp(
             (oldExp ?? 0) * 1000
         );
 
-        const newRefreshTokenExpire = this.helperService.dateDiff(
+        const newRefreshTokenExpire = this.helperDateService.diff(
             expiredAt,
             today
         );
@@ -589,7 +604,9 @@ export class AuthUtil {
         password: string
     ): PasswordHistory | null {
         for (const history of histories) {
-            if (this.helperService.bcryptCompare(password, history.password)) {
+            if (
+                this.helperHashService.bcryptCompare(password, history.password)
+            ) {
                 return history;
             }
         }

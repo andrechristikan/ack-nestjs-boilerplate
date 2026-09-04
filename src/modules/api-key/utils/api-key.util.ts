@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
@@ -21,7 +22,8 @@ export class ApiKeyUtil {
     constructor(
         @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperHashService: HelperHashService,
         private readonly responseUtil: ResponseUtil
     ) {
         this.keyPattern = this.configService.get<string>(
@@ -72,7 +74,7 @@ export class ApiKeyUtil {
      * Builds a public key prefixed with the current environment for traceability.
      */
     createKey(key?: string): string {
-        const random: string = this.helperService.randomString(25);
+        const random: string = this.helperStringService.random(25);
         return `${this.env}_${key ?? random}`;
     }
 
@@ -80,11 +82,11 @@ export class ApiKeyUtil {
      * Derives the SHA-256 hash stored for credential verification.
      */
     createHash(key: string, secret: string): string {
-        return this.helperService.sha256Hash(`${key}:${secret}`);
+        return this.helperHashService.sha256Hash(`${key}:${secret}`);
     }
 
     createSecret(): string {
-        return this.helperService.randomString(50);
+        return this.helperStringService.random(50);
     }
 
     /**
@@ -100,7 +102,7 @@ export class ApiKeyUtil {
         }
 
         const expectedHash = this.createHash(key, secret);
-        return this.helperService.sha256Compare(expectedHash, apiKey.hash);
+        return this.helperHashService.sha256Compare(expectedHash, apiKey.hash);
     }
 
     isExpired(

@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationCursorReturn,
     IPaginationIn,
@@ -29,7 +29,7 @@ export interface IWorkspaceJoinRequestCreateData {
 export class WorkspaceJoinRequestRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
     ) {}
@@ -123,7 +123,7 @@ export class WorkspaceJoinRequestRepository {
         reviewerId: string,
         requestLog: IRequestLog
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         await this.databaseService.client.$transaction([
             this.databaseService.client.workspaceMember.create({
@@ -161,7 +161,7 @@ export class WorkspaceJoinRequestRepository {
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         requestLog: IRequestLog
     ): Promise<void> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         await this.databaseService.client.$transaction([
             this.databaseService.client.workspaceJoinRequest.update({

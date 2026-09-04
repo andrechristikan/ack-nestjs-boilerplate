@@ -1,5 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
@@ -17,7 +17,7 @@ export class HelloService implements IHelloService {
     private readonly messageDefaultLanguage: EnumMessageLanguage;
 
     constructor(
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.appName = this.configService.get<string>('app.name')!;
@@ -32,9 +32,9 @@ export class HelloService implements IHelloService {
     }
 
     async hello(): Promise<IResponseReturn<HelloResponseDto>> {
-        const date = this.helperService.dateCreate();
-        const dateIso = this.helperService.dateFormatToIso(date);
-        const dateTimestamp = this.helperService.dateGetTimestamp(date);
+        const date = this.helperDateService.create();
+        const dateIso = this.helperDateService.formatToIso(date);
+        const dateTimestamp = this.helperDateService.getTimestamp(date);
 
         return {
             data: {

@@ -1,7 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
@@ -56,7 +57,8 @@ export class MigrationUserSeed
         private readonly databaseUtil: DatabaseUtil,
         private readonly authUtil: AuthUtil,
         private readonly userUtil: UserUtil,
-        private readonly helperService: HelperService,
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
         private readonly activityLogUtil: ActivityLogUtil
     ) {
         super();
@@ -69,7 +71,7 @@ export class MigrationUserSeed
         this.logger.log('Seeding Users...');
         this.logger.log(`Found ${this.users.length} Users to seed.`);
 
-        const uniqueRoles = this.helperService.arrayUnique(
+        const uniqueRoles = this.helperArrayService.unique(
             this.users.map(user => user.role)
         );
         const roles = await this.databaseService.client.role.findMany({
@@ -89,7 +91,7 @@ export class MigrationUserSeed
             return;
         }
 
-        const uniqueCountries = this.helperService.arrayUnique(
+        const uniqueCountries = this.helperArrayService.unique(
             this.users.map(user => user.country)
         );
         const countries = await this.databaseService.client.country.findMany({
@@ -132,7 +134,7 @@ export class MigrationUserSeed
         }
 
         try {
-            const today = this.helperService.dateCreate();
+            const today = this.helperDateService.create();
 
             const userAgent = UAParser(faker.internet.userAgent());
             const ip = faker.internet.ip();
@@ -189,8 +191,8 @@ export class MigrationUserSeed
                             },
                             verifications: {
                                 create: {
-                                    expiredAt: this.helperService.dateCreate(),
-                                    verifiedAt: this.helperService.dateCreate(),
+                                    expiredAt: this.helperDateService.create(),
+                                    verifiedAt: this.helperDateService.create(),
                                     reference,
                                     token: hashedToken,
                                     type,

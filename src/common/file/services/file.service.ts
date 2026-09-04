@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { IFileService } from '@common/file/interfaces/file.service.interface';
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import Mime from 'mime';
 import Papa from 'papaparse';
 
 @Injectable()
 export class FileService implements IFileService {
-    constructor(private readonly helperService: HelperService) {}
+    constructor(private readonly helperStringService: HelperStringService) {}
 
     writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
         return Papa.unparse(rows, {
@@ -35,7 +35,7 @@ export class FileService implements IFileService {
         extension,
         randomLength,
     }: IFileRandomFilenameOptions): string {
-        const randomPath = this.helperService.randomString(randomLength ?? 10);
+        const randomPath = this.helperStringService.random(randomLength ?? 10);
         let fullPath: string = `${path ? `${path}/` : ''}${prefix ? `${prefix}-` : ''}${randomPath}.${extension.toLowerCase()}`;
 
         if (fullPath.startsWith('/')) {

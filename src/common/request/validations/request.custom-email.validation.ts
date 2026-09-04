@@ -7,15 +7,15 @@ import {
     getMetadataStorage,
     registerDecorator,
 } from 'class-validator';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 /**
- * Validates email structure via `HelperService.checkEmail`; passes empty values on optional fields.
+ * Validates email structure via `HelperStringService.checkEmail`; passes empty values on optional fields.
  */
 @ValidatorConstraint({ async: false })
 @Injectable()
 export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
-    constructor(private readonly helperService: HelperService) {}
+    constructor(private readonly helperStringService: HelperStringService) {}
 
     validate(
         value: string,
@@ -32,7 +32,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
             return false;
         }
 
-        const validationResult = this.helperService.checkEmail(value);
+        const validationResult = this.helperStringService.checkEmail(value);
         return validationResult.validated;
     }
 
@@ -41,7 +41,7 @@ export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
             return 'request.error.email.required';
         }
 
-        const validationResult = this.helperService.checkEmail(
+        const validationResult = this.helperStringService.checkEmail(
             validationArguments.value
         );
         return validationResult.messagePath ?? 'request.error.email.invalid';

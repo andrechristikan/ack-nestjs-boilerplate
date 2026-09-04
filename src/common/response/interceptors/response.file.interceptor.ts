@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { FileService } from '@common/file/services/file.service';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -25,7 +25,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
 
     constructor(
         private readonly fileService: FileService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly configService: ConfigService
     ) {
@@ -110,8 +110,8 @@ export class ResponseFileInterceptor implements NestInterceptor {
     }
 
     private createTimestamp(): number {
-        const today = this.helperService.dateCreate();
-        return this.helperService.dateGetTimestamp(today);
+        const today = this.helperDateService.create();
+        return this.helperDateService.getTimestamp(today);
     }
 
     /**

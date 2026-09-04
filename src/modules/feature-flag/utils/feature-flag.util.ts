@@ -1,5 +1,5 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import {
@@ -22,7 +22,7 @@ export class FeatureFlagUtil {
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperHashService: HelperHashService,
         private readonly responseUtil: ResponseUtil
     ) {
         this.keyPattern = this.configService.get<string>(
@@ -129,7 +129,7 @@ export class FeatureFlagUtil {
         key: string,
         identifier: string
     ): boolean {
-        const hash = this.helperService.md5Hash(`${key}:${identifier}`);
+        const hash = this.helperHashService.md5Hash(`${key}:${identifier}`);
         const num = Number.parseInt(hash.slice(0, 8), 16);
         const percentage = num % 100;
 

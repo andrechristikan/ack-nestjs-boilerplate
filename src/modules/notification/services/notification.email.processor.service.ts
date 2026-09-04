@@ -1,5 +1,6 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { INotificationEmailProcessorService } from '@modules/notification/interfaces/notification.email.processor.service.interface';
@@ -48,7 +49,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
 
     constructor(
         private readonly awsSESService: AwsSESService,
-        private readonly helperService: HelperService,
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly userRepository: UserRepository,
         private readonly userUtil: UserUtil,
@@ -151,11 +153,11 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     password: passwordString,
-                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    passwordExpiredAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(passwordExpiredAt)
                     ),
-                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    passwordCreatedAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(passwordCreatedAt)
                     ),
                 },
                 ...(cc?.length && { cc }),
@@ -197,11 +199,11 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     password: passwordString,
-                    passwordExpiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordExpiredAt)
+                    passwordExpiredAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(passwordExpiredAt)
                     ),
-                    passwordCreatedAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(passwordCreatedAt)
+                    passwordCreatedAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(passwordCreatedAt)
                     ),
                 },
                 ...(cc?.length && { cc }),
@@ -293,8 +295,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
             } = job.data.data!;
 
             const link = this.userUtil.decryptedLink(userId, encryptedLink);
-            const expiredAtFormatted = this.helperService.dateFormatToRFC2822(
-                this.helperService.dateCreateFromIso(expiredAt)
+            const expiredAtFormatted = this.helperDateService.formatToRFC2822(
+                this.helperDateService.createFromIso(expiredAt)
             );
             const expiredInMinutesFormatted = String(expiredInMinutes);
 
@@ -378,8 +380,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     ...this.defaultTemplateData,
                     username,
                     link,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
+                    expiredAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(expiredAt)
                     ),
                     reference,
                     expiredInMinutes: String(expiredInMinutes),
@@ -493,8 +495,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     username,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(loginAt)
+                    loginAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(loginAt)
                     ),
                     userAgent: flatten(userAgent),
                     ipAddress: ipAddress ?? '',
@@ -520,7 +522,7 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
         try {
             const { type, version } = job.data.data!;
             const users = await this.userRepository.findActive();
-            const userChunks = this.helperService.arrayChunk(
+            const userChunks = this.helperArrayService.chunk(
                 users,
                 this.batchSize
             );
@@ -590,8 +592,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
+                    expiredAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(expiredAt)
                     ),
                 },
                 ...(cc?.length && { cc }),
@@ -640,8 +642,8 @@ export class NotificationEmailProcessorService implements INotificationEmailProc
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperService.dateFormatToRFC2822(
-                        this.helperService.dateCreateFromIso(expiredAt)
+                    expiredAt: this.helperDateService.formatToRFC2822(
+                        this.helperDateService.createFromIso(expiredAt)
                     ),
                 },
             });
