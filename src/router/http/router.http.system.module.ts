@@ -5,7 +5,7 @@ import { HealthHttpModule } from '@modules/health/health.http.module';
 import { RoleSystemController } from '@modules/role/controllers/role.system.controller';
 import { RoleHttpModule } from '@modules/role/role.http.module';
 import { UserSystemController } from '@modules/user/controllers/user.system.controller';
-import { UserModule } from '@modules/user/user.module';
+import { UserHttpModule } from '@modules/user/user.http.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -22,7 +22,7 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
-        UserModule,
+        UserHttpModule,
         HealthHttpModule,
         FeatureFlagHttpModule,
         RoleHttpModule,

@@ -18,7 +18,8 @@ import { NotificationTemplateTermPolicyService } from '@modules/notification/ser
 import { NotificationTemplateWorkspaceService } from '@modules/notification/services/notification.template.workspace.service';
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { NotificationWorkspaceService } from '@modules/notification/services/notification.workspace.service';
-import { UserModule } from '@modules/user/user.module';
+import { UserRepositoryModule } from '@modules/user/user.repository.module';
+import { UserUtilModule } from '@modules/user/user.util.module';
 import { Global, Module } from '@nestjs/common';
 
 @Global()
@@ -63,7 +64,8 @@ import { Global, Module } from '@nestjs/common';
     imports: [
         NotificationRepositoryModule,
         NotificationUtilModule,
-        UserModule,
+        UserRepositoryModule,
+        UserUtilModule,
         DeviceRepositoryModule,
         AwsModule,
     ],

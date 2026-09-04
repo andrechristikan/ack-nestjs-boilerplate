@@ -64,7 +64,11 @@ import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { IUser } from '@modules/user/interfaces/user.interface';
-import { UserService } from '@modules/user/services/user.service';
+import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
+import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import {
     Body,
     Controller,
@@ -86,7 +90,13 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user',
 })
 export class UserSharedController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userAuthHttpService: UserAuthHttpService,
+        private readonly userProfileHttpService: UserProfileHttpService,
+        private readonly userPasswordHttpService: UserPasswordHttpService,
+        private readonly userMobileNumberHttpService: UserMobileNumberHttpService,
+        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+    ) {}
 
     @UserSharedRefreshDoc()
     @Response('user.refresh')
@@ -101,7 +111,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.refresh(user, refreshToken);
+        return this.userAuthHttpService.refresh(user, refreshToken);
     }
 
     @UserSharedProfileDoc()
@@ -116,7 +126,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string
     ): Promise<IResponseReturn<UserProfileResponseDto>> {
-        return this.userService.getProfile(userId);
+        return this.userProfileHttpService.getProfile(userId);
     }
 
     @UserSharedUpdateProfileDoc()
@@ -133,7 +143,7 @@ export class UserSharedController {
         @Body()
         body: UserUpdateProfileRequestDto
     ): Promise<void> {
-        await this.userService.updateProfile(userId, body);
+        await this.userProfileHttpService.updateProfile(userId, body);
     }
 
     @UserSharedGeneratePhotoProfilePresignDoc()
@@ -150,7 +160,10 @@ export class UserSharedController {
         userId: string,
         @Body() body: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        return this.userService.generatePhotoProfilePresign(userId, body);
+        return this.userProfileHttpService.generatePhotoProfilePresign(
+            userId,
+            body
+        );
     }
 
     @UserSharedUpdatePhotoProfileDoc()
@@ -166,7 +179,7 @@ export class UserSharedController {
         userId: string,
         @Body() body: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
-        await this.userService.updatePhotoProfile(userId, body);
+        await this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
 
     @UserSharedUploadPhotoProfileDoc()
@@ -193,7 +206,7 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<void> {
-        await this.userService.uploadPhotoProfile(userId, file);
+        await this.userProfileHttpService.uploadPhotoProfile(userId, file);
     }
 
     @UserSharedChangePasswordDoc()
@@ -209,7 +222,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserChangePasswordRequestDto
     ): Promise<void> {
-        await this.userService.changePassword(user, body);
+        await this.userPasswordHttpService.changePassword(user, body);
     }
 
     @UserSharedAddMobileNumberDoc()
@@ -225,7 +238,7 @@ export class UserSharedController {
         @Body()
         body: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        return this.userService.addMobileNumber(userId, body);
+        return this.userMobileNumberHttpService.addMobileNumber(userId, body);
     }
 
     @UserSharedUpdateMobileNumberDoc()
@@ -247,7 +260,7 @@ export class UserSharedController {
         @Body()
         body: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        return this.userService.updateMobileNumber(
+        return this.userMobileNumberHttpService.updateMobileNumber(
             userId,
             mobileNumberId,
             body
@@ -271,7 +284,10 @@ export class UserSharedController {
         )
         mobileNumberId: string
     ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        return this.userService.deleteMobileNumber(userId, mobileNumberId);
+        return this.userMobileNumberHttpService.deleteMobileNumber(
+            userId,
+            mobileNumberId
+        );
     }
 
     @UserSharedClaimUsernameDoc()
@@ -288,7 +304,7 @@ export class UserSharedController {
         @Body()
         body: UserClaimUsernameRequestDto
     ): Promise<void> {
-        await this.userService.claimUsername(userId, body);
+        await this.userProfileHttpService.claimUsername(userId, body);
     }
 
     @UserSharedTwoFactorStatusDoc()
@@ -302,7 +318,7 @@ export class UserSharedController {
     async getTwoFactorStatus(
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
-        return this.userService.getTwoFactorStatus(user);
+        return this.userTwoFactorHttpService.getTwoFactorStatus(user);
     }
 
     @UserSharedTwoFactorSetupDoc()
@@ -317,7 +333,7 @@ export class UserSharedController {
     async setupTwoFactor(
         @UserCurrent() user: IUser
     ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
-        return this.userService.setupTwoFactor(user);
+        return this.userTwoFactorHttpService.setupTwoFactor(user);
     }
 
     @UserSharedTwoFactorEnableDoc()
@@ -333,7 +349,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.enableTwoFactor(user, body);
+        return this.userTwoFactorHttpService.enableTwoFactor(user, body);
     }
 
     @UserSharedTwoFactorDisableDoc()
@@ -348,7 +364,7 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorDisableRequestDto
     ): Promise<void> {
-        await this.userService.disableTwoFactor(user, body);
+        await this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
     @UserSharedTwoFactorRegenerateBackupDoc()
@@ -363,7 +379,10 @@ export class UserSharedController {
         @UserCurrent() user: IUser,
         @Body() body: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.regenerateTwoFactorBackupCodes(user, body);
+        return this.userTwoFactorHttpService.regenerateTwoFactorBackupCodes(
+            user,
+            body
+        );
     }
 
     @UserSharedLogoutDoc()
@@ -379,7 +398,11 @@ export class UserSharedController {
         @AuthJwtPayload()
         { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
     ): Promise<void> {
-        await this.userService.logout(userId, sessionId, deviceOwnershipId);
+        await this.userAuthHttpService.logout(
+            userId,
+            sessionId,
+            deviceOwnershipId
+        );
     }
 
     // TODO: Verify number implementation, but which provider?

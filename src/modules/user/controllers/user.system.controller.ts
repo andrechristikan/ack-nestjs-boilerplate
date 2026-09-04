@@ -13,7 +13,7 @@ import {
     UserCheckEmailResponseDto,
     UserCheckUsernameResponseDto,
 } from '@modules/user/dtos/response/user.check.response.dto';
-import { UserService } from '@modules/user/services/user.service';
+import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -23,7 +23,7 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user',
 })
 export class UserSystemController {
-    constructor(private readonly userService: UserService) {}
+    constructor(private readonly userHttpService: UserHttpService) {}
 
     @UserSystemCheckUsernameDoc()
     @Response('user.checkUsername')
@@ -33,7 +33,7 @@ export class UserSystemController {
     async checkUsername(
         @Body() body: UserCheckUsernameRequestDto
     ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
-        return this.userService.checkUsername(body);
+        return this.userHttpService.checkUsername(body);
     }
 
     @UserSystemCheckEmailDoc()
@@ -44,6 +44,6 @@ export class UserSystemController {
     async checkEmail(
         @Body() body: UserCheckEmailRequestDto
     ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {
-        return this.userService.checkEmail(body);
+        return this.userHttpService.checkEmail(body);
     }
 }

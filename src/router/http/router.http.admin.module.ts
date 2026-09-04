@@ -17,7 +17,7 @@ import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
 import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
-import { UserModule } from '@modules/user/user.module';
+import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
@@ -46,7 +46,7 @@ import { Module } from '@nestjs/common';
     imports: [
         ActivityLogHttpModule,
         ApiKeyHttpModule,
-        UserModule,
+        UserHttpModule,
         PasswordHistoryHttpModule,
         DeviceHttpModule,
         FeatureFlagHttpModule,

@@ -1,7 +1,7 @@
 import { ProjectUserController } from '@modules/project/controllers/project.user.controller';
 import { ProjectHttpModule } from '@modules/project/project.http.module';
 import { UserUserController } from '@modules/user/controllers/user.user.controller';
-import { UserModule } from '@modules/user/user.module';
+import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspaceUserController } from '@modules/workspace/controllers/workspace.user.controller';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
@@ -17,6 +17,6 @@ import { Module } from '@nestjs/common';
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, WorkspaceHttpModule, ProjectHttpModule],
+    imports: [UserHttpModule, WorkspaceHttpModule, ProjectHttpModule],
 })
 export class RouterHttpUserModule {}

@@ -1,0 +1,26 @@
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import { IFile } from '@common/file/interfaces/file.interface';
+import {
+    IUserGeneratePhotoProfile,
+    IUserProfile,
+    IUserUpdatePhotoProfile,
+    IUserUpdateProfile,
+} from '@modules/user/interfaces/user.interface';
+
+export interface IUserProfileService {
+    getProfile(userId: string): Promise<IUserProfile>;
+    updateProfile(
+        userId: string,
+        { countryId, ...data }: IUserUpdateProfile
+    ): Promise<void>;
+    generatePhotoProfilePresign(
+        userId: string,
+        { extension, size }: IUserGeneratePhotoProfile
+    ): Promise<IAwsS3Presign>;
+    updatePhotoProfile(
+        userId: string,
+        { photoKey, size }: IUserUpdatePhotoProfile
+    ): Promise<void>;
+    uploadPhotoProfile(userId: string, file: IFile): Promise<void>;
+    claimUsername(userId: string, username: Lowercase<string>): Promise<void>;
+}

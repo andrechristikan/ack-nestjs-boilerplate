@@ -34,7 +34,10 @@ import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.re
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserService } from '@modules/user/services/user.service';
+import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserVerificationHttpService } from '@modules/user/services/user.verification.http.service';
 import {
     Body,
     Controller,
@@ -52,7 +55,12 @@ import { EnumUserLoginWith } from '@generated/prisma-client';
     path: '/user',
 })
 export class UserPublicController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userAuthHttpService: UserAuthHttpService,
+        private readonly userVerificationHttpService: UserVerificationHttpService,
+        private readonly userPasswordHttpService: UserPasswordHttpService,
+        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+    ) {}
 
     @UserPublicLoginCredentialDoc()
     @Response('user.loginCredential')
@@ -64,7 +72,7 @@ export class UserPublicController {
     async loginWithCredential(
         @Body() body: UserLoginRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginCredential(body);
+        return this.userAuthHttpService.loginCredential(body);
     }
 
     @AuthPublicLoginSocialGoogleDoc()
@@ -80,7 +88,7 @@ export class UserPublicController {
         email: string,
         @Body() body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginWithSocial(
+        return this.userAuthHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialGoogle,
             body
@@ -100,7 +108,7 @@ export class UserPublicController {
         email: string,
         @Body() body: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        return this.userService.loginWithSocial(
+        return this.userAuthHttpService.loginWithSocial(
             email,
             EnumUserLoginWith.socialApple,
             body
@@ -117,7 +125,7 @@ export class UserPublicController {
         @Body()
         body: UserSignUpRequestDto
     ): Promise<void> {
-        await this.userService.signUp(body);
+        await this.userAuthHttpService.signUp(body);
     }
 
     @UserPublicVerifyEmailDoc()
@@ -126,7 +134,7 @@ export class UserPublicController {
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
     @Patch('/email/verify')
     async verifyEmail(@Body() body: UserVerifyEmailRequestDto): Promise<void> {
-        await this.userService.verifyEmail(body);
+        await this.userVerificationHttpService.verifyEmail(body);
     }
 
     @UserPublicSendEmailVerificationDoc()
@@ -138,7 +146,7 @@ export class UserPublicController {
     async sendEmailVerification(
         @Body() body: UserSendEmailVerificationRequestDto
     ): Promise<void> {
-        await this.userService.sendVerificationEmail(body);
+        await this.userVerificationHttpService.sendVerificationEmail(body);
     }
 
     @UserPublicForgotPasswordDoc()
@@ -151,7 +159,7 @@ export class UserPublicController {
     async forgotPassword(
         @Body() body: UserForgotPasswordRequestDto
     ): Promise<void> {
-        await this.userService.forgotPassword(body);
+        await this.userPasswordHttpService.forgotPassword(body);
     }
 
     @UserPublicResetPasswordDoc()
@@ -163,7 +171,7 @@ export class UserPublicController {
     async reset(
         @Body() body: UserForgotPasswordResetRequestDto
     ): Promise<void> {
-        await this.userService.resetPassword(body);
+        await this.userPasswordHttpService.resetPassword(body);
     }
 
     @UserPublicLoginVerifyTwoFactorDoc()
@@ -174,7 +182,7 @@ export class UserPublicController {
     async loginVerifyTwoFactor(
         @Body() body: UserLoginVerifyTwoFactorRequestDto
     ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        return this.userService.loginVerifyTwoFactor(body);
+        return this.userTwoFactorHttpService.loginVerifyTwoFactor(body);
     }
 
     @UserPublicLoginSetupTwoFactorDoc()
@@ -186,6 +194,6 @@ export class UserPublicController {
     async verifyLoginTwoFactor(
         @Body() body: UserLoginSetupTwoFactorRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userService.loginSetupTwoFactor(body);
+        return this.userTwoFactorHttpService.loginSetupTwoFactor(body);
     }
 }

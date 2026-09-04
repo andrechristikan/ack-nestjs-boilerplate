@@ -5,7 +5,7 @@ import { HelloHttpModule } from '@modules/hello/hello.http.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
 import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
-import { UserModule } from '@modules/user/user.module';
+import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspacePublicController } from '@modules/workspace/controllers/workspace.public.controller';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
@@ -27,7 +27,7 @@ import { Module } from '@nestjs/common';
         CountryHttpModule,
         HelloHttpModule,
         TermPolicyHttpModule,
-        UserModule,
+        UserHttpModule,
         WorkspaceHttpModule,
     ],
 })

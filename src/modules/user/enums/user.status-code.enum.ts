@@ -26,4 +26,5 @@ export enum EnumUserStatusCodeError {
     notFoundForbidden = 51024,
     importEmailExist = 51025,
     importUsernameExist = 51026,
+    notAuthenticated = 51027,
 }

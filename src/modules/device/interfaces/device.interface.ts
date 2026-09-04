@@ -6,6 +6,13 @@ import {
 } from '@generated/prisma-client';
 import { IUserRef } from '@modules/user/interfaces/user.interface';
 
+export interface IDeviceIdentity {
+    fingerprint: string;
+    name?: string;
+    platform?: EnumDevicePlatform;
+    notificationToken?: string;
+}
+
 export interface IDeviceOwnership extends DeviceOwnership {
     device: Device;
     user: IUserRef;

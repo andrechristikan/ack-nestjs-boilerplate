@@ -16,7 +16,10 @@ import {
     ResponseFile,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { UserService } from '@modules/user/services/user.service';
+import { UserHttpService } from '@modules/user/services/user.http.service';
+import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
@@ -89,7 +92,12 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
     path: '/user',
 })
 export class UserAdminController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userHttpService: UserHttpService,
+        private readonly userPasswordHttpService: UserPasswordHttpService,
+        private readonly userTwoFactorHttpService: UserTwoFactorHttpService,
+        private readonly userImportHttpService: UserImportHttpService
+    ) {}
 
     @UserAdminListDoc()
     @ResponsePaging('user.list')
@@ -120,7 +128,7 @@ export class UserAdminController {
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListOffsetByAdmin(
+        return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
             roleId,
@@ -145,7 +153,7 @@ export class UserAdminController {
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
     ): Promise<IResponseReturn<UserProfileResponseDto>> {
-        return this.userService.getOne(userId);
+        return this.userHttpService.getOne(userId);
     }
 
     @UserAdminCreateDoc()
@@ -167,7 +175,7 @@ export class UserAdminController {
         body: UserCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userService.createByAdmin(body, createdBy);
+        return this.userHttpService.createByAdmin(body, createdBy);
     }
 
     @UserAdminUpdateStatusDoc()
@@ -190,7 +198,11 @@ export class UserAdminController {
         @AuthJwtPayload('userId') updatedBy: string,
         @Body() body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updateStatusByAdmin(userId, body, updatedBy);
+        return this.userHttpService.updateStatusByAdmin(
+            userId,
+            body,
+            updatedBy
+        );
     }
 
     @UserAdminUpdatePasswordDoc()
@@ -212,7 +224,10 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updatePasswordByAdmin(userId, updatedBy);
+        return this.userPasswordHttpService.updatePasswordByAdmin(
+            userId,
+            updatedBy
+        );
     }
 
     @UserAdminResetTwoFactorDoc()
@@ -234,7 +249,10 @@ export class UserAdminController {
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {
-        await this.userService.resetTwoFactorByAdmin(userId, updatedBy);
+        await this.userTwoFactorHttpService.resetTwoFactorByAdmin(
+            userId,
+            updatedBy
+        );
     }
 
     @UserAdminImportDoc()
@@ -267,7 +285,7 @@ export class UserAdminController {
         )
         data: UserImportRequestDto[]
     ): Promise<void> {
-        await this.userService.importByAdmin(data, createdBy);
+        await this.userImportHttpService.importByAdmin(data, createdBy);
     }
 
     @UserAdminExportDoc()
@@ -295,6 +313,10 @@ export class UserAdminController {
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
-        return this.userService.exportByAdmin(status, roleId, countryId);
+        return this.userImportHttpService.exportByAdmin(
+            status,
+            roleId,
+            countryId
+        );
     }
 }

@@ -11,7 +11,7 @@ import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
 import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
-import { UserModule } from '@modules/user/user.module';
+import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
@@ -33,7 +33,7 @@ import { Module } from '@nestjs/common';
     exports: [],
     imports: [
         ActivityLogHttpModule,
-        UserModule,
+        UserHttpModule,
         PasswordHistoryHttpModule,
         DeviceHttpModule,
         SessionHttpModule,

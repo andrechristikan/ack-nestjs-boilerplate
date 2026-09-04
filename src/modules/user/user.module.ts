@@ -1,59 +1,51 @@
-import { Module } from '@nestjs/common';
-import { UserService } from '@modules/user/services/user.service';
 import { AwsModule } from '@common/aws/aws.module';
-import { PasswordHistoryRepositoryModule } from '@modules/password-history/password-history.repository.module';
-import { UserImportRepository } from '@modules/user/repositories/user.import.repository';
-import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
-import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
-import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
-import { UserSessionRepository } from '@modules/user/repositories/user.session.repository';
-import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
-import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { CountryRepositoryModule } from '@modules/country/country.repository.module';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { DeviceUtilModule } from '@modules/device/device.util.module';
+import { PasswordHistoryRepositoryModule } from '@modules/password-history/password-history.repository.module';
+import { UserAuthService } from '@modules/user/services/user.auth.service';
+import { UserImportService } from '@modules/user/services/user.import.service';
+import { UserLoginService } from '@modules/user/services/user.login.service';
+import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { UserPasswordService } from '@modules/user/services/user.password.service';
+import { UserProfileService } from '@modules/user/services/user.profile.service';
+import { UserService } from '@modules/user/services/user.service';
+import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { UserRepositoryModule } from '@modules/user/user.repository.module';
+import { UserUtilModule } from '@modules/user/user.util.module';
+import { Module } from '@nestjs/common';
 
-/**
- * Exports user providers; controllers are wired through the router
- * (`routes.shared` / `routes.admin`), not registered here.
- */
+/** User domain services backing `UserGuard` and the user HTTP layer. */
 @Module({
-    imports: [
-        PasswordHistoryRepositoryModule,
-        AwsModule,
-        CountryRepositoryModule,
-        WorkspaceModule,
-        DeviceUtilModule,
+    controllers: [],
+    providers: [
+        UserService,
+        UserAuthService,
+        UserLoginService,
+        UserImportService,
+        UserPasswordService,
+        UserVerificationService,
+        UserTwoFactorService,
+        UserProfileService,
+        UserMobileNumberService,
     ],
     exports: [
         UserService,
-        UserRepository,
-        UserOnboardingRepository,
-        UserImportRepository,
-        UserPasswordRepository,
-        UserVerificationRepository,
-        UserTwoFactorRepository,
-        UserSessionRepository,
-        UserMobileNumberRepository,
-        UserUtil,
-        UserOnboardingUtil,
+        UserAuthService,
+        UserImportService,
+        UserPasswordService,
+        UserVerificationService,
+        UserTwoFactorService,
+        UserProfileService,
+        UserMobileNumberService,
     ],
-    providers: [
-        UserService,
-        UserRepository,
-        UserOnboardingRepository,
-        UserImportRepository,
-        UserPasswordRepository,
-        UserVerificationRepository,
-        UserTwoFactorRepository,
-        UserSessionRepository,
-        UserMobileNumberRepository,
-        UserUtil,
-        UserOnboardingUtil,
+    imports: [
+        UserRepositoryModule,
+        UserUtilModule,
+        CountryRepositoryModule,
+        PasswordHistoryRepositoryModule,
+        DeviceUtilModule,
+        AwsModule,
     ],
-    controllers: [],
 })
 export class UserModule {}

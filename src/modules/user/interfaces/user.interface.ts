@@ -1,3 +1,4 @@
+import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     Country,
     Device,
@@ -6,6 +7,7 @@ import {
     EnumPasswordHistoryType,
     EnumProjectMemberRole,
     EnumTermPolicyType,
+    EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
@@ -19,7 +21,12 @@ import {
     UserMobileNumber,
     UserPhoto,
 } from '@generated/prisma-client';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import {
+    IAuthPassword,
+    IAuthToken,
+    IAuthTwoFactorVerify,
+} from '@modules/auth/interfaces/auth.interface';
+import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
@@ -162,4 +169,111 @@ export interface IUserCreateWithWorkspaceInput {
     workspaceContext: IUserSignUpWorkspaceContext;
     workspaceRows: IUserOnboardingWorkspaceRows;
     createdBy: string;
+}
+
+export interface IUserCheckEmail {
+    badWord: boolean;
+    exist: boolean;
+}
+
+export interface IUserCheckUsername extends IUserCheckEmail {
+    pattern: boolean;
+}
+
+export interface IUserCreateByAdmin {
+    username: string;
+    email: string;
+    name?: string;
+    roleId: string;
+    countryId: string;
+}
+
+export interface IUserImportRow {
+    username: string;
+    email: string;
+    name?: string;
+}
+
+export interface IUserUpdateProfile {
+    name?: string;
+    countryId: string;
+    gender: EnumUserGender;
+}
+
+export interface IUserGeneratePhotoProfile {
+    extension: EnumFileExtensionImage;
+    size: number;
+}
+
+export interface IUserUpdatePhotoProfile {
+    photoKey: string;
+    size: number;
+}
+
+export interface IUserMobileNumberInput {
+    number: string;
+    phoneCode: string;
+    countryId: string;
+}
+
+export interface IUserLoginCredential {
+    email: string;
+    password: string;
+    from: EnumUserLoginFrom;
+    device: IDeviceIdentity;
+}
+
+export interface IUserLoginSocial {
+    username: string;
+    name?: string;
+    countryId: string;
+    from: EnumUserLoginFrom;
+    device: IDeviceIdentity;
+    cookies: boolean;
+    marketing: boolean;
+    workspaceInviteToken?: string;
+}
+
+export interface IUserSignUp {
+    username: string;
+    email: string;
+    name?: string;
+    countryId: string;
+    password: string;
+    from: EnumUserSignUpFrom;
+    cookies: boolean;
+    marketing: boolean;
+    workspaceInviteToken?: string;
+}
+
+export interface IUserChangePassword extends IAuthTwoFactorVerify {
+    newPassword: string;
+    oldPassword: string;
+}
+
+export interface IUserResetPassword extends IAuthTwoFactorVerify {
+    newPassword: string;
+    token: string;
+}
+
+export interface IUserTwoFactorSetup {
+    secret: string;
+    otpauthUrl: string;
+}
+
+export interface IUserLoginTwoFactorChallenge {
+    isRequiredSetup: boolean;
+    challengeToken: string;
+    challengeExpiresInMs: number;
+    backupCodesRemaining: number;
+    otpauthUrl?: string;
+    secret?: string;
+}
+
+export interface IUserLoginOutcome {
+    isTwoFactorEnable: boolean;
+    lastWorkspaceId: string | null;
+    lastWorkspaceChangedAt: Date | null;
+    tokens?: IAuthToken;
+    twoFactor?: IUserLoginTwoFactorChallenge;
 }

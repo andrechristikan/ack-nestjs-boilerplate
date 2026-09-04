@@ -1,8 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client';
+import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 
-export class AuthTokenResponseDto {
+export class AuthTokenResponseDto implements IAuthToken {
     @ApiProperty({
         example: 'Bearer',
         required: true,
