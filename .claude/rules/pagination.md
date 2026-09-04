@@ -6,7 +6,7 @@ Full API in `docs/pagination.md`. `PaginationService` is global and offers two s
 
 **`/admin/**` is offset. Every other scope — `/user`, `/shared`, `/system`, `/public` — is cursor.**
 
-Not a per-endpoint judgement. There is no exception list and no "unless the collection is bounded". A new paginated endpoint takes the strategy of the prefix it is registered under in `src/router/routes/`, and nothing else decides it.
+Not a per-endpoint judgement. There is no exception list and no "unless the collection is bounded". A new paginated endpoint takes the strategy of the prefix it is registered under in `src/router/http/`, and nothing else decides it.
 
 An admin console is the only consumer that needs a total, a page number and a jump-to-page; `IPaginationCursorReturn` has none of those. Offset also cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`), so it is a narrow-then-browse tool, never a scan tool — which is why no other scope may use it.
 

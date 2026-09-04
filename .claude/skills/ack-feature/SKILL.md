@@ -1,10 +1,28 @@
 ---
 name: ack-feature
-description: Build a new feature end to end — interrogate the requirement, plan it, write it spec-first, offer the reviews at the end, and leave every check green. Use when the owner asks for new behaviour. NOT for a narrow fix (ack-fix), NOT for repairing specs (ack-fix-test), NOT for seed data (ack-seed).
+description: Build a NEW feature end to end — interrogate the requirement, plan it, write it spec-first, offer the reviews at the end, and leave every check green. Use when the owner asks for behaviour that does not exist yet. NOT for repairing behaviour that already exists (ack-fix), NOT for specs or a coverage backfill (ack-spec), NOT for seed data (ack-seed).
 disable-model-invocation: true
 ---
 
-Build one feature, end to end. You orchestrate; the agents do the work.
+Build one NEW feature, end to end. You orchestrate; the agents do the work.
+
+## Reject early
+
+This skill starts from a requirement, not from a symptom. Stop and point elsewhere when the
+request is:
+
+| The request | Where it goes |
+|---|---|
+| behaviour that already exists and is wrong | `/ack-fix` — it pins the symptom, finds the cause, and plans the repair |
+| specs for code that already exists, or a coverage backfill | `/ack-spec` — it touches no `src/` |
+| baseline rows an install needs | `/ack-seed` |
+
+Say which, and stop. **A repair dressed as a feature skips the whole diagnostic half of
+`/ack-fix`** — it builds new behaviour beside the defect and leaves the defect in place.
+
+A feature that turns out to need an existing surface CORRECTED on the way is still this skill;
+name the correction in §1 so it lands in the requirement and the plan, rather than arriving as
+an unplanned edit in §4.
 
 ## 1 — Interrogate the requirement, HERE
 
@@ -33,10 +51,10 @@ code exists.
 
 ## 3 — Schema first, if there is one (HARD)
 
-**`prisma/schema.prisma` has NO agent.** When the plan names a schema delta, relay it to the
-OWNER — the model, the field, the exact Prisma type, the index, and the data consequence — and
-WAIT. Code cannot be written against a column that does not exist, and nobody here may run
-`db:migrate` or `db:generate`.
+**A schema delta is `coder`'s edit and the OWNER'S push.** `coder` edits `prisma/schema.prisma`
+and runs `db:generate`, so the code typechecks against the new field. Then relay the push to the
+owner — the model, the field, the index, the data consequence, and `pnpm db:migrate` — and say
+which endpoints stay broken until it runs. Nobody here may run `db:migrate`.
 
 ## 4 — Build
 
@@ -85,8 +103,8 @@ pnpm test --testPathPatterns '<module>'
 
 **The test run is SCOPED to the modules the feature actually CHANGED, never the whole suite
 (HARD).** Name each one — the flag takes several patterns. A module you only read is not in
-scope. A full `pnpm test` belongs to `/ack-fix-test` and to the `pre-commit` hook, which runs
-it on every commit anyway.
+scope. A full `pnpm test` belongs to `/ack-spec` and to the `pre-commit` hook, which runs it on
+every commit anyway.
 
 **`collectCoverage` is `false`.** A scoped `pnpm test` does not apply the 100% threshold.
 Coverage is `pnpm test:cov`. A scoped coverage run exits 1 while every spec passes because the
@@ -116,8 +134,12 @@ Two answers are legitimate, and both belong to the owner:
 
 | They pick | You do |
 |---|---|
-| fix it | one more `test-writer` dispatch on those files, still inside this module |
+| fix it | one more `test-writer` dispatch, on those files only |
 | leave it | nothing here — `pre-commit` runs `pnpm test` without coverage, so the threshold is not a hook gate |
+
+**A backfill pass here stays inside the files this feature wrote.** A gap anywhere else — an
+older module the coverage run surfaced, a shared helper this feature only imported — is a
+one-line REPORT and a `/ack-spec` run, never a second dispatch from here.
 
 **`--no-verify` is never yours to choose.** You do not pass it, suggest it as a default, or
 assume a previous answer still holds.
@@ -126,7 +148,7 @@ assume a previous answer still holds.
 
 - **Never fix anything yourself.** You dispatch and you report.
 - **Never dispatch `reviewer-e2e` unasked.**
-- Never edit `prisma/schema.prisma`, and never run a schema, DB, or seed command.
+- Never run a DB or seed command. The schema EDIT is `coder`'s; the push is the owner's.
 - **Never `--no-verify` on your own initiative.**
 - Never stage or commit unless the owner asks in that exchange.
 - No `docs/*.md` — that is `/ack-docs`.
@@ -142,9 +164,9 @@ checks were offered, which the owner picked, and which were skipped**.
 
 | Then run | When |
 |---|---|
-| `/ack-verify` | the owner declined `verifier` here and now wants the running app checked |
-| `/ack-gate` | the owner declined `reviewer-rules` here and now wants the compliance pass |
-| `/ack-docs` | the behaviour this changed is described in `docs/` |
+| `/ack-gate` | the owner declined `reviewer-rules` here and now wants the full compliance pass |
+| `/ack-docs` | the behaviour this added is described in `docs/` |
+| `/ack-spec` | the coverage run surfaced gaps outside this feature's own files |
 
 `/ack-pr-doc` is NOT a step here. Run it on its own once the branch is settled — it fetches and
 moves local refs, which every other skill deliberately avoids.

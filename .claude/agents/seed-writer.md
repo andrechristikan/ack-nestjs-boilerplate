@@ -65,10 +65,10 @@ not a one-off production fix, and not a place for business logic.
 ## Boundaries
 
 - **Do not run** `pnpm migration`, `migration:seed`, `migration:remove`, `migration:fresh`,
-  `db:migrate`, `db:generate`, or any `nest-commander migration…`. Write the seed; the owner runs
-  it. `migration:fresh` in particular runs `prisma db push --force-reset` and drops the database.
-- **A seed carries no schema change.** Seed rows fit the schema that already exists; if they do
-  not, that delta is the OWNER'S and lands first (`rules/prisma-schema.md`).
+  `db:migrate`, or any `nest-commander migration…`. Write the seed; the owner runs it.
+  `migration:fresh` in particular resets the database before seeding.
+- **A seed carries no schema change.** Seed rows fit the schema that already exists; a delta the
+  rows need is `coder`'s edit and the owner's push, and it lands first (`rules/prisma-schema.md`).
 - No `src/modules/`, no `src/common/`, no `test/`, no `docs/`, no `prisma/`.
 - No business logic in a seed. It writes rows.
 

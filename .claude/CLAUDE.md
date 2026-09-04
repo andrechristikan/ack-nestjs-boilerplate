@@ -23,12 +23,21 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 ## Layout
 
 Feature modules live in `src/modules/<feature>/` and all carry ONE shape — the repository
-pattern, `Controller → Service → Repository`, with flat folder-per-concern directories
+pattern, `Controller → HTTP Service → Domain Service → Repository` with `Processor → Processor
+Service` joining at the domain service, and flat folder-per-concern directories
 (`controllers/`, `services/`, `repositories/`, `dtos/request/`, `dtos/response/`, `enums/`,
 `exceptions/`, `interfaces/`, `constants/`, `utils/`, and `decorators/` `docs/` `guards/`
 `factories/` `indicators/` `interceptors/` `processors/` `templates/` `validations/` where the
 feature needs them). There is no layered folder scheme on top of it and no second shape to
 detect — do not invent one.
+
+Each layer gets its own Nest module in the feature folder, and only the ones with something to
+provide exist: `<feature>.util.module.ts`, `<feature>.repository.module.ts`,
+`<feature>.module.ts` (domain services — the only one another feature consumes),
+`<feature>.http.module.ts` and `<feature>.processor.module.ts`. `src/common/` and every
+`@Global()` module are injectable from any layer including a repository; a non-global feature's
+util stops at another module's service layer. Full rules: `.claude/rules/architecture.md` and
+`.claude/rules/nest-wiring.md`.
 
 ```
 src/
@@ -43,10 +52,11 @@ src/
 ├── languages/          # nestjs-i18n JSON, one file per module prefix
 ├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
-├── queues/             # BullMQ framework layer + composition root
-└── router/             # route prefix modules (/public /system /admin /user /shared)
+├── queues/             # BullMQ framework layer — enums, decorator, base, queue registration
+└── router/             # http/ mounts controllers under /public /system /admin /user /shared;
+                        #   processor/ aggregates every <feature>.processor.module.ts
 
-prisma/schema.prisma    # OFF-LIMITS — see "How work happens here"
+prisma/schema.prisma    # editable; applying it to MongoDB is the owner's — see "How work happens here"
 generated/              # prisma client, swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
 test/                   # jest.json + specs mirroring src/
@@ -81,13 +91,11 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 
 | Skill | For |
 |---|---|
-| `ack-feature` | new behaviour, end to end — interrogate, plan, build spec-first, offer reviews, all checks green |
-| `ack-fix` | one narrow named change; uses a plan when handed one, never writes its own |
-| `ack-fix-test` | repair or backfill unit specs against code that exists |
-| `ack-debug` | find the cause of a symptom — root cause, evidence, and a repair plan, no fix |
+| `ack-feature` | NEW behaviour, end to end — interrogate, plan, build spec-first, offer reviews, all checks green |
+| `ack-fix` | repair EXISTING behaviour, end to end — pin the symptom, find the cause, brainstorm, plan, build, offer reviews |
+| `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
 | `ack-seed` | initial-data seeders under `src/migration/` |
-| `ack-gate` | check a scope against the rule set |
-| `ack-verify` | prove something works against the running app |
+| `ack-gate` | the compliance pass — the whole rule set, then every mechanical check, one verdict |
 | `ack-docs` | check and repair `docs/*.md` |
 | `ack-pr-doc` | write the PR description document — runs alone, at the end |
 | `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
@@ -99,40 +107,46 @@ Each skill ends with a **Next** section naming what usually follows it. Nothing 
 automatically: a skill never invokes another skill, so every hop is the owner's call.
 
 ```
-   /ack-debug ──→ /ack-fix ──→ /ack-docs
-   /ack-feature ─────┘
+   /ack-fix     ──→ /ack-docs
+   /ack-feature ──→ /ack-docs
    /ack-seed    ──→ /ack-docs
 
+   /ack-spec            alone — specs only, and the only skill that runs the full suite
    /ack-gate            alone — the owner's compliance pass, started by nothing else
-   /ack-verify          alone — the owner's proof against the running app
    /ack-pr-doc          alone, at the end — it fetches and moves a local ref
    /ack-claude-config   alone — the subject is the configuration an agent would read
 ```
 
-`/ack-fix` changes code, and the specs for what it changed come with it. `/ack-fix-test`
-changes no `src/` at all. When a suite is red: the code is wrong → `/ack-debug` then
-`/ack-fix`; the spec is wrong → `/ack-fix-test`.
+**`/ack-feature` and `/ack-fix` are the same shape on opposite subjects.** Both interrogate,
+brainstorm, plan, build spec-first, offer the reviews, and end green. `feature` starts from a
+requirement for behaviour that does not exist; `fix` starts from a symptom in behaviour that
+does, and spends its first four steps turning that symptom into a reproduced cause. Breadth
+picks neither: a one-line repair is still `fix`, and a small addition is still `feature`.
+
+When a suite is red: the code is wrong → `/ack-fix`; the spec is wrong → `/ack-spec`.
 
 **The reviews are OFFERED, never automatic.** `ack-feature` and `ack-fix` end by asking the
 owner which of `reviewer-rules`, `reviewer-e2e` and `verifier` to run, once the work is done
 and the diff is visible. `ack-seed` offers `reviewer-rules` only. **`reviewer-e2e` never runs
-unasked, anywhere**, including inside `ack-debug` where it is the natural tool.
-`ack-fix-test`, `ack-gate`, `ack-verify`, `ack-docs`, `ack-pr-doc` and `ack-claude-config`
-run no review and no gate of their own.
+unasked, anywhere**, including inside `ack-fix` where it is the natural tool for tracing a
+symptom. `ack-spec`, `ack-docs`, `ack-pr-doc` and `ack-claude-config` run no review of their
+own. `ack-gate` IS the review, and there both halves are mandatory.
 
 **A test run is always scoped to the module the work actually CHANGED** —
-`pnpm test --testPathPatterns '<module>'`. No skill except `/ack-fix-test` runs the full
+`pnpm test --testPathPatterns '<module>'`. No skill except `/ack-spec` runs the full
 suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
 `collectCoverage` is `false` in `test/jest.json`, so a scoped `pnpm test` does not apply the
 100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
 spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
 not the exit code and not the global summary.
 
-**A coverage gap is never closed silently.** A skill that finds a touched file short of 100%
-on a coverage run stops and asks the owner: another `test-writer` pass on those files, or
-leave the gap. Both are the owner's to pick, in that exchange. `--no-verify` is never the
-model's choice — and `pre-commit` does not collect coverage, so it is also not a way past
-the threshold.
+**A coverage gap is never closed silently.** In `ack-feature`, `ack-fix` and `ack-seed`, a
+touched file short of 100% stops the run and goes to the owner: another `test-writer` pass on
+those files, or leave the gap. Both are the owner's to pick, in that exchange. `/ack-spec` is
+the exception — 100% is the bar it exists to reach, so it keeps dispatching until the per-file
+rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
+`--no-verify` is never the model's choice, and `pre-commit` does not collect coverage, so it is
+also not a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `planner`, `coder`, `test-writer`, `seed-writer`, `explorer`, `researcher`, `reviewer-rules`,
@@ -171,10 +185,22 @@ installs them once:
 
 ## How work happens here
 
-- **`prisma/schema.prisma` is OFF-LIMITS, and so is every schema or DB command** —
-  `db:migrate`, `db:push`, `db:generate`, `migration:seed`, `migration:remove`,
-  `migration:fresh`. Describe the delta; the owner applies it. This is why there is no
-  schema-writing agent.
+- **`prisma/schema.prisma` is editable; APPLYING it to MongoDB is not.** The split is what
+  the command touches. Files only — `db:generate` (`prisma generate`), `db:format`
+  (`prisma format`), `prisma validate` — are yours. Anything that opens a connection is the
+  owner's and is DENIED by `.claude/hooks/deny-db-write.sh`: `db:migrate` (`prisma db push`),
+  `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`, `migration:seed`,
+  `migration:remove`, `migration:fresh`, `node dist/migration.js`, and the `mongosh` /
+  `redis-cli` shells. Edit the schema, then hand back the two commands the owner must run.
+- **The permission posture is "inward is silent, outward asks".** Everything that stays in
+  this repository — pnpm, the local toolchain, shell reads and writes, `git add`, `git commit`
+  — is `allow` in `.claude/settings.json` and raises no prompt. What leaves the directory or
+  the machine is `ask`: `git push`, `git pull`, the writing `gh` subcommands, `pnpm publish`,
+  `pnpm dlx`, `db:studio`, `vault:pull`, `ssh`, `scp`, `rsync`, a writing `curl`, `rm -rf`,
+  `git reset --hard`, `git clean`, a docker removal, and edits to `~/.claude/**`. An `ask`
+  rule prompts even under `bypassPermissions`, so the list is deliberately short — the prompt
+  is the permission system doing its job, never a formality to route around by widening
+  `settings.local.json`.
 - Coding rules live in `.claude/rules/`. They are NOT loaded into this session — the agent
   that needs a rule loads it. Two rules are split by WHO reads them: `testing.md` (where
   specs live, jest facts) versus `testing-spec-style.md` (how a spec is written —
@@ -196,10 +222,9 @@ installs them once:
   not a reason to commit it, and neither is a clean tree, a green gate, or a commit the owner
   asked for one message earlier — that permission covered that commit and expired with it.
   PROPOSE the message and WAIT for approval. The work is handed back dirty; the owner reads
-  the diff and decides. `git add` and `git commit` are `ask` in `.claude/settings.json`, so
-  each one raises an approval prompt: the prompt is the permission system doing its job, never
-  the request itself, and answering it is the owner's decision, not a formality to route
-  around by widening `settings.local.json`.
+  the diff and decides. `git add` and `git commit` are `allow` in `.claude/settings.json` and
+  raise no prompt, so nothing mechanical stops a commit the owner did not ask for. The
+  restraint is yours.
 - **Never touch the owner's index.** No `git add`, no `git stash`, no staging or unstaging
   command on your own. Already-staged files stay staged; unstaged stay unstaged. Stage only
   the files the owner names. Branch before committing when sitting on `main`.

@@ -127,5 +127,7 @@ conditions in `rules/architecture.md` before filing one.
 ## Hand back
 
 Violations ranked by severity: `file:line`, the rule file and clause, what breaks. Then the
-surfaces you checked and found clean, so the reader knows what was covered. Caveman ultra
+surfaces you checked and found clean, so the reader knows what was covered. Then **every rule
+file you read, by name** — the ALWAYS set plus each conditional one the scope pulled in, so the
+dispatcher can tell a clean scope from an unread one. Caveman ultra
 (`rules/agent-communication.md`).

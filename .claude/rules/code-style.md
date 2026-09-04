@@ -14,7 +14,7 @@ injectable, no bare `@UseGuards` where a `@<Feature>Protected()` decorator is th
 
 ```
 @app/*  @common/*  @config  @configs/*  @modules/*  @queues/*
-@routes/*  @router  @migration/*  @test/*  @generated/*  @package
+@router/*  @migration/*  @test/*  @generated/*  @package
 ```
 
 `@prisma/client` resolves to `generated/prisma-client`. A `../` in an import is a defect,

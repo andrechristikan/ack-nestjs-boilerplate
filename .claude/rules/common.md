@@ -18,9 +18,14 @@ a parking lot for anything that happens to be imported in several places.**
 
 ## The import direction
 
+`src/common/` is **tier 1** (`rules/architecture.md`): everything in it is injectable from any
+repository, any service, and any util, with no `imports:` entry. That openness only holds
+because the direction is one-way.
+
 - `src/common/` MAY import a feature module for composition (`common.module.ts` wiring) or a
   feature's compile-time enum.
-- It MUST NOT import a feature's runtime code, and MUST NOT bind a feature type as a generic
+- It MUST NOT import a feature's runtime code — **not a service, not a repository, not a util,
+  not even from a `@Global()` feature** — and MUST NOT bind a feature type as a generic
   default. **A shared module that knows one feature's internals is no longer shared.**
 
 `common.module.ts` does import feature modules today (`AuthModule`, `ApiKeyModule`,

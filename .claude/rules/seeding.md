@@ -46,5 +46,5 @@ Adding a seed with a dependency means placing it correctly in **both** bundled s
 
 ## Off-limits (inherits the mandatory schema rule)
 
-- **`migration:fresh` is a DB-reset command** — it runs `prisma db push --force-reset` before seeding. It is on the forbidden list (`rules/prisma-schema.md`): do not run it, describe the intent and let the owner run it.
+- **`migration:fresh` is a DB-reset command** — it resets the database before seeding. It is one of the commands the owner runs (`rules/prisma-schema.md`): describe the intent and let the owner run it.
 - `migration:seed`, `migration:remove`, and every `migration:*` command are the owner's to run — you write the seed, you do not execute the seeder against a database.

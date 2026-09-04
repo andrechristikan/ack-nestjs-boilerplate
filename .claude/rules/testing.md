@@ -57,7 +57,7 @@ the work is done.
   lying to you.
 - **A run is SCOPED to the module being worked on, always.** `pnpm test --testPathPatterns
   '<module>'`, where the module is one the work actually CHANGED — a module you only read is
-  not in scope. No skill except `/ack-fix-test` runs the full suite; the `pre-commit` hook
+  not in scope. No skill except `/ack-spec` runs the full suite; the `pre-commit` hook
   runs `pnpm test` (no coverage) on every commit, and that is where a broken global mock or
   shared fixture surfaces. Reporting a scoped run as if it were the whole suite is the one
   thing that turns this into a lie — name the pattern you passed.

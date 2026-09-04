@@ -54,9 +54,9 @@ written.
 - **The seam.** Which existing callers, queues, cursors, i18n keys, or wire shapes the change is
   visible to, and what has to happen for them — a queue drain, a cursor invalidation, a forced
   re-login, a client-contract note (`rules/naming.md`).
-- **The schema delta, if any.** `prisma/schema.prisma` is the OWNER'S. A step that needs a new
-  column DESCRIBES the delta and its data consequence, and the plan says the owner applies it
-  before the code step that depends on it (`rules/prisma-schema.md`).
+- **The schema delta, if any.** The schema EDIT is a step like any other, placed before the code
+  that depends on it and verified with `pnpm db:generate`. The PUSH is the owner's: name it as its
+  own step, `pnpm db:migrate`, and carry the data consequence with it (`rules/prisma-schema.md`).
 - **The status-code allocation, if any.** Which block, which next free number, scanned not
   remembered (`rules/status-code.md`).
 - **Open questions.** Anything that would change the plan depending on the answer, named as a

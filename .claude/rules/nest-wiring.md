@@ -9,13 +9,15 @@ There are exactly three, and no fourth is invented:
 
 | Root | Owns |
 |---|---|
-| `src/app/app.module.ts` | the `APP_FILTER` chain; imports `CommonModule`, `QueueModule`, `RouterModule` |
+| `src/app/app.module.ts` | the `APP_FILTER` chain; imports `CommonModule` and `RouterModule` |
 | `src/common/common.module.ts` | every global infrastructure module and the app-wide feature modules |
-| `src/queues/queue.module.ts` | every BullMQ processor provider |
+| `src/router/router.module.ts` | the five HTTP prefix modules and `RouterProcessorModule` |
 
-`src/router/router.module.ts` mounts the five route-prefix modules (`rules/router.md`), and
-`src/queues/queue.register.module.ts` is `@Global()` and holds every `BullModule.registerQueue`
-with its job defaults (`rules/queue.md`).
+`src/router/http/router.http.<scope>.module.ts` registers controllers under their prefix
+(`rules/router.md`); `src/router/processor/router.processor.module.ts` aggregates every
+`<feature>.processor.module.ts` and provides nothing itself (`rules/queue.md`); and
+`src/queues/queue.register.module.ts` is `@Global()` and holds every
+`BullModule.registerQueue` with its job defaults.
 
 ## Global modules are imported once
 
@@ -26,32 +28,80 @@ with its job defaults (`rules/queue.md`).
 
 **A feature module never imports one of them.** Injecting `DatabaseService` or
 `PaginationService` needs no `imports:` entry, and adding one is drift that reads as if the
-module owned a second instance.
+module owned a second instance. The same holds for a `@Global()` feature module: it is tier 2
+(`rules/architecture.md`), reachable without an import.
 
 `forRoot()` is called ONCE, at the composition root. A `forRoot()` inside a feature module is a
 second instance of something that is supposed to be shared.
 
-## A feature module
+## The five module files of a feature
 
-```ts
-@Module({
-    controllers: [],                    // registered by src/router, not here
-    providers: [UserService, UserRepository],
-    exports: [UserService],             // what other modules consume
-    imports: [WorkspaceModule],         // only what this module actually injects
-})
-export class UserModule {}
+One feature, one folder, up to five modules — each owning exactly one layer:
+
+```
+src/modules/<feature>/
+├── <feature>.util.module.ts         <Feature>UtilModule         utils
+├── <feature>.repository.module.ts   <Feature>RepositoryModule   repositories
+├── <feature>.module.ts              <Feature>Module             domain services
+├── <feature>.http.module.ts         <Feature>HttpModule         HTTP services
+└── <feature>.processor.module.ts    <Feature>ProcessorModule    processors + processor services
 ```
 
-- **`controllers: []` stays empty.** A controller is registered by
-  `routes.<scope>.module.ts` (`rules/router.md`). A feature module that registers its own
-  controller mounts it OUTSIDE the route prefix, so the endpoint exists at the wrong path with
-  nothing failing.
-- **A processor is provided by `queue.module.ts`, not here** (`rules/queue.md`).
-- **`exports` is a contract.** Export the service other modules consume, plus a guard-backing
-  service where a guard in another module needs it. Internal helpers stay unexported.
+**Only the files with something to provide exist.** A feature with no queue work has no
+`<feature>.processor.module.ts`; one with no utils has no `<feature>.util.module.ts`. An empty
+`providers:` array is the signal that the file should not have been created.
+
+The import graph is fixed, and it is acyclic by construction:
+
+```ts
+@Module({ providers: [WorkspaceUtil], exports: [WorkspaceUtil], imports: [] })
+export class WorkspaceUtilModule {}
+
+@Module({ imports: [WorkspaceUtilModule], providers: [...], exports: [...] })
+export class WorkspaceRepositoryModule {}          // repositories only
+
+@Module({ imports: [WorkspaceRepositoryModule, WorkspaceUtilModule], providers: [WorkspaceService], exports: [WorkspaceService] })
+export class WorkspaceModule {}                    // domain services only
+
+@Module({ imports: [WorkspaceModule], providers: [WorkspaceHttpService], exports: [WorkspaceHttpService] })
+export class WorkspaceHttpModule {}                // HTTP services only
+
+@Module({ imports: [WorkspaceModule], providers: [WorkspaceProcessor, WorkspaceProcessorService] })
+export class WorkspaceProcessorModule {}           // processor classes + their services
+```
+
+- **`<feature>.util.module.ts` imports nothing from its own feature.** It is the bottom of the
+  graph, which is what lets a repository inject its own module's util without a cycle
+  (`rules/architecture.md`).
+- **`<feature>.repository.module.ts` imports the util module and other features' repository
+  modules, never a service module.** A repository that needs a service has crossed a layer.
+- **`<feature>.module.ts` is what another feature consumes.** It exports domain services and
+  nothing else.
+- **`<feature>.http.module.ts` and `<feature>.processor.module.ts` are LEAVES.** Nothing imports
+  them except `src/router/`. A feature module that imports another feature's HTTP or processor
+  module has reached for the wrong layer — it wants the domain service.
+- **`controllers:` stays empty in every one of the five.** A controller is registered by
+  `router.http.<scope>.module.ts` (`rules/router.md`). A controller registered in a feature
+  module mounts OUTSIDE the route prefix, so the endpoint exists at the wrong path with nothing
+  failing.
+- **A processor class is provided by `<feature>.processor.module.ts`**, beside the processor
+  service it dispatches to (`rules/queue.md`).
+- **`exports` is a contract.** Export what another module consumes, plus a service a guard in
+  another module needs. Internal helpers stay unexported.
 - **`imports` lists what this module actually injects.** An import nobody uses is noise that
   makes a real cycle harder to see.
+
+## What a cross-module import may target
+
+| You need | Import |
+|---|---|
+| another feature's business behaviour | `<Feature>Module` |
+| another feature's repository, for a flow yours owns (`rules/cross-module.md`) | `<Feature>RepositoryModule` |
+| another feature's util, from your SERVICE layer, feature not `@Global()` | `<Feature>UtilModule` |
+| anything from a `@Global()` feature, or from `src/common/` | nothing — it is already reachable |
+
+`<Feature>HttpModule` and `<Feature>ProcessorModule` are never a legitimate import target
+outside `src/router/`.
 
 ## Never `forwardRef` between feature modules (HARD)
 

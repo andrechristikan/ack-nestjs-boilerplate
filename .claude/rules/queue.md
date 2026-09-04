@@ -4,10 +4,11 @@ Detail in `docs/queue.md`. Redis `db:1` carries BullMQ; `db:0` carries the cache
 
 ## Where things live
 
-- **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`.
+- **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`. It holds no module that provides a processor.
 - **`queue.register.module.ts`** — `@Global()`; every `BullModule.registerQueue` and per-queue job default lives here, nowhere else.
-- **`queue.module.ts`** — the composition root that provides every processor class, and imports a feature module only where the processor's collaborators are not already reachable (`WorkspaceModule` today; `NotificationModule` is not listed because `CommonModule` already makes it global). Do not invent a second composition root, and do not register a processor in its own feature module (`rules/nest-wiring.md`).
-- **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`). Only their REGISTRATION lives in `src/queues/`. A `processors/` folder under `src/queues/` is drift.
+- **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to, and importing `<Feature>Module` for the domain services behind them (`rules/nest-wiring.md`).
+- **`src/router/processor/router.processor.module.ts`** — imports every `<Feature>ProcessorModule` and provides nothing itself. Do not invent a second aggregation site (`rules/router.md`).
+- **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`), and so does their registration. A `processors/` folder under `src/queues/` is drift.
 
 ## Writing a processor
 
@@ -25,6 +26,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 - Always `extends QueueProcessorBase` — the base owns the `failed` hook that reports to Sentry once, on the last attempt only, and only when the error is fatal. A processor extending `WorkerHost` directly loses that and double-reports across retries.
 - Always return `IQueueResponse`. An ad-hoc `{ ok: false }` or `{ applied: true }` shape breaks the contract the base and the board rely on.
 - `process()` dispatches by `job.name` to a handler; the handler's real work belongs in a `*.processor.service.ts`, not inline in the switch. A processor is a dispatcher, the same way a controller is.
+- **The processor service owns no business rule.** It translates the payload and calls a domain service, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
 - Mark a non-fatal failure with `QueueException`'s fatal flag so a retryable error does not page anyone.
 
 ## Payloads

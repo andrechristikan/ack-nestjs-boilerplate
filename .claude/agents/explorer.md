@@ -38,8 +38,8 @@ never skip it silently.
 
 | Looking for | It is declared |
 |---|---|
-| an HTTP route | `@Controller` + a route decorator in `<module>/controllers/<module>.<scope>.controller.ts`, **registered in `src/router/routes/routes.<scope>.module.ts`** |
-| a BullMQ entry | **`@QueueProcessor(EnumQueue.x)`** on a class extending `QueueProcessorBase` in `<module>/processors/`, provided by `src/queues/queue.module.ts` |
+| an HTTP route | `@Controller` + a route decorator in `<module>/controllers/<module>.<scope>.controller.ts`, **registered in `src/router/http/router.http.<scope>.module.ts`** |
+| a BullMQ entry | **`@QueueProcessor(EnumQueue.x)`** on a class extending `QueueProcessorBase` in `<module>/processors/`, provided by `<module>/<module>.processor.module.ts` |
 | a CLI entry | `@Command` on a class extending `MigrationSeedBase` in `src/migration/seeds/` |
 | a guard behind a route | a `@<Feature>Protected()` composable decorator in `<module>/decorators/`, not a bare `@UseGuards` |
 | a status code | `<module>/enums/<module>.status-code.enum.ts` |

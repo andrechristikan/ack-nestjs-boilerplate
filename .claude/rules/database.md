@@ -49,10 +49,11 @@ Using the array form for conditional logic is the failure here — the operation
 
 Transactions live in the repository. A service does not open one.
 
-## Schema is off-limits
+## Schema edits, and the push that is not yours
 
-`prisma/schema.prisma` and every schema or DB command belong to the owner. How to DESCRIBE a
-delta, and the conventions the schema already follows, are `rules/prisma-schema.md`.
+`prisma/schema.prisma` is editable and `db:generate` is yours to run; every command that opens
+a connection to MongoDB belongs to the owner. What the hand-back must state, and the
+conventions the schema already follows, are `rules/prisma-schema.md`.
 
 Prisma-owned enums are imported from `@generated/prisma-client`, never re-declared in a module
 (`rules/enum.md`).

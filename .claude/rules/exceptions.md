@@ -43,8 +43,9 @@ export class UserNotFoundException extends AppBaseException {
 
 ## Throwing rules
 
-- **Services throw the module's typed exception.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
-- **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the service's call.
+- **The DOMAIN service throws the module's typed exception.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
+- **An HTTP service and a processor service throw nothing of their own.** They translate a DTO or a job payload and let the domain service's exception travel out; a business exception raised in either is a rule the other transport never applies (`rules/architecture.md`).
+- **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the domain service's call.
 - **Controllers do not catch module exceptions (`AppBaseException`).** The global filter chain owns the mapping. A `try/catch` in a controller that reshapes an exception is duplicating the filter and will drift from it.
 - Framework `HttpException`s (route 404, throttler 429, payload limits) are the framework's to throw and `AppHttpFilter`'s to handle. Feature code does not raise them.
 

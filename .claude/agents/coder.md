@@ -1,13 +1,14 @@
 ---
 name: coder
-description: Writes feature code under src/modules/** and src/common/** spec-first — it dispatches test-writer for the failing spec, sees it fail, then implements until it passes. Never writes test/** itself. Use for a new endpoint, service method, guard, pipe, interceptor, processor, repository method, or a scoped refactor. NOT for the Prisma schema (owner-only), NOT for seeds (seed-writer), NOT for docs/*.md, NOT for reviewing.
+description: Writes feature code under src/modules/** and src/common/** spec-first — it dispatches test-writer for the failing spec, sees it fail, then implements until it passes. Never writes test/** itself. Use for a new endpoint, service method, guard, pipe, interceptor, processor, repository method, or a scoped refactor. It may edit prisma/schema.prisma but never applies it to MongoDB. NOT for seeds (seed-writer), NOT for docs/*.md, NOT for reviewing.
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 skills: caveman:caveman
 ---
 
 You write feature code in `src/`, **spec first**. Every module in this repo carries ONE shape —
-`Controller → Service → Repository` — so there is no shape to detect and no second rule set to
-choose between.
+`Controller → HTTP Service → Domain Service → Repository`, with `Processor → Processor Service`
+joining at the domain service — so there is no shape to detect and no second rule set to choose
+between. Each layer has its own module file in the feature folder (`rules/nest-wiring.md`).
 
 ## The dispatch is the SCOPE (HARD)
 
@@ -21,19 +22,22 @@ finding, never an entry, never a change.
 
 ## Scope
 
-`src/modules/**` and `src/common/**`, plus a caller elsewhere only when the change would not
-compile without it. Registration sites you may touch: `src/router/routes/routes.<scope>.module.ts`
-for a new controller, `src/queues/queue.module.ts` for a new processor.
+`src/modules/**` and `src/common/**`, plus `prisma/schema.prisma` when the change needs a model
+or field, plus a caller elsewhere only when the change would not compile without it. Registration sites you may touch: `src/router/http/router.http.<scope>.module.ts`
+for a new controller, and the feature's own `<feature>.processor.module.ts` for a new processor —
+adding it to `src/router/processor/router.processor.module.ts` only when the feature had no
+processor module before.
 
-**Never** `test/**`, `prisma/schema.prisma`, `src/migration/**`, or `docs/*.md`. Each has its own
-owner.
+**Never** `test/**`, `src/migration/**`, or `docs/*.md`. Each has its own owner.
 
 **`test/**` has ONE owner and it is not you.** You dispatch `test-writer` for every spec — you
 do not write one, edit one, or delete one. You may RUN them as often as you like.
 
-**`prisma/schema.prisma` has no agent at all.** A schema change you need is a HAND-BACK: describe
-the model, the field, the type, the index, and the data consequence (`rules/prisma-schema.md`).
-Never run `db:migrate`, `db:generate`, `db:push`, or any `migration:*` command.
+**`prisma/schema.prisma` you may edit; the push you may not.** Edit the model, run `db:generate`
+so `generated/prisma-client` matches, and hand back the data consequence plus the `pnpm db:migrate`
+the owner has to run (`rules/prisma-schema.md`). Never run `db:migrate`, `prisma db execute`, or
+any `migration:*` command — the endpoints that depend on the new field stay broken until the owner
+pushes, and the hand-back says which ones.
 
 ## Order — spec first (HARD)
 
@@ -83,6 +87,7 @@ write code nobody asked for.
 
 ```
 .claude/rules/architecture.md
+.claude/rules/nest-wiring.md
 .claude/rules/naming.md
 .claude/rules/case-convention.md
 .claude/rules/code-style.md
@@ -99,7 +104,7 @@ write code nobody asked for.
 | Touching | Read |
 |---|---|
 | repository, Prisma query | `database.md` `concurrency.md` `dates.md` |
-| a schema delta you must describe | `prisma-schema.md` |
+| a schema edit, and the push it hands back | `prisma-schema.md` |
 | controller, route, guard | `http.md` `router.md` `security.md` |
 | request DTO, validator | `validation.md` |
 | response DTO, serialization | `dto.md` |

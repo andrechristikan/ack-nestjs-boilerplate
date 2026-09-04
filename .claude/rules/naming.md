@@ -30,6 +30,32 @@ Four more are valid, but ONLY inside the one tree that owns them — they are no
 
 Anything else is invalid.
 
+### The layer segment on a service, and the module files
+
+A service file carries the LAYER it belongs to, and the layer decides which module provides it
+(`rules/architecture.md`, `rules/nest-wiring.md`):
+
+```
+<module>[.<concern>].service.ts             →  <Module>[<Concern>]Service            domain
+<module>[.<concern>].http.service.ts        →  <Module>[<Concern>]HttpService        HTTP
+<module>[.<concern>].processor.service.ts   →  <Module>[<Concern>]ProcessorService   queue
+```
+
+A feature's modules are named for the layer they provide, and only the ones with something to
+provide exist:
+
+```
+<module>.util.module.ts         →  <Module>UtilModule
+<module>.repository.module.ts   →  <Module>RepositoryModule
+<module>.module.ts              →  <Module>Module
+<module>.http.module.ts         →  <Module>HttpModule
+<module>.processor.module.ts    →  <Module>ProcessorModule
+```
+
+`src/router/` follows the same shape with `router` as the module prefix —
+`router.http.<scope>.module.ts` → `RouterHttp<Scope>Module`, and
+`router.processor.module.ts` → `RouterProcessorModule` (`rules/router.md`).
+
 - **DTO files always end `.dto.ts`**, and a DTO under `dtos/request/` or `dtos/response/` always carries its direction segment:
 
   ```
@@ -73,7 +99,7 @@ Anything else is invalid.
 
 | Type | Rule | Example |
 |---|---|---|
-| Class | PascalCase, module-prefixed | `UserService`, `UserRepository`, `UserAdminController` |
+| Class | PascalCase, module-prefixed | `UserService`, `UserHttpService`, `UserRepository`, `UserAdminController` |
 | Interface | `I` + PascalCase | `IUser`, `IPaginationQuery`, `IRequestApp` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |

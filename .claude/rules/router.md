@@ -1,38 +1,60 @@
 # Router
 
-`src/router/` mounts controllers under their access-level prefix. The FILES live in the feature
-module; only the registration lives here.
+`src/router/` is where the feature layers are mounted. The FILES live in the feature module;
+only the registration lives here.
 
 ```
 src/router/
-├── router.module.ts              # mounts the five route modules under their prefixes
-└── routes/
-    ├── routes.public.module.ts   → /public
-    ├── routes.system.module.ts   → /system
-    ├── routes.admin.module.ts    → /admin
-    ├── routes.user.module.ts     → /user
-    └── routes.shared.module.ts   → /shared
+├── router.module.ts                       # imports the five HTTP modules and the processor module
+├── http/
+│   ├── router.http.public.module.ts       → /public
+│   ├── router.http.system.module.ts       → /system
+│   ├── router.http.admin.module.ts        → /admin
+│   ├── router.http.user.module.ts         → /user
+│   └── router.http.shared.module.ts       → /shared
+└── processor/
+    └── router.processor.module.ts         # every <feature>.processor.module.ts
 ```
+
+`router.module.ts` binds each `RouterHttp<Scope>Module` to its prefix through
+`NestJsRouterModule.register`, and imports `RouterProcessorModule` plainly — a processor has no
+path.
 
 ## Registering a controller
 
-A route module lists the controller in `controllers:` and its owning feature module in
-`imports:`. Both, always — a controller registered without its module's providers fails at boot
-with an unresolvable dependency.
+A route module lists the controller in `controllers:` and the feature's HTTP module in
+`imports:`. Both, always — a controller registered without its providers fails at boot with an
+unresolvable dependency.
 
 ```ts
 @Module({
     controllers: [UserUserController, WorkspaceUserController],
-    imports: [UserModule, WorkspaceModule],
+    imports: [UserHttpModule, WorkspaceHttpModule],
     providers: [],
     exports: [],
 })
-export class RoutesUserModule {}
+export class RouterHttpUserModule {}
 ```
 
-**The feature module keeps `controllers: []`** (`rules/nest-wiring.md`). A controller registered
-in its own module mounts OUTSIDE the prefix, so the endpoint exists at the wrong path with
-nothing failing.
+- **The import target is `<Feature>HttpModule`, never `<Feature>Module`.** A controller's only
+  collaborator is the HTTP service (`rules/architecture.md`); reaching the domain service from a
+  controller skips the layer that owns DTO translation.
+- **The feature modules keep `controllers: []`** (`rules/nest-wiring.md`). A controller
+  registered in its own module mounts OUTSIDE the prefix, so the endpoint exists at the wrong
+  path with nothing failing.
+
+## Registering a processor
+
+`router.processor.module.ts` imports every `<Feature>ProcessorModule` and provides nothing of
+its own. The processor class and its processor service are the feature module's, not the
+router's (`rules/queue.md`).
+
+```ts
+@Module({
+    imports: [NotificationProcessorModule, WorkspaceProcessorModule],
+})
+export class RouterProcessorModule {}
+```
 
 ## One controller per scope, and the scope decides everything
 
@@ -60,5 +82,5 @@ nothing failing.
 ## Adding a scope
 
 Adding a sixth route module means a new prefix in `router.module.ts`, a new
-`routes.<scope>.module.ts`, and an answer to each row of the table above before the first
+`router.http.<scope>.module.ts`, and an answer to each row of the table above before the first
 controller is written. It is not a mechanical addition.

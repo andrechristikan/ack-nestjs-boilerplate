@@ -73,9 +73,9 @@ No test run — there are no specs for this tree.
 
 - **Never fix anything yourself.** You dispatch and you report.
 - **Never dispatch `reviewer-e2e` unasked.**
-- **Never run `pnpm migration`, `migration:seed`, `migration:remove`, `migration:fresh`,
-  `db:migrate`, or `db:generate`.** Write the seed; the owner runs it. `migration:fresh` runs
-  `prisma db push --force-reset` and drops the database.
+- **Never run `pnpm migration`, `migration:seed`, `migration:remove`, `migration:fresh`, or
+  `db:migrate`.** Write the seed; the owner runs it. `migration:fresh` resets the database
+  before seeding.
 - No `src/modules/`, no `src/common/`, no `test/`, no `docs/`, no `prisma/`.
 - Never stage or commit unless the owner asks in that exchange.
 

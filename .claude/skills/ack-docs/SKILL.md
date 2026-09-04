@@ -28,8 +28,8 @@ disagree about a DECISION and which is wrong is not obvious.
 **Every CONFLICT goes to the owner with the git evidence for both sides.** Do not pick a side
 here. When the evidence suggests the CODE is wrong — a guard removed in a commit that does not
 mention it, a doc newer than the change, a disagreement about authorization, credentials, or
-session invalidation — that is a suspected defect, and it belongs in an `/ack-debug` or
-`/ack-fix` run, not a doc edit.
+session invalidation — that is a suspected defect, and it belongs in an `/ack-fix` run, not a
+doc edit.
 
 ## Read the repair, not just the report
 
@@ -53,8 +53,8 @@ had always been this way".
   touched a status-code enum. It is not re-derived here as a routine pass.
 - No `src/`, no `test/`, no `.claude/`, no `prisma/`.
 - No schema, DB, or seed commands. Never stage or commit unless the owner asks in that exchange.
-- `Edit(docs/**)` is `ask` in `.claude/settings.json`, so each write raises a prompt. That is the
-  permission system doing its job.
+- `Edit(docs/**)` is `allow` in `.claude/settings.json`, so a repair raises no prompt. Nothing
+  mechanical stops a doc edit the owner did not ask for; the scope of the dispatch does.
 
 ## Hand back
 
@@ -64,5 +64,5 @@ What was found by class, what was repaired, and every CONFLICT — unresolved, w
 
 | Then run | When |
 |---|---|
-| `/ack-debug` or `/ack-fix` | a CONFLICT resolved as "the CODE is wrong" — that is a defect, not a doc edit |
+| `/ack-fix` | a CONFLICT resolved as "the CODE is wrong" — that is a defect, not a doc edit |
 | `/ack-pr-doc` | the branch is settled and needs its description |

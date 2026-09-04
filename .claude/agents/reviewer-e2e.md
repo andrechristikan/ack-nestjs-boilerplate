@@ -55,8 +55,8 @@ single changed file. All are obvious on the path.
 
 | Entry | Declared by | Where |
 |---|---|---|
-| HTTP | `@Controller` + route decorators | `<module>/controllers/<module>.<scope>.controller.ts`, **registered in `src/router/routes/routes.<scope>.module.ts`** |
-| BullMQ | **`@QueueProcessor(EnumQueue.x)`** on a class extending `QueueProcessorBase` | `<module>/processors/`, provided by `src/queues/queue.module.ts` |
+| HTTP | `@Controller` + route decorators | `<module>/controllers/<module>.<scope>.controller.ts`, **registered in `src/router/http/router.http.<scope>.module.ts`** |
+| BullMQ | **`@QueueProcessor(EnumQueue.x)`** on a class extending `QueueProcessorBase` | `<module>/processors/`, provided by `<module>/<module>.processor.module.ts` |
 | CLI | `@Command` on a class extending `MigrationSeedBase` | `src/migration/seeds/` |
 
 **Not `@Processor` — this repo wraps it.** Grepping for `@Processor` finds nothing and concludes
@@ -70,7 +70,8 @@ the registration (`rules/router.md`).
 
 ```
 request → middleware chain → global pipe → route guards → controller method
-        → service (business rules, exceptions) → repository → Prisma
+        → HTTP service (DTO in, response DTO out) → domain service (business rules, exceptions)
+        → repository → Prisma
         → back through the response interceptor → filter chain on the way out
 ```
 
