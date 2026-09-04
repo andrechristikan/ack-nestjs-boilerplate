@@ -2,7 +2,6 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -20,39 +19,22 @@ import {
     Prisma,
     Workspace,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceRepository {
-    private readonly slugPrefix: string;
-    private readonly slugMaxLength: number;
-    private readonly maxSlugAttempts: number;
-
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil,
-        private readonly configService: ConfigService
-    ) {
-        this.slugPrefix = this.configService.get<string>(
-            'workspace.slugPrefix'
-        )!;
-        this.slugMaxLength = this.configService.get<number>(
-            'workspace.slugMaxLength'
-        )!;
-        this.maxSlugAttempts = this.configService.get<number>(
-            'workspace.slugMaxAttempts'
-        )!;
-    }
+        private readonly activityLogUtil: ActivityLogUtil
+    ) {}
 
     private async createWithOwnerAndSlug(
         ownerId: string,
@@ -83,7 +65,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     ownerId,
                     workspaceId,
                     EnumActivityLogAction.workspaceCreated,
@@ -181,6 +163,7 @@ export class WorkspaceRepository {
     async createWithOwner(
         ownerId: string,
         dto: WorkspaceCreateRequestDto,
+        slugCandidates: string[],
         requestLog: IRequestLog
     ): Promise<Workspace> {
         if (dto.slug) {
@@ -192,13 +175,17 @@ export class WorkspaceRepository {
             );
         }
 
-        let slug = this.helperStringService.generateSlug(
-            this.slugPrefix,
-            this.slugMaxLength
-        );
-        let attemptsLeft = this.maxSlugAttempts;
+        for (const slug of slugCandidates) {
+            const taken = await this.databaseService.client.workspace.findFirst(
+                {
+                    where: { slug },
+                    select: { id: true },
+                }
+            );
+            if (taken) {
+                continue;
+            }
 
-        while (true) {
             try {
                 return await this.createWithOwnerAndSlug(
                     ownerId,
@@ -207,24 +194,17 @@ export class WorkspaceRepository {
                     requestLog
                 );
             } catch (err: unknown) {
-                attemptsLeft -= 1;
-
                 const isSlugCollision =
                     err instanceof Prisma.PrismaClientKnownRequestError &&
                     err.code === 'P2002';
 
                 if (!isSlugCollision) {
                     throw err;
-                } else if (attemptsLeft <= 0) {
-                    throw new DatabaseUniqueValueGenerationFailedException();
                 }
-
-                slug = this.helperStringService.generateSlug(
-                    this.slugPrefix,
-                    this.slugMaxLength
-                );
             }
         }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     async updateDetails(
@@ -243,7 +223,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceUpdated,
@@ -270,7 +250,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceVisibilityUpdated,
@@ -297,7 +277,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceUpdated,
@@ -356,7 +336,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceDeleted,
@@ -383,7 +363,7 @@ export class WorkspaceRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     userId,
                     workspaceId,
                     EnumActivityLogAction.workspaceSwitched,

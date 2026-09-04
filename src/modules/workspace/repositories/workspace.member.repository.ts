@@ -14,10 +14,10 @@ import {
     Prisma,
     WorkspaceMember,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class WorkspaceMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     private buildWorkspaceScopedWhere(
@@ -162,7 +162,7 @@ export class WorkspaceMemberRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceMemberRoleUpdated,
@@ -186,7 +186,7 @@ export class WorkspaceMemberRepository {
                 where: { id: targetMemberId },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     action,
@@ -219,7 +219,7 @@ export class WorkspaceMemberRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceOwnershipTransferred,

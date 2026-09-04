@@ -1,7 +1,6 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -14,35 +13,20 @@ import {
     Prisma,
     Project,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectRepository {
-    private readonly slugPrefix: string;
-    private readonly slugMaxLength: number;
-    private readonly maxSlugAttempts: number;
-
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil,
-        private readonly configService: ConfigService
-    ) {
-        this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
-        this.slugMaxLength = this.configService.get<number>(
-            'project.slugMaxLength'
-        )!;
-        this.maxSlugAttempts = this.configService.get<number>(
-            'project.slugMaxAttempts'
-        )!;
-    }
+        private readonly activityLogUtil: ActivityLogUtil
+    ) {}
 
     async findActiveByIdAndWorkspace(
         projectId: string,
@@ -129,6 +113,7 @@ export class ProjectRepository {
         workspaceId: string,
         actorId: string,
         dto: ProjectCreateRequestDto,
+        slugCandidates: string[],
         requestLog: IRequestLog
     ): Promise<Project> {
         if (dto.slug) {
@@ -141,13 +126,15 @@ export class ProjectRepository {
             );
         }
 
-        let slug = this.helperStringService.generateSlug(
-            this.slugPrefix,
-            this.slugMaxLength
-        );
-        let attemptsLeft = this.maxSlugAttempts;
+        for (const slug of slugCandidates) {
+            const taken = await this.databaseService.client.project.findFirst({
+                where: { slug },
+                select: { id: true },
+            });
+            if (taken) {
+                continue;
+            }
 
-        while (true) {
             try {
                 return await this.createWithWorkspaceAndSlug(
                     workspaceId,
@@ -157,24 +144,17 @@ export class ProjectRepository {
                     requestLog
                 );
             } catch (err: unknown) {
-                attemptsLeft -= 1;
-
                 const isSlugCollision =
                     err instanceof Prisma.PrismaClientKnownRequestError &&
                     err.code === 'P2002';
 
                 if (!isSlugCollision) {
                     throw err;
-                } else if (attemptsLeft <= 0) {
-                    throw new DatabaseUniqueValueGenerationFailedException();
                 }
-
-                slug = this.helperStringService.generateSlug(
-                    this.slugPrefix,
-                    this.slugMaxLength
-                );
             }
         }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     private async createWithWorkspaceAndSlug(
@@ -196,7 +176,7 @@ export class ProjectRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectCreated,
@@ -225,7 +205,7 @@ export class ProjectRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectUpdated,
@@ -253,7 +233,7 @@ export class ProjectRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectUpdated,
@@ -282,7 +262,7 @@ export class ProjectRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectDeleted,

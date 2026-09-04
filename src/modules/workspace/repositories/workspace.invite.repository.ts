@@ -19,10 +19,10 @@ import {
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
 
 export interface IWorkspaceInviteCreateData {
@@ -43,7 +43,7 @@ export class WorkspaceInviteRepository {
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     /** Flips truly-expired `pending` invites to `expired`; returns the count updated. */
@@ -193,7 +193,7 @@ export class WorkspaceInviteRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     invitedByUserId,
                     workspaceId,
                     EnumActivityLogAction.workspaceInviteCreated,
@@ -238,7 +238,7 @@ export class WorkspaceInviteRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.workspaceInviteRevoked,
@@ -298,7 +298,7 @@ export class WorkspaceInviteRepository {
             }
 
             await tx.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     userId,
                     invite.workspaceId,
                     EnumActivityLogAction.workspaceInviteAccepted,

@@ -2,6 +2,7 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -48,7 +49,9 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class ProjectService implements IProjectService {
     private readonly slugPattern: RegExp;
+    private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
 
     constructor(
         private readonly projectRepository: ProjectRepository,
@@ -56,14 +59,28 @@ export class ProjectService implements IProjectService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly requestStoreService: RequestStoreService,
+        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.slugPattern = this.configService.get<RegExp>(
             'project.slugPattern'
         )!;
+        this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
         this.slugMaxLength = this.configService.get<number>(
             'project.slugMaxLength'
         )!;
+        this.slugMaxAttempts = this.configService.get<number>(
+            'project.slugMaxAttempts'
+        )!;
+    }
+
+    private drawSlugCandidates(): string[] {
+        return Array.from({ length: this.slugMaxAttempts }, () =>
+            this.helperStringService.generateSlug(
+                this.slugPrefix,
+                this.slugMaxLength
+            )
+        );
     }
 
     private assertSlugAllowed(slug: string): void {
@@ -217,6 +234,7 @@ export class ProjectService implements IProjectService {
             workspaceId,
             actorId,
             dto,
+            this.drawSlugCandidates(),
             requestLog
         );
 

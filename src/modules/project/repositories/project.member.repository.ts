@@ -9,9 +9,9 @@ import {
     Prisma,
     ProjectMember,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class ProjectMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async findOneByProjectAndUser(
@@ -93,7 +93,7 @@ export class ProjectMemberRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectMemberAssigned,
@@ -121,7 +121,7 @@ export class ProjectMemberRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     EnumActivityLogAction.projectMemberRoleUpdated,
@@ -145,7 +145,7 @@ export class ProjectMemberRepository {
                 where: { id: targetMemberId },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     actorId,
                     workspaceId,
                     action,

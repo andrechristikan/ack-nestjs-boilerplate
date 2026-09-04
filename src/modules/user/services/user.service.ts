@@ -51,6 +51,7 @@ import {
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -108,8 +109,10 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import {
     IUser,
+    IUserSignUpWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
@@ -154,6 +157,11 @@ export class UserService implements IUserService {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
 
+    private readonly personalWorkspaceNamePattern: string;
+    private readonly workspaceSlugPrefix: string;
+    private readonly workspaceSlugMaxLength: number;
+    private readonly workspaceSlugMaxAttempts: number;
+
     constructor(
         private readonly userUtil: UserUtil,
         private readonly userRepository: UserRepository,
@@ -172,6 +180,7 @@ export class UserService implements IUserService {
         private readonly authTwoFactorUtil: AuthTwoFactorUtil,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperStringService: HelperStringService,
         private readonly requestStoreService: RequestStoreService
     ) {
         this.userRoleName =
@@ -179,6 +188,46 @@ export class UserService implements IUserService {
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
         )!;
+
+        this.personalWorkspaceNamePattern = this.configService.get<string>(
+            'workspace.personalNamePattern'
+        )!;
+        this.workspaceSlugPrefix = this.configService.get<string>(
+            'workspace.slugPrefix'
+        )!;
+        this.workspaceSlugMaxLength = this.configService.get<number>(
+            'workspace.slugMaxLength'
+        )!;
+        this.workspaceSlugMaxAttempts = this.configService.get<number>(
+            'workspace.slugMaxAttempts'
+        )!;
+    }
+
+    private drawWorkspaceSlugCandidates(): string[] {
+        return Array.from({ length: this.workspaceSlugMaxAttempts }, () =>
+            this.helperStringService.generateSlug(
+                this.workspaceSlugPrefix,
+                this.workspaceSlugMaxLength
+            )
+        );
+    }
+
+    private async resolvePersonalWorkspaceContexts(
+        usernames: string[]
+    ): Promise<IUserSignUpWorkspacePersonal[]> {
+        const slugs = await this.userRepository.findFreeWorkspaceSlugs(
+            usernames.map(() => this.drawWorkspaceSlugCandidates())
+        );
+
+        return usernames.map((username, index) => ({
+            type: EnumUserSignUpWorkspaceContextType.personal,
+            workspaceId: this.databaseUtil.createId(),
+            slug: slugs[index],
+            name: this.personalWorkspaceNamePattern.replace(
+                '{username}',
+                username
+            ),
+        }));
     }
 
     private async assertForgotPasswordAllowed(): Promise<void> {
@@ -301,6 +350,8 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
+            const [workspaceContext] =
+                await this.resolvePersonalWorkspaceContexts([username]);
             const created = await this.userRepository.createByAdmin(
                 userId,
                 {
@@ -312,6 +363,7 @@ export class UserService implements IUserService {
                 },
                 password,
                 checkRole,
+                workspaceContext,
                 requestLog,
                 createdBy
             );
@@ -987,11 +1039,13 @@ export class UserService implements IUserService {
                 await this.assertWorkspaceInvitationAllowed();
             }
 
+            const [personalContext] =
+                await this.resolvePersonalWorkspaceContexts([username]);
             const workspaceContext =
                 await this.userRepository.resolveWorkspaceSignUpContext(
                     workspaceInviteToken ?? null,
                     email,
-                    username
+                    personalContext
                 );
             if (workspaceInviteToken && !workspaceContext) {
                 throw new WorkspaceInviteInvalidException();
@@ -1130,11 +1184,14 @@ export class UserService implements IUserService {
             await this.assertWorkspaceInvitationAllowed();
         }
 
+        const [personalContext] = await this.resolvePersonalWorkspaceContexts([
+            username,
+        ]);
         const workspaceContext =
             await this.userRepository.resolveWorkspaceSignUpContext(
                 workspaceInviteToken ?? null,
                 email,
-                username
+                personalContext
             );
         if (workspaceInviteToken && !workspaceContext) {
             throw new WorkspaceInviteInvalidException();
@@ -1996,6 +2053,8 @@ export class UserService implements IUserService {
                 this.authUtil.createPassword(e, passwords[i])
             );
 
+            const workspaceContexts =
+                await this.resolvePersonalWorkspaceContexts(usernames);
             const newUsers = await this.userRepository.importByAdmin(
                 data,
                 userIds,
@@ -2003,6 +2062,7 @@ export class UserService implements IUserService {
                 passwordHasheds,
                 checkCountry.id,
                 checkRole,
+                workspaceContexts,
                 requestLog,
                 createdBy
             );

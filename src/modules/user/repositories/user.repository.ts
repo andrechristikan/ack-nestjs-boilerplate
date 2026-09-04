@@ -4,7 +4,6 @@ import { IDatabaseTransactionClient } from '@common/database/interfaces/database
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -40,7 +39,6 @@ import {
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
     Country,
     EnumActivityLogAction,
@@ -75,34 +73,14 @@ import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.co
 
 @Injectable()
 export class UserRepository {
-    private readonly personalWorkspaceNamePattern: string;
-    private readonly workspaceSlugPrefix: string;
-    private readonly workspaceSlugMaxLength: number;
-    private readonly workspaceSlugMaxAttempts: number;
-
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
-        private readonly helperHashService: HelperHashService,
-        private readonly configService: ConfigService
-    ) {
-        this.personalWorkspaceNamePattern = this.configService.get<string>(
-            'workspace.personalNamePattern'
-        )!;
-        this.workspaceSlugPrefix = this.configService.get<string>(
-            'workspace.slugPrefix'
-        )!;
-        this.workspaceSlugMaxLength = this.configService.get<number>(
-            'workspace.slugMaxLength'
-        )!;
-        this.workspaceSlugMaxAttempts = this.configService.get<number>(
-            'workspace.slugMaxAttempts'
-        )!;
-    }
+        private readonly helperHashService: HelperHashService
+    ) {}
 
     async findWithPaginationOffset(
         {
@@ -398,14 +376,11 @@ export class UserRepository {
             passwordPeriodExpired,
         }: IAuthPassword,
         { id: roleId, type: roleType }: IRole,
+        workspaceContext: IUserSignUpWorkspacePersonal,
         requestLog: IRequestLog,
         createdBy: string
     ): Promise<User> {
         const { ipAddress, userAgent, geoLocation } = requestLog;
-        const workspaceContext = await this.resolvePersonalWorkspaceContext(
-            username,
-            []
-        );
 
         return this.databaseService.client.$transaction(
             async tx => {
@@ -1195,11 +1170,11 @@ export class UserRepository {
     async resolveWorkspaceSignUpContext(
         workspaceInviteToken: string | null,
         email: string,
-        username: string
+        personalContext: IUserSignUpWorkspacePersonal
     ): Promise<IUserSignUpWorkspaceContext | null> {
         return workspaceInviteToken
             ? this.resolveInviteWorkspaceContext(workspaceInviteToken, email)
-            : this.resolvePersonalWorkspaceContext(username, []);
+            : personalContext;
     }
 
     /** Resolves a sign-up invite token to its workspace context, accepting only pending, unexpired invites whose workspace is still active. */
@@ -1234,50 +1209,39 @@ export class UserRepository {
         };
     }
 
-    /** Draws a workspace slug that is free in the database and absent from `reservedSlugs`, the slugs the caller has already claimed but not yet written. */
-    private async generateUniqueWorkspaceSlug(
-        reservedSlugs: string[]
-    ): Promise<string> {
-        let attemptsLeft = this.workspaceSlugMaxAttempts;
+    /** Picks one workspace slug per row: the first candidate free in the database and not already handed out earlier in the same call. */
+    async findFreeWorkspaceSlugs(
+        candidatesPerRow: string[][]
+    ): Promise<string[]> {
+        const slugs: string[] = [];
 
-        while (attemptsLeft > 0) {
-            attemptsLeft -= 1;
+        for (const candidates of candidatesPerRow) {
+            let picked: string | null = null;
 
-            const slug = this.helperStringService.generateSlug(
-                this.workspaceSlugPrefix,
-                this.workspaceSlugMaxLength
-            );
-            if (reservedSlugs.includes(slug)) {
-                continue;
-            }
-
-            const taken = await this.databaseService.client.workspace.findFirst(
-                {
-                    where: { slug },
-                    select: { id: true },
+            for (const slug of candidates) {
+                if (slugs.includes(slug)) {
+                    continue;
                 }
-            );
-            if (!taken) {
-                return slug;
+
+                const taken =
+                    await this.databaseService.client.workspace.findFirst({
+                        where: { slug },
+                        select: { id: true },
+                    });
+                if (!taken) {
+                    picked = slug;
+                    break;
+                }
             }
+
+            if (!picked) {
+                throw new DatabaseUniqueValueGenerationFailedException();
+            }
+
+            slugs.push(picked);
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    private async resolvePersonalWorkspaceContext(
-        username: string,
-        reservedSlugs: string[]
-    ): Promise<IUserSignUpWorkspacePersonal> {
-        return {
-            type: EnumUserSignUpWorkspaceContextType.personal,
-            workspaceId: this.databaseUtil.createId(),
-            slug: await this.generateUniqueWorkspaceSlug(reservedSlugs),
-            name: this.personalWorkspaceNamePattern.replace(
-                '{username}',
-                username
-            ),
-        };
+        return slugs;
     }
 
     private buildWorkspaceSignUpOperations(
@@ -2338,6 +2302,7 @@ export class UserRepository {
         passwordHasheds: IAuthPassword[],
         countryId: string,
         { id: roleId, type: roleType }: IRole,
+        workspaceContexts: IUserSignUpWorkspacePersonal[],
         requestLog: IRequestLog,
         createdBy: string
     ): Promise<User[]> {
@@ -2357,16 +2322,6 @@ export class UserRepository {
                     id: true,
                 },
             });
-
-        const workspaceContexts: IUserSignUpWorkspacePersonal[] = [];
-        for (const username of usernames) {
-            workspaceContexts.push(
-                await this.resolvePersonalWorkspaceContext(
-                    username,
-                    workspaceContexts.map(({ slug }) => slug)
-                )
-            );
-        }
 
         const users = await this.databaseService.client.$transaction(
             async tx => {

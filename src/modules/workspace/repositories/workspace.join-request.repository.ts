@@ -15,8 +15,8 @@ import {
     Prisma,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { IWorkspaceJoinRequestRequester } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceActivityLogUtil } from '@modules/workspace/utils/workspace.activity-log.util';
 import { Injectable } from '@nestjs/common';
 
 export interface IWorkspaceJoinRequestCreateData {
@@ -31,7 +31,7 @@ export class WorkspaceJoinRequestRepository {
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly workspaceActivityLogUtil: WorkspaceActivityLogUtil
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async existsPendingByWorkspaceAndUser(
@@ -106,7 +106,7 @@ export class WorkspaceJoinRequestRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     userId,
                     workspaceId,
                     EnumActivityLogAction.workspaceJoinRequested,
@@ -144,7 +144,7 @@ export class WorkspaceJoinRequestRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     reviewerId,
                     joinRequest.workspaceId,
                     EnumActivityLogAction.workspaceJoinAccepted,
@@ -175,7 +175,7 @@ export class WorkspaceJoinRequestRepository {
                 },
             }),
             this.databaseService.client.activityLog.create(
-                this.workspaceActivityLogUtil.buildCreateArgs(
+                this.activityLogUtil.buildCreateArgs(
                     reviewerId,
                     workspaceId,
                     EnumActivityLogAction.workspaceJoinRejected,

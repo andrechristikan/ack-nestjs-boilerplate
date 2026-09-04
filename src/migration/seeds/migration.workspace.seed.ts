@@ -1,5 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
@@ -28,6 +29,9 @@ export class MigrationWorkspaceSeed
     private readonly logger = new Logger(MigrationWorkspaceSeed.name);
 
     private readonly env: EnumAppEnvironment;
+    private readonly slugPrefix: string;
+    private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
     private readonly users: {
         country: string;
         email: string;
@@ -39,6 +43,7 @@ export class MigrationWorkspaceSeed
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository
     ) {
@@ -46,6 +51,25 @@ export class MigrationWorkspaceSeed
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.users = migrationUserData[this.env];
+
+        this.slugPrefix = this.configService.get<string>(
+            'workspace.slugPrefix'
+        )!;
+        this.slugMaxLength = this.configService.get<number>(
+            'workspace.slugMaxLength'
+        )!;
+        this.slugMaxAttempts = this.configService.get<number>(
+            'workspace.slugMaxAttempts'
+        )!;
+    }
+
+    private drawSlugCandidates(): string[] {
+        return Array.from({ length: this.slugMaxAttempts }, () =>
+            this.helperStringService.generateSlug(
+                this.slugPrefix,
+                this.slugMaxLength
+            )
+        );
     }
 
     async seed(): Promise<void> {
@@ -93,6 +117,7 @@ export class MigrationWorkspaceSeed
                     await this.workspaceRepository.createWithOwner(
                         user.id,
                         dto,
+                        this.drawSlugCandidates(),
                         { userAgent, ipAddress }
                     );
                 })

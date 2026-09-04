@@ -79,7 +79,9 @@ import { Duration } from 'luxon';
 export class WorkspaceService implements IWorkspaceService {
     private readonly maxWorkspacesPerUser: number;
     private readonly slugPattern: RegExp;
+    private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
 
     private readonly homeUrl: string;
     private readonly inviteExpiredInDays: number;
@@ -111,8 +113,14 @@ export class WorkspaceService implements IWorkspaceService {
         this.slugPattern = this.configService.get<RegExp>(
             'workspace.slugPattern'
         )!;
+        this.slugPrefix = this.configService.get<string>(
+            'workspace.slugPrefix'
+        )!;
         this.slugMaxLength = this.configService.get<number>(
             'workspace.slugMaxLength'
+        )!;
+        this.slugMaxAttempts = this.configService.get<number>(
+            'workspace.slugMaxAttempts'
         )!;
 
         this.homeUrl = this.configService.get<string>('home.url')!;
@@ -134,6 +142,15 @@ export class WorkspaceService implements IWorkspaceService {
         this.joinRequestReviewLinkBaseUrl = this.configService.get<string>(
             'workspace.joinRequest.reviewLinkBaseUrl'
         )!;
+    }
+
+    private drawSlugCandidates(): string[] {
+        return Array.from({ length: this.slugMaxAttempts }, () =>
+            this.helperStringService.generateSlug(
+                this.slugPrefix,
+                this.slugMaxLength
+            )
+        );
     }
 
     private assertSlugAllowed(slug: string): void {
@@ -421,6 +438,7 @@ export class WorkspaceService implements IWorkspaceService {
         const workspace = await this.workspaceRepository.createWithOwner(
             userId,
             dto,
+            this.drawSlugCandidates(),
             requestLog
         );
 
