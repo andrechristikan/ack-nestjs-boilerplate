@@ -73,7 +73,8 @@
             "Bash(git worktree:*)",
             "Edit(docs/**)",
             "Edit(prisma/**)",
-            "Write(prisma/**)"
+            "Write(prisma/**)",
+            "Agent(general-purpose)"
         ],
         "ask": [
             "Bash(git push:*)",
