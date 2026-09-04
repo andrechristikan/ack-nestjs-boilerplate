@@ -153,9 +153,12 @@ Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked dire
 `reviewer-e2e`, `verifier`, `doc-writer`, `pr-doc-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
-project skill is `disable-model-invocation: true`. The generic built-ins that WOULD have
-carried it — `general-purpose`, `claude`, `Explore`, `Plan` — are denied in
-`.claude/settings.json`, because the project agents above already cover what they do.
+project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
+it. The generic built-ins — `general-purpose`, `claude`, `Explore`, `Plan` — stay AVAILABLE,
+and `general-purpose` is `allow` in `.claude/settings.json`: an external skill such as
+`graphify` dispatches it for work no project agent covers. **They are not part of any project
+skill's flow.** A project skill dispatches the agents in `.claude/agents/` and nothing else;
+reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `test-writer` and
 nothing else — at most once per spec, so a spec that comes back still wrong becomes an open
 item instead of a third dispatch.
