@@ -32,3 +32,24 @@ export enum EnumNotificationPushProcess {
     workspaceJoinAccepted = 'workspaceJoinAccepted',
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
+
+export enum EnumNotificationKind {
+    welcome = 'welcome',
+    welcomeSocial = 'welcomeSocial',
+    welcomeByAdmin = 'welcomeByAdmin',
+    verificationEmail = 'verificationEmail',
+    verifiedEmail = 'verifiedEmail',
+    mobileNumberVerified = 'mobileNumberVerified',
+    temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
+    changePassword = 'changePassword',
+    forgotPassword = 'forgotPassword',
+    resetPassword = 'resetPassword',
+    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    newDeviceLogin = 'newDeviceLogin',
+    publishTermPolicy = 'publishTermPolicy',
+    userAcceptTermPolicy = 'userAcceptTermPolicy',
+    workspaceInvite = 'workspaceInvite',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
+}

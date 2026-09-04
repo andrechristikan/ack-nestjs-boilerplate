@@ -28,7 +28,7 @@ import { NotificationDefaultAvailableOrderBy } from '@modules/notification/const
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -50,7 +50,9 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/notification',
 })
 export class NotificationSharedController {
-    constructor(private readonly notificationService: NotificationService) {}
+    constructor(
+        private readonly notificationHttpService: NotificationHttpService
+    ) {}
 
     @NotificationSharedListDoc()
     @ResponsePaging('notification.list')
@@ -67,7 +69,7 @@ export class NotificationSharedController {
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
-        return this.notificationService.getListCursor(userId, pagination);
+        return this.notificationHttpService.getListCursor(userId, pagination);
     }
 
     @NotificationSharedListUserSettingDoc()
@@ -81,7 +83,7 @@ export class NotificationSharedController {
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        return this.notificationService.getListUserSetting(userId);
+        return this.notificationHttpService.getListUserSetting(userId);
     }
 
     @NotificationSharedMarkAsReadDoc()
@@ -101,7 +103,7 @@ export class NotificationSharedController {
         )
         notificationId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.markAsRead(userId, notificationId);
+        return this.notificationHttpService.markAsRead(userId, notificationId);
     }
 
     @NotificationSharedMarkAllAsReadDoc()
@@ -116,7 +118,7 @@ export class NotificationSharedController {
     async markAllAsRead(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.markAllAsRead(userId);
+        return this.notificationHttpService.markAllAsRead(userId);
     }
 
     @NotificationSharedUpdateUserSettingDoc()
@@ -133,6 +135,6 @@ export class NotificationSharedController {
         @Body()
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.updateUserSetting(userId, body);
+        return this.notificationHttpService.updateUserSetting(userId, body);
     }
 }

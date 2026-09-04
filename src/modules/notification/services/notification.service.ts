@@ -2,19 +2,18 @@ import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagi
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+    Notification,
+    NotificationUserSetting,
+    Prisma,
+} from '@generated/prisma-client';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
+import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
+import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 
@@ -22,6 +21,7 @@ import { Injectable } from '@nestjs/common';
 export class NotificationService implements INotificationService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
+        private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly notificationUtil: NotificationUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,42 +29,20 @@ export class NotificationService implements INotificationService {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
-        const { data, ...others } =
-            await this.notificationRepository.findWithPaginationCursor(
-                userId,
-                pagination
-            );
-
-        const notifications: NotificationResponseDto[] =
-            this.notificationUtil.mapList(data);
-
-        return {
-            data: notifications,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<Notification>> {
+        return this.notificationRepository.findWithPaginationCursor(
+            userId,
+            pagination
+        );
     }
 
     async getListUserSetting(
         userId: string
-    ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        const userSettings =
-            await this.notificationRepository.findUserSetting(userId);
-
-        const settings: NotificationUserSettingDto[] =
-            this.notificationUtil.mapUserSettingList(userSettings);
-
-        return {
-            data: {
-                settings: settings,
-            },
-        };
+    ): Promise<NotificationUserSetting[]> {
+        return this.notificationUserSettingRepository.findUserSetting(userId);
     }
 
-    async markAsRead(
-        userId: string,
-        notificationId: string
-    ): Promise<IResponseReturn<void>> {
+    async markAsRead(userId: string, notificationId: string): Promise<void> {
         const checkExist = await this.notificationRepository.existById(
             userId,
             notificationId
@@ -76,38 +54,28 @@ export class NotificationService implements INotificationService {
         }
 
         await this.notificationRepository.markAsRead(userId, notificationId);
-
-        return {};
     }
 
-    async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+    async markAllAsRead(userId: string): Promise<number> {
         const batchUpdated =
             await this.notificationRepository.markAllAsRead(userId);
 
-        return {
-            metadata: {
-                messageProperties: {
-                    count: batchUpdated.count,
-                },
-            },
-        };
+        return batchUpdated.count;
     }
 
     async updateUserSetting(
         userId: string,
-        data: NotificationUserSettingRequestDto
-    ): Promise<IResponseReturn<void>> {
+        data: INotificationUserSettingUpdate
+    ): Promise<void> {
         this.notificationUtil.validateUserSetting(data.type, data.channel);
 
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        await this.notificationRepository.updateUserSetting(
+        await this.notificationUserSettingRepository.updateUserSetting(
             userId,
             data,
             requestLog
         );
-
-        return {};
     }
 }

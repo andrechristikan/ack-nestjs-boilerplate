@@ -3,6 +3,7 @@ import { ActivityLogSharedController } from '@modules/activity-log/controllers/a
 import { DeviceSharedController } from '@modules/device/controllers/device.shared.controller';
 import { DeviceHttpModule } from '@modules/device/device.http.module';
 import { NotificationSharedController } from '@modules/notification/controllers/notification.shared.controller';
+import { NotificationHttpModule } from '@modules/notification/notification.http.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
@@ -37,6 +38,7 @@ import { Module } from '@nestjs/common';
         DeviceHttpModule,
         SessionHttpModule,
         TermPolicyHttpModule,
+        NotificationHttpModule,
         WorkspaceHttpModule,
     ],
 })

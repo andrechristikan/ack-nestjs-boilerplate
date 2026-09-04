@@ -1,11 +1,43 @@
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
+    EnumNotificationChannel,
+    EnumNotificationPriority,
+    EnumNotificationType,
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
+    Prisma,
 } from '@generated/prisma-client';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+
+export interface INotificationKindRule {
+    type: EnumNotificationType;
+    priority: EnumNotificationPriority;
+    title: string;
+    body: string;
+    pendingChannels: EnumNotificationChannel[];
+    deliveredChannels: EnumNotificationChannel[];
+}
+
+export interface INotificationCreate {
+    id: string;
+    userId: string;
+    metadata: Prisma.InputJsonValue;
+    createdBy: string;
+}
+
+export interface INotificationCreateEntry {
+    kind: EnumNotificationKind;
+    payload: INotificationCreate;
+}
+
+export interface INotificationUserSettingUpdate {
+    channel: EnumNotificationChannel;
+    type: EnumNotificationType;
+    isActive: boolean;
+}
 
 export interface INotificationTemporaryPasswordPayload {
     password: string;

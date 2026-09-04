@@ -1,42 +1,67 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import { UserNotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import {
-    INotificationEmailSendPayload,
-    INotificationPublishTermPolicyPayload,
+    INotificationCreate,
+    INotificationCreateEntry,
 } from '@modules/notification/interfaces/notification.interface';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumActivityLogAction,
     EnumNotificationChannel,
-    EnumNotificationPriority,
-    EnumNotificationType,
-    EnumTermPolicyType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumWorkspaceJoinRejectReason,
     Notification,
-    NotificationUserSetting,
     Prisma,
 } from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
 export class NotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperStringService: HelperStringService,
-        private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly helperDateService: HelperDateService
     ) {}
+
+    private buildCreateData(
+        kind: EnumNotificationKind,
+        { id, userId, metadata, createdBy }: INotificationCreate,
+        today: Date
+    ): Prisma.NotificationUncheckedCreateInput {
+        const {
+            type,
+            priority,
+            title,
+            body,
+            pendingChannels,
+            deliveredChannels,
+        } = UserNotificationKindRules[kind];
+
+        return {
+            id,
+            type,
+            title,
+            body,
+            userId,
+            metadata,
+            isRead: false,
+            priority,
+            createdBy,
+            deliveries: {
+                createMany: {
+                    data: [
+                        ...pendingChannels.map(channel => ({ channel })),
+                        ...deliveredChannels.map(channel => ({
+                            channel,
+                            processedAt: today,
+                            sentAt: today,
+                        })),
+                    ],
+                },
+            },
+        };
+    }
 
     async findWithPaginationCursor(
         userId: string,
@@ -70,701 +95,29 @@ export class NotificationRepository {
         });
     }
 
-    async createWelcomeByAdmin(
-        notificationId: string,
-        userId: string,
-        username: string,
-        createdBy: string
+    async create(
+        kind: EnumNotificationKind,
+        payload: INotificationCreate
     ): Promise<Notification> {
         const today = this.helperDateService.create();
+
         return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.welcomeByAdmin.title',
-                body: 'notification.notify.welcomeByAdmin.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            {
-                                channel: EnumNotificationChannel.email,
-                            },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
+            data: this.buildCreateData(kind, payload, today),
         });
     }
 
-    async createWelcome(
-        welcomeNotificationId: string,
-        verificationEmailNotificationId: string,
-        userId: string,
-        username: string
+    async createMany(
+        entries: INotificationCreateEntry[]
     ): Promise<Notification[]> {
         const today = this.helperDateService.create();
 
-        return this.databaseService.client.$transaction([
-            this.databaseService.client.notification.create({
-                data: {
-                    id: welcomeNotificationId,
-                    type: EnumNotificationType.userActivity,
-                    title: 'notification.notify.welcome.title',
-                    body: 'notification.notify.welcome.body',
-                    userId,
-                    metadata: { username },
-                    isRead: false,
-                    priority: EnumNotificationPriority.normal,
-                    createdBy: userId,
-                    deliveries: {
-                        createMany: {
-                            data: [
-                                {
-                                    channel: EnumNotificationChannel.silent,
-                                    processedAt: today,
-                                    sentAt: today,
-                                },
-                                {
-                                    channel: EnumNotificationChannel.email,
-                                },
-                                {
-                                    channel: EnumNotificationChannel.inApp,
-                                    processedAt: today,
-                                    sentAt: today,
-                                },
-                            ],
-                        },
-                    },
-                },
-            }),
-            this.databaseService.client.notification.create({
-                data: {
-                    id: verificationEmailNotificationId,
-                    type: EnumNotificationType.userActivity,
-                    title: 'notification.notify.verificationEmail.title',
-                    body: 'notification.notify.verificationEmail.body',
-                    userId,
-                    metadata: { username },
-                    isRead: false,
-                    priority: EnumNotificationPriority.high,
-                    createdBy: userId,
-                    deliveries: {
-                        createMany: {
-                            data: [
-                                {
-                                    channel: EnumNotificationChannel.silent,
-                                    processedAt: today,
-                                    sentAt: today,
-                                },
-                                {
-                                    channel: EnumNotificationChannel.email,
-                                },
-                            ],
-                        },
-                    },
-                },
-            }),
-        ]);
-    }
-
-    async createWelcomeSocial(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.welcomeSocial.title',
-                body: 'notification.notify.welcomeSocial.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            {
-                                channel: EnumNotificationChannel.email,
-                            },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createTemporaryPasswordByAdmin(
-        notificationId: string,
-        userId: string,
-        username: string,
-        passwordExpiredAt: Date,
-        createdBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.temporaryPasswordByAdmin.title',
-                body: 'notification.notify.temporaryPasswordByAdmin.body',
-                userId,
-                metadata: { username, passwordExpiredAt },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createChangePassword(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.changePassword.title',
-                body: 'notification.notify.changePassword.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createVerifiedEmail(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.verifiedEmail.title',
-                body: 'notification.notify.verifiedEmail.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            {
-                                channel: EnumNotificationChannel.email,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createVerificationEmail(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.verificationEmail.title',
-                body: 'notification.notify.verificationEmail.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.high,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            {
-                                channel: EnumNotificationChannel.email,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createMobileNumberVerified(
-        notificationId: string,
-        userId: string,
-        username: string,
-        mobileNumber: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.mobileNumberVerified.title',
-                body: 'notification.notify.mobileNumberVerified.body',
-                userId,
-                metadata: {
-                    username,
-                    mobileNumber: this.helperStringService.censor(mobileNumber),
-                },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            {
-                                channel: EnumNotificationChannel.email,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createForgotPassword(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.forgotPassword.title',
-                body: 'notification.notify.forgotPassword.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createResetPassword(
-        notificationId: string,
-        userId: string,
-        username: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.resetPassword.title',
-                body: 'notification.notify.resetPassword.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createResetTwoFactorByAdmin(
-        notificationId: string,
-        userId: string,
-        username: string,
-        updatedBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.resetTwoFactorByAdmin.title',
-                body: 'notification.notify.resetTwoFactorByAdmin.body',
-                userId,
-                metadata: { username },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy: updatedBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createNewDeviceLogin(
-        notificationId: string,
-        userId: string,
-        username: string,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        device: string,
-        city: string,
-        loginAt: Date
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.securityAlert,
-                title: 'notification.notify.newDeviceLogin.title',
-                body: 'notification.notify.newDeviceLogin.body',
-                userId,
-                metadata: {
-                    username,
-                    loginFrom,
-                    loginWith,
-                    device,
-                    city,
-                    loginAt,
-                },
-                isRead: false,
-                priority: EnumNotificationPriority.critical,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createManyPublishTermPolicy(
-        payloads: INotificationEmailSendPayload[],
-        { type, version }: INotificationPublishTermPolicyPayload,
-        proceedBy: string
-    ): Promise<void> {
-        const today = this.helperDateService.create();
-        await Promise.all(
-            payloads.map(payload =>
+        return this.databaseService.client.$transaction(
+            entries.map(({ kind, payload }) =>
                 this.databaseService.client.notification.create({
-                    data: {
-                        id: payload.notificationId,
-                        userId: payload.userId,
-                        type: EnumNotificationType.transactional,
-                        title: 'notification.notify.publishTermPolicy.title',
-                        body: 'notification.notify.publishTermPolicy.body',
-                        metadata: { type, version },
-                        isRead: false,
-                        priority: EnumNotificationPriority.normal,
-                        createdBy: proceedBy,
-                        deliveries: {
-                            createMany: {
-                                data: [
-                                    { channel: EnumNotificationChannel.email },
-                                    {
-                                        channel: EnumNotificationChannel.silent,
-                                        processedAt: today,
-                                        sentAt: today,
-                                    },
-                                ],
-                            },
-                        },
-                    },
+                    data: this.buildCreateData(kind, payload, today),
                 })
             )
         );
-    }
-
-    async createWorkspaceInvite(
-        notificationId: string,
-        userId: string,
-        username: string,
-        workspaceId: string,
-        workspaceName: string,
-        inviterName: string,
-        createdBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.workspaceInvite.title',
-                body: 'notification.notify.workspaceInvite.body',
-                userId,
-                metadata: { username, workspaceId, workspaceName, inviterName },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createWorkspaceJoinRequest(
-        notificationId: string,
-        userId: string,
-        username: string,
-        workspaceId: string,
-        workspaceName: string,
-        requesterName: string,
-        createdBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.workspaceJoinRequest.title',
-                body: 'notification.notify.workspaceJoinRequest.body',
-                userId,
-                metadata: {
-                    username,
-                    workspaceId,
-                    workspaceName,
-                    requesterName,
-                },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createWorkspaceJoinAccepted(
-        notificationId: string,
-        userId: string,
-        username: string,
-        workspaceId: string,
-        workspaceName: string,
-        createdBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.workspaceJoinAccepted.title',
-                body: 'notification.notify.workspaceJoinAccepted.body',
-                userId,
-                metadata: { username, workspaceId, workspaceName },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
-    async createWorkspaceJoinRejected(
-        notificationId: string,
-        userId: string,
-        username: string,
-        workspaceId: string,
-        workspaceName: string,
-        rejectReasonCode: EnumWorkspaceJoinRejectReason,
-        createdBy: string
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.userActivity,
-                title: 'notification.notify.workspaceJoinRejected.title',
-                body: 'notification.notify.workspaceJoinRejected.body',
-                userId,
-                metadata: {
-                    username,
-                    workspaceId,
-                    workspaceName,
-                    rejectReasonCode,
-                },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                            { channel: EnumNotificationChannel.email },
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.inApp,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
     }
 
     async markAsRead(
@@ -784,41 +137,6 @@ export class NotificationRepository {
         });
     }
 
-    async createUserAcceptTermPolicy(
-        notificationId: string,
-        userId: string,
-        username: string,
-        type: EnumTermPolicyType,
-        version: number
-    ): Promise<Notification> {
-        const today = this.helperDateService.create();
-        return this.databaseService.client.notification.create({
-            data: {
-                id: notificationId,
-                type: EnumNotificationType.transactional,
-                title: 'notification.notify.userAcceptTermPolicy.title',
-                body: 'notification.notify.userAcceptTermPolicy.body',
-                userId,
-                metadata: { username, type, version },
-                isRead: false,
-                priority: EnumNotificationPriority.normal,
-                createdBy: userId,
-                deliveries: {
-                    createMany: {
-                        data: [
-                            { channel: EnumNotificationChannel.push },
-                            {
-                                channel: EnumNotificationChannel.silent,
-                                processedAt: today,
-                                sentAt: today,
-                            },
-                        ],
-                    },
-                },
-            },
-        });
-    }
-
     async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
         return this.databaseService.client.notification.updateMany({
             where: {
@@ -828,31 +146,6 @@ export class NotificationRepository {
             data: {
                 isRead: true,
                 readAt: this.helperDateService.create(),
-            },
-        });
-    }
-
-    async findUserSetting(userId: string): Promise<NotificationUserSetting[]> {
-        return this.databaseService.client.notificationUserSetting.findMany({
-            where: { userId },
-        });
-    }
-
-    async findActiveUserSettingByType(
-        userIds: string[],
-        type: EnumNotificationType,
-        channels: EnumNotificationChannel[]
-    ): Promise<NotificationUserSetting[]> {
-        return this.databaseService.client.notificationUserSetting.findMany({
-            where: {
-                userId: {
-                    in: userIds,
-                },
-                type,
-                channel: {
-                    in: channels,
-                },
-                isActive: true,
             },
         });
     }
@@ -910,44 +203,5 @@ export class NotificationRepository {
                 },
             },
         });
-    }
-
-    async updateUserSetting(
-        userId: string,
-        { channel, type, isActive }: NotificationUserSettingRequestDto,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.user.update({
-                where: { id: userId, deletedAt: null },
-                data: {
-                    updatedBy: userId,
-                    activityLogs: {
-                        create: {
-                            action: EnumActivityLogAction.userUpdateNotificationSetting,
-                            description: this.activityLogUtil.getDescription(
-                                EnumActivityLogAction.userUpdateNotificationSetting,
-                                { channel, type, isActive }
-                            ),
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            geoLocation:
-                                this.databaseUtil.toPlainObject(geoLocation),
-                            createdBy: userId,
-                        },
-                    },
-                },
-            }),
-            this.databaseService.client.notificationUserSetting.update({
-                where: {
-                    userId_channel_type: { userId, channel, type },
-                },
-                data: {
-                    isActive,
-                    updatedBy: userId,
-                },
-            }),
-        ]);
     }
 }
