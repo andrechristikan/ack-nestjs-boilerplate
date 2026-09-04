@@ -7,10 +7,9 @@ import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { AppHttpFilter } from '@app/filters/app.http.filter';
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
-import { QueueModule } from '@queues/queue.module';
 
 /**
- * Root module: registers the global exception filters and imports Common, Queue, and Router.
+ * Root module: registers the global exception filters and imports Common and Router.
  */
 @Module({
     controllers: [],
@@ -36,6 +35,6 @@ import { QueueModule } from '@queues/queue.module';
             useClass: AppValidationImportFilter,
         },
     ],
-    imports: [CommonModule, QueueModule, RouterModule],
+    imports: [CommonModule, RouterModule],
 })
 export class AppModule {}

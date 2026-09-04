@@ -3,10 +3,9 @@ import { WorkspaceProcessorModule } from '@modules/workspace/workspace.processor
 import { Module } from '@nestjs/common';
 
 /**
- * Wires the notification and workspace queue processors as providers.
+ * Root processor mount that aggregates every feature processor module.
  */
 @Module({
     imports: [NotificationProcessorModule, WorkspaceProcessorModule],
-    providers: [],
 })
-export class QueueModule {}
+export class RouterProcessorModule {}
