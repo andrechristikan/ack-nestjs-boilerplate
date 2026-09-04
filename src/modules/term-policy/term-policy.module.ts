@@ -1,20 +1,28 @@
-import { Global, Module } from '@nestjs/common';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { AwsModule } from '@common/aws/aws.module';
+import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
+import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
-import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
-import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import { TermPolicyRepositoryModule } from '@modules/term-policy/term-policy.repository.module';
+import { TermPolicyUtilModule } from '@modules/term-policy/term-policy.util.module';
+import { Global, Module } from '@nestjs/common';
 
-/** Global module exposing term-policy services for acceptance guards and seeding. */
+/** Global module exposing term-policy domain services for acceptance guards and seeding. */
 @Global()
 @Module({
-    imports: [AwsModule],
+    controllers: [],
     providers: [
         TermPolicyService,
+        TermPolicyContentService,
+        TermPolicyAcceptanceService,
         TermPolicyTemplateService,
-        TermPolicyRepository,
-        TermPolicyUtil,
     ],
-    exports: [TermPolicyService, TermPolicyTemplateService],
+    exports: [
+        TermPolicyService,
+        TermPolicyContentService,
+        TermPolicyAcceptanceService,
+        TermPolicyTemplateService,
+    ],
+    imports: [TermPolicyRepositoryModule, TermPolicyUtilModule, AwsModule],
 })
 export class TermPolicyModule {}

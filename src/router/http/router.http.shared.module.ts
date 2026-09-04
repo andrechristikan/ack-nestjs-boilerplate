@@ -8,6 +8,7 @@ import { PasswordHistoryHttpModule } from '@modules/password-history/password-hi
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
 import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
+import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
@@ -35,6 +36,7 @@ import { Module } from '@nestjs/common';
         PasswordHistoryHttpModule,
         DeviceHttpModule,
         SessionHttpModule,
+        TermPolicyHttpModule,
         WorkspaceModule,
     ],
 })

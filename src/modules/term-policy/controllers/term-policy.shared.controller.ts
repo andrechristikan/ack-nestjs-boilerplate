@@ -20,7 +20,7 @@ import {
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
@@ -45,7 +45,9 @@ import { Prisma } from '@generated/prisma-client';
     path: '/user/term-policy',
 })
 export class TermPolicySharedController {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+    constructor(
+        private readonly termPolicyAcceptanceHttpService: TermPolicyAcceptanceHttpService
+    ) {}
 
     @TermPolicySharedListAcceptedDoc()
     @ResponsePaging('termPolicy.listAccepted')
@@ -59,12 +61,13 @@ export class TermPolicySharedController {
         @PaginationCursorQuery({
             availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicyUserAcceptanceWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
-        return this.termPolicyService.getListUserAccepted(userId, pagination);
+        return this.termPolicyAcceptanceHttpService.getListUserAccepted(
+            userId,
+            pagination
+        );
     }
 
     @TermPolicySharedAcceptDoc()
@@ -80,6 +83,6 @@ export class TermPolicySharedController {
         @UserCurrent() user: IUser,
         @Body() body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.userAccept(user, body);
+        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
     }
 }

@@ -15,7 +15,7 @@ import {
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
@@ -26,7 +26,9 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
     path: '/term-policy',
 })
 export class TermPolicyPublicController {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+    constructor(
+        private readonly termPolicyHttpService: TermPolicyHttpService
+    ) {}
 
     @TermPolicyPublicListDoc()
     @ResponsePaging('termPolicy.list')
@@ -43,6 +45,6 @@ export class TermPolicyPublicController {
         )
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.getListPublished(pagination, type);
+        return this.termPolicyHttpService.getListPublished(pagination, type);
     }
 }

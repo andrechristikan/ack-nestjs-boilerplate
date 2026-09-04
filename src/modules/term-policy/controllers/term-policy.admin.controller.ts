@@ -53,7 +53,8 @@ import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/t
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
+import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
     Body,
@@ -82,7 +83,10 @@ import {
     path: '/term-policy',
 })
 export class TermPolicyAdminController {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+    constructor(
+        private readonly termPolicyHttpService: TermPolicyHttpService,
+        private readonly termPolicyContentHttpService: TermPolicyContentHttpService
+    ) {}
 
     @TermPolicyAdminListDoc()
     @ResponsePaging('termPolicy.list')
@@ -113,7 +117,11 @@ export class TermPolicyAdminController {
         )
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.getListByAdmin(pagination, type, status);
+        return this.termPolicyHttpService.getListByAdmin(
+            pagination,
+            type,
+            status
+        );
     }
 
     @TermPolicyAdminCreateDoc()
@@ -135,7 +143,7 @@ export class TermPolicyAdminController {
         body: TermPolicyCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.createByAdmin(body, createdBy);
+        return this.termPolicyHttpService.createByAdmin(body, createdBy);
     }
 
     @TermPolicyAdminDeleteDoc()
@@ -156,7 +164,7 @@ export class TermPolicyAdminController {
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.deleteByAdmin(termPolicyId);
+        return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 
     @TermPolicyAdminGenerateContentPresignDoc()
@@ -180,7 +188,9 @@ export class TermPolicyAdminController {
     async generate(
         @Body() body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        return this.termPolicyService.generateContentPresignByAdmin(body);
+        return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+            body
+        );
     }
 
     @TermPolicyAdminUpdateContentDoc()
@@ -204,7 +214,7 @@ export class TermPolicyAdminController {
         body: TermPolicyContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.updateContentByAdmin(
+        return this.termPolicyContentHttpService.updateContentByAdmin(
             termPolicyId,
             body,
             updatedBy
@@ -232,7 +242,7 @@ export class TermPolicyAdminController {
         body: TermPolicyContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.addContentByAdmin(
+        return this.termPolicyContentHttpService.addContentByAdmin(
             termPolicyId,
             body,
             updatedBy
@@ -260,7 +270,7 @@ export class TermPolicyAdminController {
         body: TermPolicyRemoveContentRequestDto,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.removeContentByAdmin(
+        return this.termPolicyContentHttpService.removeContentByAdmin(
             termPolicyId,
             body,
             updatedBy
@@ -285,7 +295,10 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
     ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        return this.termPolicyService.getContentByAdmin(termPolicyId, language);
+        return this.termPolicyContentHttpService.getContentByAdmin(
+            termPolicyId,
+            language
+        );
     }
 
     @TermPolicyAdminPublishDoc()
@@ -307,6 +320,9 @@ export class TermPolicyAdminController {
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyService.publishByAdmin(termPolicyId, updatedBy);
+        return this.termPolicyHttpService.publishByAdmin(
+            termPolicyId,
+            updatedBy
+        );
     }
 }

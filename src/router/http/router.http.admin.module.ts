@@ -15,6 +15,7 @@ import { RoleHttpModule } from '@modules/role/role.http.module';
 import { SessionAdminController } from '@modules/session/controllers/session.admin.controller';
 import { SessionHttpModule } from '@modules/session/session.http.module';
 import { TermPolicyAdminController } from '@modules/term-policy/controllers/term-policy.admin.controller';
+import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
@@ -51,6 +52,7 @@ import { Module } from '@nestjs/common';
         FeatureFlagHttpModule,
         RoleHttpModule,
         SessionHttpModule,
+        TermPolicyHttpModule,
         WorkspaceModule,
         ProjectModule,
     ],
