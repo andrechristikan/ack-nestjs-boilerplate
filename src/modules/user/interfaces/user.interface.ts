@@ -2,16 +2,24 @@ import {
     Country,
     Device,
     DeviceOwnership,
+    EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumProjectMemberRole,
+    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumVerificationType,
     EnumWorkspaceMemberRole,
+    Prisma,
     Role,
     TwoFactor,
     User,
     UserMobileNumber,
     UserPhoto,
 } from '@generated/prisma-client';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
@@ -111,3 +119,47 @@ export interface IUserSignUpWorkspaceInvite {
 
 export type IUserSignUpWorkspaceContext =
     IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
+
+export interface IUserOnboardingWorkspaceRows {
+    workspace: Prisma.WorkspaceCreateArgs | null;
+    workspaceMember: Prisma.WorkspaceMemberCreateArgs;
+    workspaceInvite: Prisma.WorkspaceInviteUpdateArgs | null;
+    projectMember: Prisma.ProjectMemberCreateArgs | null;
+}
+
+export interface IUserOnboardingVerificationRow {
+    reference: string;
+    token: string;
+    type: EnumVerificationType;
+    to: string;
+    expiredAt: Date;
+    verifiedAt: Date | null;
+    isUsed: boolean;
+}
+
+export interface IUserCreateModeRule {
+    createdAction: EnumActivityLogAction;
+    logsVerificationEmailRequest: boolean;
+    passwordHistoryType: EnumPasswordHistoryType | null;
+}
+
+export interface IUserCreateWithWorkspaceInput {
+    userId: string;
+    email: string;
+    name?: string;
+    username: string;
+    countryId: string;
+    roleId: string;
+    signUpFrom: EnumUserSignUpFrom;
+    signUpWith: EnumUserSignUpWith;
+    isVerified: boolean;
+    termPolicy: Record<EnumTermPolicyType, boolean>;
+    acceptedTermPolicyTypes: EnumTermPolicyType[];
+    password: IAuthPassword | null;
+    passwordHistoryType: EnumPasswordHistoryType | null;
+    verification: IUserOnboardingVerificationRow | null;
+    activityLogs: Prisma.ActivityLogCreateManyUserInput[];
+    workspaceContext: IUserSignUpWorkspaceContext;
+    workspaceRows: IUserOnboardingWorkspaceRows;
+    createdBy: string;
+}

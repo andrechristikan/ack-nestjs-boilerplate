@@ -20,6 +20,8 @@ import {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+    EnumActivityLogAction,
+    EnumUserLoginWith,
     EnumVerificationType,
     TwoFactor,
     User,
@@ -193,6 +195,21 @@ export class UserUtil {
 
     checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {
         return phoneCodes.includes(phoneCode);
+    }
+
+    /** Maps the login method onto the activity-log action that records it. */
+    resolveLoginActivityLogAction(
+        loginWith: EnumUserLoginWith
+    ): EnumActivityLogAction {
+        switch (loginWith) {
+            case EnumUserLoginWith.socialApple:
+                return EnumActivityLogAction.userLoginApple;
+            case EnumUserLoginWith.socialGoogle:
+                return EnumActivityLogAction.userLoginGoogle;
+            case EnumUserLoginWith.credential:
+            default:
+                return EnumActivityLogAction.userLoginCredential;
+        }
     }
 
     mapActivityLogMetadata(user: User): IActivityLogMetadata {

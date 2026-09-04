@@ -109,20 +109,39 @@ import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.res
 import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import {
+    EnumUserCreateMode,
+    EnumUserSignUpWorkspaceContextType,
+} from '@modules/user/enums/user.enum';
 import {
     IUser,
+    IUserCreateWithWorkspaceInput,
+    IUserOnboardingVerificationRow,
+    IUserSignUpWorkspaceContext,
     IUserSignUpWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { IUserService } from '@modules/user/interfaces/user.service.interface';
+import { UserImportRepository } from '@modules/user/repositories/user.import.repository';
+import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
+import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
+import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserSessionRepository } from '@modules/user/repositories/user.session.repository';
+import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
+import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { Injectable, Logger } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
@@ -145,10 +164,13 @@ import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -165,6 +187,13 @@ export class UserService implements IUserService {
     constructor(
         private readonly userUtil: UserUtil,
         private readonly userRepository: UserRepository,
+        private readonly userOnboardingRepository: UserOnboardingRepository,
+        private readonly userImportRepository: UserImportRepository,
+        private readonly userPasswordRepository: UserPasswordRepository,
+        private readonly userVerificationRepository: UserVerificationRepository,
+        private readonly userTwoFactorRepository: UserTwoFactorRepository,
+        private readonly userSessionRepository: UserSessionRepository,
+        private readonly userMobileNumberRepository: UserMobileNumberRepository,
         private readonly countryRepository: CountryRepository,
         private readonly roleRepository: RoleRepository,
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
@@ -181,7 +210,10 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly deviceUtil: DeviceUtil,
+        private readonly activityLogUtil: ActivityLogUtil,
+        private readonly userOnboardingUtil: UserOnboardingUtil
     ) {
         this.userRoleName =
             this.configService.get<string>('user.default.role')!;
@@ -215,7 +247,7 @@ export class UserService implements IUserService {
     private async resolvePersonalWorkspaceContexts(
         usernames: string[]
     ): Promise<IUserSignUpWorkspacePersonal[]> {
-        const slugs = await this.userRepository.findFreeWorkspaceSlugs(
+        const slugs = await this.userOnboardingRepository.findFreeWorkspaceSlugs(
             usernames.map(() => this.drawWorkspaceSlugCandidates())
         );
 
@@ -228,6 +260,78 @@ export class UserService implements IUserService {
                 username
             ),
         }));
+    }
+
+    private buildOnboardingActivityLogRow(
+        action: EnumActivityLogAction,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        actorId: string
+    ): Prisma.ActivityLogCreateManyUserInput {
+        return {
+            action,
+            description: this.activityLogUtil.getDescription(action),
+            ipAddress,
+            userAgent: this.databaseUtil.toPlainObject(userAgent),
+            geoLocation: this.databaseUtil.toPlainObject(geoLocation),
+            createdBy: actorId,
+        };
+    }
+
+    private buildOnboardingActivityLogs(
+        mode: EnumUserCreateMode,
+        workspaceContext: IUserSignUpWorkspaceContext,
+        requestLog: IRequestLog,
+        actorId: string
+    ): Prisma.ActivityLogCreateManyUserInput[] {
+        const { createdAction, logsVerificationEmailRequest } =
+            UserCreateModeRules[mode];
+        const workspaceAction =
+            workspaceContext.type ===
+            EnumUserSignUpWorkspaceContextType.personal
+                ? EnumActivityLogAction.workspaceCreated
+                : EnumActivityLogAction.workspaceInviteAccepted;
+
+        return [
+            this.buildOnboardingActivityLogRow(
+                createdAction,
+                requestLog,
+                actorId
+            ),
+            ...(logsVerificationEmailRequest
+                ? [
+                      this.buildOnboardingActivityLogRow(
+                          EnumActivityLogAction.userSendVerificationEmail,
+                          requestLog,
+                          actorId
+                      ),
+                  ]
+                : []),
+            {
+                ...this.buildOnboardingActivityLogRow(
+                    workspaceAction,
+                    requestLog,
+                    actorId
+                ),
+                workspaceId: workspaceContext.workspaceId,
+            },
+        ];
+    }
+
+    /** Builds the used-and-verified email verification an admin-created account is verified by. */
+    private buildVerifiedVerificationRow(
+        email: string
+    ): IUserOnboardingVerificationRow {
+        const token = this.userUtil.verificationCreateToken();
+
+        return {
+            reference: this.userUtil.verificationCreateReference(),
+            token: this.userUtil.hashedToken(token),
+            type: EnumVerificationType.email,
+            to: email,
+            expiredAt: this.userUtil.verificationSetExpiredDate(),
+            verifiedAt: this.helperDateService.create(),
+            isUsed: true,
+        };
     }
 
     private async assertForgotPasswordAllowed(): Promise<void> {
@@ -352,21 +456,52 @@ export class UserService implements IUserService {
             );
             const [workspaceContext] =
                 await this.resolvePersonalWorkspaceContexts([username]);
-            const created = await this.userRepository.createByAdmin(
-                userId,
-                {
-                    username,
-                    countryId,
-                    email,
-                    name,
-                    roleId,
-                },
-                password,
-                checkRole,
-                workspaceContext,
-                requestLog,
-                createdBy
-            );
+            const isVerified = checkRole.type !== EnumRoleType.user;
+            const [created] =
+                await this.userOnboardingRepository.createWithWorkspace([
+                    {
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: checkRole.id,
+                        signUpFrom: EnumUserSignUpFrom.admin,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        isVerified,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: false,
+                            [EnumTermPolicyType.marketing]: false,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                        password,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.admin]
+                                .passwordHistoryType,
+                        verification: isVerified
+                            ? this.buildVerifiedVerificationRow(email)
+                            : null,
+                        activityLogs: this.buildOnboardingActivityLogs(
+                            EnumUserCreateMode.admin,
+                            workspaceContext,
+                            requestLog,
+                            createdBy
+                        ),
+                        workspaceContext,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext,
+                                createdBy
+                            ),
+                        createdBy,
+                    },
+                ]);
 
             await this.notificationUtil.sendWelcomeByAdmin(
                 created.id,
@@ -599,7 +734,7 @@ export class UserService implements IUserService {
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
             this.userUtil.checkMobileNumber(checkCountry.phoneCode, phoneCode),
-            this.userRepository.existMobileNumber(userId, {
+            this.userMobileNumberRepository.existMobileNumber(userId, {
                 number,
                 countryId: checkCountry.id,
                 phoneCode,
@@ -612,7 +747,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const updated = await this.userRepository.addMobileNumber(
+            const updated = await this.userMobileNumberRepository.addMobileNumber(
                 userId,
                 {
                     number,
@@ -641,7 +776,7 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const [checkMobileNumberExist, checkCountry] = await Promise.all([
-            this.userRepository.findOneMobileNumber(userId, mobileNumberId),
+            this.userMobileNumberRepository.findOneMobileNumber(userId, mobileNumberId),
             this.countryRepository.findOneById(countryId),
         ]);
         if (!checkMobileNumberExist) {
@@ -650,7 +785,7 @@ export class UserService implements IUserService {
             throw new CountryNotFoundException();
         }
 
-        const checkExist = await this.userRepository.existMobileNumber(
+        const checkExist = await this.userMobileNumberRepository.existMobileNumber(
             userId,
             { number, countryId, phoneCode },
             mobileNumberId
@@ -668,7 +803,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const updated = await this.userRepository.updateMobileNumber(
+            const updated = await this.userMobileNumberRepository.updateMobileNumber(
                 userId,
                 checkMobileNumberExist,
                 {
@@ -696,7 +831,7 @@ export class UserService implements IUserService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const checkExist = await this.userRepository.findOneMobileNumber(
+        const checkExist = await this.userMobileNumberRepository.findOneMobileNumber(
             userId,
             mobileNumberId
         );
@@ -705,7 +840,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            const updated = await this.userRepository.deleteMobileNumber(
+            const updated = await this.userMobileNumberRepository.deleteMobileNumber(
                 userId,
                 mobileNumberId,
                 requestLog
@@ -829,7 +964,7 @@ export class UserService implements IUserService {
 
             const sessions = await this.sessionRepository.findActive(userId);
             const [updated] = await Promise.all([
-                this.userRepository.updatePasswordByAdmin(
+                this.userPasswordRepository.updatePasswordByAdmin(
                     userId,
                     password,
                     requestLog,
@@ -882,12 +1017,12 @@ export class UserService implements IUserService {
             } else if (
                 !this.authUtil.validatePassword(oldPassword, user.password)
             ) {
-                await this.userRepository.increasePasswordAttempt(user.id);
+                await this.userPasswordRepository.increasePasswordAttempt(user.id);
 
                 throw new UserPasswordNotMatchException();
             }
 
-            await this.userRepository.resetPasswordAttempt(user.id);
+            await this.userPasswordRepository.resetPasswordAttempt(user.id);
 
             const passwordHistories =
                 await this.passwordHistoryRepository.findActiveUser(user.id);
@@ -918,14 +1053,14 @@ export class UserService implements IUserService {
             const password = this.authUtil.createPassword(user.id, newPassword);
 
             await Promise.all([
-                this.userRepository.changePassword(
+                this.userPasswordRepository.changePassword(
                     user.id,
                     password,
                     requestLog
                 ),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
                 twoFactorVerified
-                    ? this.userRepository.verifyTwoFactor(
+                    ? this.userTwoFactorRepository.verifyTwoFactor(
                           user.id,
                           twoFactorVerified,
                           requestLog
@@ -960,19 +1095,19 @@ export class UserService implements IUserService {
         }
 
         if (this.authUtil.checkPasswordAttempt(user)) {
-            await this.userRepository.reachMaxPasswordAttempt(
+            await this.userPasswordRepository.reachMaxPasswordAttempt(
                 user.id,
                 requestLog
             );
 
             throw new UserPasswordAttemptMaxException();
         } else if (!this.authUtil.validatePassword(password, user.password)) {
-            await this.userRepository.increasePasswordAttempt(user.id);
+            await this.userPasswordRepository.increasePasswordAttempt(user.id);
 
             throw new UserPasswordNotMatchException();
         }
 
-        await this.userRepository.resetPasswordAttempt(user.id);
+        await this.userPasswordRepository.resetPasswordAttempt(user.id);
 
         const checkPasswordExpired: boolean =
             this.authUtil.checkPasswordExpired(user.passwordExpired!);
@@ -997,7 +1132,10 @@ export class UserService implements IUserService {
             device,
             username,
             workspaceInviteToken,
-            ...others
+            name,
+            countryId,
+            cookies,
+            marketing,
         }: UserCreateSocialRequestDto
     ): Promise<IResponseReturn<UserLoginResponseDto>> {
         const requestLog: IRequestLog =
@@ -1041,24 +1179,70 @@ export class UserService implements IUserService {
 
             const [personalContext] =
                 await this.resolvePersonalWorkspaceContexts([username]);
-            const workspaceContext =
-                await this.userRepository.resolveWorkspaceSignUpContext(
-                    workspaceInviteToken ?? null,
-                    email,
-                    personalContext
-                );
+            const workspaceContext = workspaceInviteToken
+                ? await this.userOnboardingRepository.resolveInviteWorkspaceContext(
+                      this.userUtil.hashedToken(workspaceInviteToken),
+                      email,
+                      this.helperDateService.create()
+                  )
+                : personalContext;
             if (workspaceInviteToken && !workspaceContext) {
                 throw new WorkspaceInviteInvalidException();
             }
 
-            user = await this.userRepository.createBySocial(
-                email,
-                role.id,
-                loginWith,
-                { username, from, device, ...others },
-                requestLog,
-                workspaceContext!
-            );
+            const userId = this.databaseUtil.createId();
+            const [createdUser] =
+                await this.userOnboardingRepository.createWithWorkspace([
+                    {
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: role.id,
+                        signUpFrom: from,
+                        signUpWith:
+                            loginWith === EnumUserLoginWith.socialApple
+                                ? EnumUserSignUpWith.socialApple
+                                : EnumUserSignUpWith.socialGoogle,
+                        isVerified: true,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+                            ...(marketing
+                                ? [EnumTermPolicyType.marketing]
+                                : []),
+                        ],
+                        password: null,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.social]
+                                .passwordHistoryType,
+                        verification: null,
+                        activityLogs: this.buildOnboardingActivityLogs(
+                            EnumUserCreateMode.social,
+                            workspaceContext!,
+                            requestLog,
+                            userId
+                        ),
+                        workspaceContext: workspaceContext!,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext!,
+                                userId
+                            ),
+                        createdBy: userId,
+                    },
+                ]);
+
+            user = createdUser;
 
             await this.notificationUtil.sendWelcomeSocial(user.id);
         }
@@ -1068,7 +1252,7 @@ export class UserService implements IUserService {
         }
 
         if (!user!.isVerified) {
-            const updatedUser = await this.userRepository.verify(
+            const updatedUser = await this.userVerificationRepository.verify(
                 user!.id,
                 requestLog
             );
@@ -1121,7 +1305,7 @@ export class UserService implements IUserService {
                     newJti,
                     expiredInMs
                 ),
-                this.userRepository.refresh(
+                this.userSessionRepository.refresh(
                     userId,
                     {
                         sessionId,
@@ -1148,7 +1332,10 @@ export class UserService implements IUserService {
         username,
         password: passwordString,
         workspaceInviteToken,
-        ...others
+        name,
+        from,
+        cookies,
+        marketing,
     }: UserSignUpRequestDto): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
@@ -1187,12 +1374,13 @@ export class UserService implements IUserService {
         const [personalContext] = await this.resolvePersonalWorkspaceContexts([
             username,
         ]);
-        const workspaceContext =
-            await this.userRepository.resolveWorkspaceSignUpContext(
-                workspaceInviteToken ?? null,
-                email,
-                personalContext
-            );
+        const workspaceContext = workspaceInviteToken
+            ? await this.userOnboardingRepository.resolveInviteWorkspaceContext(
+                  this.userUtil.hashedToken(workspaceInviteToken),
+                  email,
+                  this.helperDateService.create()
+              )
+            : personalContext;
         if (workspaceInviteToken && !workspaceContext) {
             throw new WorkspaceInviteInvalidException();
         }
@@ -1209,21 +1397,61 @@ export class UserService implements IUserService {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
-            const created = await this.userRepository.signUp(
-                userId,
-                role.id,
-                {
-                    username,
-                    countryId,
-                    email,
-                    password: passwordString,
-                    ...others,
-                },
-                password,
-                emailVerification,
-                requestLog,
-                workspaceContext!
-            );
+            const [created] =
+                await this.userOnboardingRepository.createWithWorkspace([
+                    {
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: role.id,
+                        signUpFrom: from,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        isVerified: false,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+                            ...(marketing
+                                ? [EnumTermPolicyType.marketing]
+                                : []),
+                        ],
+                        password,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.signUp]
+                                .passwordHistoryType,
+                        verification: {
+                            reference: emailVerification.reference,
+                            token: emailVerification.hashedToken,
+                            type: EnumVerificationType.email,
+                            to: email,
+                            expiredAt: emailVerification.expiredAt,
+                            verifiedAt: null,
+                            isUsed: false,
+                        },
+                        activityLogs: this.buildOnboardingActivityLogs(
+                            EnumUserCreateMode.signUp,
+                            workspaceContext!,
+                            requestLog,
+                            userId
+                        ),
+                        workspaceContext: workspaceContext!,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext!,
+                                userId
+                            ),
+                        createdBy: userId,
+                    },
+                ]);
 
             await this.notificationUtil.sendWelcome(created.id, {
                 expiredAt: this.helperDateService.formatToIso(
@@ -1250,7 +1478,7 @@ export class UserService implements IUserService {
 
         const hashedToken = this.userUtil.hashedToken(token);
         const verification =
-            await this.userRepository.findOneActiveByVerificationEmailToken(
+            await this.userVerificationRepository.findOneActiveByVerificationEmailToken(
                 hashedToken
             );
         if (!verification) {
@@ -1258,7 +1486,7 @@ export class UserService implements IUserService {
         }
 
         try {
-            await this.userRepository.verifyEmail(
+            await this.userVerificationRepository.verifyEmail(
                 verification.id,
                 verification.userId,
                 requestLog
@@ -1288,7 +1516,7 @@ export class UserService implements IUserService {
         }
 
         const lastVerification =
-            await this.userRepository.findOneLatestByVerificationEmail(user.id);
+            await this.userVerificationRepository.findOneLatestByVerificationEmail(user.id);
         if (lastVerification) {
             const today = this.helperDateService.create();
             const canResendAt = this.helperDateService.forward(
@@ -1312,7 +1540,7 @@ export class UserService implements IUserService {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
-            await this.userRepository.requestVerificationEmail(
+            await this.userVerificationRepository.requestVerificationEmail(
                 user.id,
                 user.email,
                 emailVerification,
@@ -1348,7 +1576,7 @@ export class UserService implements IUserService {
         }
 
         const lastForgotPassword =
-            await this.userRepository.findOneLatestByForgotPassword(user.id);
+            await this.userPasswordRepository.findOneLatestByForgotPassword(user.id);
         if (lastForgotPassword) {
             const today = this.helperDateService.create();
             const canResendAt = this.helperDateService.forward(
@@ -1368,7 +1596,7 @@ export class UserService implements IUserService {
         try {
             const resetPassword = this.userUtil.forgotPasswordCreate(user.id);
 
-            await this.userRepository.forgotPassword(
+            await this.userPasswordRepository.forgotPassword(
                 user.id,
                 email,
                 resetPassword,
@@ -1405,7 +1633,7 @@ export class UserService implements IUserService {
 
         const hashedToken = this.userUtil.hashedToken(token);
         const resetPassword =
-            await this.userRepository.findOneActiveByForgotPasswordToken(
+            await this.userPasswordRepository.findOneActiveByForgotPasswordToken(
                 hashedToken
             );
         if (!resetPassword) {
@@ -1448,7 +1676,7 @@ export class UserService implements IUserService {
             );
 
             await Promise.all([
-                this.userRepository.resetPassword(
+                this.userPasswordRepository.resetPassword(
                     resetPassword.userId,
                     resetPassword.id,
                     password,
@@ -1459,7 +1687,7 @@ export class UserService implements IUserService {
                     sessions
                 ),
                 twoFactorVerified
-                    ? this.userRepository.verifyTwoFactor(
+                    ? this.userTwoFactorRepository.verifyTwoFactor(
                           resetPassword.userId,
                           twoFactorVerified,
                           requestLog
@@ -1498,7 +1726,7 @@ export class UserService implements IUserService {
         );
 
         const { isNewDevice, sessionShouldBeInactive } =
-            await this.userRepository.login(
+            await this.userSessionRepository.login(
                 user.id,
                 device,
                 {
@@ -1508,6 +1736,10 @@ export class UserService implements IUserService {
                     sessionId,
                     expiredAt,
                 },
+                this.userUtil.resolveLoginActivityLogAction(loginWith),
+                this.deviceUtil.resolveNotificationProvider(
+                    device.platform ?? null
+                ),
                 requestLog
             );
 
@@ -1557,7 +1789,7 @@ export class UserService implements IUserService {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
-            await this.userRepository.requestVerificationEmail(
+            await this.userVerificationRepository.requestVerificationEmail(
                 user.id,
                 user.email,
                 emailVerification,
@@ -1605,7 +1837,7 @@ export class UserService implements IUserService {
         if (user.twoFactor?.requiredSetup) {
             const { encryptedSecret, otpauthUrl, secret, iv } =
                 await this.authTwoFactorUtil.setupTwoFactor(user.email);
-            await this.userRepository.setupTwoFactor(
+            await this.userTwoFactorRepository.setupTwoFactor(
                 user.id,
                 encryptedSecret,
                 iv,
@@ -1670,7 +1902,7 @@ export class UserService implements IUserService {
         );
         if (!verified.isValid) {
             const attempted =
-                await this.userRepository.increaseTwoFactorAttempt(user.id);
+                await this.userTwoFactorRepository.increaseTwoFactorAttempt(user.id);
 
             if (this.authTwoFactorUtil.checkAttempt(attempted)) {
                 await this.authTwoFactorUtil.lockTwoFactorAttempt(attempted);
@@ -1679,7 +1911,7 @@ export class UserService implements IUserService {
             throw new AuthTwoFactorInvalidException();
         }
 
-        await this.userRepository.resetTwoFactorAttempt(user.id);
+        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
 
         return verified;
     }
@@ -1733,7 +1965,7 @@ export class UserService implements IUserService {
                     loginAt
                 ),
                 this.authTwoFactorUtil.clearChallenge(challengeToken),
-                this.userRepository.verifyTwoFactor(
+                this.userTwoFactorRepository.verifyTwoFactor(
                     user.id,
                     twoFactorVerified,
                     requestLog
@@ -1785,7 +2017,7 @@ export class UserService implements IUserService {
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.enableTwoFactor(
+            await this.userTwoFactorRepository.enableTwoFactor(
                 user.id,
                 backupCodes.hashes,
                 requestLog
@@ -1822,7 +2054,7 @@ export class UserService implements IUserService {
         try {
             const { encryptedSecret, otpauthUrl, secret, iv } =
                 await this.authTwoFactorUtil.setupTwoFactor(user.email);
-            await this.userRepository.setupTwoFactor(
+            await this.userTwoFactorRepository.setupTwoFactor(
                 user.id,
                 encryptedSecret,
                 iv,
@@ -1860,7 +2092,7 @@ export class UserService implements IUserService {
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.enableTwoFactor(
+            await this.userTwoFactorRepository.enableTwoFactor(
                 user.id,
                 backupCodes.hashes,
                 requestLog
@@ -1897,7 +2129,7 @@ export class UserService implements IUserService {
             const sessions = await this.sessionRepository.findActive(user.id);
 
             await Promise.all([
-                this.userRepository.disableTwoFactor(user.id, requestLog),
+                this.userTwoFactorRepository.disableTwoFactor(user.id, requestLog),
                 this.sessionUtil.deleteAllLogins(user.id, sessions),
             ]);
 
@@ -1925,7 +2157,7 @@ export class UserService implements IUserService {
 
         try {
             const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.regenerateTwoFactorBackupCodes(
+            await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
                 user.id,
                 backupCodes.hashes,
                 requestLog
@@ -1965,7 +2197,7 @@ export class UserService implements IUserService {
             const sessions = await this.sessionRepository.findActive(userId);
 
             await Promise.all([
-                this.userRepository.resetTwoFactorByAdmin(
+                this.userTwoFactorRepository.resetTwoFactorByAdmin(
                     userId,
                     updatedBy,
                     requestLog
@@ -2010,8 +2242,8 @@ export class UserService implements IUserService {
         ] = await Promise.all([
             this.roleRepository.existByName(this.userRoleName),
             this.countryRepository.existByAlpha2Code(this.userCountryName),
-            this.userRepository.findByEmails(emails),
-            this.userRepository.findByUsernames(usernames),
+            this.userImportRepository.findByEmails(emails),
+            this.userImportRepository.findByUsernames(usernames),
             Promise.all(
                 usernames.map(username => this.userUtil.checkBadWord(username))
             ),
@@ -2055,17 +2287,50 @@ export class UserService implements IUserService {
 
             const workspaceContexts =
                 await this.resolvePersonalWorkspaceContexts(usernames);
-            const newUsers = await this.userRepository.importByAdmin(
-                data,
-                userIds,
-                usernames,
-                passwordHasheds,
-                checkCountry.id,
-                checkRole,
-                workspaceContexts,
-                requestLog,
-                createdBy
+            const isVerified = checkRole.type !== EnumRoleType.user;
+            const inputs: IUserCreateWithWorkspaceInput[] = data.map(
+                ({ email, name }, index) => ({
+                    userId: userIds[index],
+                    email,
+                    name,
+                    username: usernames[index],
+                    countryId: checkCountry.id,
+                    roleId: checkRole.id,
+                    signUpFrom: EnumUserSignUpFrom.admin,
+                    signUpWith: EnumUserSignUpWith.credential,
+                    isVerified,
+                    termPolicy: {
+                        [EnumTermPolicyType.cookies]: false,
+                        [EnumTermPolicyType.marketing]: false,
+                        [EnumTermPolicyType.privacy]: true,
+                        [EnumTermPolicyType.termsOfService]: true,
+                    },
+                    acceptedTermPolicyTypes: [
+                        EnumTermPolicyType.termsOfService,
+                        EnumTermPolicyType.privacy,
+                    ],
+                    password: passwordHasheds[index],
+                    passwordHistoryType:
+                        UserCreateModeRules[EnumUserCreateMode.admin]
+                            .passwordHistoryType,
+                    verification: null,
+                    activityLogs: this.buildOnboardingActivityLogs(
+                        EnumUserCreateMode.admin,
+                        workspaceContexts[index],
+                        requestLog,
+                        createdBy
+                    ),
+                    workspaceContext: workspaceContexts[index],
+                    workspaceRows: this.userOnboardingUtil.buildWorkspaceRows(
+                        userIds[index],
+                        workspaceContexts[index],
+                        createdBy
+                    ),
+                    createdBy,
+                })
             );
+            const newUsers =
+                await this.userOnboardingRepository.createWithWorkspace(inputs);
 
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
@@ -2106,7 +2371,7 @@ export class UserService implements IUserService {
         // - return aws s3 link
         // - think about how to show progress status to user with bullmq
 
-        const data = await this.userRepository.findExport(
+        const data = await this.userImportRepository.findExport(
             status,
             roleId,
             countryId
@@ -2140,7 +2405,7 @@ export class UserService implements IUserService {
 
         try {
             await Promise.all([
-                this.userRepository.logout(
+                this.userSessionRepository.logout(
                     userId,
                     sessionId,
                     deviceOwnershipId,
