@@ -1,5 +1,14 @@
+import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import KeyvRedis from '@keyv/redis';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import {
+    CACHE_MANAGER,
+    CacheModule as CacheManagerModule,
+    CacheOptions,
+} from '@nestjs/cache-manager';
 import { Global, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 /**
  * Global so the login cache helpers are reachable from any module context.
@@ -7,8 +16,28 @@ import { Global, Module } from '@nestjs/common';
 @Global()
 @Module({
     controllers: [],
-    providers: [SessionUtil],
+    providers: [
+        SessionUtil,
+        {
+            provide: SessionCacheProvider,
+            useExisting: CACHE_MANAGER,
+        },
+    ],
     exports: [SessionUtil],
-    imports: [],
+    imports: [
+        CacheManagerModule.registerAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService, RedisClientCachedProvider],
+            useFactory: (
+                configService: ConfigService,
+                redisClient: KeyvRedis<unknown>
+            ): CacheOptions => {
+                return {
+                    stores: [redisClient],
+                    ttl: configService.get<number>('redis.cache.ttlInMs'),
+                };
+            },
+        }),
+    ],
 })
 export class SessionUtilModule {}
