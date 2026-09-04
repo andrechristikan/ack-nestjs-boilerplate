@@ -1,19 +1,18 @@
 import { Module } from '@nestjs/common';
+import { AwsModule } from '@common/aws/aws.module';
 import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
-import { CountryModule } from '@modules/country/country.module';
-import { UserModule } from '@modules/user/user.module';
-import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
+import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
+import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
+import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
-import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
-import { AwsModule } from '@common/aws/aws.module';
-import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
-import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
+import { UserUtilModule } from '@modules/user/user.util.module';
+import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 
 /**
  * Registers all `nest-commander` seed/remove commands for initial data migration.
@@ -21,10 +20,9 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
 @Module({
     imports: [
         CommonModule,
-        CountryModule,
-        UserModule,
-        WorkspaceRepositoryModule,
         AwsModule,
+        UserUtilModule,
+        WorkspaceRepositoryModule,
     ],
     providers: [
         MigrationApiKeySeed,
