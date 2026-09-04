@@ -256,7 +256,7 @@ export class NotificationAccountService implements INotificationAccountService {
 
         const results = await Promise.allSettled([
             this.notificationRepository.create(
-                EnumNotificationKind.mobileNumberVerified,
+                EnumNotificationKind.verifiedMobileNumber,
                 {
                     id: notificationId,
                     userId: user.id,

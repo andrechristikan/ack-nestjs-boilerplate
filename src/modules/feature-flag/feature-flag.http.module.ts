@@ -1,4 +1,3 @@
-import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 import { FeatureFlagHttpService } from '@modules/feature-flag/services/feature-flag.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +5,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [FeatureFlagHttpService],
     exports: [FeatureFlagHttpService],
-    imports: [FeatureFlagModule],
+    imports: [],
 })
 export class FeatureFlagHttpModule {}

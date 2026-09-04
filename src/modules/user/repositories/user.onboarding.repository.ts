@@ -219,7 +219,8 @@ export class UserOnboardingRepository {
     }
 
     async createWithWorkspace(
-        inputs: IUserCreateWithWorkspaceInput[]
+        inputs: IUserCreateWithWorkspaceInput[],
+        timeoutInMs: number
     ): Promise<IUser[]> {
         const acceptedTermPolicyTypes = [
             ...new Set(inputs.flatMap(input => input.acceptedTermPolicyTypes)),
@@ -277,7 +278,7 @@ export class UserOnboardingRepository {
 
                     return users;
                 },
-                { timeout: inputs.length > 1 ? 30_000 : 10_000 }
+                { timeout: timeoutInMs }
             );
         } catch (error: unknown) {
             if (

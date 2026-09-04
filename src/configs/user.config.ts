@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export interface IUserConfig {
     usernamePattern: RegExp;
@@ -7,6 +8,10 @@ export interface IUserConfig {
     default: {
         role: string;
         country: string;
+    };
+    onboarding: {
+        createTimeoutInMs: number;
+        createBulkTimeoutInMs: number;
     };
 }
 
@@ -19,6 +24,10 @@ export default registerAs(
         default: {
             role: 'user',
             country: 'ID',
+        },
+        onboarding: {
+            createTimeoutInMs: ms('10s'),
+            createBulkTimeoutInMs: ms('30s'),
         },
     })
 );

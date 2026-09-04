@@ -131,8 +131,6 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
         };
 
         if (existingUser) {
-            // Encrypted here rather than through UserUtil: WorkspaceModule
-            // cannot import UserModule.
             const encryptedInviteAcceptLink =
                 this.helperEncryptionService.aes256EncryptSimple(
                     tokenData.link,

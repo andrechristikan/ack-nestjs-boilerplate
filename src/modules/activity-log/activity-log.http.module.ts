@@ -1,4 +1,3 @@
-import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +5,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [ActivityLogHttpService],
     exports: [ActivityLogHttpService],
-    imports: [ActivityLogModule],
+    imports: [],
 })
 export class ActivityLogHttpModule {}

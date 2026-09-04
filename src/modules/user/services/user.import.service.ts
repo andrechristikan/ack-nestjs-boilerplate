@@ -42,6 +42,8 @@ import { ConfigService } from '@nestjs/config';
 export class UserImportService implements IUserImportService {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
+    private readonly onboardingCreateTimeoutInMs: number;
+    private readonly onboardingCreateBulkTimeoutInMs: number;
 
     constructor(
         private readonly userImportRepository: UserImportRepository,
@@ -61,6 +63,12 @@ export class UserImportService implements IUserImportService {
             this.configService.get<string>('user.default.role')!;
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
+        )!;
+        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
+            'user.onboarding.createTimeoutInMs'
+        )!;
+        this.onboardingCreateBulkTimeoutInMs = this.configService.get<number>(
+            'user.onboarding.createBulkTimeoutInMs'
         )!;
     }
 
@@ -187,7 +195,12 @@ export class UserImportService implements IUserImportService {
                 })
             );
             const newUsers =
-                await this.userOnboardingRepository.createWithWorkspace(inputs);
+                await this.userOnboardingRepository.createWithWorkspace(
+                    inputs,
+                    inputs.length > 1
+                        ? this.onboardingCreateBulkTimeoutInMs
+                        : this.onboardingCreateTimeoutInMs
+                );
 
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {

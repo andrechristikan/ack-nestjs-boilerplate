@@ -58,9 +58,12 @@ import { UserLoginService } from '@modules/user/services/user.login.service';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService implements IUserService {
+    private readonly onboardingCreateTimeoutInMs: number;
+
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userOnboardingRepository: UserOnboardingRepository,
@@ -73,8 +76,13 @@ export class UserService implements IUserService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
+        private readonly requestStoreService: RequestStoreService,
+        private readonly configService: ConfigService
+    ) {
+        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
+            'user.onboarding.createTimeoutInMs'
+        )!;
+    }
 
     /** Builds the used-and-verified email verification an admin-created account is verified by. */
     private buildVerifiedVerificationRow(
@@ -202,51 +210,54 @@ export class UserService implements IUserService {
                 );
             const isVerified = checkRole.type !== EnumRoleType.user;
             const [created] =
-                await this.userOnboardingRepository.createWithWorkspace([
-                    {
-                        userId,
-                        email,
-                        name,
-                        username,
-                        countryId,
-                        roleId: checkRole.id,
-                        signUpFrom: EnumUserSignUpFrom.admin,
-                        signUpWith: EnumUserSignUpWith.credential,
-                        isVerified,
-                        termPolicy: {
-                            [EnumTermPolicyType.cookies]: false,
-                            [EnumTermPolicyType.marketing]: false,
-                            [EnumTermPolicyType.privacy]: true,
-                            [EnumTermPolicyType.termsOfService]: true,
+                await this.userOnboardingRepository.createWithWorkspace(
+                    [
+                        {
+                            userId,
+                            email,
+                            name,
+                            username,
+                            countryId,
+                            roleId: checkRole.id,
+                            signUpFrom: EnumUserSignUpFrom.admin,
+                            signUpWith: EnumUserSignUpWith.credential,
+                            isVerified,
+                            termPolicy: {
+                                [EnumTermPolicyType.cookies]: false,
+                                [EnumTermPolicyType.marketing]: false,
+                                [EnumTermPolicyType.privacy]: true,
+                                [EnumTermPolicyType.termsOfService]: true,
+                            },
+                            acceptedTermPolicyTypes: [
+                                EnumTermPolicyType.termsOfService,
+                                EnumTermPolicyType.privacy,
+                            ],
+                            password,
+                            passwordHistoryType:
+                                UserCreateModeRules[EnumUserCreateMode.admin]
+                                    .passwordHistoryType,
+                            verification: isVerified
+                                ? this.buildVerifiedVerificationRow(email)
+                                : null,
+                            activityLogs:
+                                this.userOnboardingUtil.buildOnboardingActivityLogs(
+                                    EnumUserCreateMode.admin,
+                                    workspaceContext,
+                                    requestLog,
+                                    createdBy
+                                ),
+                            workspaceContext,
+                            workspaceRows:
+                                this.userOnboardingUtil.buildWorkspaceRows(
+                                    userId,
+                                    workspaceContext,
+                                    createdBy
+                                ),
+                            createdBy,
                         },
-                        acceptedTermPolicyTypes: [
-                            EnumTermPolicyType.termsOfService,
-                            EnumTermPolicyType.privacy,
-                        ],
-                        password,
-                        passwordHistoryType:
-                            UserCreateModeRules[EnumUserCreateMode.admin]
-                                .passwordHistoryType,
-                        verification: isVerified
-                            ? this.buildVerifiedVerificationRow(email)
-                            : null,
-                        activityLogs:
-                            this.userOnboardingUtil.buildOnboardingActivityLogs(
-                                EnumUserCreateMode.admin,
-                                workspaceContext,
-                                requestLog,
-                                createdBy
-                            ),
-                        workspaceContext,
-                        workspaceRows:
-                            this.userOnboardingUtil.buildWorkspaceRows(
-                                userId,
-                                workspaceContext,
-                                createdBy
-                            ),
-                        createdBy,
-                    },
-                ]);
+                    ],
+                    this.onboardingCreateTimeoutInMs
+                );
 
             await this.notificationUtil.sendWelcomeByAdmin(
                 created.id,

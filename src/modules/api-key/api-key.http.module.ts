@@ -1,4 +1,3 @@
-import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +5,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [ApiKeyHttpService],
     exports: [ApiKeyHttpService],
-    imports: [ApiKeyModule],
+    imports: [],
 })
 export class ApiKeyHttpModule {}

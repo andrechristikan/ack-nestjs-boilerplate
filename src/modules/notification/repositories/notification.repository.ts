@@ -3,7 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { UserNotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
+import { NotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import {
     INotificationCreate,
@@ -36,7 +36,7 @@ export class NotificationRepository {
             body,
             pendingChannels,
             deliveredChannels,
-        } = UserNotificationKindRules[kind];
+        } = NotificationKindRules[kind];
 
         return {
             id,

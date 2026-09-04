@@ -25,7 +25,7 @@
             "title": "Email Verified",
             "body": "Hi {username}, your email address has been verified successfully."
         },
-        "mobileNumberVerified": {
+        "verifiedMobileNumber": {
             "title": "Mobile Number Verified",
             "body": "Hi {username}, your mobile number {mobileNumber} has been verified successfully."
         },

@@ -9,7 +9,7 @@ import {
     User,
 } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import {
     IUserLogin,
     IUserLoginResult,
@@ -27,7 +27,7 @@ export class UserSessionRepository {
 
     async login(
         userId: string,
-        { fingerprint, name, notificationToken, platform }: DeviceRequestDto,
+        { fingerprint, name, notificationToken, platform }: IDeviceIdentity,
         { loginFrom, loginWith, sessionId, expiredAt, jti }: IUserLogin,
         action: EnumActivityLogAction,
         notificationProvider: EnumDeviceNotificationProvider | null,

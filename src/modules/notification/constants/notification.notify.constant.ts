@@ -6,7 +6,7 @@ import {
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { INotificationKindRule } from '@modules/notification/interfaces/notification.interface';
 
-export const UserNotificationKindRules: Record<
+export const NotificationKindRules: Record<
     EnumNotificationKind,
     INotificationKindRule
 > = {
@@ -59,11 +59,11 @@ export const UserNotificationKindRules: Record<
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },
-    [EnumNotificationKind.mobileNumberVerified]: {
+    [EnumNotificationKind.verifiedMobileNumber]: {
         type: EnumNotificationType.userActivity,
         priority: EnumNotificationPriority.normal,
-        title: 'notification.notify.mobileNumberVerified.title',
-        body: 'notification.notify.mobileNumberVerified.body',
+        title: 'notification.notify.verifiedMobileNumber.title',
+        body: 'notification.notify.verifiedMobileNumber.body',
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
     },

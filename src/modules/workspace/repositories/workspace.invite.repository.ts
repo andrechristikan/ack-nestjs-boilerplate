@@ -113,7 +113,6 @@ export class WorkspaceInviteRepository {
         return count > 0;
     }
 
-    /** Reads the user table directly rather than through `UserRepository`, which this module cannot inject: `UserModule` imports `WorkspaceModule`. */
     async findActiveUserByEmail(email: string): Promise<User | null> {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null, status: EnumUserStatus.active },
