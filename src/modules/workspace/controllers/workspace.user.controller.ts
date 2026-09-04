@@ -90,7 +90,10 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
+import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
+import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
+import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import {
     Body,
     Controller,
@@ -111,7 +114,12 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/workspace',
 })
 export class WorkspaceUserController {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+    constructor(
+        private readonly workspaceHttpService: WorkspaceHttpService,
+        private readonly workspaceMemberHttpService: WorkspaceMemberHttpService,
+        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService,
+        private readonly workspaceJoinRequestHttpService: WorkspaceJoinRequestHttpService
+    ) {}
 
     @WorkspaceUserListDoc()
     @ResponsePaging('workspace.list')
@@ -130,7 +138,7 @@ export class WorkspaceUserController {
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.getListForMember(userId, pagination);
+        return this.workspaceHttpService.getListForMember(userId, pagination);
     }
 
     @WorkspaceUserCreateDoc()
@@ -146,7 +154,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.createWorkspace(userId, body);
+        return this.workspaceHttpService.createWorkspace(userId, body);
     }
 
     @WorkspaceUserGetDoc()
@@ -163,7 +171,7 @@ export class WorkspaceUserController {
     async get(
         @WorkspaceCurrent() workspace: Workspace
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.getCurrentWorkspace(workspace);
+        return this.workspaceHttpService.getCurrentWorkspace(workspace);
     }
 
     @WorkspaceUserUpdateDoc()
@@ -182,7 +190,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.updateWorkspace(
+        return this.workspaceHttpService.updateWorkspace(
             workspace.id,
             userId,
             body
@@ -205,10 +213,10 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.updateWorkspaceIsPublic(
+        return this.workspaceHttpService.updateWorkspaceIsPublic(
             workspace.id,
             userId,
-            body.isPublic
+            body
         );
     }
 
@@ -228,10 +236,10 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.updateWorkspaceSlug(
+        return this.workspaceHttpService.updateWorkspaceSlug(
             workspace.id,
             userId,
-            body.slug
+            body
         );
     }
 
@@ -249,7 +257,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceSwitchRequestDto
     ): Promise<void> {
-        await this.workspaceService.switchWorkspace(userId, body.workspaceId);
+        await this.workspaceHttpService.switchWorkspace(userId, body);
     }
 
     @WorkspaceUserTransferOwnershipDoc()
@@ -269,10 +277,10 @@ export class WorkspaceUserController {
         @WorkspaceMemberCurrent() member: WorkspaceMember,
         @Body() body: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
-        await this.workspaceService.transferOwnership(
+        await this.workspaceMemberHttpService.transferOwnership(
             workspace.id,
             member,
-            body.targetUserId
+            body
         );
     }
 
@@ -292,7 +300,7 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember
     ): Promise<void> {
-        await this.workspaceService.leaveWorkspace(workspace.id, member);
+        await this.workspaceMemberHttpService.leaveWorkspace(workspace.id, member);
     }
 
     @WorkspaceUserSoftDeleteDoc()
@@ -310,7 +318,7 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        await this.workspaceService.softDeleteWorkspace(workspace.id, userId);
+        await this.workspaceHttpService.softDeleteWorkspace(workspace.id, userId);
     }
 
     @WorkspaceMemberUserListDoc()
@@ -338,7 +346,7 @@ export class WorkspaceUserController {
         )
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
-        return this.workspaceService.getMembersList(
+        return this.workspaceMemberHttpService.getMembersList(
             workspace.id,
             pagination,
             role
@@ -367,11 +375,11 @@ export class WorkspaceUserController {
         workspaceMemberId: string,
         @Body() body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
-        await this.workspaceService.updateMemberRole(
+        await this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
             actorMember,
             workspaceMemberId,
-            body.role
+            body
         );
     }
 
@@ -396,7 +404,7 @@ export class WorkspaceUserController {
         )
         workspaceMemberId: string
     ): Promise<void> {
-        await this.workspaceService.removeMember(
+        await this.workspaceMemberHttpService.removeMember(
             workspace.id,
             actorMember,
             workspaceMemberId
@@ -429,7 +437,7 @@ export class WorkspaceUserController {
         )
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceInviteResponseDto>> {
-        return this.workspaceService.getInvitesList(
+        return this.workspaceInviteHttpService.getInvitesList(
             workspace.id,
             pagination,
             status
@@ -452,7 +460,11 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
-        return this.workspaceService.createInvite(workspace, userId, body);
+        return this.workspaceInviteHttpService.createInvite(
+            workspace,
+            userId,
+            body
+        );
     }
 
     @WorkspaceInviteUserResendDoc()
@@ -478,7 +490,7 @@ export class WorkspaceUserController {
         workspaceInviteId: string,
         @Body() body: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
-        return this.workspaceService.resendInvite(
+        return this.workspaceInviteHttpService.resendInvite(
             workspace,
             userId,
             workspaceInviteId,
@@ -507,7 +519,7 @@ export class WorkspaceUserController {
         )
         workspaceInviteId: string
     ): Promise<void> {
-        await this.workspaceService.revokeInvite(
+        await this.workspaceInviteHttpService.revokeInvite(
             workspace.id,
             userId,
             workspaceInviteId
@@ -529,11 +541,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('email') email: string,
         @Body() body: WorkspaceInviteClaimRequestDto
     ): Promise<void> {
-        await this.workspaceService.claimInvite(
-            userId,
-            email,
-            body.inviteToken
-        );
+        await this.workspaceInviteHttpService.claimInvite(userId, email, body);
     }
 
     @WorkspaceJoinRequestUserCreateDoc()
@@ -549,7 +557,7 @@ export class WorkspaceUserController {
         @AuthJwtPayload('userId') userId: string,
         @Body() body: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequestResponseDto>> {
-        return this.workspaceService.createJoinRequest(userId, body);
+        return this.workspaceJoinRequestHttpService.createJoinRequest(userId, body);
     }
 
     @WorkspaceJoinRequestUserListDoc()
@@ -577,7 +585,7 @@ export class WorkspaceUserController {
         )
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceJoinRequestResponseDto>> {
-        return this.workspaceService.getJoinRequestsList(
+        return this.workspaceJoinRequestHttpService.getJoinRequestsList(
             workspace.id,
             pagination,
             status
@@ -606,7 +614,7 @@ export class WorkspaceUserController {
         )
         workspaceJoinRequestId: string
     ): Promise<void> {
-        await this.workspaceService.acceptJoinRequest(
+        await this.workspaceJoinRequestHttpService.acceptJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId
@@ -636,11 +644,11 @@ export class WorkspaceUserController {
         workspaceJoinRequestId: string,
         @Body() body: WorkspaceJoinRequestRejectRequestDto
     ): Promise<void> {
-        await this.workspaceService.rejectJoinRequest(
+        await this.workspaceJoinRequestHttpService.rejectJoinRequest(
             workspace,
             userId,
             workspaceJoinRequestId,
-            body.rejectReasonCode
+            body
         );
     }
 }

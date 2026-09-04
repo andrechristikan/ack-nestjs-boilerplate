@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ResponseUtil } from '@common/response/utils/response.util';
 import {
     Workspace,
@@ -18,7 +21,14 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceUtil {
-    constructor(private readonly responseUtil: ResponseUtil) {}
+    constructor(
+        private readonly responseUtil: ResponseUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
+
+    getCurrentRequestLog(): IRequestLog {
+        return this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
+    }
 
     mapOne(workspace: Workspace): WorkspaceResponseDto {
         return this.responseUtil.serialize(WorkspaceResponseDto, workspace);

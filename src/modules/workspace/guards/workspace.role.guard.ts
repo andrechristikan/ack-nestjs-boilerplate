@@ -4,7 +4,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -16,7 +16,7 @@ import { Reflector } from '@nestjs/core';
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly workspaceService: WorkspaceService,
+        private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -31,7 +31,7 @@ export class WorkspaceRoleGuard implements CanActivate {
             WorkspaceMemberStoreKey
         );
 
-        this.workspaceService.validateWorkspaceRoleGuard(
+        this.workspaceMemberService.validateWorkspaceRoleGuard(
             member,
             allowedRoles
         );

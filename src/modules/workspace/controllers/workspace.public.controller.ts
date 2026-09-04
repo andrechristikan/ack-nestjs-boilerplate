@@ -11,7 +11,8 @@ import {
 } from '@modules/workspace/docs/workspace.public.doc';
 import { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
+import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -21,7 +22,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/workspace',
 })
 export class WorkspacePublicController {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+    constructor(
+        private readonly workspaceHttpService: WorkspaceHttpService,
+        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService
+    ) {}
 
     @WorkspacePublicInvitePreviewDoc()
     @Response('workspace.invite.preview')
@@ -33,7 +37,7 @@ export class WorkspacePublicController {
         @Param('inviteToken', RequestRequiredPipe)
         inviteToken: string
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
-        return this.workspaceService.previewInvite(inviteToken);
+        return this.workspaceInviteHttpService.previewInvite(inviteToken);
     }
 
     @WorkspacePublicPreviewDoc()
@@ -46,6 +50,6 @@ export class WorkspacePublicController {
         @Param('slug', RequestRequiredPipe)
         slug: string
     ): Promise<IResponseReturn<WorkspacePreviewResponseDto>> {
-        return this.workspaceService.previewWorkspace(slug);
+        return this.workspaceHttpService.previewWorkspace(slug);
     }
 }

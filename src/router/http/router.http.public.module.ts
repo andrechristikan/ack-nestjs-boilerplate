@@ -7,7 +7,7 @@ import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.modu
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspacePublicController } from '@modules/workspace/controllers/workspace.public.controller';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
+import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -28,7 +28,7 @@ import { Module } from '@nestjs/common';
         HelloHttpModule,
         TermPolicyHttpModule,
         UserModule,
-        WorkspaceModule,
+        WorkspaceHttpModule,
     ],
 })
 export class RouterHttpPublicModule {}

@@ -3,7 +3,7 @@ import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
 import { CountryModule } from '@modules/country/country.module';
 import { UserModule } from '@modules/user/user.module';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
+import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
@@ -19,7 +19,13 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
  * Registers all `nest-commander` seed/remove commands for initial data migration.
  */
 @Module({
-    imports: [CommonModule, CountryModule, UserModule, WorkspaceModule, AwsModule],
+    imports: [
+        CommonModule,
+        CountryModule,
+        UserModule,
+        WorkspaceRepositoryModule,
+        AwsModule,
+    ],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,

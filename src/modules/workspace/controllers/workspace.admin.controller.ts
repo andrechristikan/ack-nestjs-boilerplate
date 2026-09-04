@@ -40,7 +40,8 @@ import {
 } from '@modules/workspace/docs/workspace.admin.doc';
 import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
+import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -50,7 +51,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/workspace',
 })
 export class WorkspaceAdminController {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+    constructor(
+        private readonly workspaceHttpService: WorkspaceHttpService,
+        private readonly workspaceMemberHttpService: WorkspaceMemberHttpService
+    ) {}
 
     @WorkspaceAdminListDoc()
     @ResponsePaging('workspace.admin.list')
@@ -74,7 +78,7 @@ export class WorkspaceAdminController {
         @PaginationQueryFilterEqualBoolean('isPublic')
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.getListForAdmin(pagination, isPublic);
+        return this.workspaceHttpService.getListForAdmin(pagination, isPublic);
     }
 
     @WorkspaceAdminGetDoc()
@@ -94,7 +98,7 @@ export class WorkspaceAdminController {
         @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         workspaceId: string
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
-        return this.workspaceService.getByIdForAdmin(workspaceId);
+        return this.workspaceHttpService.getByIdForAdmin(workspaceId);
     }
 
     @WorkspaceAdminMemberListDoc()
@@ -120,7 +124,7 @@ export class WorkspaceAdminController {
             Prisma.WorkspaceMemberWhereInput
         >
     ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
-        return this.workspaceService.getMembersListForAdmin(
+        return this.workspaceMemberHttpService.getMembersListForAdmin(
             workspaceId,
             pagination
         );

@@ -11,7 +11,7 @@ import { TermPolicySharedController } from '@modules/term-policy/controllers/ter
 import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
 import { UserSharedController } from '@modules/user/controllers/user.shared.controller';
 import { UserModule } from '@modules/user/user.module';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
+import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -37,7 +37,7 @@ import { Module } from '@nestjs/common';
         DeviceHttpModule,
         SessionHttpModule,
         TermPolicyHttpModule,
-        WorkspaceModule,
+        WorkspaceHttpModule,
     ],
 })
 export class RouterHttpSharedModule {}

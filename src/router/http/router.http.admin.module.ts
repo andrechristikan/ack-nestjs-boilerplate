@@ -19,7 +19,7 @@ import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.modu
 import { UserAdminController } from '@modules/user/controllers/user.admin.controller';
 import { UserModule } from '@modules/user/user.module';
 import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
-import { WorkspaceModule } from '@modules/workspace/workspace.module';
+import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
 /**
@@ -53,7 +53,7 @@ import { Module } from '@nestjs/common';
         RoleHttpModule,
         SessionHttpModule,
         TermPolicyHttpModule,
-        WorkspaceModule,
+        WorkspaceHttpModule,
         ProjectHttpModule,
     ],
 })
