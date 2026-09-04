@@ -15,8 +15,11 @@ import {
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import {
+    IRequestGeoLocation,
+    IRequestLog,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 
 /**
  * Overrides the global request timeout for a route.
@@ -49,14 +52,14 @@ export const RequestIPAddress = createParamDecorator(
 
 /** Reads the parsed user agent resolved once per request into the request-log store. */
 export const RequestUserAgent = createParamDecorator(
-    (_: unknown, _ctx: ExecutionContext): UserAgent | null =>
+    (_: unknown, _ctx: ExecutionContext): IRequestUserAgent | null =>
         ClsServiceManager.getClsService().get<IRequestLog>(RequestLogStoreKey)
             ?.userAgent ?? null
 );
 
 /** Reads the IP-derived geolocation resolved once per request into the request-log store. */
 export const RequestGeoLocation = createParamDecorator(
-    (_: unknown, _ctx: ExecutionContext): GeoLocation | null =>
+    (_: unknown, _ctx: ExecutionContext): IRequestGeoLocation | null =>
         ClsServiceManager.getClsService().get<IRequestLog>(RequestLogStoreKey)
             ?.geoLocation ?? null
 );

@@ -160,10 +160,11 @@ export class ActivityLogRepository {
                 userAgent: this.databaseUtil.toPlainObject(userAgent),
                 geoLocation: this.databaseUtil.toPlainObject(geoLocation),
                 description,
-                metadata:
+                metadata: this.databaseUtil.toPlainObject(
                     metadata && Object.keys(metadata).length > 0
-                        ? (metadata as Prisma.InputJsonValue)
-                        : null,
+                        ? metadata
+                        : null
+                ),
                 createdBy: userId,
             },
         });

@@ -1,7 +1,7 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -68,7 +68,7 @@ export class ProjectAdminController {
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         @Query(
             'workspaceId',
-            new RequestIsValidObjectIdPipe({ optional: true })
+            new RequestIsValidUuidPipe({ optional: true })
         )
         workspaceId?: string
     ): Promise<IResponsePagingReturn<Project>> {
@@ -91,7 +91,7 @@ export class ProjectAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:projectId')
     async get(
-        @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('projectId', RequestRequiredPipe, RequestIsValidUuidPipe)
         projectId: string
     ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getByIdForAdmin(projectId);

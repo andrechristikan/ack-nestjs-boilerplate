@@ -7,7 +7,7 @@ import {
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -433,7 +433,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceMemberId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
@@ -464,7 +464,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceMemberId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceMemberId: string
     ): Promise<void> {
@@ -554,7 +554,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceInviteId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
@@ -585,7 +585,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceInviteId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceInviteId: string
     ): Promise<void> {
@@ -687,7 +687,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceJoinRequestId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceJoinRequestId: string
     ): Promise<void> {
@@ -716,7 +716,7 @@ export class WorkspaceUserController {
         @Param(
             'workspaceJoinRequestId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })

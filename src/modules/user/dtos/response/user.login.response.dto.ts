@@ -15,7 +15,7 @@ export const UserLoginResponseSchema = z.object({
     lastWorkspaceId: z.string().nullable().meta({
         description:
             'Id of the workspace the user last switched to; null when never set',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     lastWorkspaceChangedAt: z.date().nullable().meta({
         description: 'When lastWorkspaceId last changed; null when never set',

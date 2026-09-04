@@ -7,7 +7,7 @@ import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { RequestTimeout } from '@common/request/decorators/request.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -300,7 +300,7 @@ export class UserSharedController {
         @Param(
             'mobileNumberId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
@@ -328,7 +328,7 @@ export class UserSharedController {
         @Param(
             'mobileNumberId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {

@@ -47,7 +47,7 @@ export class MigrationCountrySeed
                             alpha2Code: country.alpha2Code,
                         },
                         create: country,
-                        update: {},
+                        update: country,
                     })
                 )
             );

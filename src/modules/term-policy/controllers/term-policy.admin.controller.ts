@@ -10,7 +10,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -179,7 +179,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:termPolicyId')
     async delete(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
@@ -229,7 +229,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/update')
     async updateContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto,
@@ -257,7 +257,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/add')
     async addContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto,
@@ -285,7 +285,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/content/:termPolicyId/remove')
     async removeContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto,
@@ -314,7 +314,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/content/:termPolicyId/:language/get')
     async getContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
@@ -339,7 +339,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/publish/:termPolicyId')
     async publish(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {

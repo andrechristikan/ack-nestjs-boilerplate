@@ -8,7 +8,7 @@ export const WorkspaceSwitchRequestSchema = z.strictObject({
         .meta({
             description:
                 'Workspace to switch into; caller must already be a member',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
 });
 

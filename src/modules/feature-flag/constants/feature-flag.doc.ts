@@ -7,7 +7,7 @@ export const FeatureFlagDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 

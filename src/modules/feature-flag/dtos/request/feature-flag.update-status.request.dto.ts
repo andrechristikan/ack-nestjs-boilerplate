@@ -16,7 +16,7 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         .meta({
             description:
                 'Target user ids allow-list; omit to keep, [] to clear',
-            example: [faker.database.mongodbObjectId()],
+            example: [faker.string.uuid()],
         }),
 });
 

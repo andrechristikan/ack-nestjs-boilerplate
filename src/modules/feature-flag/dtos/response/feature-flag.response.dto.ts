@@ -20,7 +20,7 @@ export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
     }),
     targetUserIds: z.array(z.string()).meta({
         description: 'Target user ids allow-list that bypasses rollout',
-        example: [faker.database.mongodbObjectId()],
+        example: [faker.string.uuid()],
     }),
     metadata: z
         .custom<IFeatureFlagMetadata>()

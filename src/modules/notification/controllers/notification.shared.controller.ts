@@ -1,7 +1,7 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -109,7 +109,7 @@ export class NotificationSharedController {
         @Param(
             'notificationId',
             RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
+            RequestIsValidUuidPipe
         )
         notificationId: string
     ): Promise<IResponseReturn<void>> {
