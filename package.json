@@ -19,7 +19,7 @@
         "clean": "rimraf dist && rimraf node_modules && pnpm store prune",
         "generate:keys": "node scripts/generate-keys.ts",
         "format": "prettier --write '{src,test}/**/*.{ts,json,yml,yaml}' && prettier --write '*.{ts,json,yml,yaml,mjs}'",
-        "deadcode": "ts-prune --project tsconfig.json --skip *.json --skip generated/* | grep -v 'used in module'",
+        "deadcode": "ts-prune --project tsconfig.json --skip '(\\.json$|/generated/)' | grep -v 'used in module'",
         "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
         "typecheck": "tsc --noEmit",
         "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput",
