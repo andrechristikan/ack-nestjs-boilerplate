@@ -7,6 +7,7 @@ import {
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
 import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.interface';
+import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,7 +28,8 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly firebaseUtil: FirebaseUtil
     ) {
         this.projectId = this.configService.get<string | null>(
             'firebase.projectId'
@@ -36,14 +38,9 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
             'firebase.clientEmail'
         )!;
 
-        const rawKey = this.configService.get<string | null>(
-            'firebase.privateKey'
-        )!;
-        if (rawKey) {
-            this.privateKey = rawKey;
-        } else {
-            this.privateKey = null;
-        }
+        this.privateKey = this.firebaseUtil.normalizePrivateKey(
+            this.configService.get<string | null>('firebase.privateKey')!
+        );
     }
 
     async onModuleInit(): Promise<void> {

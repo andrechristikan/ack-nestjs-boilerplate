@@ -26,3 +26,8 @@ export const FirebaseRateLimitDurationInMs = 60000;
  * Days without a successful delivery after which a token is stale and eligible for cleanup.
  */
 export const FirebaseStaleTokenThresholdInDays = 30;
+
+/**
+ * Marker whose presence means the raw private key is already PEM framed.
+ */
+export const FirebasePrivateKeyPemMarker = '-----BEGIN';
