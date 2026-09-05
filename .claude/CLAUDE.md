@@ -145,8 +145,8 @@ touched file short of 100% stops the run and goes to the owner: another `test-wr
 those files, or leave the gap. Both are the owner's to pick, in that exchange. `/ack-spec` is
 the exception — 100% is the bar it exists to reach, so it keeps dispatching until the per-file
 rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
-`--no-verify` is never the model's choice, and `pre-commit` does not collect coverage, so it is
-also not a way past the threshold.
+A commit touching `src/` or `test/` goes through the hooks, and `pre-commit` does not collect
+coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `planner`, `coder`, `test-writer`, `seed-writer`, `explorer`, `researcher`, `reviewer-rules`,
@@ -232,9 +232,13 @@ installs them once:
 - **Never touch the owner's index.** No `git add`, no `git stash`, no staging or unstaging
   command on your own. Already-staged files stay staged; unstaged stay unstaged. Stage only
   the files the owner names. Branch before committing when sitting on `main`.
-- Commit through the git hooks. **`--no-verify` is not a default and is not a standing
-  order**; pass it only when the owner asks for it in that exchange. A red gate is fixed, not
-  skipped.
+- **What the commit TOUCHES decides whether the hooks run.** Read the staged paths first —
+  `git diff --cached --name-only` — and never assume them. One path under `src/` or `test/`
+  makes it a code commit: it goes through the hooks, and a red gate there is fixed, never
+  skipped. A commit touching neither tree — `.claude/**`, `docs/`, `prisma/`, config, CI —
+  MUST pass `--no-verify`. That is an obligation, not a choice: `pre-commit` runs
+  `pnpm typecheck` and `pnpm test` over the WHOLE repository whatever is staged, so without
+  the flag such a commit is gated on code it does not contain.
 - `lint-staged` restages what `prettier --write` touches, so the index does not survive the
   hook and a granular commit series is not possible here. Say so before planning one.
 - **Diff base.** Always diff with no second ref and no `..` — `git diff <base>` includes
