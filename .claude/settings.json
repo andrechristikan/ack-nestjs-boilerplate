@@ -73,7 +73,6 @@
             "Bash(git worktree:*)",
             "Edit(docs/**)",
             "Edit(prisma/**)",
-            "Write(prisma/**)",
             "Agent(general-purpose)"
         ],
         "ask": [
@@ -119,8 +118,7 @@
             "Bash(docker rm:*)",
             "Bash(docker volume rm:*)",
             "Bash(docker system prune:*)",
-            "Edit(//Users/ack/.claude/**)",
-            "Write(//Users/ack/.claude/**)"
+            "Edit(~/.claude/**)"
         ],
         "deny": [
             "Bash(pnpm db:migrate*)",
