@@ -1,5 +1,4 @@
-import { Injectable, mixin } from '@nestjs/common';
-import { PipeTransform, Type } from '@nestjs/common/interfaces';
+import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
 import {
     PaginationDefaultCursorField,
     PaginationDefaultMaxPerPage,

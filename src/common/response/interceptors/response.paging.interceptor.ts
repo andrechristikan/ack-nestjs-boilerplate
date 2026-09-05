@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
@@ -79,7 +78,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<Response>) => {
-                    const ctx: HttpArgumentsHost = context.switchToHttp();
+                    const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
                     let messagePath: string = this.reflector.get<string>(

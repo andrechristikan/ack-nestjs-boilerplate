@@ -39,8 +39,8 @@
         "^@router/(.*)$": "<rootDir>/src/router/$1",
         "^@migration/(.*)$": "<rootDir>/src/migration/$1",
         "^@test/(.*)$": "<rootDir>/test/$1",
-        "^@prisma/client$": "<rootDir>/generated/prisma-client",
         "^@generated/(.*)$": "<rootDir>/generated/$1",
+        "^@prisma/client$": "<rootDir>/generated/prisma-client",
         "^@queues/(.*)$": "<rootDir>/src/queues/$1",
         "^@package$": "<rootDir>/package.json"
     },

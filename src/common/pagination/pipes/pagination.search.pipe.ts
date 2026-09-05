@@ -1,5 +1,4 @@
-import { Injectable, Type, mixin } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
 import {
     IPaginationQuery,
     IPaginationQueryRaw,

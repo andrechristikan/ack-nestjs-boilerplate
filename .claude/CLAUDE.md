@@ -10,11 +10,14 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 
 ## Stack
 
-- NestJS 11 · TypeScript strict · Node >= 24.11 · **PNPM only** — `npm` and `yarn` are
-  blocked by `engines` and by a `npx only-allow pnpm` preinstall guard
+- NestJS 12 · TypeScript strict · Node >= 24.11 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
+  **PNPM only** — `npm` and `yarn` are blocked by `engines` and by a `npx only-allow pnpm`
+  preinstall guard
 - Prisma 6 + **MongoDB 8 replica set** — a replica set is required, transactions do not work
   without one. There are NO migration files: schema shape is applied by `prisma db push`
-- Redis: cache on `db:0`, BullMQ on `db:1`, both through ONE shared connection
+- Redis: cache on `db:0` through `CACHE_REDIS_URL`, BullMQ on `db:1` through
+  `QUEUE_REDIS_URL`. BullMQ registers two connections of its own under separate config keys,
+  a producer and a processor
 - HTTP with Swagger under the configured `doc.prefix`; request validation is `class-validator`
   through a global pipe; i18n through `nestjs-i18n` reading `src/languages/`
 - Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
@@ -61,6 +64,9 @@ generated/              # prisma client, swagger, vault init, agent reports (git
 docs/                   # durable project documentation
 test/                   # jest.json + specs mirroring src/
 scripts/ · ci/ · keys/
+
+tsconfig.json           # typecheck, jest, ts-prune, editor — src + test + scripts
+tsconfig.build.json     # nest build / nest start — src only; named by nest-cli.json
 ```
 
 `src/app/app.module.ts` registers the `APP_FILTER` providers in array order general →

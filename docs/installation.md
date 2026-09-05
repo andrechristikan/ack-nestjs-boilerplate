@@ -50,7 +50,7 @@ Before starting, install the following tools and packages. We recommend using th
 | [Node.js](https://nodejs.org) | v24.11.0+ |
 | [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
 | [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
-| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.20.0`) |
+| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]

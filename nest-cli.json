@@ -3,6 +3,7 @@
     "collection": "@nestjs/schematics",
     "sourceRoot": "src",
     "compilerOptions": {
+        "tsConfigPath": "tsconfig.build.json",
         "deleteOutDir": true,
         "watchAssets": true,
         "typeCheck": false,
@@ -26,7 +27,7 @@
         ]
     },
     "projects": {
-        "app": {
+        "application": {
             "type": "application",
             "root": "src",
             "entryFile": "main",

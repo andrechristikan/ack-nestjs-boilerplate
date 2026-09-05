@@ -5,7 +5,6 @@ import {
     HttpStatus,
     Logger,
 } from '@nestjs/common';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from '@common/message/services/message.service';
 import * as Sentry from '@sentry/nestjs';
@@ -25,7 +24,7 @@ export class AppGeneralFilter implements ExceptionFilter {
     ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
+        const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
 
         this.sendToSentry(exception);

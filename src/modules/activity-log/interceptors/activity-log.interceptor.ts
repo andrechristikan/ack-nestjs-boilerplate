@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Reflector } from '@nestjs/core';
 import {
     IRequestApp,
@@ -166,7 +165,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
             return next.handle();
         }
 
-        const ctx: HttpArgumentsHost = context.switchToHttp();
+        const ctx = context.switchToHttp();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
         // tap runs on success only; catchError on the error path. Both needed.

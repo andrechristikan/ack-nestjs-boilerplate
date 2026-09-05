@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { Injectable, PipeTransform } from '@nestjs/common';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';

@@ -1,5 +1,4 @@
 import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { MessageService } from '@common/message/services/message.service';
@@ -24,7 +23,7 @@ export class AppBaseExceptionFilter implements ExceptionFilter {
         exception: AppBaseException,
         host: ArgumentsHost
     ): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
+        const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
 
         this.sendToSentry(exception);

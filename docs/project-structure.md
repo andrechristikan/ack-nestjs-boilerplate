@@ -304,7 +304,8 @@ Below are explanations for the root folders and files outside `src/`:
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
-- **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
+- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by `ts-prune` through `pnpm deadcode` (`--project tsconfig.json`), and by the editor. Its `include` covers `src/**/*`, `test/**/*`, and `scripts/**/*`, and it carries the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
+- **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test` and `scripts`.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

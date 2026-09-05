@@ -634,7 +634,7 @@ FIREBASE_CLIENT_EMAIL=
 ```
 
 **`FIREBASE_PRIVATE_KEY`** *(optional/required for push notifications)*  
-Firebase service account private key. Replace newlines with `\n` when storing in `.env`.
+Firebase service account private key, accepted either as the PEM block with its newlines written as `\n`, or as the bare base64 PKCS#8 DER body. `FirebaseUtil.normalizePrivateKey` in `src/common/firebase/utils/firebase.util.ts` turns either form into the PEM the Admin SDK expects.
 ```bash
 FIREBASE_PRIVATE_KEY=
 ```

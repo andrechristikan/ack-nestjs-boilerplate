@@ -1,7 +1,7 @@
 import { Processor } from '@nestjs/bullmq';
-import { NestWorkerOptions } from '@nestjs/bullmq/dist/interfaces/worker-options.interface';
 import { QueueProcessorConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
+import { IQueueProcessorOptions } from '@queues/interfaces/queue.interface';
 
 /**
  * Registers a BullMQ processor with an env-derived consumer worker name.
@@ -9,7 +9,7 @@ import { EnumQueue } from '@queues/enums/queue.enum';
  */
 export function QueueProcessor(
     name: EnumQueue,
-    options?: Omit<NestWorkerOptions, 'name'>
+    options?: IQueueProcessorOptions
 ): ClassDecorator {
     // Config is read through configKey, not ConfigService: a decorator has no
     // injection context.

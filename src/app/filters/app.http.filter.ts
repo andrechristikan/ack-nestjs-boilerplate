@@ -6,7 +6,6 @@ import {
     HttpStatus,
     Logger,
 } from '@nestjs/common';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import Case from 'case';
@@ -42,7 +41,7 @@ export class AppHttpFilter implements ExceptionFilter {
     }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
+        const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 

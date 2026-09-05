@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -41,7 +40,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<Response>) => {
-                    const ctx: HttpArgumentsHost = context.switchToHttp();
+                    const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
                     const responseData =

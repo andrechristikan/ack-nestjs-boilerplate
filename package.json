@@ -26,7 +26,7 @@
         "build": "nest build application --config nest-cli.json && pnpm typecheck",
         "build:dev": "nest build application --config nest-cli.json --watch && pnpm typecheck",
         "start": "nest start application --config nest-cli.json",
-        "start:dev": "concurrently -n \"App,Types\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json\" \"pnpm typecheck:watch\"",
+        "start:dev": "concurrently -n \"Nest,TypeCheck\" -c \"green,yellow\" \"nest start application --watch --config nest-cli.json\" \"pnpm typecheck:watch\"",
         "start:prod": "node dist/main",
         "lint": "eslint",
         "lint:staged": "lint-staged",
@@ -170,10 +170,11 @@
     },
     "lint-staged": {
         "**/*.ts": [
+            "prettier --write",
             "eslint",
             "stop-only --file"
         ],
-        "*.{json,yaml}": [
+        "*.{json,yml,yaml}": [
             "prettier --write"
         ]
     },
