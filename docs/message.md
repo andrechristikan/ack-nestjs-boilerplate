@@ -231,30 +231,37 @@ async create(
     @Body() body: UserCreateRequestDto,
     @AuthJwtPayload('userId') createdBy: string
 ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-    return this.userService.createByAdmin(body, createdBy);
+    return this.userHttpService.createByAdmin(body, createdBy);
 }
 ```
 
-With variables, pass `messageProperties` via the `metadata` field on `IResponseReturn`:
+With variables, the HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`, and `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments. The controller carries only the `@Response` message path:
 
 ```typescript
-@Response('user.updateStatus')
-@Patch('/update/:userId/status')
-async updateStatus(
-    @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-    userId: string,
-    @AuthJwtPayload('userId') updatedBy: string,
-    @Body() body: UserUpdateStatusRequestDto
+// controller
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+    @AuthJwtPayload('userId') userId: string
 ): Promise<IResponseReturn<void>> {
-    await this.userService.updateStatusByAdmin(userId, body, updatedBy);
+    return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+    const count = await this.notificationService.markAllAsRead(userId);
 
     return {
         metadata: {
-            messageProperties: { status: body.status },
+            messageProperties: {
+                count,
+            },
         },
     };
 }
 ```
+
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
 
 ### Validation Pipe
 

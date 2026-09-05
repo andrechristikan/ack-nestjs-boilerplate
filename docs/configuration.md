@@ -526,6 +526,14 @@ default: {
 }
 ```
 
+**`onboarding`** - Prisma transaction timeouts for the user onboarding write
+```typescript
+onboarding: {
+  createTimeoutInMs: number;      // Timeout when the write carries one user (ms('10s'))
+  createBulkTimeoutInMs: number;  // Timeout when the write carries more than one user (ms('30s'))
+}
+```
+
 ### Documentation Configuration
 
 

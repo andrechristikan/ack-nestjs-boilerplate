@@ -167,7 +167,7 @@ Transforms and validates CSV data using DTO classes with class-validator decorat
 
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
-2. Rejects an empty row set, and a row set larger than `file.maxDataImport` (100)
+2. Rejects an empty row set, and a row set larger than the configured row cap
 3. Transforms each row into the specified DTO class
 4. Validates using class-validator with `whitelist: true` and `forbidNonWhitelisted: true`, so an unknown column fails the row
 5. Collects all validation errors with row context, never failing fast on the first bad row
@@ -175,11 +175,13 @@ Transforms and validates CSV data using DTO classes with class-validator decorat
 
 **Parameters:**
 - DTO class for row validation
-- `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`)
+- `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`, which is `100`)
+
+The pipe factory runs at decoration time, before config is resolved, so it takes the config KEY and reads the value in the constructor. The user import passes `'user.maxDataImport'`, which is `50`.
 
 **Throws:**
 - `FileRequiredExtractFirstException`: No rows were passed in
-- `FileExceedMaxDataImportException`: Row count exceeds `file.maxDataImport` (100)
+- `FileExceedMaxDataImportException`: Row count exceeds the row cap read from the configured key
 - `FileImportException`: Contains detailed validation errors with row context
 
 ## CSV Import Flow
@@ -204,7 +206,7 @@ flowchart TD
     H --> I{FileCsvValidationPipe}
     
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
-    I -->|Rows > file.maxDataImport| I3[Throw FileExceedMaxDataImportException]
+    I -->|Rows > configured row cap| I3[Throw FileExceedMaxDataImportException]
     I -->|Within Cap| J[Transform Each Row to DTO Class]
     J --> K[Validate with class-validator]
     
@@ -238,7 +240,7 @@ Single and multiple file uploads with extension validation.
 
 **Single File Upload:**
 
-The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches; the S3 write happens in `UserService.uploadPhotoProfile`.
+The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileService`, where the S3 write happens.
 
 ```typescript
 @UserSharedUploadPhotoProfileDoc()
@@ -249,6 +251,7 @@ The live example is `POST /shared/user/profile/photo/upload` on `UserSharedContr
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @HttpCode(HttpStatus.OK)
 @Post('/profile/photo/upload')
 async uploadPhotoProfile(
@@ -263,11 +266,11 @@ async uploadPhotoProfile(
   )
   file: IFile
 ): Promise<void> {
-  return this.userService.uploadPhotoProfile(userId, file);
+  await this.userProfileHttpService.uploadPhotoProfile(userId, file);
 }
 ```
 
-The service derives the extension, builds the key, and writes the object:
+`UserProfileService.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
 
 ```typescript
 const extension = this.fileService.extractExtensionFromFilename(
@@ -286,7 +289,7 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem({
 });
 ```
 
-`putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case.
+`putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case. The repository call that stores the S3 reference takes the `IRequestLog` the service reads from the request store under `RequestLogStoreKey`.
 
 **Multiple Files Upload:**
 
@@ -327,12 +330,13 @@ Import and validate data from CSV files. The live example is `POST /admin/user/i
 
 The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
 
-The row DTO is an ordinary request DTO. `UserImportRequestDto` picks `email` and `name` off `UserCreateRequestDto`, so the import reuses the same validators as user creation:
+The row DTO is an ordinary request DTO. `UserImportRequestDto` picks `email`, `name` and `username` off `UserCreateRequestDto`, so the import reuses the same validators as user creation:
 
 ```typescript
 export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
   'email',
   'name',
+  'username',
 ]) {}
 ```
 
@@ -351,6 +355,7 @@ export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
+@RequestThrottle({ user: true })
 @HttpCode(HttpStatus.OK)
 @Post('/import')
 async import(
@@ -359,13 +364,17 @@ async import(
     RequestRequiredPipe,
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
-    FileCsvValidationPipe(UserImportRequestDto)
+    FileCsvValidationPipe(UserImportRequestDto, {
+      maxDataImportConfigKey: 'user.maxDataImport',
+    })
   )
   data: UserImportRequestDto[]
 ): Promise<void> {
-  return this.userService.importByAdmin(data, createdBy);
+  await this.userImportHttpService.importByAdmin(data, createdBy);
 }
 ```
+
+The row cap on this route is `user.maxDataImport`, which is `50`.
 
 `FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no DTO validation applied.
 
@@ -465,7 +474,7 @@ Thrown during CSV validation with detailed error context. This exception provide
 | Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
 | Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
-| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds `file.maxDataImport` (100) |
+| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds the configured row cap |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | DTO validation failed with details |
 
 Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.

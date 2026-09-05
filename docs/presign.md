@@ -20,7 +20,7 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 
 ## AWS S3 Presigned URL Get Capability
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyService.getContentByAdmin`, exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes `access: EnumAwsS3Accessibility.private`, so term policy content is signed against the private bucket. There is no request DTO: `termPolicyId` and `language` are path params.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentService.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes `access: EnumAwsS3Accessibility.private`, so term policy content is signed against the private bucket. There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 
@@ -100,7 +100,7 @@ export class UserUpdateProfilePhotoRequestDto extends PickType(
 
 **Step 2 - Controller Endpoints:**
 
-`UserSharedController` is registered by `RoutesSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
+`UserSharedController` is registered by `RouterHttpSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
 
 ```typescript
 @ApiTags('modules.shared.user')
@@ -109,7 +109,10 @@ export class UserUpdateProfilePhotoRequestDto extends PickType(
   path: '/user',
 })
 export class UserSharedController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userProfileHttpService: UserProfileHttpService,
+    // ... the other HTTP services this controller dispatches to
+  ) {}
 
   @UserSharedGeneratePhotoProfilePresignDoc()
   @Response('user.generatePhotoProfilePresign')
@@ -117,13 +120,17 @@ export class UserSharedController {
   @UserProtected()
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
+  @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
   @HttpCode(HttpStatus.OK)
   @Post('/profile/photo/presign/generate')
   async generatePhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserGeneratePhotoProfileRequestDto
   ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-    return this.userService.generatePhotoProfilePresign(userId, body);
+    return this.userProfileHttpService.generatePhotoProfilePresign(
+      userId,
+      body
+    );
   }
 
   @UserSharedUpdatePhotoProfileDoc()
@@ -132,24 +139,28 @@ export class UserSharedController {
   @UserProtected()
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
+  @RequestThrottle({ user: true })
   @Put('/profile/photo/update')
   async updatePhotoProfile(
     @AuthJwtPayload('userId') userId: string,
     @Body() body: UserUpdateProfilePhotoRequestDto
   ): Promise<void> {
-    return this.userService.updatePhotoProfile(userId, body);
+    await this.userProfileHttpService.updatePhotoProfile(userId, body);
   }
 }
 ```
 
 **Step 3 - Service Implementation:**
+
+`UserProfileHttpService` is a thin hop: it awaits the domain service and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileService`.
+
 ```typescript
 @Injectable()
-export class UserService {
+export class UserProfileService {
   async generatePhotoProfilePresign(
     userId: string,
-    { extension, size }: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
+    { extension, size }: IUserGeneratePhotoProfile
+  ): Promise<IAwsS3Presign> {
     const key: string =
       this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
         extension,
@@ -164,12 +175,12 @@ export class UserService {
       throw new AwsServiceUnavailableException();
     }
 
-    return { data: aws };
+    return aws;
   }
 
   async updatePhotoProfile(
     userId: string,
-    { photoKey, size }: UserUpdateProfilePhotoRequestDto
+    { photoKey, size }: IUserUpdatePhotoProfile
   ): Promise<void> {
     const requestLog: IRequestLog =
       this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
@@ -344,7 +355,7 @@ sequenceDiagram
 
 ### Term Policy Content Presign
 
-The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RoutesAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
+The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RouterHttpAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
 
 ```typescript
 @TermPolicyAdminGenerateContentPresignDoc()
@@ -362,18 +373,21 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 @UserProtected()
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
+@RequestThrottle({ user: true })
 @HttpCode(HttpStatus.OK)
 @Post('/content/presign/generate')
 async generate(
   @Body() body: TermPolicyContentPresignRequestDto
 ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-  return this.termPolicyService.generateContentPresignByAdmin(body);
+  return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+    body
+  );
 }
 ```
 
 - `TermPolicyContentPresignRequestDto` carries `type` (from `TermPolicyAcceptRequestDto`), `size` (picked from `AwsS3PresignRequestDto`), `language` (`EnumMessageLanguage`), and `version` (integer).
-- The service rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
-- The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` with the `hbs` extension.
+- `TermPolicyContentService.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
+- The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
 
 ### Multipart Part Presign

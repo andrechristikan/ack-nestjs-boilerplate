@@ -133,7 +133,7 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 
 #### Email Templates
 
-Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
+The email template seed imports the templates into AWS SES, checking each one first and importing only the ones SES does not already hold. It requires SES to be initialized and throws when it is not.
 
 **How to Run Email Template Seeds:**
 - Seed: `pnpm migration template-email-notification --type seed`
@@ -141,7 +141,7 @@ Every time you run the email template seed, the templates will be inserted into 
 
 #### Term Policy Templates
 
-Every time you run the term policy template seed, the policy documents will be linked to the database records automatically.
+The term policy template seed uploads each policy document to S3 and writes it onto the matching database record. It requires S3 to be initialized and throws when it is not.
 
 **How to Run Term Policy Template Seeds:**
 - Seed: `pnpm migration template-termPolicy --type seed`
@@ -208,8 +208,10 @@ Two API keys are created for authentication and service access. They are seeded 
 
 | Name | Type | Key | Secret | Usage |
 |------|------|-----|--------|-------|
-| Api Key Default | `default` | `fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
-| Api Key System | `system` | `UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+| Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
+| Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+
+The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyUtil.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
 
 **API Key Prefix Convention:**
 
@@ -234,10 +236,10 @@ Three user roles are created with different permission levels:
 | Role | Type | Description | Abilities |
 |------|------|-------------|-----------|
 | superadmin | `superAdmin` | Super Admin Role | Full system access (unrestricted) |
-| admin | `admin` | Admin Role | All CRUD operations on all subjects |
+| admin | `admin` | Admin Role | Every policy action on every policy subject |
 | user | `user` | User Role | Limited access (no special abilities) |
 
-**Admin Role Abilities**: The admin role has full CRUD permissions (`create`, `read`, `update`, `delete`) on all policy subjects defined in the system.
+**Admin Role Abilities**: The admin role carries every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`) on every member of `EnumPolicySubject`.
 
 ### Users
 
@@ -287,7 +289,7 @@ Four term policy documents are created:
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
 
-The `termPolicy` seed creates each record with an empty `contents` array. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are not linked automatically: run the term policy template seed to upload them to S3 and write the resulting `TermPolicyContent` entries onto the records.
+The `termPolicy` seed creates each record with an empty `contents` array and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are linked by the term policy template seed, which uploads them to S3 and upserts the resulting `TermPolicyContent` entry (`language: en`) onto the version-1 record of each type.
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
@@ -570,9 +572,9 @@ For a caller this means a nested write needs no hand-written `createdBy` / `upda
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone, and their repositories (`WorkspaceRepository.softDelete`, `ProjectRepository.softDelete`) stamp it through a plain `update` inside a transaction that also cascades to the rows they own.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone, and their repositories (`WorkspaceRepository.softDelete`, `ProjectRepository.softDelete`) stamp it through a plain `update` inside a `$transaction` that also writes the activity log. The workspace transaction extends the same stamp to the rows it owns: its active projects get `deletedAt`, its pending invites become `expired`, and its pending join requests become `cancelled`.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status, and write the nested activity log in one call.
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status to `inactive`, revoke the live sessions through a nested `updateMany`, and write the nested activity log in one call.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
@@ -580,25 +582,25 @@ The extension adds two methods to every model. They are meaningful only on model
 
 ## Generated Unique Values
 
-Some columns carry a server-generated value that must be unique: workspace and project slugs today. A random draw can collide with a row that already holds it, so every generator is a **bounded retry that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
+Some columns carry a server-generated value that must be unique: workspace and project slugs today. A random draw can collide with a row that already holds it, so every generator works from a **bounded candidate list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
 
 The shape is the same in all three places:
 
-1. Draw a candidate through `HelperService.generateSlug(prefix, maxLength)`.
-2. Attempt the write, or check the value is free.
-3. On collision, draw again. The budget is a `slugMaxAttempts` config value (`5` for both `workspace` and `project`).
-4. When the budget is exhausted, throw `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
+1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlug(prefix, maxLength)` (`5` for both `workspace` and `project`), and passes the list down.
+2. The consumer walks the list, skipping any candidate a `findFirst` pre-check shows is taken, and stops on the first one that lands.
+3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
 
-| Generator | Collision signal | Attempt budget |
+| Candidate source | Consumer | Collision signal |
 |---|---|---|
-| `WorkspaceRepository.createWithOwner` | Prisma `P2002` on the create | `workspace.slugMaxAttempts` |
-| `ProjectRepository.createWithSlug` | Prisma `P2002` on the create | `project.slugMaxAttempts` |
-| `UserRepository.generateUniqueWorkspaceSlug` | a `workspace.findFirst` pre-check, plus the caller's list of slugs already claimed but not yet written | `workspace.slugMaxAttempts` |
+| `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | a `workspace.findFirst` pre-check, plus Prisma `P2002` on the create |
+| `ProjectService.drawSlugCandidates()` | `ProjectRepository.createWithSlug` | a `project.findFirst` pre-check, plus Prisma `P2002` on the create |
+| `UserOnboardingUtil.drawWorkspaceSlugCandidates(rows)` | `UserOnboardingRepository.findFreeWorkspaceSlugs` | a `workspace.findFirst` pre-check, plus the slugs earlier rows of the same call already took |
 
-Two rules hold across all of them:
+Three rules hold across all of them:
 
 - **A `P2002` that is not the generated value is rethrown untouched.** The retry only ever absorbs a collision on the value the repository itself drew; a unique violation on a client-supplied field stays the caller's error.
-- **`UserRepository.generateUniqueWorkspaceSlug` resolves outside the transaction.** The personal-workspace slug for sign-up, admin create, and admin CSV import is drawn before `$transaction` opens, so the retry loop never holds a transaction open across attempts. In the CSV import each row is additionally passed the slugs earlier rows in the same batch already claimed, because those rows are not written yet and a database pre-check cannot see them.
+- **A client-supplied slug skips generation.** `createWithOwner` and `createWithSlug` take the `dto.slug` path when the request carries one, and the candidate list goes unused.
+- **The personal-workspace slug resolves outside the transaction.** Sign-up, admin create, and admin CSV import all call `findFreeWorkspaceSlugs` before `createWithWorkspace` opens its `$transaction`, so no pre-check holds a transaction open. `drawWorkspaceSlugCandidates(rows)` returns one candidate list per row, and `findFreeWorkspaceSlugs` refuses a slug it already handed to an earlier row of the same batch, because those rows are not written yet and a database pre-check cannot see them.
 
 ## Docker
 

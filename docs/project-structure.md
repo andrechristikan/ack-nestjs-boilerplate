@@ -49,7 +49,7 @@ Each folder serves a specific purpose, supporting modularity and maintainability
 **Location:** `src/app/app.module.ts`
 
 The App Module is the root module and entry point for the ACK NestJS Boilerplate application. It orchestrates the core setup by:
-- Importing essential modules: `CommonModule` (shared utilities), `RouterModule` (API routing), and `QueueModule` (background jobs).
+- Importing two modules: `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount).
 - Registering five global exception filters for handling application exceptions, general, HTTP, validation, and import validation errors.
 - Following NestJS best practices for modular architecture and separation of concerns.
 
@@ -98,20 +98,20 @@ The migration folder seeds initial data. MongoDB has no migration files; the sch
 
 **Location:** `src/queues/`
 
-The queues folder implements background job processing using BullMQ and Redis. It includes:
-- `queue.module.ts`: Composition root that provides the processor classes
-- `queue.register.module.ts`: Global module holding every `BullModule.registerQueue` call and the per-queue job defaults
+The queues folder is the BullMQ framework layer. It includes:
+- `queue.register.module.ts`: Global module holding every `BullModule.registerQueueAsync` call, the two BullMQ root connections (queue and processor), and the per-queue job defaults read from `queue.config.ts`
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
-- Processor files live in their owning feature module (`<module>/processors/`); only their registration lives here
+- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`; the queue registration lives here
 - Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
 
 ## Router
 
 **Location:** `src/router/`
 
-The router folder defines API routing by access level. It includes:
-- `router.module.ts`: Main router module for API route orchestration
-- `routes/`: Subfolder organizing endpoints by access level (admin, public, user, system, shared)
+The router folder mounts everything the application exposes. It includes:
+- `router.module.ts`: Root router that imports the five access-level modules and registers their path prefixes through `RouterModule.register` from `@nestjs/core`, plus the processor mount
+- `http/`: One module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need. `router.http.public.module.ts` mounts under `/public`, `router.http.system.module.ts` under `/system`, `router.http.admin.module.ts` under `/admin`, `router.http.user.module.ts` under `/user`, and `router.http.shared.module.ts` under `/shared`
+- `processor/router.processor.module.ts`: Aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application
 - Ensures clear separation of concerns and robust access control for all API endpoints
 
 ## Instrument
@@ -165,6 +165,23 @@ modules
   ├── user
   └── workspace
 ```
+
+**Per-layer Nest modules:**
+
+Each layer of a feature gets its own Nest module file at the root of the feature folder, and only the ones with something to provide exist:
+
+```
+modules/<feature>
+  ├── <feature>.util.module.ts        # utils
+  ├── <feature>.repository.module.ts  # repositories
+  ├── <feature>.module.ts             # domain services (the only one another feature consumes)
+  ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
+  └── <feature>.processor.module.ts   # processors and their processor services
+```
+
+`<feature>.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
+
+**Folders:**
 
 No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:
 
@@ -263,7 +280,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
 - **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated output: the Prisma client, the Swagger JSON, and the Vault init material. Not tracked by git.
+- **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
@@ -287,7 +304,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
-- **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@config`, `@configs/*`, `@modules/*`, `@queues/*`, `@routes/*`, `@router`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@package`).
+- **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

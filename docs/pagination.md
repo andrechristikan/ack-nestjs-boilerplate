@@ -174,8 +174,8 @@ The encoded cursor is URL-safe base64 over exactly two fields, and nothing else:
 **Cursor Validation:**
 - Each request recomputes the fingerprint from its own `where` and `orderBy`, then compares it to the `fingerprint` in the supplied cursor. A mismatch throws `PaginationInvalidCursorPaginationParamsException` (50203, 422).
 - A cursor that is empty or not a string throws `PaginationInvalidCursorFormatException` (50205). One that decodes to an object missing `cursor` or `fingerprint` throws `PaginationInvalidCursorDataException` (50212), and one whose base64 or JSON cannot be parsed at all throws `PaginationFailedToDecodeCursorException` (50214).
-- The client must restart from the first page whenever the filter, the search term, or the ordering changes.
-- For multi-field ordering, the array order feeds the fingerprint, so it must stay exactly the same between requests.
+- A cursor is bound to the filter, the search term, and the ordering it was issued for. Changing any of them invalidates it, and the client starts again from the first page.
+- For multi-field ordering, the array order feeds the fingerprint, so the same sequence of `orderBy` entries produces a matching cursor and a different sequence does not.
 
 **Cursor Field Tiebreaker:**
 - Before it queries and before it fingerprints, `cursor()` appends `{ [cursorField]: <direction> }` to the resolved `orderBy`. The direction is copied from the last ordering term, so the tiebreaker never fights the primary sort.
@@ -214,6 +214,8 @@ Service (Business Logic)
 ```
 
 **Key Principle:** Pipes validate ALL input. Service assumes valid input.
+
+**Pipe Chain:** `@PaginationOffsetQuery` binds `PaginationSearchPipe` → `PaginationOffsetPipe` → `PaginationOrderPipe`, and `@PaginationCursorQuery` binds `PaginationSearchPipe` → `PaginationCursorPipe` → `PaginationOrderPipe`. The first two pipes carry the raw `orderBy` query value through untouched; `PaginationOrderPipe` runs last and is the one that turns it into `IPaginationOrderBy[]`, which is why the handler parameter type is `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` rather than the pipe-level shape.
 
 **Query Allow-List:** Every pipe in the chain builds its return value from a fixed list of named keys and never spreads the incoming query object. Anything a client sends that is not on that list is dropped before the handler runs, so `?where=`, `?select=`, `?include=`, and `?includeCount=` cannot reach Prisma. `include` and `includeCount` are set by the repository or not at all.
 
@@ -625,7 +627,7 @@ The pagination fields ride inside the `metadata` block of the standard response 
     "message": "...",
     "metadata": {
         "type": "cursor",
-        "nextCursor": "eyJjIjoiNTA3ZjFmNzdiY2Y4NmNkNzk5NDM5MDExIiwiZiI6IjlmMmM0YTFiN2UwZDNhNTYifQ",
+        "nextCursor": "eyJjdXJzb3IiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJmaW5nZXJwcmludCI6IjlmMmM0YTFiN2UwZDNhNTYifQ",
         "perPage": 20,
         "hasNext": true,
         "hasPrevious": false,
@@ -646,9 +648,9 @@ return this.paginationService.offset(repository, {
     ...pagination,
     where: {
         ...where,
-        ...status,          // Adds: { in: [...] }
-        ...role,           // Adds: { equals: '...' }
-        ...country,        // Adds: { not: '...' }
+        ...status,          // Adds: { status: { in: [...] } }
+        ...roleId,          // Adds: { roleId: { equals: '...' } }
+        ...countryId,       // Adds: { countryId: { equals: '...' } }
         deletedAt: null
     }
 });
@@ -775,6 +777,8 @@ The response reports the applied ordering back in the same `field:direction` for
 
 ### Basic Offset Pagination
 
+A list route travels `Controller → HTTP Service → Domain Service → Repository`. The HTTP service is where the raw rows become response DTOs; the domain service forwards the pagination params, and the repository is the layer that adds `include`.
+
 **Controller:**
 ```typescript
 @Get('/list')
@@ -786,21 +790,28 @@ async list(
     })
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    return this.userService.getListOffsetByAdmin(pagination);
+    return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
 
-**Service:**
+**HTTP Service:**
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
     const { data, ...others } =
-        await this.userRepository.findWithPaginationOffset(pagination);
+        await this.userService.getListOffsetByAdmin(pagination);
 
-    const users: UserListResponseDto[] = this.userUtil.mapList(data);
+    return { data: this.userUtil.mapList(data), ...others };
+}
+```
 
-    return { data: users, ...others };
+**Domain Service:**
+```typescript
+async getListOffsetByAdmin(
+    pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+): Promise<IResponsePagingReturn<IUser>> {
+    return this.userRepository.findWithPaginationOffset(pagination);
 }
 ```
 
@@ -845,7 +856,7 @@ async list(
     pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
     @AuthJwtPayload('userId') userId: string
 ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
-    return this.workspaceService.getListForMember(userId, pagination);
+    return this.workspaceHttpService.getListForMember(userId, pagination);
 }
 ```
 
@@ -880,7 +891,7 @@ async findWithPaginationCursorByMember(
 GET /user/workspace/list?perPage=20&orderBy=createdAt:asc
 
 # Next page. The same orderBy must be repeated, or the fingerprint check fails
-GET /user/workspace/list?cursor=eyJjIjoiNTA3ZjFmNzdiY2Y4NmNkNzk5NDM5MDExIiwiZiI6IjlmMmM0YTFiN2UwZDNhNTYifQ&perPage=20&orderBy=createdAt:asc
+GET /user/workspace/list?cursor=eyJjdXJzb3IiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJmaW5nZXJwcmludCI6IjlmMmM0YTFiN2UwZDNhNTYifQ&perPage=20&orderBy=createdAt:asc
 ```
 
 ### With Filters
@@ -905,7 +916,7 @@ async list(
     @PaginationQueryFilterEqualString('countryId')
     countryId?: Record<string, IPaginationEqual>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    return this.userService.getListOffsetByAdmin(
+    return this.userHttpService.getListOffsetByAdmin(
         pagination,
         status,
         roleId,
@@ -914,7 +925,7 @@ async list(
 }
 ```
 
-**Service:**
+**HTTP Service:**
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
@@ -922,19 +933,18 @@ async getListOffsetByAdmin(
     roleId?: Record<string, IPaginationEqual>,
     countryId?: Record<string, IPaginationEqual>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    const { data, ...others } =
-        await this.userRepository.findWithPaginationOffset(
-            pagination,
-            status,
-            roleId,
-            countryId
-        );
+    const { data, ...others } = await this.userService.getListOffsetByAdmin(
+        pagination,
+        status,
+        roleId,
+        countryId
+    );
 
-    const users: UserListResponseDto[] = this.userUtil.mapList(data);
-
-    return { data: users, ...others };
+    return { data: this.userUtil.mapList(data), ...others };
 }
 ```
+
+Each filter parameter travels as its own argument all the way to the repository, which is where the `where` clauses merge.
 
 **Repository:**
 ```typescript
@@ -983,7 +993,7 @@ A paginated route in place, with the Swagger doc decorator and the full protecti
     path: '/user',
 })
 export class UserAdminController {
-    constructor(private readonly userService: UserService) {}
+    constructor(private readonly userHttpService: UserHttpService) {}
 
     @UserAdminListDoc()
     @ResponsePaging('user.list')
@@ -996,6 +1006,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
@@ -1013,7 +1024,7 @@ export class UserAdminController {
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListOffsetByAdmin(
+        return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
             roleId,

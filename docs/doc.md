@@ -550,7 +550,9 @@ Common options:
 **Usage:**
 
 ```typescript
-export class UserChangePasswordRequestDto {
+export class UserChangePasswordRequestDto extends PartialType(
+    OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
+) {
     @ApiProperty({
         description: "new string password, newPassword can't same with oldPassword",
         example: 'aBcDe@Fgh!123',
@@ -579,9 +581,11 @@ export class UserChangePasswordRequestDto {
 **With Inheritance:**
 
 ```typescript
-export class UserForgotPasswordResetRequestDto extends PickType(
-    UserChangePasswordRequestDto,
-    ['newPassword'] as const
+export class UserForgotPasswordResetRequestDto extends IntersectionType(
+    PickType(UserChangePasswordRequestDto, ['newPassword'] as const),
+    PartialType(
+        OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
+    )
 ) {
     @ApiProperty({
         required: true,
@@ -714,6 +718,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
 }
 
 @UserSharedUploadPhotoProfileDoc()
+@FileUploadSingle()
 @Post('/profile/photo/upload')
 async uploadPhotoProfile(
     @UploadedFile(

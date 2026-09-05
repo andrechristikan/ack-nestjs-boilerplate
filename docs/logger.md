@@ -97,7 +97,7 @@ SENTRY_DSN=<your_sentry_dsn>
 | `auto` | Enable automatic HTTP request/response logging | `false` |
 | `prettier` | Enable pretty-printing in console | `false` |
 | `sentry.dsn` | Sentry DSN for error tracking | `null` |
-| `sentry.timeoutInMs` | Sentry request timeout | `ms('10s')` |
+| `sentry.timeoutInMs` | Timeout value carried on the config; `Sentry.init` is configured from `sentry.dsn` | `ms('10s')` |
 
 ## Usage
 
@@ -628,7 +628,7 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 - `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500).
 - `QueueProcessorBase`: reports fatal queue job failures on the last retry attempt.
 
-A non-fatal `QueueException` is dropped in `beforeSend` and never becomes a Sentry Issue.
+`beforeSend` is the last filter every Issue passes through, and it drops four kinds of event: a non-fatal `QueueException`, an event whose `request.url` matches `LoggerExcludedRoutes`, an event whose response status code is below 500, and an event at `info` or `debug` level. Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, returning a `0` sample rate for them.
 
 ### Sentry Configuration
 
@@ -646,11 +646,11 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 ```typescript
 sentry: {
     dsn: string | null;  // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeoutInMs: number; // Request timeout in milliseconds (default: 10000ms = 10s)
+    timeoutInMs: number; // ms('10s')
 }
 ```
 
-**Default timeout:** 10 seconds (`10000ms`)
+`instrument.ts` reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The rest of the initializer options (sample rates, `normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`, and the sample rates are the only ones that branch on `app.env`.
 
 ### Disabling Sentry
 

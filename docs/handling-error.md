@@ -121,8 +121,8 @@ All errors are formatted into `ResponseErrorDto`:
 | Field | Source | Fallback |
 |-------|--------|----------|
 | `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
-| `timestamp` | `HelperService.dateGetTimestamp()` | - |
-| `timezone` | `HelperService.dateGetZone()` | - |
+| `timestamp` | `HelperDateService.getTimestamp()` | - |
+| `timezone` | `HelperDateService.getZone()` | - |
 | `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
 | `requestId` | Request store `RequestIdStoreKey` | - |

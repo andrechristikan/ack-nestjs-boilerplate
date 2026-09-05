@@ -28,7 +28,7 @@ This application uses **cache-manager v7**, which uses **Keyv** as the unified s
   - [Module Dependency Flow](#module-dependency-flow)
   - [RedisCacheModule](#rediscachemodule)
   - [CacheMainModule](#cachemainmodule)
-  - [SessionModule](#sessionmodule)
+  - [SessionUtilModule](#sessionutilmodule)
 - [Configuration](#configuration)
   - [Redis Configuration](#redis-configuration)
   - [Module Import Order](#module-import-order)
@@ -44,6 +44,7 @@ This application uses **cache-manager v7**, which uses **Keyv** as the unified s
 - **Single Cache Connection**: Only ONE Redis connection is created for caching and shared across every cache consumer. BullMQ opens its own connections against `QUEUE_REDIS_URL` and does not reuse this client
 - **Single Configuration**: Defined once in `redis.config.ts`
 - **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
+- **Direct client consumer**: `RequestThrottlerStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
 
 **Example:**
 
@@ -60,7 +61,7 @@ All services → Inject and reuse the same connection
 
 ### Global Module Pattern
 
-`RedisCacheModule` and `CacheMainModule` are marked as `@Global()`:
+`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionUtilModule` carries the `@Global()` decorator:
 - Providers automatically available everywhere
 - No need to import in feature modules
 
@@ -78,8 +79,9 @@ CommonModule
     │   └── Provides: CacheMainProvider
     │
     └── SessionModule (Global)
-        └── Uses: RedisClientCachedProvider
-        └── Provides: SessionCacheProvider
+        └── SessionUtilModule (Global)
+            └── Uses: RedisClientCachedProvider
+            └── Provides: SessionCacheProvider, SessionUtil
 ```
 
 ### RedisCacheModule
@@ -124,11 +126,11 @@ export class FeatureFlagUtil {
 
 Cache is injected into utils, interceptors, and health indicators, not into services. The current consumers are `ApiKeyUtil`, `AuthTwoFactorUtil`, `FeatureFlagUtil`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
 
-### SessionModule
+### SessionUtilModule
 
 **Purpose:** Provides cache for session management only
 
-**Provider:** `SessionCacheProvider`
+**Provider:** `SessionCacheProvider` (`src/modules/session/constants/session.constant.ts`)
 
 **Scope:** Global (available everywhere)
 
@@ -143,7 +145,9 @@ export class SessionUtil {
 }
 ```
 
-`SessionUtil` is the only injection site.
+`SessionUtil` is the only injection site. `SessionCacheProvider` is registered inside `SessionUtilModule` and stays internal to it: the module exports `SessionUtil` alone. `SessionModule`, the domain layer imported by `CommonModule`, imports `SessionUtilModule` and `SessionRepositoryModule` and exports `SessionService`.
+
+Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
 ## Configuration
 
@@ -179,13 +183,13 @@ export class SessionUtil {
         QueueRegisterModule.forRoot(), // BullMQ, own connections on QUEUE_REDIS_URL
         CacheMainModule.forRoot(),     // Depends on RedisCacheModule
         // ... DatabaseModule, RequestModule, and other globals ...
-        SessionModule,                 // Feature modules later (SessionUtil injects SessionCacheProvider)
+        SessionModule,                 // Feature modules later (its SessionUtilModule registers SessionCacheProvider)
     ]
 })
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` registers its own cache provider later.
+**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` pulls in `SessionUtilModule`, which registers its own cache provider over the same client later.
 
 ## Usage
 
@@ -227,3 +231,4 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

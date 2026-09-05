@@ -525,7 +525,7 @@ defaultMessage(validationArguments?: ValidationArguments): string {
     return 'request.error.email.required';
   }
 
-  const validationResult = this.helperService.checkEmail(
+  const validationResult = this.helperStringService.checkEmail(
     validationArguments.value
   );
   return validationResult.messagePath ?? 'request.error.email.invalid';

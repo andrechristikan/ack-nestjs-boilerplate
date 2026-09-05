@@ -166,7 +166,7 @@ File download response decorator that handles CSV and PDF file downloads with pr
 - Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
 - CSV data must be a string (pre-converted to CSV format)
 - PDF data must be a Buffer
-- Optional `filename` - if not provided, generates a timestamped CSV filename from `response.filenameExportPattern`: `export-{timestamp}.csv`. The generated fallback is always `.csv`, so pass `filename` explicitly for PDF
+- Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
 **Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
@@ -285,7 +285,7 @@ Response payloads are serialized in per-module mapper utilities (`*/utils/*.util
 
 ### ResponseUtil
 
-`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application. Never call `plainToInstance` directly on the response path; inject `ResponseUtil` and call `serialize`.
+`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application, so a mapper that injects `ResponseUtil` and calls `serialize` inherits it, and a raw `plainToInstance` call bypasses it. The constraint when writing a mapper: `rules/dto.md`.
 
 ```typescript
 @Injectable()
@@ -315,7 +315,7 @@ export class DeviceUtil {
 
 ### Opt-In with @Expose
 
-Every field that should appear in the response **must** carry `@Expose()`. A declared field without `@Expose()` is dropped at serialization time.
+A declared field without `@Expose()` is dropped by the serializer, which is what keeps a new column off the response until someone exposes it deliberately. The constraint when writing a response DTO: `rules/dto.md`.
 
 ```typescript
 export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
@@ -333,7 +333,7 @@ export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
 
 ### Nested DTOs
 
-`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. When a parent DTO is serialized, **every nested DTO must already carry `@Expose()` on its own fields** — otherwise the nested object comes back empty. Keep both `@Type` and `@Expose` on the parent property:
+`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. A nested DTO whose own fields carry no `@Expose()` serializes as an empty object, and a parent property that carries `@Type` without `@Expose()` is dropped like any other unexposed field, so both decorators sit on the parent property:
 
 ```typescript
 @ApiProperty({ type: DeviceResponseDto })
@@ -344,7 +344,7 @@ device: DeviceResponseDto;
 
 ### Hiding Fields
 
-Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` plus `@ApiHideProperty()` is required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s, both are needed so the JSON and the Swagger schema agree.
+Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). **Subclass-hide** is the case that needs both decorators: a field the parent class already `@Expose()`s stays in the JSON until the subclass adds `@Exclude()`, and stays in the Swagger schema until the subclass adds `@ApiHideProperty()`.
 
 ```typescript
 // Parent exposes isActive/startAt/endAt/name/type/key; create response hides every one of them and adds `secret`.
@@ -461,7 +461,7 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
 
 `metadata.orderBy` is a string array, symmetric with `availableOrderBy` beside it. `ResponsePagingInterceptor` flattens the service-level `IPaginationOrderBy[]` (`[{ createdAt: 'desc' }]`) into `field:direction` entries (`['createdAt:desc']`), which is also the format the `orderBy` query parameter accepts. An empty order renders `[]`.
 
-Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCursor` from the service's `cursor` field and never assigns `previousCursor`, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Do not build a "previous page" control from either field.
+Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCursor` from the service's `cursor` field and leaves `previousCursor` unassigned, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Neither field carries the information a "previous page" control would need.
 
 ## Caching
 

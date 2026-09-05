@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Queue Module**: Located 
 
 Queue module for background job processing using [BullMQ][ref-bullmq] and [Redis][ref-redis]. This module implements a DRY design pattern with singleton Redis connections for efficient resource management.
 
-All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, removeOn*) live in `src/configs/queue.config.ts`. Root setup and management live in `src/queues`.
+All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, removeOn*) live in `src/configs/queue.config.ts`. The BullMQ framework layer (enums, decorator, base class, queue registration) lives in `src/queues`; the processors themselves live in their owning feature module and are mounted by the router.
 
 ## Related Documents
 
@@ -39,12 +39,11 @@ All queue Redis connection settings live in `src/configs/redis.config.ts`. Job d
 Redis connection for queues is managed in `src/configs/redis.config.ts`:
 
 ```typescript
-export interface IConfigRedis {
-    queue: {
-        url: string;
-        namespace: string;
-    };
-}
+// the queue half of IConfigRedis; the other half is `cache`
+queue: {
+    url: string;
+    namespace: string;
+};
 ```
 
 Job defaults (attempts, backoff delays, removeOnComplete / removeOnFail) are in `src/configs/queue.config.ts` and applied from `src/queues/queue.register.module.ts`.
@@ -59,10 +58,12 @@ Environment variables:
 The queue system consists of:
 
 1. **Queue Register Module** (`src/queues/queue.register.module.ts`): Global module for registering queues with default configurations
-2. **Queue Module** (`src/queues/queue.module.ts`): Module for managing queue processors
-3. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): Base class with error handling and Sentry integration
-4. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
-5. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
+2. **Queue Processor Base** (`src/queues/bases/queue.processor.base.ts`): Base class with error handling and Sentry integration
+3. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
+4. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
+5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue` and `EnumQueuePriority`, `QueueException`, `IQueueResponse`
+
+Processors are not registered inside `src/queues`. Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`), and `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them. `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
 
 Producers and workers do not share one connection. `queue.register.module.ts` calls `BullModule.forRootAsync` twice: once under `QueueConfigKey` for the producer side (connection name `{APP_NAME}-{APP_ENV}:queue`) and once under `QueueProcessorConfigKey` for the worker side (connection name `{APP_NAME}-{APP_ENV}:processor`). Both use `redis.queue.url` and the `Queue` prefix. Register a queue with `configKey: QueueConfigKey`; the `@QueueProcessor` decorator already binds `QueueProcessorConfigKey` for you.
 
@@ -238,21 +239,42 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 }
 ```
 
-2. Register processor in `src/queues/queue.module.ts`:
+The second argument of `@QueueProcessor` is a BullMQ `NestWorkerOptions` minus `name`, so a worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants. The worker name itself is derived by the decorator as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
+
+2. Register the processor and its processor service in the feature's own `<feature>.processor.module.ts`:
 
 ```typescript
 @Module({
-    imports: [WorkspaceModule],
+    controllers: [],
     providers: [
+        NotificationProcessor,
         NotificationEmailProcessor,
         NotificationPushProcessor,
-        NotificationProcessor,
-        WorkspaceProcessor,
+        NotificationProcessorService,
+        NotificationEmailProcessorService,
+        NotificationPushProcessorService,
         YourNewProcessor, // Add processor
     ],
+    exports: [],
+    imports: [],
 })
-export class QueueModule {}
+export class NotificationProcessorModule {}
 ```
+
+3. For a feature that has no processor module yet, create one and add it to `RouterProcessorModule`:
+
+```typescript
+@Module({
+    imports: [
+        NotificationProcessorModule,
+        WorkspaceProcessorModule,
+        YourFeatureProcessorModule, // Add module
+    ],
+})
+export class RouterProcessorModule {}
+```
+
+A processor module imports whatever its processor services depend on: `WorkspaceProcessorModule` imports `WorkspaceModule` and `WorkspaceUtilModule`, while `NotificationProcessorModule` needs no imports because everything it injects is global.
 
 ## QueueProcessorBase
 

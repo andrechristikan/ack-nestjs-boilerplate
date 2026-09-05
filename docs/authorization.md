@@ -91,6 +91,7 @@ NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method e
 A route takes only the slots it needs; the relative order of the ones it takes never changes. Guard execution therefore runs `@ApiKeyProtected()` → `@AuthJwtAccessProtected()` → `@FeatureFlagProtected()` → `@UserProtected()` → `@WorkspaceProtected()` → `@WorkspaceMemberProtected()` → `@ProjectProtected()` → `@ProjectMemberProtected()` → `@RoleProtected()` → `@PolicyAbilityProtected()` → `@TermPolicyAcceptanceProtected()`.
 
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
+- `@RequestThrottle({ ... })` sits outside this order. It mounts an interceptor, so it runs after every guard whatever its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
 - `@ActivityLog()` binds an interceptor, not a guard, so it runs after every guard has passed. It still occupies its source slot and requires `@AuthJwtAccessProtected()`.
 - A guard that depends on state an earlier guard sets must sit ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
@@ -157,7 +158,7 @@ The guard implementation that performs the actual validation.
 
 The `UserProtected` decorator follows this validation sequence:
 
-1. **Authentication Check**: Verifies that `request.user` exists (populated by JWT strategy)
+1. **Authentication Check**: Verifies that the JWT strategy put a `userId` on `request.user`
 2. **User Lookup**: Retrieves user from database with role information
 3. **User Existence**: Ensures user record exists
 4. **Blocked Check**: Rejects a user whose status is `blocked`
@@ -170,8 +171,8 @@ The `UserProtected` decorator follows this validation sequence:
 ```mermaid
 flowchart TD
     Start([Request Received]) --> JwtGuard[ @AuthJwtAccessProtected<br/>Extract JWT and populate request.user]
-    JwtGuard --> CheckAuth{request.user exists?}
-    CheckAuth -->|No| ErrorAuth[Throw AuthJwtAccessTokenInvalidException<br/>401 Unauthorized]
+    JwtGuard --> CheckAuth{request.user.userId present?}
+    CheckAuth -->|No| ErrorAuth[Throw UserNotAuthenticatedException<br/>401 Unauthorized]
     CheckAuth -->|Yes| LookupUser[Retrieve user from database<br/>with role information]
     
     LookupUser --> UserExists{User exists<br/>in database?}
@@ -685,6 +686,7 @@ flowchart LR
 [casl]: https://casl.js.org/
 
 [ref-doc-authentication]: authentication.md
+[ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md
 [ref-doc-activity-log]: activity-log.md

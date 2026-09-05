@@ -37,7 +37,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 | JWT Refresh Token | ES512 — ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
 | Two-Factor Auth | TOTP — SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
 | Password Hashing | bcrypt — 12 salt rounds |
-| Encryption at Rest | AES-256-CBC (2FA secrets), AES-CBC + PKCS7 (general data) |
+| Encryption at Rest | AES-256-CBC — PKCS7 padding, SHA-256 derived key; 2FA secrets keyed by `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, everything else by `APP_ENCRYPTION_SECRET_KEY` |
 | HTTP Security Headers | [Helmet][ref-helmet] v8 — CSP, Strict-Transport-Security, X-Frame-Options, etc. |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
 | Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler] — global 300 req / 60s per IP, plus opt-in 100 req / 60s per user and per-route tiers (5 / 20 / 60 req per 60s) |

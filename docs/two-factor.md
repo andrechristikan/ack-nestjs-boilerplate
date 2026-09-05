@@ -424,15 +424,15 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Change password, revoke all sessions,<br/>record the 2FA use (one parallel batch)
                     API->>Cache: Delete every session key of the user
+                    API->>Database: Change password, revoke all sessions,<br/>record the 2FA use (one parallel batch)
                     API->>User: Send password-changed notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Change password, revoke all sessions
             API->>Cache: Delete every session key of the user
+            API->>Database: Change password, revoke all sessions
             API->>User: Send password-changed notification
             API->>User: Success
         end
@@ -473,15 +473,15 @@ sequenceDiagram
                     API->>User: Error: Invalid 2FA (401)
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
-                    API->>Database: Reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
                     API->>Cache: Delete every session key of the user
+                    API->>Database: Reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
                     API->>User: Send password-reset notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
-            API->>Database: Reset password, consume the reset token,<br/>revoke all sessions
             API->>Cache: Delete every session key of the user
+            API->>Database: Reset password, consume the reset token,<br/>revoke all sessions
             API->>User: Send password-reset notification
             API->>User: Success
         end
@@ -511,9 +511,8 @@ sequenceDiagram
             API->>User: Error: Invalid 2FA (401)
         else 2FA Valid
             API->>Database: Reset attempt to 0
-            API->>Database: Disable 2FA
-            API->>Database: Clear secret, IV, backup codes
-            API->>Database: Revoke all sessions
+            API->>Cache: Delete every session key of the user
+            API->>Database: One write: disable 2FA, clear secret,<br/>IV and backup codes, revoke all sessions
             API->>User: Success
         end
     end

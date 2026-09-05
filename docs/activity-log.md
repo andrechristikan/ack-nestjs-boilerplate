@@ -7,7 +7,7 @@ This documentation explains the features and usage of **Activity Log Module**: L
 Activity Log records audited user actions. There are two recording paths:
 
 1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method, and the interceptor persists one log for the authenticated actor after the handler runs. This document covers that path.
-2. **Repository-written** - a repository nests an `activityLogs.create` inside the Prisma write it already performs, so the log lands in the same transaction as the mutation. All `user*` actions in `EnumActivityLogAction` are recorded this way (`userLoginCredential`, `userChangePassword`, `userRemoveDevice`, and the rest), built with the same `ActivityLogUtil.getDescription`.
+2. **Repository-written** - a repository writes the log alongside the Prisma mutation it already performs, either as a nested `activityLogs.create` or as another operation of the same transaction, so the log lands with the mutation. Every `user*`, `workspace*`, and `project*` action in `EnumActivityLogAction` is recorded this way (`userLoginCredential`, `workspaceInviteAccepted`, `projectMemberAssigned`, and the rest), through `ActivityLogUtil.buildCreateArgs`, which resolves the description with the same `ActivityLogUtil.getDescription` and stamps the `workspaceId` the mutation belongs to.
 
 **Notes:**
 
@@ -49,8 +49,9 @@ Activity Log records audited user actions. There are two recording paths:
 | `ActivityLogInterceptor` | Reads the action, reads dynamic metadata and request context (`IRequestLog`: IP, user agent, geo) from the request store, persists the log on success and failure |
 | `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
 | `ActivityLogService` | Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
-| `ActivityLogRepository` | Data access (Prisma) |
-| `ActivityLogUtil` | Builds the i18n description, serializes list responses |
+| `ActivityLogHttpService` | Calls the read side and serializes each page into `ActivityLogResponseDto` for the controllers |
+| `ActivityLogRepository` | Data access (Prisma), including the interceptor's `create` |
+| `ActivityLogUtil` | Builds the i18n description, builds the create args a repository-written log is created from, serializes list responses |
 
 ## List Endpoints
 
@@ -62,6 +63,8 @@ Activity Log records audited user actions. There are two recording paths:
 | `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
 
 Global prefix `/api` and version `v1` apply as elsewhere.
+
+The two user-scoped lists match rows whose `workspaceId` is null or unset, so an account's own timeline holds the logs that belong to no workspace. A log written inside a workspace mutation appears in the two workspace-scoped lists.
 
 ## Flow
 
@@ -169,6 +172,7 @@ Each log contains:
 - **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
 - **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
 - **metadata** - dynamic context from the request store (JSON, null when empty)
+- **workspaceId** - the workspace a repository-written log belongs to, taken from the mutation. An interceptor-written log carries none, which is what places it in the user-scoped lists
 - **createdAt** - timestamp
 
 ### Metadata

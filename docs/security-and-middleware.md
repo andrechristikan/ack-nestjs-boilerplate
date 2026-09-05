@@ -81,7 +81,7 @@ app.getHttpAdapter().getInstance<Express>().set('trust proxy', trustedProxy);
 The value is a **trusted-network list**: `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) or explicit CIDRs, comma-separated. It is never a hop count and never `true`.
 
 - **Unset or empty** resolves to `null`, which trusts no proxy. `req.ip` is then the direct socket peer and no client can forge it through `X-Forwarded-For`.
-- **A deployment behind a CDN or edge proxy that connects from a public address MUST list that provider's CIDRs.** Without them the proxy stays untrusted, `req.ip` is the proxy's own address, and every client behind it collapses into a single rate-limit bucket.
+- **A deployment behind a CDN or edge proxy that connects from a public address depends on that provider's CIDRs being listed.** Without them the proxy stays untrusted, `req.ip` is the proxy's own address, and every client behind it collapses into a single rate-limit bucket.
 
 Only `req.ip` is consulted. `req.ips` is not read anywhere in the codebase.
 
@@ -111,9 +111,9 @@ Route tiers are the members of `EnumRequestThrottleRoute`:
 
 Every limit lives in `request.config.ts`. A decorator carries a switch or a tier name, never a number.
 
-`default.limit` must stay above `user.limit` when retuning. The per-IP limiter is checked first on every request, so at or below the per-user limit a client on a single address always trips the IP bucket first and its per-user limit stops meaning anything.
+`default.limit` (300) sits above `user.limit` (100). The per-IP limiter is checked first on every request, so with the two limits equal or inverted a client on a single address always trips the IP bucket first and its per-user limit stops meaning anything.
 
-**Default (per IP, global):** `RequestThrottlerGuard` is one of the two `APP_GUARD` providers registered by `RequestMiddlewareModule`, and enforces the single library throttler, explicitly named `default`. Its tracker is the client IP, and it applies to every route with no opt-in. The library's `@SkipThrottle()` is not used anywhere in this codebase and must not be introduced: the global limiter is the floor every endpoint sits on.
+**Default (per IP, global):** `RequestThrottlerGuard` is one of the two `APP_GUARD` providers registered by `RequestMiddlewareModule`, and enforces the single library throttler, explicitly named `default`. Its tracker is the client IP, and it applies to every route with no opt-in. The library's `@SkipThrottle()` appears nowhere in this codebase, so the global limiter is the floor every endpoint sits on.
 
 **Opt-in (`user` and `route`):** enforcement is split across two phases. `route` is enforced by `RequestThrottleRouteGuard`, the second `APP_GUARD` in the same module; `user` is enforced by `RequestThrottleInterceptor`, mounted by `@RequestThrottle`. Both read the decorator's metadata off the handler, and the `route` limiter is evaluated first because every global guard runs before every interceptor, so a request rejected by the endpoint limit never touches the personal counter.
 
@@ -375,7 +375,7 @@ async operation() {}
 
 ## Request Store
 
-Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, and filters read it via `get<T>(key)`. Repositories never read the store; a service reads the request log and threads it to its repository as the last method parameter (`requestLog: IRequestLog`).
+Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, filters, and feature utils read it via `get<T>(key)`. Repositories never read the store; the caller reads the request log and threads it to the repository as the last method parameter (`requestLog: IRequestLog`).
 
 **Keys (`request.constant.ts`):**
 
@@ -387,10 +387,11 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 | `RequestIdStoreKey` | `RequestRequestIdMiddleware` | `req.id` (dual-write) |
 | `RequestCorrelationIdStoreKey` | `RequestRequestIdMiddleware` | `req.correlationId` (dual-write) |
 | `RequestActorStoreKey` | `RequestActorInterceptor` | `req.user.userId`, set only when the request is authenticated |
+| `RequestThrottleHandledStoreKey` | `RequestThrottleInterceptor` | `true` once the per-user limiter has run for this request; NestJS mounts the interceptor once per `@RequestThrottle` on the handler, and the flag keeps a second mount from counting a second hit |
 
 Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators still exist, but are now thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`.
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository, and the workspace and project features wrap the read in a util (`WorkspaceUtil.getCurrentRequestLog()`, `ProjectUtil.getCurrentRequestLog()`). Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
 
