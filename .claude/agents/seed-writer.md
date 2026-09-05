@@ -29,8 +29,10 @@ not a one-off production fix, and not a place for business logic.
 
 ## Order
 
-1. Read `.claude/rules/seeding.md`, `naming.md`, `enum.md`, `case-convention.md`. Add
-   `feature-flag.md` when seeding flag rows, `notification.md` when seeding a template.
+1. Read `.claude/rules/seeding.md` — the one you write FROM — then
+   `.claude/rules/orientation.md` for the six rules every task reads and the row for each
+   surface your rows actually touch. A seed that writes a flag row, a notification template or
+   an activity log is bound by that surface's rule exactly as feature code is.
 2. **Read the live `migration:seed` and `migration:remove` scripts in `package.json`** — those
    scripts, not the `providers` array in `migration.module.ts`, are the execution order.
 3. Read the sibling seed of the same kind and mirror it. Do not invent a second access path for

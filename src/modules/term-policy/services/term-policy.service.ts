@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -108,6 +109,10 @@ export class TermPolicyService implements ITermPolicyService {
 
             return created;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -134,6 +139,10 @@ export class TermPolicyService implements ITermPolicyService {
 
             return deleted;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -195,6 +204,10 @@ export class TermPolicyService implements ITermPolicyService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

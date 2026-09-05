@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -42,8 +43,6 @@ import { ConfigService } from '@nestjs/config';
 export class UserImportService implements IUserImportService {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
-    private readonly onboardingCreateTimeoutInMs: number;
-    private readonly onboardingCreateBulkTimeoutInMs: number;
 
     constructor(
         private readonly userImportRepository: UserImportRepository,
@@ -63,12 +62,6 @@ export class UserImportService implements IUserImportService {
             this.configService.get<string>('user.default.role')!;
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
-        )!;
-        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
-            'user.onboarding.createTimeoutInMs'
-        )!;
-        this.onboardingCreateBulkTimeoutInMs = this.configService.get<number>(
-            'user.onboarding.createBulkTimeoutInMs'
         )!;
     }
 
@@ -140,16 +133,9 @@ export class UserImportService implements IUserImportService {
                 this.authUtil.createPassword(e, passwords[i])
             );
 
-            const slugs =
-                await this.userOnboardingRepository.findFreeWorkspaceSlugs(
-                    this.userOnboardingUtil.drawWorkspaceSlugCandidates(
-                        usernames.length
-                    )
-                );
             const workspaceContexts =
                 this.userOnboardingUtil.buildPersonalWorkspaceContexts(
-                    usernames,
-                    slugs
+                    usernames
                 );
             const isVerified = checkRole.type !== EnumRoleType.user;
             const inputs: IUserCreateWithWorkspaceInput[] = data.map(
@@ -194,13 +180,15 @@ export class UserImportService implements IUserImportService {
                     createdBy,
                 })
             );
-            const newUsers =
-                await this.userOnboardingRepository.createWithWorkspace(
-                    inputs,
-                    inputs.length > 1
-                        ? this.onboardingCreateBulkTimeoutInMs
-                        : this.onboardingCreateTimeoutInMs
-                );
+            let newUsers: IUser[];
+            try {
+                newUsers =
+                    await this.userOnboardingRepository.createManyWithWorkspace(
+                        inputs
+                    );
+            } catch (error: unknown) {
+                throw this.userOnboardingUtil.mapCreateCollision(error);
+            }
 
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
@@ -227,6 +215,10 @@ export class UserImportService implements IUserImportService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

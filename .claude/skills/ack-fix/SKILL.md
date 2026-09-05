@@ -94,9 +94,15 @@ them.
 
 ## 5 — Brainstorm the repair (REQUIRED)
 
-The cause is found. Invoke `superpowers:brainstorming` and work the repair through it HERE, in
-this session — it is the step that turns a cause into options with trade-offs instead of the
-first patch that comes to mind.
+The cause is found. **Read `.claude/rules/orientation.md` and every row it names for the surfaces
+the repair will touch, BEFORE you brainstorm.** No agent covers this step for you: the options
+are yours, the plan in §6 is yours, and a shape decided here reaches `coder` looking like the
+assignment. An option that a rule forbids is not an option, and offering it to the owner spends
+their decision on something that cannot be built.
+
+Then invoke `superpowers:brainstorming` and work the repair through it HERE, in this session —
+it is the step that turns a cause into options with trade-offs instead of the first patch that
+comes to mind.
 
 **Come out of it with open questions for the owner, not a decision.** Where two repairs are
 both defensible — repair at the call site or at the service, guard the input or fix the
@@ -106,7 +112,9 @@ invariant, change the column or change the read — that is the owner's call. Pu
 ## 6 — Write the plan (REQUIRED)
 
 Invoke `superpowers:writing-plans` and write the repair plan to `.superpowers/`. The plan names
-the files that change, the order they change in, and the verification for each step.
+the files that change, the order they change in, the verification for each step, and **the rules
+each step is written against** — cited by file, from the reading you did in §5. A step whose
+citations you could not produce is a step you have not checked.
 
 **When the owner hands you a plan already, §5 and §6 collapse to reading it** — you do not
 rewrite it. §1 to §4 still run, to confirm the cause is the one the plan assumes. A plan built

@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -63,6 +64,10 @@ export class UserMobileNumberService implements IUserMobileNumberService {
                 requestLog
             );
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -118,6 +123,10 @@ export class UserMobileNumberService implements IUserMobileNumberService {
                 requestLog
             );
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -145,6 +154,10 @@ export class UserMobileNumberService implements IUserMobileNumberService {
                 requestLog
             );
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

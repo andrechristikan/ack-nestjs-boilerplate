@@ -143,11 +143,11 @@ Admin routes carry no project or workspace guard. They take the project id from 
 
 ## Slug
 
-- A client may supply a slug on create and on `PATCH /update/:projectId/slug`. It is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugPattern`, throws `ProjectSlugInvalidException` (400, `51707`).
-- When no slug is supplied on create, `ProjectRepository.createWithSlug` generates one as `project.slugPrefix` plus random characters up to `slugMaxLength`. Generated slugs are not run through `assertSlugAllowed`.
+- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectService.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `ProjectRepository.createInWorkspace`. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
+- A slug sent to `update/:projectId/slug` is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugPattern`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
-- The existence pre-check (`existsBySlugInWorkspace`) deliberately has **no active filter**. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug; the pre-check and the index agree rather than disagree.
-- A client-supplied collision throws `ProjectSlugAlreadyExistsException` (400, `51706`). A generated collision is retried up to `project.slugMaxAttempts` (5) times, and only when the Prisma error is `P2002`; any other error is rethrown untouched, and exhausting the attempts throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
+- `createInWorkspace` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
@@ -187,7 +187,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 }
 ```
 
-`slugPattern` and `slugMaxLength` are read by `ProjectService` for validation; `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` are read by `ProjectRepository` for generation and retry.
+`ProjectService` reads all four: `slugPattern` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
 
 ## Status Codes
 

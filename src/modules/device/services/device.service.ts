@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import {
     IPaginationEqual,
@@ -36,9 +37,7 @@ export class DeviceService implements IDeviceService {
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
@@ -51,9 +50,7 @@ export class DeviceService implements IDeviceService {
     async getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>> {
         return this.deviceOwnershipRepository.findActiveWithPaginationCursor(
             userId,
@@ -92,6 +89,10 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -127,6 +128,10 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -172,6 +177,10 @@ export class DeviceService implements IDeviceService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

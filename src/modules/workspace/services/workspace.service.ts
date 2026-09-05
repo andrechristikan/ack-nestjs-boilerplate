@@ -111,20 +111,10 @@ export class WorkspaceService implements IWorkspaceService {
     ): Promise<Workspace> {
         const requestLog = this.workspaceUtil.getCurrentRequestLog();
 
-        if (create.slug) {
-            this.assertSlugAllowed(create.slug);
-        }
-
-        const [ownedCount, slugTaken] = await Promise.all([
-            this.workspaceMemberRepository.countOwnedActiveByUser(userId),
-            create.slug
-                ? this.workspaceRepository.existsBySlug(create.slug)
-                : false,
-        ]);
+        const ownedCount =
+            await this.workspaceMemberRepository.countOwnedActiveByUser(userId);
         if (ownedCount >= this.maxWorkspacesPerUser) {
             throw new WorkspaceCapReachedException();
-        } else if (slugTaken) {
-            throw new WorkspaceSlugAlreadyExistsException();
         }
 
         return this.workspaceRepository.createWithOwner(

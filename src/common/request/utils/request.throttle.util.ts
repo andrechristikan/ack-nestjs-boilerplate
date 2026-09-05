@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerException } from '@nestjs/throttler';
+import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface';
 import { Response } from 'express';
 import { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
@@ -28,15 +29,18 @@ export class RequestThrottleUtil {
         tracker: string,
         policy: IRequestThrottlePolicy
     ): Promise<void> {
-        const record = await this.storageService
-            .increment(
+        let record: ThrottlerStorageRecord | null;
+        try {
+            record = await this.storageService.increment(
                 tracker,
                 policy.ttlInMs,
                 policy.limit,
                 policy.blockDurationInMs,
                 name
-            )
-            .catch(() => null);
+            );
+        } catch {
+            record = null;
+        }
 
         if (!record) {
             return;

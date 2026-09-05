@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -121,7 +121,7 @@ This boilerplate is perfect for:
 - Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
-- [ ] Unit test suite — Jest is configured (`test/jest.json`, `pnpm test`), but `test/` currently holds **no spec files**; the suite is suspended and `pnpm test` exits green with "No tests found"
+- [ ] Unit test suite: Jest is configured (`test/jest.json`, `pnpm test`) and `test/` holds **no spec files**, so `pnpm test` passes on `--passWithNoTests`
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -149,8 +149,9 @@ The project is built using the following technologies and versions. We always st
 
 | Name           | Version  |
 | -------------- | -------- |
-| NestJs         | v11.x    |
+| NestJs         | v12.x    |
 | NodeJs         | v24.11.x |
+| PNPM           | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
 | MongoDB        | v8+ (compose: `mongo:latest`)   |
@@ -214,7 +215,7 @@ Built for speed and scalability from day one.
 ### 🛠 Development Experience
 Developer-friendly tooling and best practices.
 
-- **NestJS 11.x** - Latest framework version with full TypeScript support
+- **NestJS 12.x** - Latest framework version with full TypeScript support
 - **Swagger/OpenAPI 3** - Interactive API documentation
 - **API Versioning** - URL-based versioning (default v1)
 - **Request Validation** - Automatic validation with class-validator
@@ -247,7 +248,7 @@ Multi-channel notification system for user engagement.
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
-- **Jest Testing** - Jest configured under `test/`, specs mirroring `src/` (no specs committed yet)
+- **Jest Testing** - `test/jest.json` matches `test/**/*.spec.ts` and holds coverage at a global 100% threshold
 - **Swagger UI** - Auto-generated API documentation
 - **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
 - **Docker Support** - Complete containerization with docker-compose
@@ -264,13 +265,15 @@ pnpm install
 # Setup environment
 cp .env.example .env
 
-# Generate JWT keys, Prisma client, and push schema
+# Generate JWT keys and the Prisma client
 pnpm generate:keys
 pnpm db:generate
-pnpm db:migrate
 
 # Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
 docker-compose up -d
+
+# Push the schema (needs the MongoDB replica set above already running)
+pnpm db:migrate
 
 # Run the API on the host
 pnpm start:dev

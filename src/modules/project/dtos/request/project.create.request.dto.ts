@@ -1,10 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProjectCreateRequestDto {
     @ApiProperty({
@@ -28,14 +23,4 @@ export class ProjectCreateRequestDto {
     @IsOptional()
     @MaxLength(500)
     description?: string;
-
-    @ApiProperty({
-        description:
-            'Project slug; omit to auto-generate. Charset [0-9a-zA-Z-], length capped by the project slug configuration (30 characters), unique per workspace',
-        example: 'website-revamp',
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    slug?: string;
 }

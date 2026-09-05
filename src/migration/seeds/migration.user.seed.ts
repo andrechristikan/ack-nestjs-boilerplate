@@ -24,8 +24,9 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
-import { UAParser } from 'ua-parser-js';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
  * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
@@ -59,7 +60,8 @@ export class MigrationUserSeed
         private readonly userUtil: UserUtil,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly activityLogUtil: ActivityLogUtil,
+        private readonly requestUtil: RequestUtil
     ) {
         super();
 
@@ -136,8 +138,14 @@ export class MigrationUserSeed
         try {
             const today = this.helperDateService.create();
 
-            const userAgent = UAParser(faker.internet.userAgent());
+            const userAgent = this.requestUtil.parseUserAgent(
+                faker.internet.userAgent()
+            );
             const ip = faker.internet.ip();
+            const requestLog: IRequestLog = {
+                userAgent,
+                ipAddress: ip,
+            };
 
             await this.databaseService.client.$transaction(
                 this.users.map(user => {
@@ -204,55 +212,31 @@ export class MigrationUserSeed
                             activityLogs: {
                                 createMany: {
                                     data: [
-                                        {
-                                            action: EnumActivityLogAction.userCreated,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userCreated
-                                                ),
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        {
-                                            action: EnumActivityLogAction.userVerifiedEmail,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userVerifiedEmail
-                                                ),
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        ...termPolicies.map(termPolicy => ({
-                                            action: EnumActivityLogAction.userAcceptTermPolicy,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userAcceptTermPolicy,
-                                                    {
-                                                        termPolicyType:
-                                                            termPolicy.type,
-                                                        termPolicyId:
-                                                            termPolicy.id,
-                                                    }
-                                                ),
-                                            metadata: {
-                                                termPolicyType: termPolicy.type,
-                                                termPolicyId: termPolicy.id,
-                                            },
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        })),
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userCreated,
+                                            requestLog
+                                        ),
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userVerifiedEmail,
+                                            requestLog
+                                        ),
+                                        ...termPolicies.map(termPolicy =>
+                                            this.activityLogUtil.buildCreateManyUserData(
+                                                userId,
+                                                null,
+                                                EnumActivityLogAction.userAcceptTermPolicy,
+                                                requestLog,
+                                                {
+                                                    termPolicyType:
+                                                        termPolicy.type,
+                                                    termPolicyId: termPolicy.id,
+                                                }
+                                            )
+                                        ),
                                     ],
                                 },
                             },

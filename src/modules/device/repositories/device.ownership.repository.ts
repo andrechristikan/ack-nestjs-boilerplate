@@ -1,6 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { FirebaseStaleTokenThresholdInDays } from '@common/firebase/constants/firebase.constant';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
@@ -366,13 +365,13 @@ export class DeviceOwnershipRepository {
         });
     }
 
-    async cleanupStaleTokens(): Promise<Prisma.BatchPayload> {
+    async cleanupStaleTokens(
+        thresholdInMs: number
+    ): Promise<Prisma.BatchPayload> {
         const today = this.helperDateService.create();
         const thresholdDate = this.helperDateService.backward(
             today,
-            Duration.fromObject({
-                days: FirebaseStaleTokenThresholdInDays,
-            })
+            Duration.fromMillis(thresholdInMs)
         );
 
         return this.databaseService.client.device.updateMany({

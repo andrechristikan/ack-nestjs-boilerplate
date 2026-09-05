@@ -8,7 +8,6 @@ export interface IProjectMember extends ProjectMember {
 export interface IProjectCreate {
     name: string;
     description?: string;
-    slug?: string;
 }
 
 export interface IProjectUpdate {

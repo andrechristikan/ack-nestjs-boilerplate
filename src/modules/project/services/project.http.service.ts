@@ -43,12 +43,12 @@ export class ProjectHttpService implements IProjectHttpService {
     async createProject(
         workspaceId: string,
         actorId: string,
-        { name, description, slug }: ProjectCreateRequestDto
+        { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<ProjectResponseDto>> {
         const project = await this.projectService.createProject(
             workspaceId,
             actorId,
-            { name, description, slug }
+            { name, description }
         );
 
         return { data: this.projectUtil.mapOne(project) };

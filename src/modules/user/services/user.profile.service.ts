@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
@@ -71,6 +72,10 @@ export class UserProfileService implements IUserProfileService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -123,6 +128,10 @@ export class UserProfileService implements IUserProfileService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -168,6 +177,10 @@ export class UserProfileService implements IUserProfileService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -201,6 +214,10 @@ export class UserProfileService implements IUserProfileService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

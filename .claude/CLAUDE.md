@@ -197,11 +197,15 @@ installs them once:
 - **`prisma/schema.prisma` is editable; APPLYING it to MongoDB is not.** The split is what
   the command touches. Files only — `db:generate` (`prisma generate`), `db:format`
   (`prisma format`), `prisma validate` — are yours. Anything that opens a connection is the
-  owner's and is DENIED by `.claude/hooks/deny-db-write.sh`: `db:migrate` (`prisma db push`),
-  `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`, `migration:seed`,
-  `migration:remove`, `migration:fresh`, `node dist/migration.js`, `db:studio`
-  (`prisma studio`), and the `mongosh` / `redis-cli` shells. Edit the schema, then hand
-  back the two commands the owner must run.
+  owner's and sits in the `deny` list of `.claude/settings.json`: `db:migrate`
+  (`prisma db push`), `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`,
+  `migration:seed`, `migration:remove`, `migration:fresh`, `node dist/migration.js`,
+  `db:studio` (`prisma studio`), and the `mongosh` / `redis-cli` shells. Edit the schema, then
+  hand back the two commands the owner must run.
+- **The deny list matches the command as it is written.** A permission pattern is a prefix
+  glob, so it sees `pnpm db:migrate` and not `PORT=1 pnpm db:migrate`, `env PORT=1 pnpm
+  db:migrate` or `pnpm -s run db:migrate`. The list is the statement of what belongs to the
+  owner, not a fence that holds on its own — never reach for a spelling it misses.
 - **The permission posture is "inward is silent, outward asks".** Everything that stays in
   this repository — pnpm, the local toolchain, shell reads and writes, `git add`, `git commit`
   — is `allow` in `.claude/settings.json` and raises no prompt. What leaves the directory or
@@ -211,13 +215,21 @@ installs them once:
   rule prompts even under `bypassPermissions`, so the list is deliberately short — the prompt
   is the permission system doing its job, never a formality to route around by widening
   `settings.local.json`.
-- Coding rules live in `.claude/rules/`. They are NOT loaded into this session — the agent
-  that needs a rule loads it. Two rules are split by WHO reads them: `testing.md` (where
-  specs live, jest facts) versus `testing-spec-style.md` (how a spec is written —
-  `test-writer` only).
-- `docs/` is documentation written for people to read, describing how the system behaves
-  today. It is tracked in git, never loaded automatically, and written only by the
-  `doc-writer` agent.
+- Coding rules live in `.claude/rules/`. They are NOT loaded into this session — whoever needs a
+  rule reads it. **`rules/orientation.md` is the map**: the six rules every task reads, and a
+  table of which rule governs which surface. Every agent and every skill takes its rule list
+  from there, so there is one list to keep true. Two rules are split by WHO reads them:
+  `testing.md` (where specs live, jest facts) versus `testing-spec-style.md` (how a spec is
+  written — `test-writer` only).
+- **A shape decided in conversation is bound by the same rules as the code.** Answering "which
+  layer owns this", "may a util throw", "what may a repository receive" without opening the rule
+  for that surface commits the violation earlier than any agent could, and in a form the next
+  reader treats as settled.
+- `docs/` **and the root `README.md`** are documentation written for people to read, describing
+  how the system behaves today. Both are tracked in git, never loaded automatically, and written
+  only by the `doc-writer` agent. `README.md` is the front page and carries what no file under
+  `docs/` does — the version table, the prerequisites, the Quick Start sequence — so an upgrade
+  dates it first.
 - Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
   for agent reports and PR description documents, `graphify-out/` for the knowledge graph.
 - **A commit message is one conventional subject line**, `<type>(<scope>): <description>`,

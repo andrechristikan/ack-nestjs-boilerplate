@@ -239,7 +239,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
 }
 ```
 
-The second argument of `@QueueProcessor` is a BullMQ `NestWorkerOptions` minus `name`, so a worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants. The worker name itself is derived by the decorator as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
+The second argument of `@QueueProcessor` is `IQueueProcessorOptions`, a BullMQ `WorkerOptions` minus `name` and `connection` (the decorator owns the first, the shared Redis connection the second), so a worker that needs its own throughput ceiling passes one: `NotificationPushProcessor` sets `limiter` from the Firebase send-quota constants. The worker name itself is derived by the decorator as `{APP_NAME}-{APP_ENV}:{queue}:consumer`, read from `process.env` at decoration time.
 
 2. Register the processor and its processor service in the feature's own `<feature>.processor.module.ts`:
 

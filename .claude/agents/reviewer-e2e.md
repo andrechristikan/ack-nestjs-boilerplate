@@ -126,9 +126,9 @@ trace that stopped early is worse than one that says it stopped.
 
 ## Rules
 
-Read `.claude/rules/architecture.md` always. Then, for each surface the path crosses, read the
-rule that governs it — the file, not a summary. `.claude/rules/` is one file per topic; the map
-is the table in `.claude/agents/reviewer-rules.md`.
+**`.claude/rules/orientation.md` carries both halves** — the six rules every task reads, and the
+table of which rule governs which surface. Take the six, then, for each surface the path
+crosses, the rule that governs it. The file, not a summary.
 
 ## Verify before reporting
 

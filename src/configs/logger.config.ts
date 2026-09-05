@@ -15,18 +15,15 @@ export interface IConfigDebug {
     };
 }
 
-export default registerAs(
-    'logger',
-    (): IConfigDebug => ({
-        enable: process.env.LOGGER_ENABLE === 'true',
-        level: process.env.LOGGER_LEVEL as EnumLoggerLevel,
-        intoFile: process.env.LOGGER_INTO_FILE === 'true',
-        filePath: '/logs',
-        auto: process.env.LOGGER_AUTO === 'true',
-        prettier: process.env.LOGGER_PRETTIER === 'true',
-        sentry: {
-            dsn: process.env.SENTRY_DSN ?? null,
-            timeoutInMs: ms('10s'),
-        },
-    })
-);
+export default registerAs('logger', (): IConfigDebug => ({
+    enable: process.env.LOGGER_ENABLE === 'true',
+    level: process.env.LOGGER_LEVEL as EnumLoggerLevel,
+    intoFile: process.env.LOGGER_INTO_FILE === 'true',
+    filePath: '/logs',
+    auto: process.env.LOGGER_AUTO === 'true',
+    prettier: process.env.LOGGER_PRETTIER === 'true',
+    sentry: {
+        dsn: process.env.SENTRY_DSN ?? null,
+        timeoutInMs: ms('10s'),
+    },
+}));

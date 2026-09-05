@@ -78,10 +78,6 @@ export function ProjectUserCreateDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
-            messagePath: 'project.error.slugAlreadyExists',
-        }),
         DocResponse<ProjectResponseDto>('project.create', {
             dto: ProjectResponseDto,
             httpStatus: HttpStatus.CREATED,

@@ -6,11 +6,8 @@ export interface IConfigDoc {
     version: string;
 }
 
-export default registerAs(
-    'doc',
-    (): IConfigDoc => ({
-        name: `${process.env.APP_NAME!} APIs Specification`,
-        prefix: '/docs',
-        version: '3.1.0',
-    })
-);
+export default registerAs('doc', (): IConfigDoc => ({
+    name: `${process.env.APP_NAME!} APIs Specification`,
+    prefix: '/docs',
+    version: '3.1.0',
+}));

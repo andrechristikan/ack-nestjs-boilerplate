@@ -17,9 +17,10 @@ its definition (`rules/nest-wiring.md`).
 - Injects `DatabaseService` directly as a class. No `@Inject`, no token, no interface — a repository has exactly one implementation and inventing a port for it is speculative abstraction.
 - **Model access goes through `databaseService.client`** (the audited extended Prisma client), which stamps `createdBy` / `updatedBy` / `deletedBy` from the CLS request actor. Soft delete is `client.<model>.softDelete(...)`, restore is `client.<model>.restore(...)`. See `rules/database.md`.
 - **The repository owns `null → {}` normalization** for filter params before they reach Prisma. Never in the caller. A service that spreads `filter ?? {}` into a repository call has taken over the repository's job.
-- Returns Prisma models or the module's `I<Module>*` interfaces. **It never returns a DTO and never receives one** — a DTO stops at the HTTP service (below).
+- Returns Prisma models or the module's `I<Module>*` interfaces. **It never returns a DTO** — a response shape belongs to one transport, and the repository answers to all of them.
+- **It MAY receive a request DTO.** Where the controller, the HTTP service and the domain service all carry the same shape unchanged down to the write, that shape travels as the DTO rather than being retyped at every layer for no gain. What decides is whether anything in between DERIVES: the moment a service merges, computes or validates the input into a different shape, that new shape is an `I<Module>*` interface, and it is the interface that reaches the repository. A repository parameter typed as a DTO says "nothing happened to this on the way down", and that has to be true.
 - **What else it may inject is the tier table below.** `src/common/` and every `@Global()` module are open to it, so `HelperService`, `PaginationService`, `DatabaseUtil` and `ActivityLogUtil` are injected directly. A non-global module's util is not, unless the repository belongs to that module.
-- **Never `ConfigService`.** A config value is a business decision — `workspace.slugPrefix`, `project.slugMaxAttempts`, `user.personalWorkspaceNamePattern` — and reading one belongs to the domain service; it arrives as a parameter. This is the "no business rules" line above, not a tier question: `ConfigModule` is global and every other global IS open.
+- **`ConfigService` only for the mechanics of the write itself.** A transaction timeout, a batch size — the knobs on machinery this layer already owns — are read here. A value that expresses a business decision is not: `workspace.slugPrefix`, `project.slugMaxAttempts`, `user.personalWorkspaceNamePattern` belong to the domain service and arrive as parameters. The test is what the value decides, not where it is stored — both live in `src/configs/`. This is the "no business rules" line above, not a tier question: `ConfigModule` is global and every other global IS open.
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
 - **Prefer `$transaction` for multi-step writes** so a failure rolls back as one unit. See `rules/database.md`.
 - **No `I*Repository` header.** Inject the class only.
@@ -27,7 +28,8 @@ its definition (`rules/nest-wiring.md`).
 ## Domain service — `<module>[.<concern>].service.ts`
 
 - **Business logic ONLY.** Invariants, rule validation, typed exceptions, i18n message paths, orchestration across repositories and other domain services.
-- **It never sees a DTO.** Parameters and return values are `I<Module>*` interfaces, Prisma models, and primitives. A `RequestDto` or `ResponseDto` in a domain signature is the defect — that shape belongs to one transport, and the domain answers to two.
+- **A `ResponseDto` never appears in a domain signature**, as a parameter or a return. Return values are `I<Module>*` interfaces, Prisma models, and primitives; assembling a response is the HTTP service's job, and the domain answers to the queue as well.
+- **A request DTO may travel through unchanged.** When the method takes the caller's input and hands it on without deriving anything from it, the DTO is the parameter type and no parallel interface is invented for it. When the method derives — merges two inputs, computes a value, resolves a reference, validates into a narrower shape — what it produces and passes on is an `I<Module>*` interface. The rule is about what the method DOES to the shape, not about which layer it sits in.
 - It knows nothing about HTTP or the queue: no `IRequestApp`, no `Job`, no response envelope, no pagination response assembly.
 - Injects repositories as classes — **one or many** (cross-module repos allowed when the module imports them). Injects other domain services and utils by the tier table below.
 - **NEVER injects `DatabaseService`.** Data access goes through the repository, always. This is the single hardest rule in the file.
@@ -36,8 +38,8 @@ its definition (`rules/nest-wiring.md`).
 
 ## HTTP service — `<module>[.<concern>].http.service.ts`
 
-- **The controller's only collaborator**, one per HTTP concern. It is where a DTO lives and dies.
-- It translates: request DTO → the domain call's interface parameters, domain result → response DTO, list result → the pagination response the scope requires (`rules/pagination.md`).
+- **The controller's only collaborator**, one per HTTP concern. It is where a response DTO is born and where the HTTP shape of a request stops mattering.
+- It translates: a request DTO into the domain call — passing it through when nothing derives from it, or into `I<Module>*` interface parameters when something does — then the domain result into a response DTO, and a list result into the pagination response the scope requires (`rules/pagination.md`).
 - **It owns no business rule and reaches no repository.** A check that would be equally true for a queued job belongs to the domain service; putting it here means the processor path silently skips it.
 - Injects domain services, and tier 1 / tier 2 kit for shaping. Provided by `<feature>.http.module.ts`.
 

@@ -83,48 +83,24 @@ move with their subjects and must be green before the work is done; the skill ar
 relocation, not you. "There is no behaviour to spec" is otherwise a sign you are about to
 write code nobody asked for.
 
-## Rules — ALWAYS
+## Rules
+
+**Read `.claude/rules/orientation.md` first, and read it before you edit anything.** It carries
+both halves: the six rules every task reads, and the table of which rule governs which surface.
+Take the six, then every row your work touches. Read the FILE, not a summary — a rule quoted
+from memory is how most rule violations get written.
+
+Two standing reads of your own, on top of that map:
 
 ```
-.claude/rules/architecture.md
-.claude/rules/nest-wiring.md
-.claude/rules/naming.md
-.claude/rules/case-convention.md
-.claude/rules/code-style.md
-.claude/rules/comments.md
-.claude/rules/null-safety.md
-.claude/rules/exceptions.md
-.claude/rules/status-code.md
-.claude/rules/testing.md           # NOT testing-spec-style.md — you never write a spec
+.claude/rules/testing.md             # NOT testing-spec-style.md — you never write a spec
 .claude/rules/agent-communication.md
 ```
 
-## Rules — by what you touch
-
-| Touching | Read |
-|---|---|
-| repository, Prisma query | `database.md` `concurrency.md` `dates.md` |
-| a schema edit, and the push it hands back | `prisma-schema.md` |
-| controller, route, guard | `http.md` `router.md` `security.md` |
-| request DTO, validator | `validation.md` |
-| response DTO, serialization | `dto.md` |
-| Swagger doc factory | `swagger.md` |
-| a paginated list | `pagination.md` |
-| enum, status-code enum | `enum.md` `status-code.md` |
-| BullMQ processor or enqueue | `queue.md` `concurrency.md` |
-| notification, email, push, template | `notification.md` `queue.md` |
-| file upload, CSV import, S3 presign | `file.md` |
-| feature flag | `feature-flag.md` |
-| i18n message, language JSON | `i18n.md` |
-| config key, env var | `config.md` |
-| cached response | `cache.md` |
-| logging, Sentry | `logging.md` |
-| module `imports` / `providers` / `exports` | `nest-wiring.md` |
-| another module's service or repository | `cross-module.md` |
-| `src/common/` | `common.md` |
-| credential, token, session, activity log | `security.md` |
-
-**Read the FILE.** A rule quoted from memory is how most rule violations get written.
+**A plan handed to you is not a substitute for the rules.** A plan can name a shape that a rule
+forbids, and executing it faithfully makes the violation yours. When the two disagree, stop and
+hand the conflict back with both citations — do not resolve it, and do not implement either
+side.
 
 ## Boundaries
 

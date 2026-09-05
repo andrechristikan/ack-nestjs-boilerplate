@@ -15,19 +15,16 @@ export interface IUserConfig {
     };
 }
 
-export default registerAs(
-    'user',
-    (): IUserConfig => ({
-        usernamePattern: /^[a-zA-Z0-9-_]+$/,
-        uploadPhotoProfilePath: 'users/{userId}/profile',
-        maxDataImport: 50,
-        default: {
-            role: 'user',
-            country: 'ID',
-        },
-        onboarding: {
-            createTimeoutInMs: ms('10s'),
-            createBulkTimeoutInMs: ms('30s'),
-        },
-    })
-);
+export default registerAs('user', (): IUserConfig => ({
+    usernamePattern: /^[a-zA-Z0-9-_]+$/,
+    uploadPhotoProfilePath: 'users/{userId}/profile',
+    maxDataImport: 50,
+    default: {
+        role: 'user',
+        country: 'ID',
+    },
+    onboarding: {
+        createTimeoutInMs: ms('10s'),
+        createBulkTimeoutInMs: ms('30s'),
+    },
+}));

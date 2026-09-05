@@ -12,16 +12,13 @@ export interface IConfigForgotPassword {
     };
 }
 
-export default registerAs(
-    'forgotPassword',
-    (): IConfigForgotPassword => ({
-        expiredInMs: ms('5m'),
-        tokenLength: 100,
-        linkBaseUrl: 'forgot-password',
-        resendInMs: ms('2m'),
-        reference: {
-            prefix: 'FG',
-            length: 25,
-        },
-    })
-);
+export default registerAs('forgotPassword', (): IConfigForgotPassword => ({
+    expiredInMs: ms('5m'),
+    tokenLength: 100,
+    linkBaseUrl: 'forgot-password',
+    resendInMs: ms('2m'),
+    reference: {
+        prefix: 'FG',
+        length: 25,
+    },
+}));

@@ -15,6 +15,45 @@ Three exceptions, each real. Name the one that applies:
 - a write that must not happen if an earlier step throws,
 - anything already inside a Prisma `$transaction`, which sequences by design.
 
+## An awaited promise is handled by `try`/`catch`, never by `.catch()` (HARD)
+
+A promise the code `await`s carries its failure through `try`/`catch`. `.catch(callback)` on that
+promise is banned, and so is `.then(callback)`.
+
+```ts
+// banned
+const user = await this.userRepository
+    .create(input)
+    .catch((error: unknown) => this.userUtil.throwCreateCollision(error));
+
+// required
+let user: IUser;
+try {
+    user = await this.userRepository.create(input);
+} catch (error: unknown) {
+    this.userUtil.throwCreateCollision(error);
+}
+```
+
+The callback form hides the boundary of what is guarded. A `try` block shows exactly which
+statements the handler covers; a trailing `.catch()` covers one expression and reads as if it
+covered the statement, so the next `await` added below it is unguarded and nothing says so. It also
+splits one method across two control-flow styles, and it defeats the definite-assignment check that
+a `never`-returning handler otherwise gives.
+
+Two forms are NOT this rule, because neither has an `await` to attach a `try` to:
+
+- **The process entrypoint.** `bootstrap().catch(...)` in `src/main.ts` and `src/migration.ts` runs
+  at module level, where there is no enclosing async function and — this package is CommonJS —
+  no top-level `await`.
+- **A promise that is deliberately never awaited.** A fire-and-forget write whose failure must not
+  reach the request, such as the activity-log save in
+  `src/modules/activity-log/interceptors/activity-log.interceptor.ts`. The comment above it says it
+  is not awaited; the `.catch()` is what keeps the rejection from becoming an unhandled one.
+
+Everything else — every service, util, repository, guard, interceptor and processor — uses
+`try`/`catch`.
+
 ## Atomicity is the repository's job
 
 A multi-step write that must not leave a half-applied state goes in a `$transaction`, in the

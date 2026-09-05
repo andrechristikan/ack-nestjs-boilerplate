@@ -417,6 +417,8 @@ type UserAgentOs {
 - `Session.userAgent` — client info at login time
 - `ActivityLog.userAgent` — client info when the action was performed
 
+`RequestUtil.parseUserAgent(raw)` builds the composite from the `ua-parser-js` result: each field falls back to `null`, and a sub-type whose every field came back `null` is stored as `null` rather than as an object of nulls.
+
 Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
@@ -587,20 +589,22 @@ Some columns carry a server-generated value that must be unique: workspace and p
 The shape is the same in all three places:
 
 1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlug(prefix, maxLength)` (`5` for both `workspace` and `project`), and passes the list down.
-2. The consumer walks the list, skipping any candidate a `findFirst` pre-check shows is taken, and stops on the first one that lands.
+2. The consumer writes with one candidate at a time. A unique collision on that column rolls the write back and the next candidate is tried.
 3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
 
-| Candidate source | Consumer | Collision signal |
+The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
+
+| Candidate source | Consumer | Retry unit |
 |---|---|---|
-| `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | a `workspace.findFirst` pre-check, plus Prisma `P2002` on the create |
-| `ProjectService.drawSlugCandidates()` | `ProjectRepository.createWithSlug` | a `project.findFirst` pre-check, plus Prisma `P2002` on the create |
-| `UserOnboardingUtil.drawWorkspaceSlugCandidates(rows)` | `UserOnboardingRepository.findFreeWorkspaceSlugs` | a `workspace.findFirst` pre-check, plus the slugs earlier rows of the same call already took |
+| `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | the private `createWithSlug` transaction: workspace, owner membership, activity log |
+| `ProjectService.drawSlugCandidates()` | `ProjectRepository.createInWorkspace` | the private `createWithSlug` transaction: project plus activity log |
+| `UserOnboardingUtil.buildPersonalWorkspaceContexts()` | `UserOnboardingRepository.createWithWorkspace` / `createManyWithWorkspace` | the whole onboarding transaction |
 
 Three rules hold across all of them:
 
-- **A `P2002` that is not the generated value is rethrown untouched.** The retry only ever absorbs a collision on the value the repository itself drew; a unique violation on a client-supplied field stays the caller's error.
-- **A client-supplied slug skips generation.** `createWithOwner` and `createWithSlug` take the `dto.slug` path when the request carries one, and the candidate list goes unused.
-- **The personal-workspace slug resolves outside the transaction.** Sign-up, admin create, and admin CSV import all call `findFreeWorkspaceSlugs` before `createWithWorkspace` opens its `$transaction`, so no pre-check holds a transaction open. `drawWorkspaceSlugCandidates(rows)` returns one candidate list per row, and `findFreeWorkspaceSlugs` refuses a slug it already handed to an earlier row of the same batch, because those rows are not written yet and a database pre-check cannot see them.
+- **A `P2002` on a value the repository did not draw is rethrown untouched.** `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error. Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`, turning a `username` collision into `UserUsernameExistException` and an `email` collision into `UserEmailExistException`.
+- **The candidate list is an argument, never a client field.** `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug, and the personal-workspace sign-up context carries `slugCandidates: string[]` that the onboarding repository indexes by attempt number.
+- **A batch retries as a batch.** `createManyWithWorkspace` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole transaction, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
 
 ## Docker
 

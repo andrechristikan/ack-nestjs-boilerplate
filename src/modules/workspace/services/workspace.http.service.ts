@@ -42,13 +42,12 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
 
     async createWorkspace(
         userId: string,
-        { name, description, isPublic, slug }: WorkspaceCreateRequestDto
+        { name, description, isPublic }: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceResponseDto>> {
         const workspace = await this.workspaceService.createWorkspace(userId, {
             name,
             description,
             isPublic,
-            slug,
         });
 
         return { data: this.workspaceUtil.mapOne(workspace) };

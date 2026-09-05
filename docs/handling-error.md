@@ -338,12 +338,16 @@ super('auth.error.passwordMustNew', { messageProperties: { period } });
 
 ### Error wrapping a cause
 
-For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body:
+For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body. A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500:
 
 ```typescript
 try {
   // ...
 } catch (err: unknown) {
+  if (err instanceof AppBaseException) {
+    throw err;
+  }
+
   throw new AppUnknownException(err);
 }
 ```

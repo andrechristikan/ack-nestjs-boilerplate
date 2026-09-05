@@ -13,17 +13,14 @@ export interface IConfigVerification {
     };
 }
 
-export default registerAs(
-    'verification',
-    (): IConfigVerification => ({
-        expiredInMs: ms('5m'),
-        otpLength: 6,
-        tokenLength: 100,
-        linkBaseUrl: 'verify-email',
-        resendInMs: ms('2m'),
-        reference: {
-            prefix: 'VER',
-            length: 25,
-        },
-    })
-);
+export default registerAs('verification', (): IConfigVerification => ({
+    expiredInMs: ms('5m'),
+    otpLength: 6,
+    tokenLength: 100,
+    linkBaseUrl: 'verify-email',
+    resendInMs: ms('2m'),
+    reference: {
+        prefix: 'VER',
+        length: 25,
+    },
+}));

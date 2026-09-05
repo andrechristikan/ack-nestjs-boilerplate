@@ -1,18 +1,18 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { RequestUtil } from '@common/request/utils/request.util';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { Prisma, UserAgent } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
-import { UAParser } from 'ua-parser-js';
 
 /**
  * Seeds one default personal workspace (owner membership, no project) per seeded user. Requires users to already be seeded, and aborts otherwise.
@@ -45,7 +45,8 @@ export class MigrationWorkspaceSeed
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository
+        private readonly workspaceMemberRepository: WorkspaceMemberRepository,
+        private readonly requestUtil: RequestUtil
     ) {
         super();
 
@@ -98,7 +99,9 @@ export class MigrationWorkspaceSeed
         );
 
         try {
-            const userAgent = UAParser(faker.internet.userAgent()) as UserAgent;
+            const userAgent = this.requestUtil.parseUserAgent(
+                faker.internet.userAgent()
+            );
             const ipAddress = faker.internet.ip();
 
             await Promise.all(
@@ -170,10 +173,14 @@ export class MigrationWorkspaceSeed
                         id: true,
                     },
                 });
-            const workspaceIds = seededWorkspaces.map(workspace => workspace.id);
+            const workspaceIds = seededWorkspaces.map(
+                workspace => workspace.id
+            );
 
             if (workspaceIds.length === 0) {
-                this.logger.log('No seeded workspaces found, nothing to remove.');
+                this.logger.log(
+                    'No seeded workspaces found, nothing to remove.'
+                );
                 return;
             }
 

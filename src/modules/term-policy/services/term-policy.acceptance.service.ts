@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
@@ -90,6 +91,10 @@ export class TermPolicyAcceptanceService implements ITermPolicyAcceptanceService
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

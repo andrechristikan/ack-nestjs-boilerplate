@@ -191,6 +191,10 @@ export class UserProfileService {
 
       return;
     } catch (err: unknown) {
+      if (err instanceof AppBaseException) {
+        throw err;
+      }
+
       throw new AppUnknownException(err);
     }
   }

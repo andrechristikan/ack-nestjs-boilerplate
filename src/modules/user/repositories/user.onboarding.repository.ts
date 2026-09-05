@@ -1,6 +1,7 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumNotificationChannel,
@@ -19,13 +20,26 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserOnboardingRepository {
+    private readonly onboardingCreateTimeoutInMs: number;
+    private readonly onboardingCreateBulkTimeoutInMs: number;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {
+        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
+            'user.onboarding.createTimeoutInMs'
+        )!;
+        this.onboardingCreateBulkTimeoutInMs = this.configService.get<number>(
+            'user.onboarding.createBulkTimeoutInMs'
+        )!;
+    }
 
     private buildWorkspaceOperations(
         tx: IDatabaseTransactionClient,
@@ -139,18 +153,124 @@ export class UserOnboardingRepository {
         };
     }
 
-    /** True when a unique-constraint violation names the workspace slug, the one value this repository generates. */
-    private isWorkspaceSlugCollision(
-        error: Prisma.PrismaClientKnownRequestError
-    ): boolean {
-        const target = error.meta?.target;
-        const fields = Array.isArray(target) ? target : [target];
+    /** Returns a copy of the input carrying the candidate slug for this attempt, leaving the given input untouched. */
+    private withSlugAttempt(
+        input: IUserCreateWithWorkspaceInput,
+        attempt: number
+    ): IUserCreateWithWorkspaceInput {
+        const { workspaceContext, workspaceRows } = input;
 
-        return fields.some(
-            field =>
-                typeof field === 'string' &&
-                field.toLowerCase().includes('slug')
+        if (
+            workspaceContext.type !==
+                EnumUserSignUpWorkspaceContextType.personal ||
+            workspaceRows.workspace === null
+        ) {
+            return input;
+        }
+
+        return {
+            ...input,
+            workspaceRows: {
+                ...workspaceRows,
+                workspace: {
+                    ...workspaceRows.workspace,
+                    data: {
+                        ...workspaceRows.workspace.data,
+                        slug: workspaceContext.slugCandidates[attempt],
+                    },
+                },
+            },
+        };
+    }
+
+    private async createManyWithWorkspaceInTransaction(
+        inputs: IUserCreateWithWorkspaceInput[],
+        timeoutInMs: number
+    ): Promise<IUser[]> {
+        const acceptedTermPolicyTypes = [
+            ...new Set(inputs.flatMap(input => input.acceptedTermPolicyTypes)),
+        ];
+
+        const slugCandidateCounts = inputs.flatMap(({ workspaceContext }) =>
+            workspaceContext.type ===
+            EnumUserSignUpWorkspaceContextType.personal
+                ? [workspaceContext.slugCandidates.length]
+                : []
         );
+        const slugAttemptCount =
+            slugCandidateCounts.length > 0
+                ? Math.min(...slugCandidateCounts)
+                : 1;
+
+        for (let attempt = 0; attempt < slugAttemptCount; attempt++) {
+            const attemptInputs = inputs.map(input =>
+                this.withSlugAttempt(input, attempt)
+            );
+
+            try {
+                return await this.databaseService.client.$transaction(
+                    async tx => {
+                        const termPolicies = await tx.termPolicy.findMany({
+                            where: {
+                                type: { in: acceptedTermPolicyTypes },
+                                status: EnumTermPolicyStatus.published,
+                            },
+                            select: {
+                                id: true,
+                                type: true,
+                            },
+                        });
+
+                        const users = await Promise.all(
+                            attemptInputs.map(input =>
+                                tx.user.create({
+                                    data: this.buildUserCreateData(input),
+                                    include: {
+                                        role: true,
+                                        twoFactor: true,
+                                    },
+                                })
+                            )
+                        );
+
+                        await Promise.all(
+                            attemptInputs.flatMap(input => [
+                                ...this.buildWorkspaceOperations(
+                                    tx,
+                                    input.workspaceRows
+                                ),
+                                ...termPolicies
+                                    .filter(termPolicy =>
+                                        input.acceptedTermPolicyTypes.includes(
+                                            termPolicy.type
+                                        )
+                                    )
+                                    .map(termPolicy =>
+                                        tx.termPolicyUserAcceptance.create({
+                                            data: {
+                                                userId: input.userId,
+                                                termPolicyId: termPolicy.id,
+                                                createdBy: input.createdBy,
+                                            },
+                                        })
+                                    ),
+                            ])
+                        );
+
+                        return users;
+                    },
+                    { timeout: timeoutInMs }
+                );
+            } catch (error: unknown) {
+                if (this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
     /** Resolves a sign-up invite token to its workspace context, accepting only pending, unexpired invites whose workspace is still active. */
@@ -183,113 +303,23 @@ export class UserOnboardingRepository {
         };
     }
 
-    /** Picks one workspace slug per row: the first candidate free in the database and not already handed out earlier in the same call. */
-    async findFreeWorkspaceSlugs(
-        candidatesPerRow: string[][]
-    ): Promise<string[]> {
-        const slugs: string[] = [];
+    async createWithWorkspace(
+        input: IUserCreateWithWorkspaceInput
+    ): Promise<IUser> {
+        const [user] = await this.createManyWithWorkspaceInTransaction(
+            [input],
+            this.onboardingCreateTimeoutInMs
+        );
 
-        for (const candidates of candidatesPerRow) {
-            let picked: string | null = null;
-
-            for (const slug of candidates) {
-                if (slugs.includes(slug)) {
-                    continue;
-                }
-
-                const taken =
-                    await this.databaseService.client.workspace.findFirst({
-                        where: { slug },
-                        select: { id: true },
-                    });
-                if (!taken) {
-                    picked = slug;
-                    break;
-                }
-            }
-
-            if (!picked) {
-                throw new DatabaseUniqueValueGenerationFailedException();
-            }
-
-            slugs.push(picked);
-        }
-
-        return slugs;
+        return user;
     }
 
-    async createWithWorkspace(
-        inputs: IUserCreateWithWorkspaceInput[],
-        timeoutInMs: number
+    async createManyWithWorkspace(
+        inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
-        const acceptedTermPolicyTypes = [
-            ...new Set(inputs.flatMap(input => input.acceptedTermPolicyTypes)),
-        ];
-
-        try {
-            return await this.databaseService.client.$transaction(
-                async tx => {
-                    const termPolicies = await tx.termPolicy.findMany({
-                        where: {
-                            type: { in: acceptedTermPolicyTypes },
-                            status: EnumTermPolicyStatus.published,
-                        },
-                        select: {
-                            id: true,
-                            type: true,
-                        },
-                    });
-
-                    const users = await Promise.all(
-                        inputs.map(input =>
-                            tx.user.create({
-                                data: this.buildUserCreateData(input),
-                                include: {
-                                    role: true,
-                                    twoFactor: true,
-                                },
-                            })
-                        )
-                    );
-
-                    await Promise.all(
-                        inputs.flatMap(input => [
-                            ...this.buildWorkspaceOperations(
-                                tx,
-                                input.workspaceRows
-                            ),
-                            ...termPolicies
-                                .filter(termPolicy =>
-                                    input.acceptedTermPolicyTypes.includes(
-                                        termPolicy.type
-                                    )
-                                )
-                                .map(termPolicy =>
-                                    tx.termPolicyUserAcceptance.create({
-                                        data: {
-                                            userId: input.userId,
-                                            termPolicyId: termPolicy.id,
-                                            createdBy: input.createdBy,
-                                        },
-                                    })
-                                ),
-                        ])
-                    );
-
-                    return users;
-                },
-                { timeout: timeoutInMs }
-            );
-        } catch (error: unknown) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === 'P2002' &&
-                this.isWorkspaceSlugCollision(error)
-            ) {
-                throw new DatabaseUniqueValueGenerationFailedException();
-            }
-
-            throw error;
-        }
+        return this.createManyWithWorkspaceInTransaction(
+            inputs,
+            this.onboardingCreateBulkTimeoutInMs
+        );
     }
 }

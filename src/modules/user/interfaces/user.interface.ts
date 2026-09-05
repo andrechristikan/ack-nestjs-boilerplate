@@ -111,7 +111,7 @@ export type IUserVerificationCreate =
 export interface IUserSignUpWorkspacePersonal {
     type: EnumUserSignUpWorkspaceContextType.personal;
     workspaceId: string;
-    slug: string;
+    slugCandidates: string[];
     name: string;
 }
 

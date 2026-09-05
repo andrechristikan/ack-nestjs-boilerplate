@@ -57,7 +57,6 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class UserAuthService implements IUserAuthService {
     private readonly userRoleName: string;
-    private readonly onboardingCreateTimeoutInMs: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -80,9 +79,6 @@ export class UserAuthService implements IUserAuthService {
     ) {
         this.userRoleName =
             this.configService.get<string>('user.default.role')!;
-        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
-            'user.onboarding.createTimeoutInMs'
-        )!;
     }
 
     private async resolveWorkspaceContext(
@@ -94,15 +90,8 @@ export class UserAuthService implements IUserAuthService {
             await this.userLoginService.assertWorkspaceInvitationAllowed();
         }
 
-        const slugs =
-            await this.userOnboardingRepository.findFreeWorkspaceSlugs(
-                this.userOnboardingUtil.drawWorkspaceSlugCandidates(1)
-            );
         const [personalContext] =
-            this.userOnboardingUtil.buildPersonalWorkspaceContexts(
-                [username],
-                slugs
-            );
+            this.userOnboardingUtil.buildPersonalWorkspaceContexts([username]);
         const workspaceContext = workspaceInviteToken
             ? await this.userOnboardingRepository.resolveInviteWorkspaceContext(
                   this.userUtil.hashedToken(workspaceInviteToken),
@@ -221,62 +210,60 @@ export class UserAuthService implements IUserAuthService {
             );
 
             const userId = this.databaseUtil.createId();
-            const [createdUser] =
-                await this.userOnboardingRepository.createWithWorkspace(
-                    [
-                        {
-                            userId,
-                            email,
-                            name,
-                            username,
-                            countryId,
-                            roleId: role.id,
-                            signUpFrom: from,
-                            signUpWith:
-                                loginWith === EnumUserLoginWith.socialApple
-                                    ? EnumUserSignUpWith.socialApple
-                                    : EnumUserSignUpWith.socialGoogle,
-                            isVerified: true,
-                            termPolicy: {
-                                [EnumTermPolicyType.cookies]: cookies,
-                                [EnumTermPolicyType.marketing]: marketing,
-                                [EnumTermPolicyType.privacy]: true,
-                                [EnumTermPolicyType.termsOfService]: true,
-                            },
-                            acceptedTermPolicyTypes: [
-                                EnumTermPolicyType.termsOfService,
-                                EnumTermPolicyType.privacy,
-                                ...(cookies
-                                    ? [EnumTermPolicyType.cookies]
-                                    : []),
-                                ...(marketing
-                                    ? [EnumTermPolicyType.marketing]
-                                    : []),
-                            ],
-                            password: null,
-                            passwordHistoryType:
-                                UserCreateModeRules[EnumUserCreateMode.social]
-                                    .passwordHistoryType,
-                            verification: null,
-                            activityLogs:
-                                this.userOnboardingUtil.buildOnboardingActivityLogs(
-                                    EnumUserCreateMode.social,
-                                    workspaceContext,
-                                    requestLog,
-                                    userId
-                                ),
-                            workspaceContext,
-                            workspaceRows:
-                                this.userOnboardingUtil.buildWorkspaceRows(
-                                    userId,
-                                    workspaceContext,
-                                    userId
-                                ),
-                            createdBy: userId,
+            let createdUser: IUser;
+            try {
+                createdUser =
+                    await this.userOnboardingRepository.createWithWorkspace({
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: role.id,
+                        signUpFrom: from,
+                        signUpWith:
+                            loginWith === EnumUserLoginWith.socialApple
+                                ? EnumUserSignUpWith.socialApple
+                                : EnumUserSignUpWith.socialGoogle,
+                        isVerified: true,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
                         },
-                    ],
-                    this.onboardingCreateTimeoutInMs
-                );
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+                            ...(marketing
+                                ? [EnumTermPolicyType.marketing]
+                                : []),
+                        ],
+                        password: null,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.social]
+                                .passwordHistoryType,
+                        verification: null,
+                        activityLogs:
+                            this.userOnboardingUtil.buildOnboardingActivityLogs(
+                                EnumUserCreateMode.social,
+                                workspaceContext,
+                                requestLog,
+                                userId
+                            ),
+                        workspaceContext,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext,
+                                userId
+                            ),
+                        createdBy: userId,
+                    });
+            } catch (error: unknown) {
+                throw this.userOnboardingUtil.mapCreateCollision(error);
+            }
 
             user = createdUser;
 
@@ -367,67 +354,65 @@ export class UserAuthService implements IUserAuthService {
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
-            const [created] =
-                await this.userOnboardingRepository.createWithWorkspace(
-                    [
-                        {
-                            userId,
-                            email,
-                            name,
-                            username,
-                            countryId,
-                            roleId: role.id,
-                            signUpFrom: from,
-                            signUpWith: EnumUserSignUpWith.credential,
-                            isVerified: false,
-                            termPolicy: {
-                                [EnumTermPolicyType.cookies]: cookies,
-                                [EnumTermPolicyType.marketing]: marketing,
-                                [EnumTermPolicyType.privacy]: true,
-                                [EnumTermPolicyType.termsOfService]: true,
-                            },
-                            acceptedTermPolicyTypes: [
-                                EnumTermPolicyType.termsOfService,
-                                EnumTermPolicyType.privacy,
-                                ...(cookies
-                                    ? [EnumTermPolicyType.cookies]
-                                    : []),
-                                ...(marketing
-                                    ? [EnumTermPolicyType.marketing]
-                                    : []),
-                            ],
-                            password,
-                            passwordHistoryType:
-                                UserCreateModeRules[EnumUserCreateMode.signUp]
-                                    .passwordHistoryType,
-                            verification: {
-                                reference: emailVerification.reference,
-                                token: emailVerification.hashedToken,
-                                type: EnumVerificationType.email,
-                                to: email,
-                                expiredAt: emailVerification.expiredAt,
-                                verifiedAt: null,
-                                isUsed: false,
-                            },
-                            activityLogs:
-                                this.userOnboardingUtil.buildOnboardingActivityLogs(
-                                    EnumUserCreateMode.signUp,
-                                    workspaceContext,
-                                    requestLog,
-                                    userId
-                                ),
-                            workspaceContext,
-                            workspaceRows:
-                                this.userOnboardingUtil.buildWorkspaceRows(
-                                    userId,
-                                    workspaceContext,
-                                    userId
-                                ),
-                            createdBy: userId,
+            let created: IUser;
+            try {
+                created =
+                    await this.userOnboardingRepository.createWithWorkspace({
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: role.id,
+                        signUpFrom: from,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        isVerified: false,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: cookies,
+                            [EnumTermPolicyType.marketing]: marketing,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
                         },
-                    ],
-                    this.onboardingCreateTimeoutInMs
-                );
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+                            ...(marketing
+                                ? [EnumTermPolicyType.marketing]
+                                : []),
+                        ],
+                        password,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.signUp]
+                                .passwordHistoryType,
+                        verification: {
+                            reference: emailVerification.reference,
+                            token: emailVerification.hashedToken,
+                            type: EnumVerificationType.email,
+                            to: email,
+                            expiredAt: emailVerification.expiredAt,
+                            verifiedAt: null,
+                            isUsed: false,
+                        },
+                        activityLogs:
+                            this.userOnboardingUtil.buildOnboardingActivityLogs(
+                                EnumUserCreateMode.signUp,
+                                workspaceContext,
+                                requestLog,
+                                userId
+                            ),
+                        workspaceContext,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext,
+                                userId
+                            ),
+                        createdBy: userId,
+                    });
+            } catch (error: unknown) {
+                throw this.userOnboardingUtil.mapCreateCollision(error);
+            }
 
             await this.notificationUtil.sendWelcome(created.id, {
                 expiredAt: this.helperDateService.formatToIso(
@@ -468,6 +453,10 @@ export class UserAuthService implements IUserAuthService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

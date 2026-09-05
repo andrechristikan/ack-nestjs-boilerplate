@@ -8,12 +8,9 @@ export interface IConfigHealth {
     diskPath: string;
 }
 
-export default registerAs(
-    'health',
-    (): IConfigHealth => ({
-        memoryRssThresholdInBytes: bytes('300mb') ?? 0,
-        memoryHeapThresholdInBytes: bytes('300mb') ?? 0,
-        diskThresholdPercent: 0.75,
-        diskPath: '/',
-    })
-);
+export default registerAs('health', (): IConfigHealth => ({
+    memoryRssThresholdInBytes: bytes('300mb') ?? 0,
+    memoryHeapThresholdInBytes: bytes('300mb') ?? 0,
+    diskThresholdPercent: 0.75,
+    diskPath: '/',
+}));

@@ -85,8 +85,9 @@ This clause is BACKFILL only. In TDD mode there is no code yet for it to be abou
 2. Read `.claude/rules/testing.md` — where specs live, the jest facts, never-to-reach-green —
    AND `.claude/rules/testing-spec-style.md`, which is the one you write FROM: the skeleton,
    `DeepMocked`, the casting rules, assertion style, exception body fields, how to spec each
-   layer. Add `dates.md` when the subject reads a clock, `dto.md` when the subject is a
-   response DTO, `exceptions.md` and `status-code.md` when it throws.
+   layer. Then `.claude/rules/orientation.md` for the row governing the subject's own surface —
+   a spec asserts the contract that surface's rule defines, so a spec written without it can
+   assert the wrong thing and still pass.
 3. Read the subject file completely before writing a line. A spec written against a signature
    is a spec that passes without exercising anything.
 4. Write, run, iterate — inside this run, on the specs of this dispatch. Iterating is cheap

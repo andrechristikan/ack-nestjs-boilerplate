@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -58,12 +59,9 @@ import { UserLoginService } from '@modules/user/services/user.login.service';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService implements IUserService {
-    private readonly onboardingCreateTimeoutInMs: number;
-
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userOnboardingRepository: UserOnboardingRepository,
@@ -76,13 +74,8 @@ export class UserService implements IUserService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationUtil: NotificationUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
-        private readonly configService: ConfigService
-    ) {
-        this.onboardingCreateTimeoutInMs = this.configService.get<number>(
-            'user.onboarding.createTimeoutInMs'
-        )!;
-    }
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     /** Builds the used-and-verified email verification an admin-created account is verified by. */
     private buildVerifiedVerificationRow(
@@ -199,65 +192,60 @@ export class UserService implements IUserService {
                     temporary: true,
                 }
             );
-            const slugs =
-                await this.userOnboardingRepository.findFreeWorkspaceSlugs(
-                    this.userOnboardingUtil.drawWorkspaceSlugCandidates(1)
-                );
             const [workspaceContext] =
-                this.userOnboardingUtil.buildPersonalWorkspaceContexts(
-                    [username],
-                    slugs
-                );
+                this.userOnboardingUtil.buildPersonalWorkspaceContexts([
+                    username,
+                ]);
             const isVerified = checkRole.type !== EnumRoleType.user;
-            const [created] =
-                await this.userOnboardingRepository.createWithWorkspace(
-                    [
-                        {
-                            userId,
-                            email,
-                            name,
-                            username,
-                            countryId,
-                            roleId: checkRole.id,
-                            signUpFrom: EnumUserSignUpFrom.admin,
-                            signUpWith: EnumUserSignUpWith.credential,
-                            isVerified,
-                            termPolicy: {
-                                [EnumTermPolicyType.cookies]: false,
-                                [EnumTermPolicyType.marketing]: false,
-                                [EnumTermPolicyType.privacy]: true,
-                                [EnumTermPolicyType.termsOfService]: true,
-                            },
-                            acceptedTermPolicyTypes: [
-                                EnumTermPolicyType.termsOfService,
-                                EnumTermPolicyType.privacy,
-                            ],
-                            password,
-                            passwordHistoryType:
-                                UserCreateModeRules[EnumUserCreateMode.admin]
-                                    .passwordHistoryType,
-                            verification: isVerified
-                                ? this.buildVerifiedVerificationRow(email)
-                                : null,
-                            activityLogs:
-                                this.userOnboardingUtil.buildOnboardingActivityLogs(
-                                    EnumUserCreateMode.admin,
-                                    workspaceContext,
-                                    requestLog,
-                                    createdBy
-                                ),
-                            workspaceContext,
-                            workspaceRows:
-                                this.userOnboardingUtil.buildWorkspaceRows(
-                                    userId,
-                                    workspaceContext,
-                                    createdBy
-                                ),
-                            createdBy,
+            let created: IUser;
+            try {
+                created =
+                    await this.userOnboardingRepository.createWithWorkspace({
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: checkRole.id,
+                        signUpFrom: EnumUserSignUpFrom.admin,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        isVerified,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: false,
+                            [EnumTermPolicyType.marketing]: false,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
                         },
-                    ],
-                    this.onboardingCreateTimeoutInMs
-                );
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                        password,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.admin]
+                                .passwordHistoryType,
+                        verification: isVerified
+                            ? this.buildVerifiedVerificationRow(email)
+                            : null,
+                        activityLogs:
+                            this.userOnboardingUtil.buildOnboardingActivityLogs(
+                                EnumUserCreateMode.admin,
+                                workspaceContext,
+                                requestLog,
+                                createdBy
+                            ),
+                        workspaceContext,
+                        workspaceRows:
+                            this.userOnboardingUtil.buildWorkspaceRows(
+                                userId,
+                                workspaceContext,
+                                createdBy
+                            ),
+                        createdBy,
+                    });
+            } catch (error: unknown) {
+                throw this.userOnboardingUtil.mapCreateCollision(error);
+            }
 
             await this.notificationUtil.sendWelcomeByAdmin(
                 created.id,
@@ -280,6 +268,10 @@ export class UserService implements IUserService {
 
             return created.id;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -318,6 +310,10 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -359,6 +355,10 @@ export class UserService implements IUserService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

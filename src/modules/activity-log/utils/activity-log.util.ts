@@ -22,28 +22,45 @@ export class ActivityLogUtil {
      * Resolves the human-readable description from the `activityLog.<action>` i18n key, interpolating metadata.
      */
     getDescription(action: string, metadata?: IActivityLogMetadata): string {
-        return this.messageService.setMessage(
-            `activityLog.${action}`,
-            metadata
-        );
+        return this.messageService.setMessage(`activityLog.${action}`, {
+            properties: metadata,
+        });
+    }
+
+    buildCreateManyUserData(
+        actorId: string,
+        workspaceId: string | null,
+        action: EnumActivityLogAction,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        metadata?: IActivityLogMetadata
+    ): Prisma.ActivityLogCreateManyUserInput {
+        return {
+            workspaceId,
+            action,
+            description: this.getDescription(action, metadata),
+            ipAddress,
+            userAgent: this.databaseUtil.toPlainObject(userAgent),
+            geoLocation: this.databaseUtil.toPlainObject(geoLocation),
+            metadata,
+            createdBy: actorId,
+        };
     }
 
     buildCreateArgs(
         actorId: string,
         workspaceId: string,
         action: EnumActivityLogAction,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
+        requestLog: IRequestLog
     ): Prisma.ActivityLogCreateArgs {
         return {
             data: {
                 userId: actorId,
-                workspaceId,
-                action,
-                description: this.getDescription(action),
-                ipAddress,
-                userAgent: this.databaseUtil.toPlainObject(userAgent),
-                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
-                createdBy: actorId,
+                ...this.buildCreateManyUserData(
+                    actorId,
+                    workspaceId,
+                    action,
+                    requestLog
+                ),
             },
         };
     }

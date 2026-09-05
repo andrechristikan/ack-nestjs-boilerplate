@@ -4,9 +4,6 @@ export interface IConfigFile {
     maxDataImport: number;
 }
 
-export default registerAs(
-    'file',
-    (): IConfigFile => ({
-        maxDataImport: 100,
-    })
-);
+export default registerAs('file', (): IConfigFile => ({
+    maxDataImport: 100,
+}));

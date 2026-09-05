@@ -36,7 +36,7 @@ export class WorkspaceRepository {
         private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
-    private async createWithOwnerAndSlug(
+    private async createWithSlug(
         ownerId: string,
         { name, description, isPublic }: WorkspaceCreateRequestDto,
         slug: string,
@@ -166,40 +166,17 @@ export class WorkspaceRepository {
         slugCandidates: string[],
         requestLog: IRequestLog
     ): Promise<Workspace> {
-        if (dto.slug) {
-            return this.createWithOwnerAndSlug(
-                ownerId,
-                dto,
-                dto.slug,
-                requestLog
-            );
-        }
-
         for (const slug of slugCandidates) {
-            const taken = await this.databaseService.client.workspace.findFirst(
-                {
-                    where: { slug },
-                    select: { id: true },
-                }
-            );
-            if (taken) {
-                continue;
-            }
-
             try {
-                return await this.createWithOwnerAndSlug(
+                return await this.createWithSlug(
                     ownerId,
                     dto,
                     slug,
                     requestLog
                 );
-            } catch (err: unknown) {
-                const isSlugCollision =
-                    err instanceof Prisma.PrismaClientKnownRequestError &&
-                    err.code === 'P2002';
-
-                if (!isSlugCollision) {
-                    throw err;
+            } catch (error: unknown) {
+                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                    throw error;
                 }
             }
         }

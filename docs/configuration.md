@@ -529,8 +529,8 @@ default: {
 **`onboarding`** - Prisma transaction timeouts for the user onboarding write
 ```typescript
 onboarding: {
-  createTimeoutInMs: number;      // Timeout when the write carries one user (ms('10s'))
-  createBulkTimeoutInMs: number;  // Timeout when the write carries more than one user (ms('30s'))
+  createTimeoutInMs: number;      // Timeout `UserOnboardingRepository.createWithWorkspace` runs with (ms('10s'))
+  createBulkTimeoutInMs: number;  // Timeout `createManyWithWorkspace` runs with (ms('30s'))
 }
 ```
 
@@ -878,15 +878,16 @@ diskPath: string                     // Filesystem path checked for storage (def
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds push-notification cleanup settings consumed by `NotificationPushUtil`.
+This configuration holds push-notification cleanup settings, consumed by `NotificationPushUtil` when it schedules the sweep and by `NotificationPushMaintenanceService` when it runs one.
 
 #### Configuration Keys:
 
 **`push`** - Push cleanup settings
 ```typescript
 push: {
-  cleanupDedupTtlInMs: number;   // Deduplication TTL for the cleanup job (ms('1h'))
-  cleanupStaleTokensCron: string; // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
+  cleanupDedupTtlInMs: number;       // Deduplication TTL for the cleanup job (ms('1h'))
+  cleanupStaleTokensCron: string;    // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
+  staleTokenThresholdInMs: number;   // Device inactivity after which its push token is cleared (ms('30d'))
 }
 ```
 

@@ -36,46 +36,17 @@ dispatch again.
 3. Read the conditional rules for each surface the change actually touches.
 4. Report only what you confirmed by opening the file.
 
-## Rules — ALWAYS
+## Rules
 
-```
-.claude/rules/architecture.md
-.claude/rules/naming.md
-.claude/rules/case-convention.md
-.claude/rules/enum.md
-.claude/rules/code-style.md
-.claude/rules/comments.md
-.claude/rules/null-safety.md
-```
-
-## Rules — by what the change touches
-
-| Touches | Read |
-|---|---|
-| layer placement, module wiring | `architecture.md` `nest-wiring.md` `cross-module.md` |
-| `src/common/` | `common.md` |
-| repository, Prisma query, transaction | `database.md` `concurrency.md` `dates.md` |
-| a schema delta | `prisma-schema.md` |
-| controller, guard, route path, decorator stack | `http.md` `router.md` `security.md` |
-| request DTO, validator | `validation.md` |
-| response DTO, `@Expose()` | `dto.md` |
-| Swagger doc factory | `swagger.md` |
-| pagination | `pagination.md` |
-| exception, status code | `exceptions.md` `status-code.md` |
-| BullMQ | `queue.md` `concurrency.md` |
-| notification, template | `notification.md` |
-| file upload, CSV import, presign | `file.md` |
-| feature flag | `feature-flag.md` |
-| i18n message, language JSON | `i18n.md` |
-| config, env var | `config.md` |
-| cache | `cache.md` |
-| logging, Sentry | `logging.md` |
-| `src/migration/` | `seeding.md` |
-| specs | `testing.md` `testing-spec-style.md` |
-| `docs/*.md`, `.claude/**` | `authoring.md` |
+**`.claude/rules/orientation.md` carries both halves** — the six rules every task reads, and the
+table of which rule governs which surface. Take the six, then every row the change touches.
 
 Read the FILE, not a summary of it. A change can break a rule no checklist would have thought to
-list.
+list, and you cannot cite a line you have not opened.
+
+You report against the rules as they stand on this checkout. A rule you believe is wrong is a
+line in the hand-back, never a finding suppressed and never a rule edited — `.claude/**` is not
+yours to change.
 
 ## The findings that cost the most here
 

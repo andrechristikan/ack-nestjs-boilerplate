@@ -49,6 +49,11 @@ Dispatch `planner` with the settled requirement. It returns a plan file under `.
 Read the plan's **Open questions** section. Anything there goes back to the owner now, not after
 code exists.
 
+**A shape you decide yourself is bound by the same rules the plan is.** Where you answer a design
+question in conversation rather than leaving it to `planner` — which layer owns a value, whether
+a util may throw, what a repository receives — read `.claude/rules/orientation.md` and the row
+for that surface first. `coder` treats a decision made here as settled.
+
 ## 3 — Schema first, if there is one (HARD)
 
 **A schema delta is `coder`'s edit and the OWNER'S push.** `coder` edits `prisma/schema.prisma`

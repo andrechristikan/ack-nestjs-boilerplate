@@ -1,3 +1,4 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
@@ -99,6 +100,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return tokens;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -146,6 +151,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return backupCodes.codes;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -177,6 +186,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
                 otpauthUrl,
             };
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -206,6 +219,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return backupCodes.codes;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -236,6 +253,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -266,6 +287,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return backupCodes.codes;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
@@ -308,6 +333,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
             return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }

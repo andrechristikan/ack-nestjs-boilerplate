@@ -4,7 +4,15 @@ import { Injectable } from '@nestjs/common';
 import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import {
+    GeoLocation,
+    UserAgent,
+    UserAgentBrowser,
+    UserAgentCpu,
+    UserAgentDevice,
+    UserAgentEngine,
+    UserAgentOs,
+} from '@generated/prisma-client';
 import {
     IRequestApp,
     IRequestLog,
@@ -12,10 +20,59 @@ import {
 
 @Injectable()
 export class RequestUtil {
+    private groupOrNull<T>(group: T, values: (string | null)[]): T | null {
+        return values.some(value => value !== null) ? group : null;
+    }
+
     resolveThrottleTrackerIp(req: IRequestApp): string {
         const ip = req.ip ?? '';
 
         return isIP(ip) ? ip : (req.socket.remoteAddress ?? '');
+    }
+
+    parseUserAgent(raw: string | undefined): UserAgent {
+        const result = UAParser(raw);
+
+        const browser: UserAgentBrowser = {
+            name: result.browser.name ?? null,
+            version: result.browser.version ?? null,
+            major: result.browser.major ?? null,
+            type: result.browser.type ?? null,
+        };
+        const cpu: UserAgentCpu = {
+            architecture: result.cpu.architecture ?? null,
+        };
+        const device: UserAgentDevice = {
+            type: result.device.type ?? null,
+            vendor: result.device.vendor ?? null,
+            model: result.device.model ?? null,
+        };
+        const engine: UserAgentEngine = {
+            name: result.engine.name ?? null,
+            version: result.engine.version ?? null,
+        };
+        const os: UserAgentOs = {
+            name: result.os.name ?? null,
+            version: result.os.version ?? null,
+        };
+
+        return {
+            ua: result.ua ?? null,
+            browser: this.groupOrNull(browser, [
+                browser.name,
+                browser.version,
+                browser.major,
+                browser.type,
+            ]),
+            cpu: this.groupOrNull(cpu, [cpu.architecture]),
+            device: this.groupOrNull(device, [
+                device.type,
+                device.vendor,
+                device.model,
+            ]),
+            engine: this.groupOrNull(engine, [engine.name, engine.version]),
+            os: this.groupOrNull(os, [os.name, os.version]),
+        };
     }
 
     /**
@@ -23,7 +80,7 @@ export class RequestUtil {
      * Called once per HTTP request from the request-log middleware.
      */
     buildRequestLog(req: IncomingMessage): IRequestLog {
-        const userAgent = UAParser(req.headers['user-agent']) as UserAgent;
+        const userAgent = this.parseUserAgent(req.headers['user-agent']);
         const ipAddress = getClientIp(req) ?? null;
 
         let geoLocation: GeoLocation | null = null;

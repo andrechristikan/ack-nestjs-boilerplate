@@ -7,5 +7,5 @@ export interface IActivityLog extends ActivityLog {
 
 export type IActivityLogMetadata = Record<
     string,
-    string | number | Date | boolean
+    string | number | boolean | Date
 >;

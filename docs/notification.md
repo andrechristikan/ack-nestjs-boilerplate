@@ -175,7 +175,7 @@ After each multicast send, `FirebaseService.sendMulticast()` returns `failureTok
 1. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field)
 2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushUtil.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceService.processCleanupTokens()`
 
-Stale tokens — those with no activity for `FirebaseStaleTokenThresholdInDays` (30 days) — are pruned daily by the recurring `cleanupStaleTokens` job registered at startup.
+Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceService` reads that config value and passes it to `DeviceOwnershipRepository.cleanupStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every device past the threshold.
 
 ```mermaid
 graph TD

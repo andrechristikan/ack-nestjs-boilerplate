@@ -34,7 +34,6 @@ export interface IWorkspaceCreate {
     name: string;
     description?: string;
     isPublic?: boolean;
-    slug?: string;
 }
 
 export interface IWorkspaceUpdate {

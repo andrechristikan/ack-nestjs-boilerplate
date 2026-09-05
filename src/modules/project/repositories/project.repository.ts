@@ -1,5 +1,6 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationQueryCursorParams,
@@ -23,10 +24,42 @@ import { Injectable } from '@nestjs/common';
 export class ProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly activityLogUtil: ActivityLogUtil
     ) {}
+
+    private async createWithSlug(
+        workspaceId: string,
+        actorId: string,
+        { name, description }: ProjectCreateRequestDto,
+        slug: string,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.create({
+                data: {
+                    workspaceId,
+                    name,
+                    slug,
+                    description,
+                    createdBy: actorId,
+                    deletedAt: null,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectCreated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
 
     async findActiveByIdAndWorkspace(
         projectId: string,
@@ -109,83 +142,30 @@ export class ProjectRepository {
         );
     }
 
-    async createWithSlug(
+    async createInWorkspace(
         workspaceId: string,
         actorId: string,
         dto: ProjectCreateRequestDto,
         slugCandidates: string[],
         requestLog: IRequestLog
     ): Promise<Project> {
-        if (dto.slug) {
-            return this.createWithWorkspaceAndSlug(
-                workspaceId,
-                actorId,
-                dto,
-                dto.slug,
-                requestLog
-            );
-        }
-
         for (const slug of slugCandidates) {
-            const taken = await this.databaseService.client.project.findFirst({
-                where: { slug },
-                select: { id: true },
-            });
-            if (taken) {
-                continue;
-            }
-
             try {
-                return await this.createWithWorkspaceAndSlug(
+                return await this.createWithSlug(
                     workspaceId,
                     actorId,
                     dto,
                     slug,
                     requestLog
                 );
-            } catch (err: unknown) {
-                const isSlugCollision =
-                    err instanceof Prisma.PrismaClientKnownRequestError &&
-                    err.code === 'P2002';
-
-                if (!isSlugCollision) {
-                    throw err;
+            } catch (error: unknown) {
+                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                    throw error;
                 }
             }
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    private async createWithWorkspaceAndSlug(
-        workspaceId: string,
-        actorId: string,
-        { name, description }: ProjectCreateRequestDto,
-        slug: string,
-        requestLog: IRequestLog
-    ): Promise<Project> {
-        const [project] = await this.databaseService.client.$transaction([
-            this.databaseService.client.project.create({
-                data: {
-                    workspaceId,
-                    name,
-                    slug,
-                    description,
-                    createdBy: actorId,
-                    deletedAt: null,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectCreated,
-                    requestLog
-                )
-            ),
-        ]);
-
-        return project;
     }
 
     async updateDetails(

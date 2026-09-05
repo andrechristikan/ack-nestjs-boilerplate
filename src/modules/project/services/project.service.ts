@@ -104,20 +104,7 @@ export class ProjectService implements IProjectService {
     ): Promise<Project> {
         const requestLog = this.projectUtil.getCurrentRequestLog();
 
-        if (create.slug) {
-            this.assertSlugAllowed(create.slug);
-
-            const slugTaken =
-                await this.projectRepository.existsBySlugInWorkspace(
-                    workspaceId,
-                    create.slug
-                );
-            if (slugTaken) {
-                throw new ProjectSlugAlreadyExistsException();
-            }
-        }
-
-        return this.projectRepository.createWithSlug(
+        return this.projectRepository.createInWorkspace(
             workspaceId,
             actorId,
             create,

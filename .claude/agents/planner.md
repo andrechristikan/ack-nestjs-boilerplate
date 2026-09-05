@@ -33,10 +33,12 @@ You read the codebase and write the plan. You write NOTHING under `src/`, `test/
    reads that section and can ask.
 1. **`graphify query "<question>"` first** to map the surface — which modules, which entry
    points, which existing artifacts already do part of this.
-2. Read `.claude/rules/architecture.md`, `cross-module.md`, and `nest-wiring.md`. A plan that
-   puts an artifact in the wrong layer costs more than one that is merely incomplete.
-3. Read the rules for every surface the change touches — the table in `.claude/agents/coder.md`
-   is the same map, and the plan is what tells `coder` which ones to open.
+2. **Read `.claude/rules/orientation.md`** — the six rules every task reads, and the table of
+   which rule governs which surface. Then read every row the change touches, before you write a
+   single step. A plan is where a rule violation gets decided; by the time `coder` runs, the
+   wrong shape already looks like the assignment.
+3. **Name, in each step, the rules that step is written against.** A step whose citations you
+   could not produce is a step you have not checked.
 4. Write the plan.
 
 **A step that changes behaviour names its failing spec first.** `coder` works spec-first, so a

@@ -1,16 +1,21 @@
 ---
 name: ack-docs
-description: Check docs/*.md against the code on this checkout and repair what has gone stale. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for PR descriptions (ack-pr-doc), NOT for feature code.
+description: Check docs/*.md and the root README.md against the code on this checkout and repair what has gone stale. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for PR descriptions (ack-pr-doc), NOT for feature code.
 disable-model-invocation: true
 ---
 
-One dispatch to `doc-writer`, the only agent that may write `docs/*.md`.
+One dispatch to `doc-writer`, the only agent that may write `docs/*.md` and the root `README.md`.
 
 ## Scope
 
 **The current checkout as it sits — never a comparison between two branches.** Ask the owner
-whether they want ALL of `docs/`, or named files: the tree holds around thirty files and a full
-pass is a long run.
+whether they want everything, or named files: `docs/` holds around thirty files and a full pass
+is a long run.
+
+**The root `README.md` is in scope and is easy to forget**, because it sits outside `docs/`. It
+carries the version table, the prerequisites and the Quick Start sequence, so an upgrade dates it
+faster than anything under `docs/`. A pass the owner asked for in whole-tree words includes it;
+name it in the dispatch either way, so its absence is a decision rather than an oversight.
 
 Git stays read-only.
 

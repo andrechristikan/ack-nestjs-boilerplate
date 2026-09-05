@@ -40,14 +40,4 @@ export class WorkspaceCreateRequestDto {
     @IsBoolean()
     @IsOptional()
     isPublic?: boolean;
-
-    @ApiProperty({
-        description:
-            'Workspace slug; omit to auto-generate. Charset [0-9a-zA-Z-], length capped by the workspace slug configuration (30 characters)',
-        example: 'acme-team',
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    slug?: string;
 }

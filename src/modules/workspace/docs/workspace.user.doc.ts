@@ -83,10 +83,6 @@ export function WorkspaceUserCreateDoc(): MethodDecorator {
             statusCode: EnumWorkspaceStatusCodeError.capReached,
             messagePath: 'workspace.error.capReached',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
-            messagePath: 'workspace.error.slugAlreadyExists',
-        }),
         DocResponse<WorkspaceResponseDto>('workspace.create', {
             dto: WorkspaceResponseDto,
             httpStatus: HttpStatus.CREATED,
@@ -471,7 +467,8 @@ export function WorkspaceJoinRequestUserAcceptDoc(): MethodDecorator {
             messagePath: 'workspace.error.joinRequestNotFound',
         }),
         DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
+            statusCode:
+                EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
             messagePath: 'workspace.error.joinRequestAlreadyProcessed',
         }),
         DocResponse('workspace.joinRequest.accept')
@@ -495,7 +492,8 @@ export function WorkspaceJoinRequestUserRejectDoc(): MethodDecorator {
             messagePath: 'workspace.error.joinRequestNotFound',
         }),
         DocOneOf(HttpStatus.BAD_REQUEST, {
-            statusCode: EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
+            statusCode:
+                EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
             messagePath: 'workspace.error.joinRequestAlreadyProcessed',
         }),
         DocResponse('workspace.joinRequest.reject')

@@ -17,9 +17,10 @@ three read and write files only. Run `db:generate` after a schema edit so
 `migration` · `migration:seed` · `migration:remove` · `migration:fresh` · `node
 dist/migration.js` · `mongosh` · `redis-cli` · `db:studio`.
 
-`.claude/hooks/deny-db-write.sh` blocks every one of them, in any spelling, so the block does
-not depend on you remembering the list. `migration:fresh` runs `prisma db push --force-reset`,
-which drops the database.
+Every one of them sits in the `deny` list of `.claude/settings.json`. A permission pattern is a
+prefix glob and matches the command as written, so the list is the statement of what belongs to
+the owner rather than a fence that holds against a rewritten spelling — remember the list.
+`migration:fresh` runs `prisma db push --force-reset`, which drops the database.
 
 ## There are no migration files
 

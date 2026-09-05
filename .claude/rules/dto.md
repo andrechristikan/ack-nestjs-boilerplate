@@ -1,6 +1,8 @@
 # DTOs
 
-A DTO is the module's transport shape between HTTP and the service. Request-side validation is
+A DTO is the module's transport shape. A request DTO enters at the controller and travels as far
+down as the shape is still unchanged — that can be the repository (`rules/architecture.md`); a
+response DTO is assembled in the HTTP service and goes no deeper. Request-side validation is
 `rules/validation.md`; Swagger annotation is `rules/swagger.md`; this file is the DTO shape and
 placement rule set. Detail in `docs/request-validation.md` and `docs/response.md`.
 

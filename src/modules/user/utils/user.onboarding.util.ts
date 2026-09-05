@@ -14,6 +14,8 @@ import {
     EnumUserCreateMode,
     EnumUserSignUpWorkspaceContextType,
 } from '@modules/user/enums/user.enum';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import {
     IUserOnboardingWorkspaceRows,
     IUserSignUpWorkspaceContext,
@@ -51,40 +53,22 @@ export class UserOnboardingUtil {
         )!;
     }
 
-    private buildOnboardingActivityLogRow(
-        action: EnumActivityLogAction,
-        { ipAddress, userAgent, geoLocation }: IRequestLog,
-        actorId: string
-    ): Prisma.ActivityLogCreateManyUserInput {
-        return {
-            action,
-            description: this.activityLogUtil.getDescription(action),
-            ipAddress,
-            userAgent: this.databaseUtil.toPlainObject(userAgent),
-            geoLocation: this.databaseUtil.toPlainObject(geoLocation),
-            createdBy: actorId,
-        };
-    }
-
-    drawWorkspaceSlugCandidates(rows: number): string[][] {
-        return Array.from({ length: rows }, () =>
-            Array.from({ length: this.workspaceSlugMaxAttempts }, () =>
-                this.helperStringService.generateSlug(
-                    this.workspaceSlugPrefix,
-                    this.workspaceSlugMaxLength
-                )
+    private drawWorkspaceSlugCandidates(): string[] {
+        return Array.from({ length: this.workspaceSlugMaxAttempts }, () =>
+            this.helperStringService.generateSlug(
+                this.workspaceSlugPrefix,
+                this.workspaceSlugMaxLength
             )
         );
     }
 
     buildPersonalWorkspaceContexts(
-        usernames: string[],
-        slugs: string[]
+        usernames: string[]
     ): IUserSignUpWorkspacePersonal[] {
-        return usernames.map((username, index) => ({
+        return usernames.map(username => ({
             type: EnumUserSignUpWorkspaceContextType.personal,
             workspaceId: this.databaseUtil.createId(),
-            slug: slugs[index],
+            slugCandidates: this.drawWorkspaceSlugCandidates(),
             name: this.personalWorkspaceNamePattern.replace(
                 '{username}',
                 username
@@ -107,25 +91,28 @@ export class UserOnboardingUtil {
                 : EnumActivityLogAction.workspaceInviteAccepted;
 
         return [
-            this.buildOnboardingActivityLogRow(
+            this.activityLogUtil.buildCreateManyUserData(
+                actorId,
+                null,
                 createdAction,
-                requestLog,
-                actorId
+                requestLog
             ),
             ...(logsVerificationEmailRequest
                 ? [
-                      this.buildOnboardingActivityLogRow(
+                      this.activityLogUtil.buildCreateManyUserData(
+                          actorId,
+                          null,
                           EnumActivityLogAction.userSendVerificationEmail,
-                          requestLog,
-                          actorId
+                          requestLog
                       ),
                   ]
                 : []),
             {
-                ...this.buildOnboardingActivityLogRow(
+                ...this.activityLogUtil.buildCreateManyUserData(
+                    actorId,
+                    null,
                     workspaceAction,
-                    requestLog,
-                    actorId
+                    requestLog
                 ),
                 workspaceId: workspaceContext.workspaceId,
             },
@@ -146,7 +133,7 @@ export class UserOnboardingUtil {
                     data: {
                         id: workspaceContext.workspaceId,
                         name: workspaceContext.name,
-                        slug: workspaceContext.slug,
+                        slug: workspaceContext.slugCandidates[0],
                         createdBy: actorId,
                         deletedAt: null,
                     },
@@ -195,5 +182,16 @@ export class UserOnboardingUtil {
                       }
                     : null,
         };
+    }
+
+    /** Translates a unique collision raised by the onboarding create into its user exception, returning anything else untouched. */
+    mapCreateCollision(error: unknown): unknown {
+        if (this.databaseUtil.isUniqueCollision(error, 'username')) {
+            return new UserUsernameExistException();
+        } else if (this.databaseUtil.isUniqueCollision(error, 'email')) {
+            return new UserEmailExistException();
+        }
+
+        return error;
     }
 }

@@ -126,7 +126,7 @@ Admin routes reach the same resources through `@RoleProtected()` + `@PolicyAbili
 
 `UserOnboardingUtil.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug, and `UserOnboardingRepository.createWithWorkspace` writes it together with an `owner` membership inside the same transaction as the user.
 
-The slug is resolved **before** that transaction opens. `UserOnboardingUtil.drawWorkspaceSlugCandidates` draws `workspace.slugMaxAttempts` (5) candidates per row, and `UserOnboardingRepository.findFreeWorkspaceSlugs` walks them per row, picking the first candidate that is free in the database and not already handed to an earlier row of the same call, since those rows are not written yet and a database check cannot see them. A row that exhausts its candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), and so does a slug `P2002` raised by the create transaction itself, so the caller never sees a leaked Prisma error. Admin CSV import resolves all its rows in one such call.
+`buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`. The create transaction runs with the first candidate; a unique collision on `slug` rolls the transaction back and the next candidate is tried, and running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error. Admin CSV import writes all its rows in one transaction through `createManyWithWorkspace`, which substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
 | User-creation path | Personal workspace |
 |---|---|
@@ -253,12 +253,12 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 
 ## Slug
 
-- A client-supplied slug is validated by `WorkspaceService.assertSlugAllowed` against `workspace.slugPattern` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`).
-- When no slug is supplied, one is generated as `workspace.slugPrefix` plus random characters up to `slugMaxLength`.
+- **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceService.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `WorkspaceRepository.createWithOwner`. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
+- A slug sent to `update/slug` is validated by `WorkspaceService.assertSlugAllowed` against `workspace.slugPattern` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
-- The existence pre-check has **no active filter**: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the pre-check agrees with the index rather than contradicting it.
-- A client-supplied collision throws `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry. A generated collision inside `createWithOwner` is retried up to `workspace.slugMaxAttempts` (5) times, and only on a Prisma `P2002`; any other error is rethrown untouched, and exhausting the attempts throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
-- The personal-workspace slug follows the same budget through `UserOnboardingRepository.findFreeWorkspaceSlugs`, which checks each candidate is free before the write and turns a slug `P2002` raised by the create transaction into `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
+- `createWithOwner` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
+- The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Soft Delete
 
