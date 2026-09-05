@@ -1,37 +1,38 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import type {
+import { INotificationEmailProcessorService } from '@modules/notification/interfaces/notification.email.processor.service.interface';
+import {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
     INotificationEmailUnregisteredQueuePayload,
-    INotificationForgotPasswordEncryptedPayload,
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
-    INotificationTemporaryPasswordEncryptedPayload,
-    INotificationVerificationEmailEncryptedPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminEncryptedPayload,
-    INotificationWorkspaceInviteEncryptedPayload,
-    INotificationWorkspaceInviteUnregisteredEncryptedPayload,
+    INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteUnregisteredPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestEncryptedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailAccountDomain } from '@modules/notification/domains/notification.email.account.domain';
-import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
-import { NotificationEmailTermPolicyDomain } from '@modules/notification/domains/notification.email.term-policy.domain';
-import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/notification.email.workspace.domain';
+import { NotificationEmailAccountService } from '@modules/notification/services/notification.email.account.service';
+import { NotificationEmailSecurityService } from '@modules/notification/services/notification.email.security.service';
+import { NotificationEmailTermPolicyService } from '@modules/notification/services/notification.email.term-policy.service';
+import { NotificationEmailWorkspaceService } from '@modules/notification/services/notification.email.workspace.service';
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationEmailProcessorService {
+export class NotificationEmailProcessorService implements INotificationEmailProcessorService {
     constructor(
-        private readonly notificationEmailAccountDomain: NotificationEmailAccountDomain,
-        private readonly notificationEmailSecurityDomain: NotificationEmailSecurityDomain,
-        private readonly notificationEmailTermPolicyDomain: NotificationEmailTermPolicyDomain,
-        private readonly notificationEmailWorkspaceDomain: NotificationEmailWorkspaceDomain
+        private readonly notificationEmailAccountService: NotificationEmailAccountService,
+        private readonly notificationEmailSecurityService: NotificationEmailSecurityService,
+        private readonly notificationEmailTermPolicyService: NotificationEmailTermPolicyService,
+        private readonly notificationEmailWorkspaceService: NotificationEmailWorkspaceService
     ) {}
 
     async processWelcome(
@@ -41,7 +42,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processWelcome(
+        return this.notificationEmailAccountService.processWelcome(
             job.data.send
         );
     }
@@ -53,19 +54,19 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processWelcomeSocial(
+        return this.notificationEmailAccountService.processWelcomeSocial(
             job.data.send
         );
     }
 
     async processWelcomeByAdmin(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processWelcomeByAdmin(
+        return this.notificationEmailAccountService.processWelcomeByAdmin(
             job.data.send,
             job.data.data!
         );
@@ -73,12 +74,12 @@ export class NotificationEmailProcessorService {
 
     async processTemporaryPasswordByAdmin(
         job: Job<
-            INotificationEmailQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processTemporaryPasswordByAdmin(
+        return this.notificationEmailSecurityService.processTemporaryPasswordByAdmin(
             job.data.send,
             job.data.data!
         );
@@ -91,7 +92,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processChangePassword(
+        return this.notificationEmailSecurityService.processChangePassword(
             job.data.send
         );
     }
@@ -103,19 +104,19 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processResetPassword(
+        return this.notificationEmailSecurityService.processResetPassword(
             job.data.send
         );
     }
 
     async processVerificationEmail(
         job: Job<
-            INotificationEmailQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processVerificationEmail(
+        return this.notificationEmailAccountService.processVerificationEmail(
             job.data.send,
             job.data.data!
         );
@@ -128,7 +129,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processVerifiedEmail(
+        return this.notificationEmailAccountService.processVerifiedEmail(
             job.data.send,
             job.data.data!
         );
@@ -136,12 +137,12 @@ export class NotificationEmailProcessorService {
 
     async processForgotPassword(
         job: Job<
-            INotificationEmailQueuePayload<INotificationForgotPasswordEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processForgotPassword(
+        return this.notificationEmailSecurityService.processForgotPassword(
             job.data.send,
             job.data.data!
         );
@@ -154,7 +155,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailAccountDomain.processVerifiedMobileNumber(
+        return this.notificationEmailAccountService.processVerifiedMobileNumber(
             job.data.send,
             job.data.data!
         );
@@ -167,7 +168,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processResetTwoFactorByAdmin(
+        return this.notificationEmailSecurityService.processResetTwoFactorByAdmin(
             job.data.send
         );
     }
@@ -179,7 +180,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailSecurityDomain.processNewDeviceLogin(
+        return this.notificationEmailSecurityService.processNewDeviceLogin(
             job.data.send,
             job.data.data!
         );
@@ -192,19 +193,19 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailTermPolicyDomain.processPublishTermPolicy(
+        return this.notificationEmailTermPolicyService.processPublishTermPolicy(
             job.data.data!
         );
     }
 
     async processWorkspaceInvite(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailWorkspaceDomain.processWorkspaceInvite(
+        return this.notificationEmailWorkspaceService.processWorkspaceInvite(
             job.data.send,
             job.data.data!
         );
@@ -212,12 +213,12 @@ export class NotificationEmailProcessorService {
 
     async processWorkspaceInviteUnregistered(
         job: Job<
-            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload>,
+            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailWorkspaceDomain.processWorkspaceInviteUnregistered(
+        return this.notificationEmailWorkspaceService.processWorkspaceInviteUnregistered(
             job.data.send,
             job.data.data!
         );
@@ -225,12 +226,12 @@ export class NotificationEmailProcessorService {
 
     async processWorkspaceJoinRequest(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
+            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailWorkspaceDomain.processWorkspaceJoinRequest(
+        return this.notificationEmailWorkspaceService.processWorkspaceJoinRequest(
             job.data.send,
             job.data.data!
         );
@@ -243,7 +244,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailWorkspaceDomain.processWorkspaceJoinAccepted(
+        return this.notificationEmailWorkspaceService.processWorkspaceJoinAccepted(
             job.data.send,
             job.data.data!
         );
@@ -256,7 +257,7 @@ export class NotificationEmailProcessorService {
             EnumNotificationProcess
         >
     ): Promise<IQueueResponse> {
-        return this.notificationEmailWorkspaceDomain.processWorkspaceJoinRejected(
+        return this.notificationEmailWorkspaceService.processWorkspaceJoinRejected(
             job.data.send,
             job.data.data!
         );

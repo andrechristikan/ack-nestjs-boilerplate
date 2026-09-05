@@ -1,14 +1,21 @@
-import { Doc } from '@common/doc/decorators/doc.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { UserCheckEmailRequestSchema } from '@modules/user/dtos/request/user.check-email.request.dto';
-import { UserCheckUsernameRequestSchema } from '@modules/user/dtos/request/user.check-username.request.dto';
-import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
-import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
-import { UserCheckEmailResponseSchema } from '@modules/user/dtos/response/user.check-email.response.dto';
-import { UserCheckUsernameResponseSchema } from '@modules/user/dtos/response/user.check-username.response.dto';
-import type {
+import {
+    UserSystemCheckEmailDoc,
+    UserSystemCheckUsernameDoc,
+} from '@modules/user/docs/user.system.doc';
+import {
+    UserCheckEmailRequestDto,
+    UserCheckEmailRequestSchema,
+    UserCheckUsernameRequestDto,
+    UserCheckUsernameRequestSchema,
+} from '@modules/user/dtos/request/user.check.request.dto';
+import {
+    UserCheckEmailResponseSchema,
+    UserCheckUsernameResponseSchema,
+} from '@modules/user/dtos/response/user.check.response.dto';
+import {
     IUserCheckEmail,
     IUserCheckUsername,
 } from '@modules/user/interfaces/user.interface';
@@ -24,7 +31,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class UserSystemController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
-    @Doc({ summary: 'check user exist by username' })
+    @UserSystemCheckUsernameDoc()
     @Response('user.checkUsername', {
         schema: UserCheckUsernameResponseSchema,
     })
@@ -38,7 +45,7 @@ export class UserSystemController {
         return this.userHttpService.checkUsername(body);
     }
 
-    @Doc({ summary: 'check user exist by email' })
+    @UserSystemCheckEmailDoc()
     @Response('user.checkEmail', { schema: UserCheckEmailResponseSchema })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)

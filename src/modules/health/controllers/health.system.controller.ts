@@ -1,19 +1,32 @@
-import { Doc } from '@common/doc/decorators/doc.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     HealthCacheControlHeaderName,
     HealthCacheControlHeaderValue,
 } from '@modules/health/constants/health.constant';
-import { HealthAwsResponseSchema } from '@modules/health/dtos/response/health.aws.response.dto';
-import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseSchema } from '@modules/health/dtos/response/health.database.response.dto';
-import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseSchema } from '@modules/health/dtos/response/health.instance.response.dto';
-import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthThirdPartyResponseSchema } from '@modules/health/dtos/response/health.third-party.response.dto';
-import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import {
+    HealthSystemCheckAwsDoc,
+    HealthSystemCheckDatabaseDoc,
+    HealthSystemCheckInstanceDoc,
+    HealthSystemCheckThirdPartyDoc,
+} from '@modules/health/docs/health.system.doc';
+import {
+    HealthAwsResponseDto,
+    HealthAwsResponseSchema,
+} from '@modules/health/dtos/response/health.aws.response.dto';
+import {
+    HealthDatabaseResponseDto,
+    HealthDatabaseResponseSchema,
+} from '@modules/health/dtos/response/health.database.response.dto';
+import {
+    HealthInstanceResponseDto,
+    HealthInstanceResponseSchema,
+} from '@modules/health/dtos/response/health.instance.response.dto';
+import {
+    HealthThirdPartyResponseDto,
+    HealthThirdPartyResponseSchema,
+} from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
 import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -26,7 +39,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class HealthSystemController {
     constructor(private readonly healthHttpService: HealthHttpService) {}
 
-    @Doc({ summary: 'health check api for aws' })
+    @HealthSystemCheckAwsDoc()
     @Response('health.checkAws', { schema: HealthAwsResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
@@ -35,7 +48,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkAws();
     }
 
-    @Doc({ summary: 'health check api for database' })
+    @HealthSystemCheckDatabaseDoc()
     @Response('health.checkDatabase', { schema: HealthDatabaseResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
@@ -44,7 +57,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkDatabase();
     }
 
-    @Doc({ summary: 'health check api for third party services' })
+    @HealthSystemCheckThirdPartyDoc()
     @Response('health.checkThirdParty', {
         schema: HealthThirdPartyResponseSchema,
     })
@@ -57,7 +70,7 @@ export class HealthSystemController {
         return this.healthHttpService.checkThirdParty();
     }
 
-    @Doc({ summary: 'health check api for instance' })
+    @HealthSystemCheckInstanceDoc()
     @Response('health.checkInstance', { schema: HealthInstanceResponseSchema })
     @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()

@@ -1,19 +1,20 @@
 # Environment Documentation
 
-Environment variables are listed in `.env.example`.
+This documentation explains **Environment**: Located at `.env.example`
 
 ## Overview
 
-Runtime config is environment variables. `AppEnvSchema` validates them at startup. Docker Compose is the recommended way to run MongoDB and Redis locally; see [Installation][ref-doc-installation].
+This document provides a comprehensive guide to configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
+
+All environment variables are validated against the `AppEnvSchema` zod schema to ensure required variables are present and properly formatted before the application starts.
 
 ## Related Documents
 
-- [Configuration Documentation][ref-doc-configuration] - How env vars map into `registerAs` configs
-- [Installation Documentation][ref-doc-installation] - Creating `.env` (Docker recommended)
-- [Database Documentation][ref-doc-database] - MongoDB connection and replica set
-- [Authentication Documentation][ref-doc-authentication] - JWT and OAuth
-- [Vault Documentation][ref-doc-vault] - Optional secret sync into `.env`
-- [Email Documentation][ref-doc-email] - SES templates
+- [Configuration Documentation][ref-doc-configuration] - For understanding how environment variables map to configurations
+- [Installation Documentation][ref-doc-installation] - For initial setup and environment file creation
+- [Database Documentation][ref-doc-database] - For database connection details
+- [Authentication Documentation][ref-doc-authentication] - For JWT and OAuth configuration
+- [Vault Documentation][ref-doc-vault] - For managing environment variables and secrets with HashiCorp Vault
 
 ## Table of Contents
 
@@ -53,12 +54,7 @@ ConfigModule.forRoot({
 }),
 ```
 
-`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. Field shapes:
-
-- An env boolean is `RequestBooleanStringSchema` (a case-sensitive `z.stringbool` accepting exactly `'true'` or `'false'`)
-- An encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters)
-- A port is `z.coerce.number().int()`
-- An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error
+`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `z.stringbool` accepting exactly `'true'` or `'false'`, a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
 
 If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
@@ -67,7 +63,7 @@ If validation fails, the application does not start and reports which environmen
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are empty in `.env.example`, so startup validation fails until they are set. `pnpm generate:secret` generates a unique set: the JWT keys and KIDs under `keys/`, and both encryption secrets in `keys/encryption-secret.env`. With `--direct-insert` it also writes them into `.env`. See [Installation][ref-doc-installation].
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment — never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
 
 ```bash
 # Application Settings
@@ -100,8 +96,8 @@ CORS_ALLOWED_ORIGIN=*
 URL_VERSIONING_ENABLE=true
 URL_VERSION=1
 
-# Database (Compose replica set locally; Atlas without Docker)
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# Database
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 DATABASE_DEBUG=true
 
 # JWT Authentication
@@ -159,7 +155,6 @@ FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 
 # Redis
-# Redis (Compose locally; ElastiCache without Docker)
 CACHE_REDIS_URL=redis://localhost:6379/0
 QUEUE_REDIS_URL=redis://localhost:6379/1
 
@@ -169,7 +164,7 @@ SENTRY_DSN=
 
 ## Environment Variables
 
-Validated by `AppEnvSchema`. Each variable:
+All environment variables are validated against `AppEnvSchema` to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
 
 ### Application Settings
 
@@ -198,7 +193,7 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Root secret `HelperEncryptionService` derives AES-256-GCM keys from (HKDF-SHA256). It encrypts the sensitive fields of notification job payloads. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it makes queued notification jobs that were encrypted under the old value fail to decrypt.
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
 ```
@@ -240,7 +235,7 @@ HTTP_PORT=3000
 **`HTTP_TRUSTED_PROXY`** *(optional)*  
 Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`. Accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs. It is never a hop count and never `true`.
 
-Empty trusts no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. Behind a CDN or edge proxy that connects from a public address, a value without that provider's CIDRs puts every client behind it in one rate-limit bucket.
+Leave it empty to trust no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. A deployment behind a CDN or edge proxy that connects from a public address must list that provider's CIDRs, or every client behind it shares one rate-limit bucket.
 ```bash
 # no proxy trusted
 HTTP_TRUSTED_PROXY=
@@ -298,7 +293,7 @@ Comma-separated list of allowed CORS origins. Supports subdomain wildcards and e
 
 **Examples:**
 ```bash
-# Allow all origins (development only); credentials NOT allowed
+# Allow all origins (development only) — credentials NOT allowed
 CORS_ALLOWED_ORIGIN=*
 
 # Specific origins
@@ -310,19 +305,19 @@ CORS_ALLOWED_ORIGIN=*.example.com,api.myapp.com
 # Multiple domains with explicit ports
 CORS_ALLOWED_ORIGIN=*.example.com:3000,api.myapp.com:8080,localhost:3000
 
-# Mixed; wildcards and specific ports
+# Mixed — wildcards and specific ports
 CORS_ALLOWED_ORIGIN=*.example.com,api.production.com:443,localhost:3000
 ```
 
 **Port Matching Behavior:**
 ```bash
-# ✅ SUPPORTED; Exact port matching
+# ✅ SUPPORTED — Exact port matching
 CORS_ALLOWED_ORIGIN=api.example.com:3000  # Matches: http://api.example.com:3000, https://api.example.com:3000
 
-# ❌ NOT SUPPORTED; Port wildcards
+# ❌ NOT SUPPORTED — Port wildcards
 CORS_ALLOWED_ORIGIN=api.example.com:*     # Does NOT work
 
-# ✅ SUPPORTED; Default port (implicit)
+# ✅ SUPPORTED — Default port (implicit)
 CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, https://api.example.com (no explicit port)
 ```
 
@@ -335,12 +330,12 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Specific origins**: Credentials are **enabled**
 
 > [!TIP]
-> Production: name explicit origins. A wildcard with credentials off is for development.
+> **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
 
 ### URL Versioning Settings
 
 **`URL_VERSIONING_ENABLE`** *(required)*  
-Enable URL versioning for your API (e.g., `/api/v1/shared/user/profile/get`).
+Enable URL versioning for your API (e.g., `/api/v1/users`).
 ```bash
 URL_VERSIONING_ENABLE=true
 ```
@@ -354,17 +349,17 @@ URL_VERSION=1
 ### Database Settings
 
 **`DATABASE_URL`** *(required)*  
-MongoDB connection string. Must target a **replica set** (Prisma transactions need one). Docker Compose is the recommended local path; without Docker use [MongoDB Atlas][ref-mongodb-atlas] (or any MongoDB 8+ replica set). Setup: [Installation][ref-doc-installation].
+PostgreSQL connection string.
 ```bash
-# Local Compose replica set (recommended)
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# Local PostgreSQL
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 
-# MongoDB Atlas (replica set via mongodb+srv)
-# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ACKNestJs
+# Remote PostgreSQL example
+# DATABASE_URL=postgresql://username:password@db.example.com:5432/ACKNestJs?schema=public
 ```
 
 **`DATABASE_DEBUG`** *(required)*  
-Log Prisma queries when `true`.
+Enable database debug mode to log all queries.
 ```bash
 DATABASE_DEBUG=true
 ```
@@ -392,7 +387,7 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 ```
 
 **`AUTH_JWT_ACCESS_TOKEN_KID`** *(required)*  
-Key ID for access token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
+Key ID for access token. Generated automatically by `pnpm generate:keys`.
 ```bash
 AUTH_JWT_ACCESS_TOKEN_KID=<your_jwt_access_token_kid>
 ```
@@ -424,7 +419,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.j
 ```
 
 **`AUTH_JWT_REFRESH_TOKEN_KID`** *(required)*  
-Key ID for refresh token. `pnpm generate:secret:jwt` prints it and, with `--direct-insert`, writes it into `.env`.
+Key ID for refresh token. Generated automatically by `pnpm generate:keys`.
 ```bash
 AUTH_JWT_REFRESH_TOKEN_KID=<your_jwt_refresh_token_kid>
 ```
@@ -479,13 +474,13 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ### Two-Factor Authentication Settings
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(required)*  
-Issuer name displayed in authenticator apps. Empty by default; startup validation rejects an unset value.  
+Issuer name displayed in authenticator apps. Empty by default — startup validation rejects an unset value.  
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required)*  
-Root secret `HelperEncryptionService` derives the AES-256-GCM keys for stored TOTP secrets from. Exactly 64 base64url characters, the encoding of 48 random bytes (`RequestEncryptionSecretSchema`). Empty by default; startup validation rejects an unset or malformed value. `pnpm generate:secret:encryption` generates a unique value per environment. Rotating it leaves every stored TOTP secret undecryptable, and an authenticator code check then returns `409 twoFactorSecretUnavailable` (see [Two-Factor][ref-doc-two-factor]).  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
 ```bash
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ```
@@ -516,7 +511,11 @@ AWS_S3_IAM_ARN=
 ```
 
 > [!TIP]
-> Prefer `AWS_S3_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
+> **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
+> - Temporary security credentials
+> - Better security through role assumption
+> - Fine-grained access control
+> - Automatic credential rotation
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
@@ -571,7 +570,11 @@ AWS_SES_IAM_ARN=
 ```
 
 > [!TIP]
-> Prefer `AWS_SES_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
+> **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
+> - Temporary security credentials
+> - Better security through role assumption
+> - Fine-grained access control
+> - Automatic credential rotation
 
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.
@@ -628,16 +631,14 @@ FIREBASE_PRIVATE_KEY=
 ### Redis Settings
 
 **`CACHE_REDIS_URL`** *(required)*  
-Redis URL for cache (`db:0`). Prefer Compose Redis locally; without Docker use a hosted Redis such as [Amazon ElastiCache][ref-elasticache]. Setup: [Installation][ref-doc-installation].
+Redis URL for caching operations.
 ```bash
-# Local Compose
 CACHE_REDIS_URL=redis://localhost:6379/0
 ```
 
 **`QUEUE_REDIS_URL`** *(required)*  
-Redis URL for BullMQ (`db:1`). Same host as cache is fine; keep a different logical DB when you can.
+Redis URL for queue operations (background jobs).
 ```bash
-# Local Compose
 QUEUE_REDIS_URL=redis://localhost:6379/1
 ```
 
@@ -657,8 +658,4 @@ SENTRY_DSN=
 [ref-doc-installation]: installation.md
 [ref-doc-database]: database.md
 [ref-doc-authentication]: authentication.md
-[ref-doc-two-factor]: two-factor.md
 [ref-doc-vault]: vault.md
-[ref-doc-email]: email.md
-[ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
-[ref-elasticache]: https://aws.amazon.com/elasticache/

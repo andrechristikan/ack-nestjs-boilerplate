@@ -1,29 +1,31 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
-import type {
+import {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
-    INotificationTemporaryPasswordPushPayload,
-    INotificationWorkspaceInvitePushPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPushPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
-import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
-import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
+import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
+import { NotificationPushMaintenanceService } from '@modules/notification/services/notification.push.maintenance.service';
+import { NotificationPushSecurityService } from '@modules/notification/services/notification.push.security.service';
+import { NotificationPushWorkspaceService } from '@modules/notification/services/notification.push.workspace.service';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
-import { Injectable } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationPushProcessorService implements OnModuleInit {
+export class NotificationPushProcessorService
+    implements INotificationPushProcessorService, OnModuleInit
+{
     constructor(
-        private readonly notificationPushSecurityDomain: NotificationPushSecurityDomain,
-        private readonly notificationPushWorkspaceDomain: NotificationPushWorkspaceDomain,
-        private readonly notificationPushMaintenanceDomain: NotificationPushMaintenanceDomain,
+        private readonly notificationPushSecurityService: NotificationPushSecurityService,
+        private readonly notificationPushWorkspaceService: NotificationPushWorkspaceService,
+        private readonly notificationPushMaintenanceService: NotificationPushMaintenanceService,
         private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
@@ -38,7 +40,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityDomain.processNewDeviceLogin(
+        return this.notificationPushSecurityService.processNewDeviceLogin(
             send,
             data!
         );
@@ -51,7 +53,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityDomain.processResetTwoFactorByAdmin(
+        return this.notificationPushSecurityService.processResetTwoFactorByAdmin(
             send
         );
     }
@@ -59,11 +61,11 @@ export class NotificationPushProcessorService implements OnModuleInit {
     async processTemporaryPasswordByAdmin({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationTemporaryPasswordPushPayload>,
+        INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityDomain.processTemporaryPasswordByAdmin(
+        return this.notificationPushSecurityService.processTemporaryPasswordByAdmin(
             send,
             data!
         );
@@ -76,7 +78,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityDomain.processResetPassword(send);
+        return this.notificationPushSecurityService.processResetPassword(send);
     }
 
     async processForgotPassword({
@@ -86,17 +88,17 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityDomain.processForgotPassword(send);
+        return this.notificationPushSecurityService.processForgotPassword(send);
     }
 
     async processWorkspaceInvite({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationWorkspaceInvitePushPayload>,
+        INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceDomain.processWorkspaceInvite(
+        return this.notificationPushWorkspaceService.processWorkspaceInvite(
             send,
             data!
         );
@@ -105,11 +107,11 @@ export class NotificationPushProcessorService implements OnModuleInit {
     async processWorkspaceJoinRequest({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPushPayload>,
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRequest(
+        return this.notificationPushWorkspaceService.processWorkspaceJoinRequest(
             send,
             data!
         );
@@ -122,7 +124,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceDomain.processWorkspaceJoinAccepted(
+        return this.notificationPushWorkspaceService.processWorkspaceJoinAccepted(
             send,
             data!
         );
@@ -135,7 +137,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRejected(
+        return this.notificationPushWorkspaceService.processWorkspaceJoinRejected(
             send,
             data!
         );
@@ -150,13 +152,13 @@ export class NotificationPushProcessorService implements OnModuleInit {
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceDomain.processCleanupTokens(
+        return this.notificationPushMaintenanceService.processCleanupTokens(
             userId,
             failureTokens
         );
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceDomain.processCleanupStaleTokens();
+        return this.notificationPushMaintenanceService.processCleanupStaleTokens();
     }
 }

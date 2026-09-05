@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
+import { EnumApiKeyType } from '@generated/prisma-client';
 
 /**
  * Base api-key shape: the stored api-key row without its hashed secret.
- * @public
  */
 export const ApiKeyResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -37,8 +36,4 @@ export const ApiKeyResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored API key without its hashed secret.
- * @public
- */
 export type ApiKeyResponseDto = z.infer<typeof ApiKeyResponseSchema>;

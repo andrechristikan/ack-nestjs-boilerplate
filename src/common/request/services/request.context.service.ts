@@ -1,14 +1,15 @@
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import { IRequestContextService } from '@common/request/interfaces/request.context.service.interface';
+import { GeoLocation, UserAgent } from '@generated/prisma-client';
 import { Injectable } from '@nestjs/common';
 import { hostname } from 'os';
 
 @Injectable()
-export class RequestContextService {
+export class RequestContextService implements IRequestContextService {
     getHostname(): string {
         return hostname();
     }
 
-    resolveCity(geoLocation: GeoLocation | null): string {
+    resolveCity(geoLocation?: GeoLocation): string {
         return geoLocation?.city ?? 'Unknown Location';
     }
 

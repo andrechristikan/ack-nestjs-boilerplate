@@ -1,49 +1,32 @@
-import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import type {
-    IResponsePaginationReturn,
+import {
+    IPaginationQueryCursorParams,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import {
+    IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import {
-    ProjectCursorAvailableOrderBy,
-    ProjectDefaultAvailableOrderBy,
-    ProjectDefaultAvailableSearch,
-} from '@modules/project/constants/project.list.constant';
-import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
-import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import { ProjectDomain } from '@modules/project/domains/project.domain';
+import { Prisma, Project, WorkspaceMember } from '@generated/prisma-client';
+import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { IProjectHttpService } from '@modules/project/interfaces/project.http.service.interface';
+import { ProjectService } from '@modules/project/services/project.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectHttpService {
-    constructor(
-        private readonly projectDomain: ProjectDomain,
-        private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
+export class ProjectHttpService implements IProjectHttpService {
+    constructor(private readonly projectService: ProjectService) {}
 
     async getListForMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,
-        query: ProjectUserListRequestDto
-    ): Promise<IResponsePaginationReturn<Project>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.cursor<Prisma.ProjectWhereInput>(query, {
-                availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectCursorAvailableOrderBy,
-            });
-        this.requestStoreService.merge(PaginationStoreKey, storePatch);
-
-        const { data, ...others } = await this.projectDomain.getListForMember(
+        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+    ): Promise<IResponsePagingReturn<Project>> {
+        const { data, ...others } = await this.projectService.getListForMember(
             workspaceId,
             workspaceMember,
-            params
+            pagination
         );
 
         return {
@@ -57,7 +40,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.createProject(
+        const project = await this.projectService.createProject(
             workspaceId,
             actorId,
             { name, description }
@@ -67,9 +50,9 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        const current = this.projectDomain.getProject(project);
-
-        return { data: current };
+        return {
+            data: this.projectService.getProject(project),
+        };
     }
 
     async updateProject(
@@ -77,7 +60,7 @@ export class ProjectHttpService {
         actorId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const updated = await this.projectDomain.updateProject(
+        const updated = await this.projectService.updateProject(
             project,
             actorId,
             { name, description }
@@ -91,7 +74,7 @@ export class ProjectHttpService {
         actorId: string,
         { slug }: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const updated = await this.projectDomain.updateProjectSlug(
+        const updated = await this.projectService.updateProjectSlug(
             project,
             actorId,
             slug
@@ -101,30 +84,16 @@ export class ProjectHttpService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        await this.projectDomain.softDeleteProject(project, actorId);
+        await this.projectService.softDeleteProject(project, actorId);
     }
 
     async getListForAdmin(
-        query: ProjectAdminListRequestDto
-    ): Promise<IResponsePaginationReturn<Project>> {
-        const { params, storePatch } =
-            this.paginationQueryUtil.offset<Prisma.ProjectWhereInput>(query, {
-                availableSearch: ProjectDefaultAvailableSearch,
-                availableOrderBy: ProjectDefaultAvailableOrderBy,
-            });
-        this.requestStoreService.merge(PaginationStoreKey, {
-            ...storePatch,
-            filters: {
-                ...storePatch.filters,
-                ...((query.workspaceId as string | undefined)
-                    ? { workspaceId: query.workspaceId as string | undefined }
-                    : {}),
-            },
-        });
-
-        const { data, ...others } = await this.projectDomain.getListForAdmin(
-            params,
-            query.workspaceId as string | undefined
+        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+        workspaceId?: string
+    ): Promise<IResponsePagingReturn<Project>> {
+        const { data, ...others } = await this.projectService.getListForAdmin(
+            pagination,
+            workspaceId
         );
 
         return {
@@ -136,7 +105,7 @@ export class ProjectHttpService {
     async getByIdForAdmin(
         projectId: string
     ): Promise<IResponseReturn<Project>> {
-        const project = await this.projectDomain.getByIdForAdmin(projectId);
+        const project = await this.projectService.getByIdForAdmin(projectId);
 
         return { data: project };
     }

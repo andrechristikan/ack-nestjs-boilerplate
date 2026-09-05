@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import type {
+import {
     CallHandler,
     ExecutionContext,
+    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

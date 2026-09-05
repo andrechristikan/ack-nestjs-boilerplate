@@ -5,15 +5,10 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import {
-    MigrationUserData,
-    MigrationUserSuperAdminId,
-} from '@migration/data/migration.user.data';
-import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
-import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { migrationUserData } from '@migration/data/migration.user.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -22,15 +17,15 @@ import {
     EnumNotificationType,
     EnumPasswordHistoryType,
     EnumTermPolicyStatus,
+    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-} from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
@@ -48,15 +43,21 @@ export class MigrationUserSeed
     private readonly logger = new Logger(MigrationUserSeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly users: IMigrationUserData[] = [];
-    private readonly seedTransactionTimeoutInMs: number;
+    private readonly users: {
+        country: string;
+        email: string;
+        username: string;
+        name: string;
+        role: string;
+        password: string;
+    }[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly userVerificationDomain: UserVerificationDomain,
+        private readonly authPasswordService: AuthPasswordService,
+        private readonly userVerificationService: UserVerificationService,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -65,78 +66,74 @@ export class MigrationUserSeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.users = MigrationUserData[this.env];
-        this.seedTransactionTimeoutInMs = this.configService.get<number>(
-            'database.seedTransactionTimeoutInMs'
-        )!;
+        this.users = migrationUserData[this.env];
     }
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Users...');
         this.logger.log(`Found ${this.users.length} Users to seed.`);
 
-        const roleNames = this.users.map(user => user.role);
-        const uniqueRoles = this.helperArrayService.unique(roleNames);
-        const countryCodes = this.users.map(user => user.country);
-        const uniqueCountries = this.helperArrayService.unique(countryCodes);
-        const emails = this.users.map(user => user.email.toLowerCase());
-
-        const [roles, countries, termPolicies, existingUsers] =
-            await Promise.all([
-                this.databaseService.client.role.findMany({
-                    where: { name: { in: uniqueRoles } },
-                    select: { id: true, name: true },
-                }),
-                this.databaseService.client.country.findMany({
-                    where: { alpha2Code: { in: uniqueCountries } },
-                    select: { id: true, alpha2Code: true },
-                }),
-                this.databaseService.client.termPolicy.findMany({
-                    where: {
-                        type: { in: [...UserTermPolicyContract.requiredTypes] },
-                        status: EnumTermPolicyStatus.published,
-                    },
-                    select: { id: true, type: true },
-                }),
-                this.databaseService.client.user.findMany({
-                    where: { email: { in: emails } },
-                    select: { id: true, email: true },
-                }),
-            ]);
+        const uniqueRoles = this.helperArrayService.unique(
+            this.users.map(user => user.role)
+        );
+        const roles = await this.databaseService.client.role.findMany({
+            where: {
+                name: {
+                    in: uniqueRoles,
+                },
+            },
+            select: {
+                id: true,
+                name: true,
+            },
+        });
 
         if (roles.length !== uniqueRoles.length) {
             this.logger.warn('Roles not found for users, cannot seed.');
             return;
         }
 
+        const uniqueCountries = this.helperArrayService.unique(
+            this.users.map(user => user.country)
+        );
+        const countries = await this.databaseService.client.country.findMany({
+            where: {
+                alpha2Code: {
+                    in: uniqueCountries,
+                },
+            },
+            select: {
+                id: true,
+                alpha2Code: true,
+            },
+        });
+
         if (countries.length !== uniqueCountries.length) {
             this.logger.error('Countries not found for users, cannot seed.');
             return;
         }
 
-        const requiredTermPolicyCount =
-            UserTermPolicyContract.requiredTypes.length;
-        if (termPolicies.length !== requiredTermPolicyCount) {
+        const termPolicies =
+            await this.databaseService.client.termPolicy.findMany({
+                where: {
+                    type: {
+                        in: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                    },
+                    status: EnumTermPolicyStatus.published,
+                },
+                select: {
+                    id: true,
+                    type: true,
+                },
+            });
+
+        if (termPolicies.length !== 2) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
             return;
         }
-
-        const superAdminEmails = this.users
-            .filter(user => user.id === MigrationUserSuperAdminId)
-            .map(user => user.email.toLowerCase());
-        const legacySuperAdmin = existingUsers.find(
-            user =>
-                superAdminEmails.includes(user.email) &&
-                user.id !== MigrationUserSuperAdminId
-        );
-        if (legacySuperAdmin) {
-            this.logger.error(
-                `Superadmin ${legacySuperAdmin.email} exists with id ${legacySuperAdmin.id}, expected ${MigrationUserSuperAdminId}. Run pnpm migration:remove, then pnpm migration:seed.`
-            );
-            return;
-        }
-
-        const existingEmails = new Set(existingUsers.map(user => user.email));
 
         try {
             const today = this.helperDateService.create();
@@ -148,216 +145,136 @@ export class MigrationUserSeed
             const requestLog: IRequestLog = {
                 userAgent,
                 ipAddress: ip,
-                geoLocation: null,
             };
 
-            const rows = this.users.map(user => {
-                const email = user.email.toLowerCase();
-                const generatedUserId = this.databaseUtil.createId();
-                const userId = user.id ?? generatedUserId;
-
-                let createdActivity: Prisma.ActivityLogCreateManyUserInput;
-                if (userId === MigrationUserSuperAdminId) {
-                    createdActivity =
-                        this.activityLogUtil.buildCreateManyUserData(
-                            MigrationUserSuperAdminId,
-                            null,
-                            EnumActivityLogAction.userCreated,
-                            requestLog,
-                            {}
+            await this.databaseService.client.$transaction(
+                this.users.map(user => {
+                    const userId = this.databaseUtil.createId();
+                    const { passwordCreated, passwordExpired, passwordHash } =
+                        this.authPasswordService.createPassword(
+                            userId,
+                            user.password
                         );
-                } else {
-                    createdActivity =
-                        this.activityLogUtil.buildCreateManyUserData(
-                            MigrationUserSuperAdminId,
-                            null,
-                            EnumActivityLogAction.userCreatedByAdmin,
-                            requestLog,
-                            {
-                                actorUserId: MigrationUserSuperAdminId,
-                                timestamp: today,
-                            }
-                        );
-                }
-
-                const password = this.authPasswordUtil.createPassword(
-                    user.password
-                );
-                const verification =
-                    this.userVerificationDomain.verificationCreateVerification(
-                        EnumVerificationType.email
-                    );
-
-                return {
-                    user,
-                    email,
-                    userId,
-                    countryId: countries.find(
-                        country => country.alpha2Code === user.country
-                    )!.id,
-                    roleId: roles.find(role => role.name === user.role)!.id,
-                    password,
-                    verification,
-                    activityLogs: [
-                        createdActivity,
-                        this.activityLogUtil.buildCreateManyUserData(
-                            MigrationUserSuperAdminId,
-                            null,
-                            EnumActivityLogAction.userVerifiedEmail,
-                            requestLog,
-                            {}
-                        ),
-                        ...termPolicies.map(() =>
-                            this.activityLogUtil.buildCreateManyUserData(
-                                userId,
-                                null,
-                                EnumActivityLogAction.userAcceptTermPolicy,
-                                requestLog,
-                                {}
-                            )
-                        ),
-                    ],
-                    isNew: !existingEmails.has(email),
-                };
-            });
-            const adminCreateRows: Prisma.ActivityLogCreateManyInput[] = rows
-                .filter(
-                    row => row.isNew && row.userId !== MigrationUserSuperAdminId
-                )
-                .map(row => {
-                    const adminCreateData =
-                        this.activityLogUtil.buildCreateManyUserData(
-                            MigrationUserSuperAdminId,
-                            null,
-                            EnumActivityLogAction.adminUserCreate,
-                            requestLog,
-                            {
-                                targetUserId: row.userId,
-                                targetUsername: row.user.username,
-                                timestamp: today,
-                            }
+                    const { reference, hashedToken, type } =
+                        this.userVerificationService.verificationCreateVerification(
+                            userId,
+                            EnumVerificationType.email
                         );
 
-                    return {
-                        userId: MigrationUserSuperAdminId,
-                        ...adminCreateData,
-                    };
-                });
-
-            await this.databaseService.withTransaction(
-                async tx => {
-                    for (const row of rows) {
-                        const {
+                    return this.databaseService.client.user.upsert({
+                        where: {
+                            email: user.email.toLowerCase(),
+                        },
+                        create: {
+                            id: userId,
+                            email: user.email.toLowerCase(),
+                            name: user.name,
+                            countryId: countries.find(
+                                country => country.alpha2Code === user.country
+                            )!.id,
+                            roleId: roles.find(role => role.name === user.role)!
+                                .id,
+                            password: passwordHash,
                             passwordCreated,
                             passwordExpired,
-                            passwordHash,
-                        } = row.password;
-                        const { reference, hashedToken, type } =
-                            row.verification;
-
-                        await tx.user.upsert({
-                            where: {
-                                email: row.email,
+                            passwordAttempt: 0,
+                            signUpAt: today,
+                            isVerified: true,
+                            signUpWith: EnumUserSignUpWith.credential,
+                            signUpFrom: EnumUserSignUpFrom.system,
+                            status: EnumUserStatus.active,
+                            termPolicy: {
+                                [EnumTermPolicyType.cookies]: false,
+                                [EnumTermPolicyType.marketing]: false,
+                                [EnumTermPolicyType.privacy]: true,
+                                [EnumTermPolicyType.termsOfService]: true,
                             },
-                            create: {
-                                id: row.userId,
-                                email: row.email,
-                                name: row.user.name,
-                                countryId: row.countryId,
-                                roleId: row.roleId,
-                                password: passwordHash,
-                                passwordCreated,
-                                passwordExpired,
-                                passwordAttempt: 0,
-                                signUpAt: today,
-                                isVerified: true,
-                                signUpWith: EnumUserSignUpWith.credential,
-                                signUpFrom: EnumUserSignUpFrom.system,
-                                status: EnumUserStatus.active,
-                                termPolicy: {
-                                    ...UserTermPolicyContract.defaults,
+                            username: user.username,
+                            deletedAt: null,
+                            passwordHistories: {
+                                create: {
+                                    password: passwordHash,
+                                    type: EnumPasswordHistoryType.admin,
+                                    expiredAt: passwordExpired,
+                                    createdAt: passwordCreated,
+                                    createdBy: userId,
                                 },
-                                username: row.user.username,
-                                deletedAt: null,
-                                createdBy: MigrationUserSuperAdminId,
-                                updatedBy: MigrationUserSuperAdminId,
-                                passwordHistories: {
-                                    create: {
-                                        password: passwordHash,
-                                        type: EnumPasswordHistoryType.admin,
-                                        expiredAt: passwordExpired,
-                                        createdAt: passwordCreated,
-                                        createdBy: MigrationUserSuperAdminId,
-                                    },
+                            },
+                            verifications: {
+                                create: {
+                                    expiredAt: this.helperDateService.create(),
+                                    verifiedAt: this.helperDateService.create(),
+                                    reference,
+                                    token: hashedToken,
+                                    type,
+                                    createdBy: userId,
+                                    to: user.email,
+                                    isUsed: true,
                                 },
-                                verifications: {
-                                    create: {
-                                        expiredAt: today,
-                                        verifiedAt: today,
-                                        reference,
-                                        token: hashedToken,
-                                        type,
-                                        createdBy: MigrationUserSuperAdminId,
-                                        to: row.user.email,
-                                        isUsed: true,
-                                    },
-                                },
-                                activityLogs: {
-                                    createMany: {
-                                        data: row.activityLogs,
-                                    },
-                                },
-                                acceptances: {
-                                    createMany: {
-                                        data: termPolicies.map(termPolicy => ({
-                                            termPolicyId: termPolicy.id,
-                                            createdBy:
-                                                MigrationUserSuperAdminId,
-                                        })),
-                                    },
-                                },
-                                notificationSettings: {
-                                    createMany: {
-                                        data: Object.values(
-                                            EnumNotificationChannel
-                                        )
-                                            .map(channel =>
-                                                Object.values(
-                                                    EnumNotificationType
-                                                ).map(notificationType => ({
-                                                    channel,
-                                                    type: notificationType,
-                                                    isActive: true,
-                                                    createdBy:
-                                                        MigrationUserSuperAdminId,
-                                                    updatedBy:
-                                                        MigrationUserSuperAdminId,
-                                                }))
+                            },
+                            activityLogs: {
+                                createMany: {
+                                    data: [
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userCreated,
+                                            requestLog
+                                        ),
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userVerifiedEmail,
+                                            requestLog
+                                        ),
+                                        ...termPolicies.map(termPolicy =>
+                                            this.activityLogUtil.buildCreateManyUserData(
+                                                userId,
+                                                null,
+                                                EnumActivityLogAction.userAcceptTermPolicy,
+                                                requestLog,
+                                                {
+                                                    termPolicyType:
+                                                        termPolicy.type,
+                                                    termPolicyId: termPolicy.id,
+                                                }
                                             )
-                                            .flat(),
-                                    },
-                                },
-                                twoFactor: {
-                                    create: {
-                                        enabled: false,
-                                        createdBy: MigrationUserSuperAdminId,
-                                        updatedBy: MigrationUserSuperAdminId,
-                                    },
+                                        ),
+                                    ],
                                 },
                             },
-                            update: {
-                                updatedBy: MigrationUserSuperAdminId,
+                            acceptances: {
+                                createMany: {
+                                    data: termPolicies.map(termPolicy => ({
+                                        termPolicyId: termPolicy.id,
+                                        createdBy: userId,
+                                    })),
+                                },
                             },
-                        });
-                    }
-
-                    if (adminCreateRows.length > 0) {
-                        await tx.activityLog.createMany({
-                            data: adminCreateRows,
-                        });
-                    }
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
+                            notificationSettings: {
+                                createMany: {
+                                    data: Object.values(EnumNotificationChannel)
+                                        .map(channel =>
+                                            Object.values(
+                                                EnumNotificationType
+                                            ).map(type => ({
+                                                channel,
+                                                type,
+                                                isActive: true,
+                                            }))
+                                        )
+                                        .flat(),
+                                },
+                            },
+                            twoFactor: {
+                                create: {
+                                    enabled: false,
+                                },
+                            },
+                        },
+                        update: {},
+                    });
+                })
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding users');
@@ -373,21 +290,22 @@ export class MigrationUserSeed
         this.logger.log('Removing back Users...');
 
         try {
-            await this.databaseService.withTransaction(
-                async tx => {
-                    await tx.twoFactor.deleteMany({});
-                    await tx.session.deleteMany({});
-                    await tx.userMobileNumber.deleteMany({});
-                    await tx.verification.deleteMany({});
-                    await tx.passwordHistory.deleteMany({});
-                    await tx.forgotPassword.deleteMany({});
-                    await tx.activityLog.deleteMany({});
-                    await tx.termPolicyUserAcceptance.deleteMany({});
-                    await tx.notificationUserSetting.deleteMany({});
-                    await tx.user.deleteMany({});
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
-            );
+            await this.databaseService.client.$transaction([
+                this.databaseService.client.twoFactor.deleteMany({}),
+                this.databaseService.client.session.deleteMany({}),
+                this.databaseService.client.userMobileNumber.deleteMany({}),
+                this.databaseService.client.verification.deleteMany({}),
+                this.databaseService.client.passwordHistory.deleteMany({}),
+                this.databaseService.client.forgotPassword.deleteMany({}),
+                this.databaseService.client.activityLog.deleteMany({}),
+                this.databaseService.client.termPolicyUserAcceptance.deleteMany(
+                    {}
+                ),
+                this.databaseService.client.notificationUserSetting.deleteMany(
+                    {}
+                ),
+                this.databaseService.client.user.deleteMany({}),
+            ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing users');
             throw error;

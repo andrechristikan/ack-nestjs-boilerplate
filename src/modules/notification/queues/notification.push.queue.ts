@@ -1,14 +1,14 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
-import type {
+import {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
     INotificationSendPushPayload,
-    INotificationTemporaryPasswordPushPayload,
-    INotificationWorkspaceInvitePushPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPushPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
@@ -45,16 +45,12 @@ export class NotificationPushQueue {
 
     async sendTemporaryPasswordByAdmin(
         sendPayload: INotificationSendPushPayload,
-        {
-            passwordCreatedAt,
-            passwordExpiredAt,
-        }: INotificationTemporaryPasswordPushPayload
+        data: INotificationTemporaryPasswordPayload
     ): Promise<void> {
-        const payload: INotificationPushQueuePayload<INotificationTemporaryPasswordPushPayload> =
-            {
-                send: sendPayload,
-                data: { passwordCreatedAt, passwordExpiredAt },
-            };
+        const payload: INotificationPushQueuePayload = {
+            send: sendPayload,
+            data,
+        };
 
         await this.notificationPushQueue.add(
             EnumNotificationPushProcess.temporaryPasswordByAdmin,
@@ -134,26 +130,12 @@ export class NotificationPushQueue {
 
     async sendWorkspaceInvite(
         sendPayload: INotificationSendPushPayload,
-        {
-            workspaceId,
-            workspaceName,
-            inviterName,
-            workspaceMemberRole,
-            reference,
-            expiredAt,
-        }: INotificationWorkspaceInvitePushPayload
+        data: INotificationWorkspaceInvitePayload
     ): Promise<void> {
-        const payload: INotificationPushQueuePayload<INotificationWorkspaceInvitePushPayload> =
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceInvitePayload> =
             {
                 send: sendPayload,
-                data: {
-                    workspaceId,
-                    workspaceName,
-                    inviterName,
-                    workspaceMemberRole,
-                    reference,
-                    expiredAt,
-                },
+                data,
             };
 
         await this.notificationPushQueue.add(
@@ -162,7 +144,7 @@ export class NotificationPushQueue {
             {
                 priority: EnumQueuePriority.high,
                 deduplication: {
-                    id: `${EnumNotificationPushProcess.workspaceInvite}-${reference}`,
+                    id: `${EnumNotificationPushProcess.workspaceInvite}-${data.reference}`,
                     ttl: this.dedupTtlInMs,
                 },
             }
@@ -171,16 +153,12 @@ export class NotificationPushQueue {
 
     async sendWorkspaceJoinRequest(
         sendPayload: INotificationSendPushPayload,
-        {
-            workspaceId,
-            workspaceName,
-            requesterName,
-        }: INotificationWorkspaceJoinRequestPushPayload
+        data: INotificationWorkspaceJoinRequestPayload
     ): Promise<void> {
-        const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPushPayload> =
+        const payload: INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload> =
             {
                 send: sendPayload,
-                data: { workspaceId, workspaceName, requesterName },
+                data,
             };
 
         await this.notificationPushQueue.add(
@@ -189,7 +167,7 @@ export class NotificationPushQueue {
             {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
-                    id: `${EnumNotificationPushProcess.workspaceJoinRequest}-${workspaceId}-${sendPayload.userId}`,
+                    id: `${EnumNotificationPushProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
                     ttl: this.dedupTtlInMs,
                 },
             }

@@ -1,13 +1,9 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
-import { EnumUserLoginFrom } from '@generated/prisma-client/client';
+import { EnumUserLoginFrom } from '@generated/prisma-client';
 import { DeviceRequestSchema } from '@modules/device/dtos/request/device.request.dto';
 
-/**
- * Validates the body for signing in with email and password.
- * @public
- */
 export const UserLoginRequestSchema = z.strictObject({
     email: z
         .string()
@@ -43,8 +39,4 @@ export const UserLoginRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for signing in with email and password.
- * @public
- */
 export type UserLoginRequestDto = z.infer<typeof UserLoginRequestSchema>;

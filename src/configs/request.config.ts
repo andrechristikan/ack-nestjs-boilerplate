@@ -1,6 +1,6 @@
 import { FileSizeInBytes } from '@common/file/constants/file.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
+import { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
@@ -18,11 +18,6 @@ export interface IConfigRequest {
         allowedOrigin: string[];
         allowedHeader: string[];
         exposedHeader: string[];
-    };
-    helmet: {
-        maxAgeInSeconds: number;
-        includeSubDomains: boolean;
-        preload: boolean;
     };
     throttle: {
         default: IRequestThrottlePolicy;
@@ -100,11 +95,6 @@ export default registerAs('request', (): IConfigRequest => ({
             'X-RateLimit-Reset-user',
         ],
     },
-    helmet: {
-        maxAgeInSeconds: ms('365d') / 1000,
-        includeSubDomains: true,
-        preload: false,
-    },
     throttle: {
         default: {
             ttlInMs: ms('1m'),
@@ -134,8 +124,8 @@ export default registerAs('request', (): IConfigRequest => ({
             },
         },
         headerPrefix: 'X-RateLimit',
-        keyPattern: 'Request:Throttle:{name}:{tracker}',
-        blockKeyPattern: 'Request:Throttle:Block:{name}:{tracker}',
-        sequenceKeyPattern: 'Request:Throttle:Seq:{name}:{tracker}',
+        keyPattern: 'Request:Throttler:{name}:{tracker}',
+        blockKeyPattern: 'Request:Throttler:Block:{name}:{tracker}',
+        sequenceKeyPattern: 'Request:Throttler:Seq:{name}:{tracker}',
     },
 }));

@@ -1,10 +1,9 @@
-import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import {
     CACHE_MANAGER,
     CacheModule as CacheManagerModule,
+    CacheOptions,
 } from '@nestjs/cache-manager';
-import type { CacheOptions } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import KeyvRedis from '@keyv/redis';

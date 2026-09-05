@@ -4,11 +4,10 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumNotificationPriority,
     EnumNotificationType,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
 /**
  * Base notification shape: one stored in-app notification of a user.
- * @public
  */
 export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -16,7 +15,7 @@ export const NotificationResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'Identifier of the user the notification belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     type: z.enum(EnumNotificationType).meta({
         description: 'Type of the notification',
@@ -48,10 +47,6 @@ export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored in-app notification of a user.
- * @public
- */
 export type NotificationResponseDto = z.infer<
     typeof NotificationResponseSchema
 >;

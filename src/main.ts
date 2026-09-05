@@ -1,12 +1,12 @@
-import '@instrument';
+import './instrument';
 
 import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from '@app/app.module';
 import { ConfigService } from '@nestjs/config';
-import swaggerInit from '@swagger';
+import swaggerInit from './swagger';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import type { Express } from 'express';
+import { Express } from 'express';
 
 async function bootstrap(): Promise<void> {
     let app: NestApplication = await NestFactory.create(AppModule, {
@@ -54,7 +54,6 @@ async function bootstrap(): Promise<void> {
     app.getHttpAdapter()
         .getInstance<Express>()
         .set('trust proxy', trustedProxy);
-    app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
 
     if (versionEnable) {
         app.enableVersioning({

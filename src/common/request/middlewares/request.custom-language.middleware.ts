@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import type { NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { NextFunction, Response } from 'express';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import { NextFunction, Response } from 'express';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';

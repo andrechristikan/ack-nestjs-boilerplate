@@ -1,81 +1,79 @@
-import { Injectable, Logger } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     AbortMultipartUploadCommand,
-    CompleteMultipartUploadCommand,
-    CopyObjectCommand,
-    CreateMultipartUploadCommand,
-    DeleteBucketPolicyCommand,
-    DeleteObjectCommand,
-    DeleteObjectsCommand,
-    ExpirationStatus,
-    GetObjectCommand,
-    HeadBucketCommand,
-    HeadObjectCommand,
-    ListBucketsCommand,
-    ListObjectsV2Command,
-    NotFound,
-    ObjectOwnership,
-    PutBucketCorsCommand,
-    PutBucketLifecycleConfigurationCommand,
-    PutBucketOwnershipControlsCommand,
-    PutBucketPolicyCommand,
-    PutObjectCommand,
-    PutPublicAccessBlockCommand,
-    S3Client,
-    UploadPartCommand,
-} from '@aws-sdk/client-s3';
-import type {
     AbortMultipartUploadCommandInput,
     AbortMultipartUploadCommandOutput,
+    CompleteMultipartUploadCommand,
     CompleteMultipartUploadCommandInput,
     CompleteMultipartUploadCommandOutput,
+    CopyObjectCommand,
     CopyObjectCommandInput,
     CopyObjectCommandOutput,
+    CreateMultipartUploadCommand,
     CreateMultipartUploadCommandInput,
     CreateMultipartUploadCommandOutput,
+    DeleteBucketPolicyCommand,
     DeleteBucketPolicyCommandInput,
     DeleteBucketPolicyCommandOutput,
+    DeleteObjectCommand,
     DeleteObjectCommandInput,
     DeleteObjectCommandOutput,
+    DeleteObjectsCommand,
     DeleteObjectsCommandInput,
     DeleteObjectsCommandOutput,
+    ExpirationStatus,
+    GetObjectCommand,
     GetObjectCommandInput,
     GetObjectCommandOutput,
     GetObjectOutput,
+    HeadBucketCommand,
     HeadBucketCommandInput,
     HeadBucketCommandOutput,
+    HeadObjectCommand,
     HeadObjectCommandInput,
     HeadObjectCommandOutput,
+    ListBucketsCommand,
+    ListObjectsV2Command,
     ListObjectsV2CommandInput,
     ListObjectsV2CommandOutput,
     ListObjectsV2Output,
+    NotFound,
     ObjectIdentifier,
+    ObjectOwnership,
+    PutBucketCorsCommand,
     PutBucketCorsCommandInput,
     PutBucketCorsCommandOutput,
+    PutBucketLifecycleConfigurationCommand,
     PutBucketLifecycleConfigurationCommandInput,
     PutBucketLifecycleConfigurationCommandOutput,
+    PutBucketOwnershipControlsCommand,
     PutBucketOwnershipControlsCommandInput,
     PutBucketOwnershipControlsCommandOutput,
+    PutBucketPolicyCommand,
     PutBucketPolicyCommandInput,
     PutBucketPolicyCommandOutput,
+    PutObjectCommand,
     PutObjectCommandInput,
     PutObjectCommandOutput,
+    PutPublicAccessBlockCommand,
     PutPublicAccessBlockCommandInput,
     PutPublicAccessBlockCommandOutput,
+    S3Client,
+    UploadPartCommand,
     UploadPartCommandInput,
     UploadPartCommandOutput,
     _Object,
 } from '@aws-sdk/client-s3';
-import type {
+import { IAwsS3Service } from '@common/aws/interfaces/aws.s3-service.interface';
+import {
     IAwsS3,
     IAwsS3ConfigBucket,
-    IAwsS3CopyItemOptions,
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
     IAwsS3FileInfo,
     IAwsS3GetItemsOptions,
+    IAwsS3MoveItemOptions,
     IAwsS3Multipart,
     IAwsS3MultipartPart,
     IAwsS3Options,
@@ -93,13 +91,12 @@ import {
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
-import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
+import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 @Injectable()
-export class AwsS3Service implements OnModuleInit {
+export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     private readonly logger: Logger = new Logger(AwsS3Service.name);
 
     private readonly accessKeyId: string | null;
@@ -126,8 +123,7 @@ export class AwsS3Service implements OnModuleInit {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly fileService: FileService,
-        private readonly helperStringService: HelperStringService
+        private readonly fileService: FileService
     ) {
         this.accessKeyId = this.configService.get<string | null>(
             'aws.s3.iam.key'
@@ -141,19 +137,17 @@ export class AwsS3Service implements OnModuleInit {
         this.timeoutInMs =
             this.configService.get<number>('aws.s3.timeoutInMs')!;
 
-        const publicBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
-            'aws.s3.config.public'
-        )!;
         this.config.set(EnumAwsS3Accessibility.public, {
-            ...publicBucketConfig,
+            ...this.configService.get<IAwsS3ConfigBucket>(
+                'aws.s3.config.public'
+            )!,
             access: EnumAwsS3Accessibility.public,
         } as IAwsS3ConfigBucket);
 
-        const privateBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
-            'aws.s3.config.private'
-        )!;
         this.config.set(EnumAwsS3Accessibility.private, {
-            ...privateBucketConfig,
+            ...this.configService.get<IAwsS3ConfigBucket>(
+                'aws.s3.config.private'
+            )!,
             access: EnumAwsS3Accessibility.private,
         } as IAwsS3ConfigBucket);
 
@@ -183,34 +177,6 @@ export class AwsS3Service implements OnModuleInit {
         )!;
     }
 
-    private getFileInfoFromKey(key: string): IAwsS3FileInfo {
-        const pathWithFilename: string = `/${key}`;
-        const filename: string = key.substring(
-            key.lastIndexOf('/') + 1,
-            key.length
-        );
-
-        const extension: string =
-            this.fileService.extractExtensionFromFilename(filename);
-        const mimeFromFilename =
-            this.fileService.extractMimeFromFilename(filename);
-        const mime = mimeFromFilename ?? 'application/octet-stream';
-
-        return { pathWithFilename, filename, extension, mime };
-    }
-
-    private getConfig(access: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
-        const config = this.config.get(access);
-
-        if (!config) {
-            throw new Error(
-                `AWS S3 configuration for access level ${access} is missing.`
-            );
-        }
-
-        return config;
-    }
-
     onModuleInit(): void {
         if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
@@ -237,34 +203,57 @@ export class AwsS3Service implements OnModuleInit {
         return !!this.s3Client;
     }
 
+    private getFileInfoFromKey(key: string): IAwsS3FileInfo {
+        const pathWithFilename: string = `/${key}`;
+        const filename: string = key.substring(
+            key.lastIndexOf('/') + 1,
+            key.length
+        );
+
+        const extension: string =
+            this.fileService.extractExtensionFromFilename(filename);
+        const mime =
+            this.fileService.extractMimeFromFilename(filename) ??
+            'application/octet-stream';
+
+        return { pathWithFilename, filename, extension, mime };
+    }
+
+    private getConfig(access?: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
+        const config = this.config.get(access ?? EnumAwsS3Accessibility.public);
+
+        if (!config) {
+            throw new Error(
+                `AWS S3 configuration for access level ${access} is missing.`
+            );
+        }
+
+        return config;
+    }
+
     private buildUrls(
         config: IAwsS3ConfigBucket,
         key: string
     ): { completedUrl: string; cdnUrl: string | null } {
         const { baseUrl, cdnUrl } = config;
-        const completedUrl = this.helperStringService.fillPattern(
-            this.objectUrlPattern,
-            { baseUrl, key }
-        );
+        const completedUrl = this.objectUrlPattern
+            .replace('{baseUrl}', baseUrl)
+            .replace('{key}', key);
 
         if (!cdnUrl) {
             return { completedUrl, cdnUrl: null };
         }
 
-        const cdnObjectUrl = this.helperStringService.fillPattern(
-            this.cdnUrlPattern,
-            { cdnUrl, key }
-        );
-
         return {
             completedUrl,
-            cdnUrl: cdnObjectUrl,
+            cdnUrl: this.cdnUrlPattern
+                .replace('{cdnUrl}', cdnUrl)
+                .replace('{key}', key),
         };
     }
 
     async checkConnection(): Promise<boolean> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -280,9 +269,8 @@ export class AwsS3Service implements OnModuleInit {
         }
     }
 
-    async checkBucket(options: IAwsS3Options): Promise<boolean> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async checkBucket(options?: IAwsS3Options): Promise<boolean> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -290,7 +278,7 @@ export class AwsS3Service implements OnModuleInit {
             return false;
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access)!;
 
         const command: HeadBucketCommand = new HeadBucketCommand({
             Bucket: config.bucket,
@@ -305,10 +293,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async checkItem(
         key: string,
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<IAwsS3 | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -320,7 +307,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
 
         const headCommand = new HeadObjectCommand({
@@ -348,10 +335,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async getItems(
         path: string,
-        options: IAwsS3GetItemsOptions
+        options?: IAwsS3GetItemsOptions
     ): Promise<IAwsS3[]> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -363,12 +349,12 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Path should not start with "/"');
         }
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
 
         const allItems: IAwsS3[] = [];
         let continuationToken: string | null =
-            options.continuationToken ?? null;
+            options?.continuationToken ?? null;
 
         do {
             const command: ListObjectsV2Command = new ListObjectsV2Command({
@@ -418,9 +404,11 @@ export class AwsS3Service implements OnModuleInit {
         return allItems;
     }
 
-    async getItem(key: string, options: IAwsS3Options): Promise<IAwsS3 | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async getItem(
+        key: string,
+        options?: IAwsS3Options
+    ): Promise<IAwsS3 | null> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -432,7 +420,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
         const command: GetObjectCommand = new GetObjectCommand({
             Bucket: config.bucket,
@@ -460,10 +448,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async putItem(
         file: IAwsS3PutItem,
-        options: IAwsS3PutItemOptions
+        options?: IAwsS3PutItemOptions
     ): Promise<IAwsS3 | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -483,10 +470,10 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Invalid key: path traversal detected');
         }
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
 
-        if (!options.forceUpdate) {
+        if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
                 Bucket: config.bucket,
                 Key: file.key,
@@ -534,9 +521,8 @@ export class AwsS3Service implements OnModuleInit {
         };
     }
 
-    async deleteItem(key: string, options: IAwsS3Options): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async deleteItem(key: string, options?: IAwsS3Options): Promise<void> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -548,7 +534,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
         const command: DeleteObjectCommand = new DeleteObjectCommand({
             Bucket: config.bucket,
             Key: key,
@@ -560,9 +546,8 @@ export class AwsS3Service implements OnModuleInit {
         >(command);
     }
 
-    async deleteItems(keys: string[], options: IAwsS3Options): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async deleteItems(keys: string[], options?: IAwsS3Options): Promise<void> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -574,7 +559,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Keys should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
         const obj: ObjectIdentifier[] = keys.map((val: string) => ({
             Key: val,
         }));
@@ -591,10 +576,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async deleteDir(
         path: string,
-        options: IAwsS3DeleteDirOptions
+        options?: IAwsS3DeleteDirOptions
     ): Promise<void | _Object[]> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -606,7 +590,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Path should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
         let continuationToken: string | null = null;
 
         const maxIterations = 100;
@@ -657,10 +641,9 @@ export class AwsS3Service implements OnModuleInit {
     async createMultiPart(
         file: IAwsS3CreateMultiplePart,
         maxPartNumber: number,
-        options: IAwsS3PutItemOptions
+        options?: IAwsS3PutItemOptions
     ): Promise<IAwsS3Multipart | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -676,10 +659,10 @@ export class AwsS3Service implements OnModuleInit {
             );
         }
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility);
 
-        if (!options.forceUpdate) {
+        if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
                 Bucket: config.bucket,
                 Key: file.key,
@@ -737,10 +720,9 @@ export class AwsS3Service implements OnModuleInit {
         multipart: IAwsS3Multipart,
         partNumber: number,
         file: Buffer,
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<IAwsS3Multipart> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -748,7 +730,7 @@ export class AwsS3Service implements OnModuleInit {
             return multipart;
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: config.bucket,
@@ -779,10 +761,9 @@ export class AwsS3Service implements OnModuleInit {
         key: string,
         uploadId: string,
         parts: IAwsS3MultipartPart[],
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -790,7 +771,7 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const completeMultipartCommand: CompleteMultipartUploadCommand =
             new CompleteMultipartUploadCommand({
@@ -818,10 +799,9 @@ export class AwsS3Service implements OnModuleInit {
     async abortMultipart(
         key: string,
         uploadId: string,
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -829,7 +809,7 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const abortMultipartCommand: AbortMultipartUploadCommand =
             new AbortMultipartUploadCommand({
@@ -848,10 +828,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async presignGetItem(
         key: string,
-        options: IAwsS3PresignGetItemOptions
+        options?: IAwsS3PresignGetItemOptions
     ): Promise<IAwsS3Presign | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -863,7 +842,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const headCommand = new HeadObjectCommand({
             Bucket: config.bucket,
@@ -887,7 +866,7 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -904,10 +883,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async presignPutItem(
         { key, size }: AwsS3PresignRequestDto,
-        options: IAwsS3PresignPutItemOptions
+        options?: IAwsS3PresignPutItemOptions
     ): Promise<IAwsS3Presign | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -919,9 +897,9 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
-        if (!options.forceUpdate) {
+        if (!options?.forceUpdate) {
             const headCommand = new HeadObjectCommand({
                 Bucket: config.bucket,
                 Key: key,
@@ -952,7 +930,7 @@ export class AwsS3Service implements OnModuleInit {
             ContentDisposition: 'inline',
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -969,10 +947,9 @@ export class AwsS3Service implements OnModuleInit {
 
     async presignPutItemPart(
         { key, size, uploadId, partNumber }: AwsS3PresignPartRequestDto,
-        options: IAwsS3PresignPutItemPartOptions
+        options?: IAwsS3PresignPutItemPartOptions
     ): Promise<IAwsS3PresignPart | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -984,7 +961,7 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Key should not start with "/"');
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: config.bucket,
@@ -995,7 +972,7 @@ export class AwsS3Service implements OnModuleInit {
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -1017,14 +994,14 @@ export class AwsS3Service implements OnModuleInit {
 
     mapPresign(
         { key, size }: AwsS3PresignRequestDto,
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): IAwsS3 {
         if (key.startsWith('/')) {
             throw new Error('Key should not start with "/"');
         }
 
-        const accessibility = options.access;
-        const config = this.getConfig(accessibility);
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.getConfig(accessibility)!;
         const { extension, mime } = this.getFileInfoFromKey(key);
         const { completedUrl, cdnUrl } = this.buildUrls(config, key);
 
@@ -1040,13 +1017,12 @@ export class AwsS3Service implements OnModuleInit {
         };
     }
 
-    async copyItem(
+    async moveItem(
         source: IAwsS3,
         destination: string,
-        options: IAwsS3CopyItemOptions
+        options?: IAwsS3MoveItemOptions
     ): Promise<IAwsS3 | null> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1062,8 +1038,8 @@ export class AwsS3Service implements OnModuleInit {
             throw new Error('Destination should not start with "/"');
         }
 
-        const configTo = this.getConfig(options.accessTo);
-        const configFrom = this.getConfig(options.accessFrom);
+        const configTo = this.getConfig(options?.accessTo)!;
+        const configFrom = this.getConfig(options?.accessFrom)!;
 
         const destinationKey = `${destination}/${source.key.split('/').pop()}`;
         const copyCommand = new CopyObjectCommand({
@@ -1097,13 +1073,12 @@ export class AwsS3Service implements OnModuleInit {
         };
     }
 
-    async copyItems(
+    async moveItems(
         sources: IAwsS3[],
         destination: string,
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<IAwsS3[]> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1121,26 +1096,26 @@ export class AwsS3Service implements OnModuleInit {
 
         const promises = [];
 
-        const accessibility = options.access;
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         for (const source of sources) {
-            const copiedItem = this.copyItem(source, destination, {
-                accessTo: accessibility,
-                accessFrom: source.access,
-            });
-            promises.push(copiedItem);
+            promises.push(
+                this.moveItem(source, destination, {
+                    accessTo: accessibility,
+                    accessFrom: source.access,
+                })
+            );
         }
 
-        const copiedItems = await Promise.allSettled(promises);
-        return copiedItems
+        const movedItems = await Promise.allSettled(promises);
+        return movedItems
             .filter(item => item.status === 'fulfilled' && item.value !== null)
             .map(item => (item as PromiseFulfilledResult<IAwsS3>).value!);
     }
 
     async settingBucketExpiredObjectLifecycle(
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1148,7 +1123,7 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const config = this.getConfig(options.access);
+        const config = this.getConfig(options?.access);
 
         const command: PutBucketLifecycleConfigurationCommand =
             new PutBucketLifecycleConfigurationCommand({
@@ -1179,9 +1154,8 @@ export class AwsS3Service implements OnModuleInit {
         >(command);
     }
 
-    async settingBucketPolicy(options: IAwsS3Options): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async settingBucketPolicy(options?: IAwsS3Options): Promise<void> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1189,8 +1163,8 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const accessibility = options.access;
-        const config = this.getConfig(accessibility);
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.getConfig(accessibility)!;
 
         if (accessibility === EnumAwsS3Accessibility.public) {
             const resourceObject: string = `${config.arn}/*`;
@@ -1241,9 +1215,8 @@ export class AwsS3Service implements OnModuleInit {
         }
     }
 
-    async settingCorsConfiguration(options: IAwsS3Options): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+    async settingCorsConfiguration(options?: IAwsS3Options): Promise<void> {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1251,8 +1224,8 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const accessibility = options.access;
-        const config = this.getConfig(accessibility);
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.getConfig(accessibility)!;
 
         let command: PutBucketCorsCommand;
         if (accessibility === EnumAwsS3Accessibility.public) {
@@ -1327,10 +1300,9 @@ export class AwsS3Service implements OnModuleInit {
     }
 
     async settingDisableAclConfiguration(
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1338,8 +1310,8 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const accessibility = options.access;
-        const config = this.getConfig(accessibility);
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.getConfig(accessibility)!;
 
         const command: PutBucketOwnershipControlsCommand =
             new PutBucketOwnershipControlsCommand({
@@ -1361,10 +1333,9 @@ export class AwsS3Service implements OnModuleInit {
     }
 
     async settingBlockPublicAccessConfiguration(
-        options: IAwsS3Options
+        options?: IAwsS3Options
     ): Promise<void> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS S3 credentials not configured. S3 functionalities will be disabled.'
             );
@@ -1372,8 +1343,8 @@ export class AwsS3Service implements OnModuleInit {
             return;
         }
 
-        const accessibility = options.access;
-        const config = this.getConfig(accessibility);
+        const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
+        const config = this.getConfig(accessibility)!;
 
         let command: PutPublicAccessBlockCommand;
         if (accessibility === EnumAwsS3Accessibility.public) {

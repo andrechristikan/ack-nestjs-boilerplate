@@ -2,12 +2,11 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base password-history shape: one recorded password of a user, without the stored hash.
- * @public
  */
 export const PasswordHistoryResponseSchema = DatabaseResponseSchema.omit({
     updatedAt: true,
@@ -17,18 +16,18 @@ export const PasswordHistoryResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'Identifier of the user whose password history this is',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description: 'Embedded user whose password history this is',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -53,10 +52,6 @@ export const PasswordHistoryResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Recorded password of a user without the stored hash.
- * @public
- */
 export type PasswordHistoryResponseDto = z.infer<
     typeof PasswordHistoryResponseSchema
 >;

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DiskHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    DiskHealthIndicator,
+    HealthIndicatorResult,
+    MemoryHealthIndicator,
+} from '@nestjs/terminus';
 
 @Injectable()
 export class HealthInstanceIndicator {

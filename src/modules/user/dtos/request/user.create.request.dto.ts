@@ -3,10 +3,6 @@ import { faker } from '@faker-js/faker';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
-/**
- * Validates the body for creating a user as an admin.
- * @public
- */
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
     email: z
         .string()
@@ -32,7 +28,7 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         .regex(/^[0-9a-fA-F]{24}$/)
         .meta({
             description: 'Identifier of the role to assign',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     name: z.string().min(1).max(100).optional().meta({
         description: 'Display name of the user to create',
@@ -43,12 +39,8 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         .regex(/^[0-9a-fA-F]{24}$/)
         .meta({
             description: 'Identifier of the user country',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
 });
 
-/**
- * Body for creating a user as an admin.
- * @public
- */
 export type UserCreateRequestDto = z.infer<typeof UserCreateRequestSchema>;

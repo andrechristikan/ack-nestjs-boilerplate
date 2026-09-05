@@ -1,5 +1,5 @@
-import type { ProjectMember } from '@generated/prisma-client/client';
-import type { IUserRef } from '@modules/user/interfaces/user.interface';
+import { ProjectMember } from '@generated/prisma-client';
+import { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IProjectMember extends ProjectMember {
     user: IUserRef;

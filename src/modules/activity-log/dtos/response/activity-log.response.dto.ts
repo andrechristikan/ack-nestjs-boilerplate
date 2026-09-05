@@ -4,13 +4,11 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
 import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogMetadataResponseSchema } from '@modules/activity-log/dtos/response/activity-log.metadata.response.dto';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
- * Base activity-log shape: one recorded action with the user who owns the entry embedded.
- * @public
+ * Base activity-log shape: one recorded action with the actor embedded.
  */
 export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     updatedAt: true,
@@ -18,26 +16,20 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
 }).extend({
-    createdBy: z.string().nullable().meta({
-        description: 'Identifier of the user who performed the action',
-        example: faker.database.mongodbObjectId(),
-    }),
     userId: z.string().meta({
-        description:
-            'Identifier of the user this entry belongs to: the actor for payload actions, the affected user for target actions',
-        example: faker.database.mongodbObjectId(),
+        description: 'Identifier of the user who performed the action',
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
-        description:
-            'Embedded user this entry belongs to: the actor for payload actions, the affected user for target actions',
+        description: 'Embedded user who performed the action',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -102,19 +94,10 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
             city: faker.location.city(),
         },
     }),
-    metadata: ActivityLogMetadataResponseSchema.nullable().meta({
-        description:
-            'Metadata recorded with the entry; the keys present depend on the action',
-        example: {
-            targetUserId: faker.database.mongodbObjectId(),
-            targetUsername: faker.internet.username().toLowerCase(),
-            timestamp: faker.date.recent().toISOString(),
-        },
+    metadata: z.unknown().meta({
+        description: 'Additional metadata related to the activity log',
+        example: { exampleKey: 'exampleValue' },
     }),
 });
 
-/**
- * One recorded activity-log action with the user who owns the entry.
- * @public
- */
 export type ActivityLogResponseDto = z.infer<typeof ActivityLogResponseSchema>;

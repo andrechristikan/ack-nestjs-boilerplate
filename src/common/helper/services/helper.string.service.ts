@@ -1,86 +1,29 @@
-import type {
+import {
     IHelperEmailValidation,
     IHelperPasswordOptions,
 } from '@common/helper/interfaces/helper.interface';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
-import {
-    HelperStringAlphanumericCharacters,
-    HelperStringPatternTokenRegex,
-    HelperStringUppercaseAlphanumericCharacters,
-} from '@common/helper/constants/helper.constant';
-import { HelperPatternTokenMissingException } from '@common/helper/exceptions/helper.pattern-token-missing.exception';
+import { IHelperStringService } from '@common/helper/interfaces/helper.string.service.interface';
 import { Injectable } from '@nestjs/common';
-import { randomInt } from 'node:crypto';
 
 @Injectable()
-export class HelperStringService {
-    private randomFrom(characters: string, length: number): string {
+export class HelperStringService implements IHelperStringService {
+    random(length: number): string {
         let result = '';
+        const characters =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
         for (let i = 0; i < length; i++) {
-            result += characters[randomInt(characters.length)];
+            result += characters[Math.floor(Math.random() * characters.length)];
         }
 
         return result;
     }
 
-    private matchesGlob(path: string, pattern: string): boolean {
-        const segments = pattern.split('*');
-        const head = segments[0];
-        const tail = segments[segments.length - 1];
-        if (
-            path.length < head.length + tail.length ||
-            !path.startsWith(head) ||
-            !path.endsWith(tail)
-        ) {
-            return false;
-        }
-
-        const end = path.length - tail.length;
-        let position = head.length;
-        for (const segment of segments.slice(1, -1)) {
-            const index = path.indexOf(segment, position);
-            if (index === -1 || index + segment.length > end) {
-                return false;
-            }
-
-            position = index + segment.length;
-        }
-
-        return true;
-    }
-
-    random(length: number): string {
-        return this.randomFrom(HelperStringAlphanumericCharacters, length);
-    }
-
-    randomUppercase(length: number): string {
-        return this.randomFrom(
-            HelperStringUppercaseAlphanumericCharacters,
-            length
-        );
-    }
-
-    /** Fills every `{token}` of a pattern in ONE pass, so a substituted value is never read again as a token. */
-    fillPattern(pattern: string, values: Record<string, string>): string {
-        return pattern.replace(
-            HelperStringPatternTokenRegex,
-            (_match, token: string) => {
-                if (!Object.hasOwn(values, token)) {
-                    throw new HelperPatternTokenMissingException(token);
-                }
-
-                return values[token];
-            }
-        );
-    }
-
     generateSlug(prefix: string, maxLength: number): string {
         const randomLength = maxLength - prefix.length;
-        const randomSuffix = this.random(randomLength);
-
-        return `${prefix}${randomSuffix}`;
+        return `${prefix}${this.random(randomLength)}`;
     }
 
     censor(text: string): string {
@@ -140,28 +83,37 @@ export class HelperStringService {
                 return false;
             }
 
-            if (normalizedPattern === '*') {
-                return true;
-            }
-
-            if (normalizedPattern.endsWith('*')) {
-                const basePattern = normalizedPattern.slice(0, -1);
-
-                if (!basePattern) {
+            try {
+                if (normalizedPattern === '*') {
                     return true;
                 }
 
-                if (basePattern.endsWith('/')) {
-                    return normalizedPath.startsWith(basePattern);
+                if (normalizedPattern.endsWith('*')) {
+                    const basePattern = normalizedPattern.slice(0, -1);
+
+                    if (!basePattern) {
+                        return true;
+                    }
+
+                    if (basePattern.endsWith('/')) {
+                        return normalizedPath.startsWith(basePattern);
+                    }
+
+                    return (
+                        normalizedPath === basePattern ||
+                        normalizedPath.startsWith(basePattern + '/')
+                    );
                 }
 
-                return (
-                    normalizedPath === basePattern ||
-                    normalizedPath.startsWith(`${basePattern}/`)
-                );
-            }
+                const regexPattern = normalizedPattern
+                    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+                    .replace(/\*/g, '.*');
 
-            return this.matchesGlob(normalizedPath, normalizedPattern);
+                const regex = new RegExp(`^${regexPattern}$`);
+                return regex.test(normalizedPath);
+            } catch {
+                return false;
+            }
         });
     }
 }

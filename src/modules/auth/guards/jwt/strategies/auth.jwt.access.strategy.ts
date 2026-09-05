@@ -3,10 +3,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
-import type { Algorithm } from 'jsonwebtoken';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { Algorithm } from 'jsonwebtoken';
+import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
 
 /** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
@@ -15,7 +15,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
     AuthJwtAccessGuardKey
 ) {
     constructor(
-        private readonly authDomain: AuthDomain,
+        private readonly authService: AuthService,
         configService: ConfigService
     ) {
         // jti is not validated here.
@@ -44,10 +44,10 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
+    /** Runs after signature verification; delegates session/payload checks to AuthService. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
-        return this.authDomain.validateJwtAccessStrategy(data);
+        return this.authService.validateJwtAccessStrategy(data);
     }
 }

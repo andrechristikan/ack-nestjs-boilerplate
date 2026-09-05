@@ -4,12 +4,13 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Base project shape: the stored project row.
- * @public
  */
-export const ProjectResponseSchema = DatabaseResponseSchema.extend({
+export const ProjectResponseSchema = DatabaseResponseSchema.omit({
+    deletedBy: true,
+}).extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the project belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     name: z.string().meta({
         description: 'Project name',
@@ -25,8 +26,4 @@ export const ProjectResponseSchema = DatabaseResponseSchema.extend({
     }),
 });
 
-/**
- * Stored project.
- * @public
- */
 export type ProjectResponseDto = z.infer<typeof ProjectResponseSchema>;

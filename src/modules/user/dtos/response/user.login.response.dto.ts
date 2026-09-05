@@ -5,7 +5,6 @@ import { UserTwoFactorResponseSchema } from '@modules/user/dtos/response/user.tw
 
 /**
  * Login outcome: either the issued token pair, or the two-factor challenge that gates it.
- * @public
  */
 export const UserLoginResponseSchema = z.object({
     isTwoFactorEnable: z.boolean().meta({
@@ -16,7 +15,7 @@ export const UserLoginResponseSchema = z.object({
     lastWorkspaceId: z.string().nullable().meta({
         description:
             'Id of the workspace the user last switched to; null when never set',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     lastWorkspaceChangedAt: z.date().nullable().meta({
         description: 'When lastWorkspaceId last changed; null when never set',
@@ -31,8 +30,4 @@ export const UserLoginResponseSchema = z.object({
     }),
 });
 
-/**
- * Login outcome: tokens or a two-factor challenge.
- * @public
- */
 export type UserLoginResponseDto = z.infer<typeof UserLoginResponseSchema>;

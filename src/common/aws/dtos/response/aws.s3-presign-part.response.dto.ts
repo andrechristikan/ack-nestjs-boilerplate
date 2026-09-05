@@ -3,7 +3,6 @@ import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-pre
 
 /**
  * Response shape for a presigned URL targeting a specific multipart upload part.
- * @public
  */
 export const AwsS3PresignPartResponseSchema = AwsS3PresignResponseSchema.extend(
     {
@@ -18,10 +17,6 @@ export const AwsS3PresignPartResponseSchema = AwsS3PresignResponseSchema.extend(
     }
 );
 
-/**
- * Presigned URL for one part of a multipart upload.
- * @public
- */
 export type AwsS3PresignPartResponseDto = z.infer<
     typeof AwsS3PresignPartResponseSchema
 >;

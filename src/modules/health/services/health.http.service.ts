@@ -1,18 +1,19 @@
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import type { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
-import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
-import { HealthDomain } from '@modules/health/domains/health.domain';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
+import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import { IHealthHttpService } from '@modules/health/interfaces/health.http.service.interface';
+import { HealthService } from '@modules/health/services/health.service';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import type { HealthCheckResult } from '@nestjs/terminus';
+import { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
-export class HealthHttpService {
+export class HealthHttpService implements IHealthHttpService {
     constructor(
-        private readonly healthDomain: HealthDomain,
+        private readonly healthService: HealthService,
         private readonly healthUtil: HealthUtil
     ) {}
 
@@ -31,9 +32,7 @@ export class HealthHttpService {
             if (error instanceof ServiceUnavailableException) {
                 const response = error.getResponse();
 
-                const isHealthCheckResult =
-                    this.healthUtil.isHealthCheckResult(response);
-                if (isHealthCheckResult) {
+                if (this.healthUtil.isHealthCheckResult(response)) {
                     return this.mapResponse(response);
                 }
             }
@@ -43,10 +42,8 @@ export class HealthHttpService {
     }
 
     private mapResponse(result: HealthCheckResult): HealthResponseDto {
-        const status = this.healthUtil.mapStatus(result.status);
-
         return {
-            status,
+            status: this.healthUtil.mapStatus(result.status),
             info: result.info,
             error: result.error,
             details: result.details,
@@ -54,15 +51,15 @@ export class HealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const check = this.healthDomain.checkAws();
-        const data = await this.resolveResponse(check);
+        const data = await this.resolveResponse(this.healthService.checkAws());
 
         return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        const check = this.healthDomain.checkDatabase();
-        const data = await this.resolveResponse(check);
+        const data = await this.resolveResponse(
+            this.healthService.checkDatabase()
+        );
 
         return { data };
     }
@@ -70,15 +67,17 @@ export class HealthHttpService {
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        const check = this.healthDomain.checkThirdParty();
-        const data = await this.resolveResponse(check);
+        const data = await this.resolveResponse(
+            this.healthService.checkThirdParty()
+        );
 
         return { data };
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        const check = this.healthDomain.checkInstance();
-        const data = await this.resolveResponse(check);
+        const data = await this.resolveResponse(
+            this.healthService.checkInstance()
+        );
 
         return { data };
     }

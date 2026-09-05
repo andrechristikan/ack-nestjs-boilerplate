@@ -1,10 +1,9 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { MigrationRoleData } from '@migration/data/migration.role.data';
-import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
-import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import { migrationRoleData } from '@migration/data/migration.role.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { Prisma } from '@generated/prisma-client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -26,7 +25,6 @@ export class MigrationRoleSeed
 
     private readonly env: EnumAppEnvironment;
     private readonly roles: Prisma.RoleCreateInput[] = [];
-    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -35,10 +33,7 @@ export class MigrationRoleSeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.roles = MigrationRoleData[this.env];
-        this.seedTransactionTimeoutInMs = this.configService.get<number>(
-            'database.seedTransactionTimeoutInMs'
-        )!;
+        this.roles = migrationRoleData[this.env];
     }
 
     async seed(): Promise<void> {
@@ -46,27 +41,20 @@ export class MigrationRoleSeed
         this.logger.log(`Found ${this.roles.length} Roles to seed.`);
 
         try {
-            await this.databaseService.withTransaction(
-                async tx => {
-                    for (const role of this.roles) {
-                        await tx.role.upsert({
-                            where: {
-                                name: role.name.toLowerCase(),
-                            },
-                            create: {
-                                name: role.name.toLowerCase(),
-                                description: role.description,
-                                type: role.type,
-                                createdBy: MigrationUserSuperAdminId,
-                                updatedBy: MigrationUserSuperAdminId,
-                            },
-                            update: {
-                                updatedBy: MigrationUserSuperAdminId,
-                            },
-                        });
-                    }
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
+            await this.databaseService.client.$transaction(
+                this.roles.map(role =>
+                    this.databaseService.client.role.upsert({
+                        where: {
+                            name: role.name.toLowerCase(),
+                        },
+                        create: {
+                            name: role.name.toLowerCase(),
+                            description: role.description,
+                            type: role.type,
+                        },
+                        update: {},
+                    })
+                )
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding roles');

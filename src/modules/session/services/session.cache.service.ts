@@ -1,0 +1,111 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { SessionCacheProvider } from '@modules/session/constants/session.constant';
+import { ISessionCache } from '@modules/session/interfaces/session.interface';
+import { ISessionCacheService } from '@modules/session/interfaces/session.cache.service.interface';
+import { Cache } from '@nestjs/cache-manager';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+/** Manages TTL-based session cache entries. */
+@Injectable()
+export class SessionCacheService implements ISessionCacheService {
+    private readonly keyPattern: string;
+
+    constructor(
+        @Inject(SessionCacheProvider) private cacheManager: Cache,
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
+    ) {
+        this.keyPattern = this.configService.get<string>('session.keyPattern')!;
+    }
+
+    async getLogin(
+        userId: string,
+        sessionId: string
+    ): Promise<ISessionCache | null> {
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
+        const cached = await this.cacheManager.get<ISessionCache>(key);
+
+        return cached ?? null;
+    }
+
+    /** Stores a new login session with TTL derived from its expiry. */
+    async setLogin(
+        userId: string,
+        sessionId: string,
+        jti: string,
+        expiredAt: Date
+    ): Promise<void> {
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
+        const ttl = Math.floor(
+            expiredAt.getTime() - this.helperDateService.create().getTime()
+        );
+
+        await this.cacheManager.set<ISessionCache>(
+            key,
+            {
+                userId,
+                sessionId,
+                expiredAt,
+                jti,
+            },
+            ttl
+        );
+
+        return;
+    }
+
+    /** Rotates the cached session's jti and resets its TTL; used on token refresh. */
+    async updateLogin(
+        userId: string,
+        sessionId: string,
+        session: ISessionCache,
+        jti: string,
+        expiredInMs: number
+    ): Promise<void> {
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
+
+        await this.cacheManager.set<ISessionCache>(
+            key,
+            {
+                ...session,
+                jti,
+            },
+            expiredInMs
+        );
+
+        return;
+    }
+
+    async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
+        const key = this.keyPattern
+            .replace('{userId}', userId)
+            .replace('{sessionId}', sessionId);
+        await this.cacheManager.del(key);
+
+        return;
+    }
+
+    /** Bulk-deletes all given session cache entries for a user. */
+    async deleteAllLogins(
+        userId: string,
+        sessions: { id: string }[]
+    ): Promise<void> {
+        if (sessions.length > 0) {
+            const keys = sessions.map(session =>
+                this.keyPattern
+                    .replace('{userId}', userId)
+                    .replace('{sessionId}', session.id)
+            );
+            await this.cacheManager.mdel(keys);
+        }
+
+        return;
+    }
+}

@@ -1,10 +1,10 @@
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
 export interface IAuthToken {
     tokenType: string;
@@ -18,6 +18,7 @@ export interface IAuthPassword {
     passwordHash: string;
     passwordExpired: Date;
     passwordCreated: Date;
+    passwordEncrypted: string;
     passwordPeriodExpired: Date;
 }
 
@@ -105,4 +106,5 @@ export interface IAuthTwoFactorSetup {
     secret: string;
     otpauthUrl: string;
     encryptedSecret: string;
+    iv: string;
 }

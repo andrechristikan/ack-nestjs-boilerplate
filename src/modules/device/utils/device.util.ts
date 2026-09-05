@@ -1,9 +1,9 @@
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-} from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+} from '@generated/prisma-client';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -23,51 +23,17 @@ export class DeviceUtil {
         }
     }
 
-    /** Projects an ownership and the number of sessions its removal revoked into device activity metadata. */
+    /** Projects an ownership into the activity-log metadata shape the interceptor expects. */
     mapActivityLogMetadata(
-        deviceOwnership: IDeviceOwnership,
-        sessionCount: number
+        deviceOwnership: IDeviceOwnership
     ): IActivityLogMetadata {
         return {
             deviceOwnershipId: deviceOwnership.id,
             deviceId: deviceOwnership.device.id,
-            sessionCount,
-        };
-    }
-
-    /** Projects an ownership into the metadata of the admin row that removed it. */
-    mapActivityLogActorMetadata(
-        deviceOwnership: IDeviceOwnership,
-        sessionCount: number
-    ): IActivityLogMetadata {
-        const metadata = this.mapActivityLogMetadata(
-            deviceOwnership,
-            sessionCount
-        );
-
-        return {
-            ...metadata,
-            targetUserId: deviceOwnership.userId,
-            targetUsername: deviceOwnership.user.username,
+            userId: deviceOwnership.userId,
+            userUsername: deviceOwnership.user.username,
             timestamp: deviceOwnership.updatedAt,
-        };
-    }
-
-    /** Projects an ownership into the metadata of the owner's row for an admin removal. */
-    mapActivityLogTargetMetadata(
-        deviceOwnership: IDeviceOwnership,
-        actorUserId: string,
-        sessionCount: number
-    ): IActivityLogMetadata {
-        const metadata = this.mapActivityLogMetadata(
-            deviceOwnership,
-            sessionCount
-        );
-
-        return {
-            ...metadata,
-            actorUserId,
-            timestamp: deviceOwnership.updatedAt,
+            sessionCount: deviceOwnership._count.sessions,
         };
     }
 }

@@ -1,10 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Validates the body for claiming a workspace invite.
- * @public
- */
 export const WorkspaceInviteClaimRequestSchema = z.strictObject({
     inviteToken: z
         .string()
@@ -16,10 +12,6 @@ export const WorkspaceInviteClaimRequestSchema = z.strictObject({
         }),
 });
 
-/**
- * Body for claiming a workspace invite.
- * @public
- */
 export type WorkspaceInviteClaimRequestDto = z.infer<
     typeof WorkspaceInviteClaimRequestSchema
 >;

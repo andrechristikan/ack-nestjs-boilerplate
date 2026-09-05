@@ -1,40 +1,34 @@
+import { UserImportRepository } from '@modules/user/repositories/user.import.repository';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
+import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
 import { UserPasswordRepository } from '@modules/user/repositories/user.password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserSessionRepository } from '@modules/user/repositories/user.session.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { Module } from '@nestjs/common';
-import { UserAnalyticRepository } from '@modules/user/repositories/user.analytic.repository';
-import { UserForgotPasswordAnalyticRepository } from '@modules/user/repositories/user.forgot-password.analytic.repository';
-import { UserTwoFactorAnalyticRepository } from '@modules/user/repositories/user.two-factor.analytic.repository';
-import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
-import { UserMobileNumberAnalyticRepository } from '@modules/user/repositories/user.mobile-number.analytic.repository';
 
 @Module({
     controllers: [],
     providers: [
         UserRepository,
+        UserOnboardingRepository,
+        UserImportRepository,
         UserPasswordRepository,
         UserVerificationRepository,
         UserTwoFactorRepository,
+        UserSessionRepository,
         UserMobileNumberRepository,
-        UserAnalyticRepository,
-        UserForgotPasswordAnalyticRepository,
-        UserTwoFactorAnalyticRepository,
-        UserVerificationAnalyticRepository,
-        UserMobileNumberAnalyticRepository,
     ],
     exports: [
         UserRepository,
+        UserOnboardingRepository,
+        UserImportRepository,
         UserPasswordRepository,
         UserVerificationRepository,
         UserTwoFactorRepository,
+        UserSessionRepository,
         UserMobileNumberRepository,
-        UserAnalyticRepository,
-        UserForgotPasswordAnalyticRepository,
-        UserTwoFactorAnalyticRepository,
-        UserVerificationAnalyticRepository,
-        UserMobileNumberAnalyticRepository,
     ],
     imports: [],
 })

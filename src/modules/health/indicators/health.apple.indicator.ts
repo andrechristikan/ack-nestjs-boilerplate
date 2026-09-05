@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    HealthIndicatorResult,
+    HealthIndicatorService,
+} from '@nestjs/terminus';
 
 /**
  * Reports Apple Sign In credential presence as a Terminus health indicator.

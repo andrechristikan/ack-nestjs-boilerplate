@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 /**
  * One failed validation issue on one request field.
- * @public
  */
 export const MessageValidationErrorSchema = z.object({
     key: z.string().meta({
@@ -20,10 +19,6 @@ export const MessageValidationErrorSchema = z.object({
     }),
 });
 
-/**
- * One localized validation failure on one request field.
- * @public
- */
 export type MessageValidationErrorDto = z.infer<
     typeof MessageValidationErrorSchema
 >;

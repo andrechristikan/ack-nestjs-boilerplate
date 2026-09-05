@@ -1,28 +1,65 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type {
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Project } from '@generated/prisma-client/client';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
+    EnumActivityLogAction,
+    Prisma,
+    Project,
+} from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
+import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectRepository implements IProjectRepository {
+export class ProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
+
+    private async createWithSlug(
+        workspaceId: string,
+        actorId: string,
+        { name, description }: ProjectCreateRequestDto,
+        slug: string,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.create({
+                data: {
+                    workspaceId,
+                    name,
+                    slug,
+                    description,
+                    createdBy: actorId,
+                    deletedAt: null,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectCreated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
 
     async findActiveByIdAndWorkspace(
         projectId: string,
@@ -67,7 +104,7 @@ export class ProjectRepository implements IProjectRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
-    ): Promise<IResponsePaginationReturn<Project>> {
+    ): Promise<IResponsePagingReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
@@ -92,7 +129,7 @@ export class ProjectRepository implements IProjectRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
-    ): Promise<IResponsePaginationReturn<Project>> {
+    ): Promise<IResponsePagingReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
@@ -105,28 +142,24 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async create(
+    async createInWorkspace(
         workspaceId: string,
-        { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        actorId: string,
+        dto: ProjectCreateRequestDto,
+        slugCandidates: string[],
+        requestLog: IRequestLog
     ): Promise<Project> {
         for (const slug of slugCandidates) {
             try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
+                return await this.createWithSlug(
+                    workspaceId,
+                    actorId,
+                    dto,
+                    slug,
+                    requestLog
                 );
-                if (!isSlugCollision) {
+            } catch (error: unknown) {
+                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     throw error;
                 }
             }
@@ -137,50 +170,85 @@ export class ProjectRepository implements IProjectRepository {
 
     async updateDetails(
         projectId: string,
-        { name, description }: ProjectUpdateRequestDto
-    ): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                name,
-                description,
-            },
-        });
-    }
-
-    async updateSlug(projectId: string, slug: string): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                slug,
-            },
-        });
-    }
-
-    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
-        await this.databaseService.client.project.softDelete({
-            where: { id: projectId },
-            data: {
-                deletedAt,
-            },
-        });
-    }
-
-    async softDeleteByWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date,
-        deletedBy: string
+        actorId: string,
+        { name, description }: ProjectUpdateRequestDto,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    name,
+                    description,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectUpdated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
+
+    async updateSlug(
+        projectId: string,
+        workspaceId: string,
+        actorId: string,
+        slug: string,
+        requestLog: IRequestLog
+    ): Promise<Project> {
+        const [project] = await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    slug,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectUpdated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return project;
+    }
+
+    async softDelete(
+        projectId: string,
+        workspaceId: string,
+        actorId: string,
+        requestLog: IRequestLog
     ): Promise<void> {
-        await tx.project.updateMany({
-            where: {
-                workspaceId,
-                OR: ProjectActiveFilter,
-            },
-            data: {
-                deletedAt,
-                deletedBy,
-            },
-        });
+        const today = this.helperDateService.create();
+
+        await this.databaseService.client.$transaction([
+            this.databaseService.client.project.update({
+                where: { id: projectId },
+                data: {
+                    deletedAt: today,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.projectDeleted,
+                    requestLog
+                )
+            ),
+        ]);
     }
 }

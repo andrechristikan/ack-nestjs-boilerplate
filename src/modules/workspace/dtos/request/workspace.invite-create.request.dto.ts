@@ -4,13 +4,9 @@ import { validateEmail } from '@common/request/validations/request.custom-email.
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
-/**
- * Validates the body for inviting an email to the workspace.
- * @public
- */
 export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     email: z
         .string()
@@ -44,7 +40,7 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
         .meta({
             description:
                 'Project to also join; must belong to the current workspace. Requires projectRole',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     projectRole: z.enum(EnumProjectMemberRole).optional().meta({
         description:
@@ -58,10 +54,6 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for inviting an email to the workspace.
- * @public
- */
 export type WorkspaceInviteCreateRequestDto = z.infer<
     typeof WorkspaceInviteCreateRequestSchema
 >;

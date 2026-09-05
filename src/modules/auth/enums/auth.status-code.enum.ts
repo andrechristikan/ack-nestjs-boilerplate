@@ -1,7 +1,3 @@
-/**
- * Status codes raised by the `auth` module.
- * @public
- */
 export enum EnumAuthStatusCodeError {
     jwtAccessTokenInvalid = 50800,
     jwtRefreshTokenInvalid = 50801,
@@ -18,6 +14,4 @@ export enum EnumAuthStatusCodeError {
     twoFactorAttemptTemporaryLock = 50812,
     twoFactorMethodRequired = 50813,
     twoFactorSetupRequired = 50814,
-    twoFactorSecretUnavailable = 50815,
-    twoFactorBackupCodeRequired = 50816,
 }

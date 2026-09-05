@@ -5,7 +5,6 @@ import { EnumRequestStatusCodeError } from '@common/request/enums/request.status
 
 /**
  * Carries Standard Schema validation issues to the global filter as a 422.
- * @public
  */
 export class RequestValidationException extends AppBaseException {
     readonly module = 'request';

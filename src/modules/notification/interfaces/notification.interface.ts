@@ -1,4 +1,4 @@
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
     EnumNotificationChannel,
     EnumNotificationPriority,
@@ -9,21 +9,16 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
     Prisma,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 
-export interface INotificationKindContract {
+export interface INotificationKindRule {
     type: EnumNotificationType;
     priority: EnumNotificationPriority;
     title: string;
     body: string;
     pendingChannels: EnumNotificationChannel[];
     deliveredChannels: EnumNotificationChannel[];
-}
-
-export interface INotificationSettingContract {
-    type: EnumNotificationType;
-    channels: EnumNotificationChannel[];
 }
 
 export interface INotificationCreate {
@@ -50,23 +45,8 @@ export interface INotificationTemporaryPasswordPayload {
     passwordCreatedAt: string;
 }
 
-export interface INotificationTemporaryPasswordEncryptedPayload extends Omit<
-    INotificationTemporaryPasswordPayload,
-    'password'
-> {
-    encryptedPassword: string;
-}
-
-export type INotificationTemporaryPasswordPushPayload = Omit<
-    INotificationTemporaryPasswordPayload,
-    'password'
->;
-
 export type INotificationWelcomeByAdminPayload =
     INotificationTemporaryPasswordPayload;
-
-export type INotificationWelcomeByAdminEncryptedPayload =
-    INotificationTemporaryPasswordEncryptedPayload;
 
 export interface INotificationVerificationEmailPayload {
     link: string;
@@ -75,23 +55,12 @@ export interface INotificationVerificationEmailPayload {
     reference: string;
 }
 
-export interface INotificationVerificationEmailEncryptedPayload extends Omit<
-    INotificationVerificationEmailPayload,
-    'link'
-> {
-    encryptedLink: string;
-}
-
 export type INotificationVerifiedEmailPayload = Pick<
     INotificationVerificationEmailPayload,
     'reference'
 >;
 
 export interface INotificationForgotPasswordPayload extends INotificationVerificationEmailPayload {
-    resendInMinutes: number;
-}
-
-export interface INotificationForgotPasswordEncryptedPayload extends INotificationVerificationEmailEncryptedPayload {
     resendInMinutes: number;
 }
 
@@ -121,47 +90,20 @@ export interface INotificationWorkspaceInvitePayload {
     workspaceName: string;
     inviterName: string;
     workspaceMemberRole: EnumWorkspaceMemberRole;
-    inviteAcceptLink: string;
+    encryptedInviteAcceptLink: string;
     reference: string;
     expiredAt: string;
 }
 
-export interface INotificationWorkspaceInviteEncryptedPayload extends Omit<
-    INotificationWorkspaceInvitePayload,
-    'inviteAcceptLink'
-> {
-    encryptedInviteAcceptLink: string;
-}
-
-export type INotificationWorkspaceInvitePushPayload = Omit<
-    INotificationWorkspaceInvitePayload,
-    'inviteAcceptLink'
->;
-
 export type INotificationWorkspaceInviteUnregisteredPayload =
     INotificationWorkspaceInvitePayload;
-
-export type INotificationWorkspaceInviteUnregisteredEncryptedPayload =
-    INotificationWorkspaceInviteEncryptedPayload;
 
 export interface INotificationWorkspaceJoinRequestPayload {
     workspaceId: string;
     workspaceName: string;
     requesterName: string;
-    joinRequestReviewLink: string;
-}
-
-export interface INotificationWorkspaceJoinRequestEncryptedPayload extends Omit<
-    INotificationWorkspaceJoinRequestPayload,
-    'joinRequestReviewLink'
-> {
     encryptedJoinRequestReviewLink: string;
 }
-
-export type INotificationWorkspaceJoinRequestPushPayload = Omit<
-    INotificationWorkspaceJoinRequestPayload,
-    'joinRequestReviewLink'
->;
 
 export interface INotificationWorkspaceJoinAcceptedPayload {
     workspaceId: string;

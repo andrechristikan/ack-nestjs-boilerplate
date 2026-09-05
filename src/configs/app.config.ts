@@ -1,6 +1,6 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { registerAs } from '@nestjs/config';
-import { author, repository, version } from '@generated/package/package';
+import { author, repository, version } from '@package';
 
 export interface IConfigApp {
     name: string;
@@ -34,7 +34,10 @@ export default registerAs('app', (): IConfigApp => ({
     timezone: process.env.APP_TIMEZONE!,
     version,
     encryptionSecretKey: process.env.APP_ENCRYPTION_SECRET_KEY!,
-    author,
+    author: author as {
+        name: string;
+        email: string;
+    },
     url: repository.url,
     globalPrefix: '/api',
 

@@ -1,36 +1,14 @@
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
-/**
- * Term-policy statuses the admin term-policy list filter accepts.
- * @public
- */
 export const TermPolicyDefaultStatus = Object.values(EnumTermPolicyStatus);
-
-/**
- * Term-policy types the term-policy list filters accept.
- * @public
- */
 export const TermPolicyDefaultType = Object.values(EnumTermPolicyType);
-
 /**
- * Sort fields the admin offset and public cursor term-policy lists accept. `version` is written
- * at create and never updated; `publishedAt` is written only when a draft is published, and the
- * cursor route lists published rows only, so neither key moves a row mid-scroll.
- * @public
+ * Cursor-route allow-list. `version` is written at create and never updated; `publishedAt` is
+ * written only when a draft is published, and the cursor route lists published rows only, so
+ * neither key moves a row mid-scroll.
  */
-export const TermPolicyDefaultAvailableOrderBy = [
-    Prisma.TermPolicyScalarFieldEnum.publishedAt,
-    Prisma.TermPolicyScalarFieldEnum.version,
-] as const satisfies ReadonlyArray<Prisma.TermPolicyScalarFieldEnum>;
-
-/**
- * Sort fields the term-policy acceptance list accepts.
- * @public
- */
-export const TermPolicyAcceptanceDefaultAvailableOrderBy = [
-    Prisma.TermPolicyUserAcceptanceScalarFieldEnum.createdAt,
-] as const satisfies ReadonlyArray<Prisma.TermPolicyUserAcceptanceScalarFieldEnum>;
+export const TermPolicyDefaultAvailableOrderBy = ['publishedAt', 'version'];
+export const TermPolicyAcceptanceDefaultAvailableOrderBy = ['createdAt'];

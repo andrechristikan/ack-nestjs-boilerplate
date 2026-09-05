@@ -1,14 +1,16 @@
-import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import {
+    EnumTermPolicyType,
+    Prisma,
+    TermPolicy,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -17,8 +19,7 @@ export class TermPolicyUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperArrayService: HelperArrayService
     ) {
         this.uploadContentPath = this.configService.get<string>(
             'termPolicy.uploadContentPath'
@@ -35,10 +36,9 @@ export class TermPolicyUtil {
     }
 
     getPath(termPolicy: TermPolicy): string {
-        return this.helperStringService.fillPattern(this.uploadContentPath, {
-            type: termPolicy.type,
-            version: termPolicy.version.toString(),
-        });
+        return this.uploadContentPath
+            .replace('{type}', termPolicy.type)
+            .replace('{version}', termPolicy.version.toString());
     }
 
     /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */
@@ -48,10 +48,9 @@ export class TermPolicyUtil {
         language: EnumMessageLanguage,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.helperStringService.fillPattern(
-            this.uploadContentPath,
-            { type, version: version.toString() }
-        );
+        const path: string = this.uploadContentPath
+            .replace('{type}', type)
+            .replace('{version}', version.toString());
 
         let fullPath: string = `${path}/${language}.${extension.toLowerCase()}`;
         if (fullPath.startsWith('/')) {
@@ -70,22 +69,18 @@ export class TermPolicyUtil {
         );
     }
 
-    getContentPublicPath(type: EnumTermPolicyType, version: number): string {
-        return this.helperStringService.fillPattern(this.contentPublicPath, {
-            type,
-            version: version.toString(),
-        });
+    getContentPublicPath(termPolicy: TermPolicy): string {
+        return this.contentPublicPath
+            .replace('{type}', termPolicy.type)
+            .replace('{version}', termPolicy.version.toString());
     }
 
-    mapActivityLogMetadata(
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
-        timestamp: Date
-    ): IActivityLogMetadata {
+    mapActivityLogMetadata(termPolicy: TermPolicy): IActivityLogMetadata {
         return {
             termPolicyId: termPolicy.id,
             termPolicyType: termPolicy.type,
             termPolicyVersion: termPolicy.version,
-            timestamp,
+            timestamp: termPolicy.updatedAt ?? termPolicy.createdAt,
         };
     }
 

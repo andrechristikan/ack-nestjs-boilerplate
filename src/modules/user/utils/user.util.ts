@@ -1,12 +1,13 @@
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IUserTwoFactorStatus } from '@modules/user/interfaces/user.interface';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { IUserTwoFactorStatus } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumUserLoginWith,
-} from '@generated/prisma-client/client';
-import type { TwoFactor, User } from '@generated/prisma-client/client';
+    TwoFactor,
+    User,
+} from '@generated/prisma-client';
 import { Profanity } from '@2toad/profanity';
 
 /** Username checks, two-factor mapping, and activity-log mapping. */
@@ -45,7 +46,11 @@ export class UserUtil {
     mapTwoFactor(twoFactor: TwoFactor): IUserTwoFactorStatus {
         return {
             isEnabled: twoFactor.enabled,
-            isPendingConfirmation: !!twoFactor.pendingSecret,
+            isPendingConfirmation:
+                !twoFactor.enabled &&
+                !!twoFactor.secret &&
+                !!twoFactor.iv &&
+                !twoFactor.confirmedAt,
             backupCodesRemaining: twoFactor.backupCodes.length,
             confirmedAt: twoFactor.confirmedAt,
             lastUsedAt: twoFactor.lastUsedAt,
@@ -71,20 +76,10 @@ export class UserUtil {
         }
     }
 
-    mapActivityLogActorMetadata(user: User): IActivityLogMetadata {
+    mapActivityLogMetadata(user: User): IActivityLogMetadata {
         return {
-            targetUserId: user.id,
-            targetUsername: user.username,
-            timestamp: user.updatedAt ?? user.createdAt,
-        };
-    }
-
-    mapActivityLogTargetMetadata(
-        user: User,
-        actorUserId: string
-    ): IActivityLogMetadata {
-        return {
-            actorUserId,
+            userId: user.id,
+            userUsername: user.username,
             timestamp: user.updatedAt ?? user.createdAt,
         };
     }

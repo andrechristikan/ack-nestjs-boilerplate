@@ -1,34 +1,32 @@
-import { Injectable, Logger } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     CreateTemplateCommand,
-    DeleteTemplateCommand,
-    GetSendQuotaCommand,
-    GetTemplateCommand,
-    ListTemplatesCommand,
-    SESClient,
-    SendBulkTemplatedEmailCommand,
-    SendTemplatedEmailCommand,
-    UpdateTemplateCommand,
-} from '@aws-sdk/client-ses';
-import type {
     CreateTemplateCommandInput,
     CreateTemplateCommandOutput,
+    DeleteTemplateCommand,
     DeleteTemplateCommandInput,
     DeleteTemplateCommandOutput,
+    GetSendQuotaCommand,
+    GetTemplateCommand,
     GetTemplateCommandInput,
     GetTemplateCommandOutput,
+    ListTemplatesCommand,
     ListTemplatesCommandInput,
     ListTemplatesCommandOutput,
+    SESClient,
+    SendBulkTemplatedEmailCommand,
     SendBulkTemplatedEmailCommandInput,
     SendBulkTemplatedEmailCommandOutput,
+    SendTemplatedEmailCommand,
     SendTemplatedEmailCommandInput,
     SendTemplatedEmailCommandOutput,
+    UpdateTemplateCommand,
     UpdateTemplateCommandInput,
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
-import type {
+import { IAwsSESService } from '@common/aws/interfaces/aws.ses-service.interface';
+import {
     IAwsSESGetTemplate,
     IAwsSESSend,
     IAwsSESSendBulk,
@@ -36,7 +34,7 @@ import type {
 } from '@common/aws/interfaces/aws.ses.interface';
 
 @Injectable()
-export class AwsSESService implements OnModuleInit {
+export class AwsSESService implements IAwsSESService, OnModuleInit {
     private readonly logger = new Logger(AwsSESService.name);
 
     private readonly iamKey: string | null;
@@ -76,8 +74,7 @@ export class AwsSESService implements OnModuleInit {
     }
 
     async checkConnection(): Promise<boolean> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -100,8 +97,7 @@ export class AwsSESService implements OnModuleInit {
     async listTemplates(
         nextToken?: string
     ): Promise<ListTemplatesCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -128,8 +124,7 @@ export class AwsSESService implements OnModuleInit {
     async getTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<GetTemplateCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -158,8 +153,7 @@ export class AwsSESService implements OnModuleInit {
         htmlBody,
         plainTextBody,
     }: IAwsSESTemplate): Promise<CreateTemplateCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -194,8 +188,7 @@ export class AwsSESService implements OnModuleInit {
         htmlBody,
         plainTextBody,
     }: IAwsSESTemplate): Promise<UpdateTemplateCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -227,8 +220,7 @@ export class AwsSESService implements OnModuleInit {
     async deleteTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<DeleteTemplateCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -257,8 +249,7 @@ export class AwsSESService implements OnModuleInit {
         templateName,
         templateData,
     }: IAwsSESSend): Promise<SendTemplatedEmailCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -300,8 +291,7 @@ export class AwsSESService implements OnModuleInit {
         templateName,
         defaultTemplateData,
     }: IAwsSESSendBulk): Promise<SendBulkTemplatedEmailCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
+        if (!this.isInitialized()) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );

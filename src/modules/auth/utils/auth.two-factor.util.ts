@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { generateURI } from 'otplib';
-import type { HashAlgorithm, OTPStrategy } from 'otplib';
+import { HashAlgorithm, OTPStrategy, generateURI } from 'otplib';
 
 /** 2FA utility: the otpauth key URI consumed by authenticator apps. */
 @Injectable()

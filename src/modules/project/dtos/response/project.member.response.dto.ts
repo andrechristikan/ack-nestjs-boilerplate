@@ -2,12 +2,11 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base project-member shape: the row binding a user to the project they are assigned to.
- * @public
  */
 export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -15,22 +14,22 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     projectId: z.string().meta({
         description: 'Identifier of the project the member belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'Identifier of the member user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description: 'Embedded user of this project member',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -55,10 +54,6 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Project member with the user it binds.
- * @public
- */
 export type ProjectMemberResponseDto = z.infer<
     typeof ProjectMemberResponseSchema
 >;

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
+import { IRequestStoreService } from '@common/request/interfaces/request.store.service.interface';
 
 @Injectable()
-export class RequestStoreService {
+export class RequestStoreService implements IRequestStoreService {
     constructor(private readonly clsService: ClsService) {}
 
     set<T>(key: string, value: T): void {
@@ -10,14 +11,11 @@ export class RequestStoreService {
     }
 
     get<T>(key: string): T | null {
-        const storedValue = this.clsService.get<T>(key) as T | null;
-
-        return storedValue ?? null;
+        return (this.clsService.get<T>(key) as T | null) ?? null;
     }
 
     merge<T extends object>(key: string, value: Partial<T>): void {
-        const storedValue = this.get<T>(key);
-        const existing = storedValue ?? ({} as T);
+        const existing = this.get<T>(key) ?? ({} as T);
         this.set<T>(key, { ...existing, ...value });
     }
 }

@@ -1,24 +1,18 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
+import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { PasswordHistoryListSelect } from '@modules/password-history/constants/password-history.constant';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import type { IPasswordHistoryRepository } from '@modules/password-history/interfaces/password-history.repository.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
-import {
-    EnumPasswordHistoryType,
-    Prisma,
-} from '@generated/prisma-client/client';
-import type { PasswordHistory } from '@generated/prisma-client/client';
+import { PasswordHistory, Prisma } from '@generated/prisma-client';
 
 @Injectable()
-export class PasswordHistoryRepository implements IPasswordHistoryRepository {
+export class PasswordHistoryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
@@ -31,9 +25,9 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.offset<
-            IPasswordHistoryList,
+            IPasswordHistory,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -41,7 +35,11 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            select: PasswordHistoryListSelect,
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+            },
         });
     }
 
@@ -51,9 +49,9 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.cursor<
-            IPasswordHistoryList,
+            IPasswordHistory,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -61,7 +59,11 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
                 ...where,
                 userId,
             },
-            select: PasswordHistoryListSelect,
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+            },
         });
     }
 
@@ -76,27 +78,6 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
             },
             orderBy: {
                 createdAt: Prisma.SortOrder.desc,
-            },
-        });
-    }
-
-    async createInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        password: string,
-        type: EnumPasswordHistoryType,
-        expiredAt: Date,
-        createdAt: Date,
-        createdBy: string
-    ): Promise<PasswordHistory> {
-        return tx.passwordHistory.create({
-            data: {
-                userId,
-                password,
-                type,
-                expiredAt,
-                createdAt,
-                createdBy,
             },
         });
     }

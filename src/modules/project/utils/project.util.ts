@@ -1,4 +1,4 @@
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { WorkspaceMember } from '@generated/prisma-client';
 import { ProjectWorkspaceBypassRole } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 

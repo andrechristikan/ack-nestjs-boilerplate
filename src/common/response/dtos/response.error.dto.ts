@@ -5,7 +5,6 @@ import { ResponseSchema } from '@common/response/dtos/response.dto';
 
 /**
  * Error response envelope adding an optional list of validation errors.
- * @public
  */
 export const ResponseErrorSchema = ResponseSchema.extend({
     data: z.unknown().optional(),
@@ -29,8 +28,4 @@ export const ResponseErrorSchema = ResponseSchema.extend({
         }),
 });
 
-/**
- * Error response envelope with module, status code key and field errors.
- * @public
- */
 export type ResponseErrorDto = z.infer<typeof ResponseErrorSchema>;

@@ -1,46 +1,47 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import type {
+import {
     INotificationAcceptTermPolicyPayload,
     INotificationBulkQueuePayload,
-    INotificationForgotPasswordEncryptedPayload,
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
     INotificationQueuePayload,
-    INotificationTemporaryPasswordEncryptedPayload,
-    INotificationVerificationEmailEncryptedPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminEncryptedPayload,
-    INotificationWorkspaceInviteEncryptedPayload,
+    INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestEncryptedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { NotificationAccountDomain } from '@modules/notification/domains/notification.account.domain';
-import { NotificationSecurityDomain } from '@modules/notification/domains/notification.security.domain';
-import { NotificationTermPolicyDomain } from '@modules/notification/domains/notification.term-policy.domain';
-import { NotificationWorkspaceDomain } from '@modules/notification/domains/notification.workspace.domain';
+import { INotificationProcessorService } from '@modules/notification/interfaces/notification.processor.service.interface';
+import { NotificationAccountService } from '@modules/notification/services/notification.account.service';
+import { NotificationSecurityService } from '@modules/notification/services/notification.security.service';
+import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
+import { NotificationWorkspaceService } from '@modules/notification/services/notification.workspace.service';
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationProcessorService {
+export class NotificationProcessorService implements INotificationProcessorService {
     constructor(
-        private readonly notificationAccountDomain: NotificationAccountDomain,
-        private readonly notificationSecurityDomain: NotificationSecurityDomain,
-        private readonly notificationTermPolicyDomain: NotificationTermPolicyDomain,
-        private readonly notificationWorkspaceDomain: NotificationWorkspaceDomain
+        private readonly notificationAccountService: NotificationAccountService,
+        private readonly notificationSecurityService: NotificationSecurityService,
+        private readonly notificationTermPolicyService: NotificationTermPolicyService,
+        private readonly notificationWorkspaceService: NotificationWorkspaceService
     ) {}
 
     async processWelcomeByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
+        INotificationQueuePayload<INotificationWelcomeByAdminPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcomeByAdmin(
+        return this.notificationAccountService.processWelcomeByAdmin(
             userId,
             proceedBy,
             data!
@@ -50,11 +51,11 @@ export class NotificationProcessorService {
     async processWelcome({
         data: { userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcome(userId, data!);
+        return this.notificationAccountService.processWelcome(userId, data!);
     }
 
     async processWelcomeSocial({
@@ -64,7 +65,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processWelcomeSocial(userId);
+        return this.notificationAccountService.processWelcomeSocial(userId);
     }
 
     async processVerifiedEmail({
@@ -74,7 +75,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerifiedEmail(
+        return this.notificationAccountService.processVerifiedEmail(
             userId,
             data!
         );
@@ -83,11 +84,11 @@ export class NotificationProcessorService {
     async processVerificationEmail({
         data: { userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+        INotificationQueuePayload<INotificationVerificationEmailPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerificationEmail(
+        return this.notificationAccountService.processVerificationEmail(
             userId,
             data!
         );
@@ -100,7 +101,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationAccountDomain.processVerifiedMobileNumber(
+        return this.notificationAccountService.processVerifiedMobileNumber(
             userId,
             data!
         );
@@ -109,11 +110,11 @@ export class NotificationProcessorService {
     async processTemporaryPasswordByAdmin({
         data: { proceedBy, userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
+        INotificationQueuePayload<INotificationTemporaryPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processTemporaryPasswordByAdmin(
+        return this.notificationSecurityService.processTemporaryPasswordByAdmin(
             userId,
             proceedBy,
             data!
@@ -127,17 +128,17 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processChangePassword(userId);
+        return this.notificationSecurityService.processChangePassword(userId);
     }
 
     async processForgotPassword({
         data: { userId, data },
     }: Job<
-        INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload>,
+        INotificationQueuePayload<INotificationForgotPasswordPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processForgotPassword(
+        return this.notificationSecurityService.processForgotPassword(
             userId,
             data!
         );
@@ -150,7 +151,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processResetPassword(userId);
+        return this.notificationSecurityService.processResetPassword(userId);
     }
 
     async processResetTwoFactorByAdmin({
@@ -160,7 +161,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processResetTwoFactorByAdmin(
+        return this.notificationSecurityService.processResetTwoFactorByAdmin(
             userId,
             proceedBy
         );
@@ -173,7 +174,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationSecurityDomain.processNewDeviceLogin(
+        return this.notificationSecurityService.processNewDeviceLogin(
             userId,
             data!
         );
@@ -186,7 +187,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationTermPolicyDomain.processPublishTermPolicy(
+        return this.notificationTermPolicyService.processPublishTermPolicy(
             proceedBy,
             data!
         );
@@ -199,7 +200,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationTermPolicyDomain.processUserAcceptTermPolicy(
+        return this.notificationTermPolicyService.processUserAcceptTermPolicy(
             userId,
             data!
         );
@@ -208,11 +209,11 @@ export class NotificationProcessorService {
     async processWorkspaceInvite({
         data: { userId, proceedBy, data },
     }: Job<
-        INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
+        INotificationQueuePayload<INotificationWorkspaceInvitePayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceInvite(
+        return this.notificationWorkspaceService.processWorkspaceInvite(
             userId,
             proceedBy,
             data!
@@ -222,11 +223,11 @@ export class NotificationProcessorService {
     async processWorkspaceJoinRequest({
         data: { userId, proceedBy, data },
     }: Job<
-        INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
+        INotificationQueuePayload<INotificationWorkspaceJoinRequestPayload>,
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinRequest(
+        return this.notificationWorkspaceService.processWorkspaceJoinRequest(
             userId,
             proceedBy,
             data!
@@ -240,7 +241,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinAccepted(
+        return this.notificationWorkspaceService.processWorkspaceJoinAccepted(
             userId,
             proceedBy,
             data!
@@ -254,7 +255,7 @@ export class NotificationProcessorService {
         unknown,
         EnumNotificationProcess
     >): Promise<IQueueResponse> {
-        return this.notificationWorkspaceDomain.processWorkspaceJoinRejected(
+        return this.notificationWorkspaceService.processWorkspaceJoinRejected(
             userId,
             proceedBy,
             data!

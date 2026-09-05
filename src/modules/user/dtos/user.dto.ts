@@ -9,14 +9,13 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import { UserTermPolicySchema } from '@modules/user/dtos/user.term-policy.dto';
 import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
 /**
  * Base user shape: the stored user row with its role, term-policy flags, photo and two-factor state.
- * @public
  */
 export const UserSchema = DatabaseResponseSchema.extend({
     name: z.string().min(1).max(100).nullable().meta({
@@ -41,7 +40,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
     roleId: z.string().meta({
         description: 'Identifier of the role assigned to the user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     role: RoleSchema.meta({
         description: 'Role assigned to the user',
@@ -76,7 +75,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
     countryId: z.string().meta({
         description: 'Identifier of the user country',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     gender: z.enum(EnumUserGender).nullable().meta({
         description: 'Gender of the user',
@@ -109,8 +108,4 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
 });
 
-/**
- * Base user shape without credentials.
- * @public
- */
 export type UserDto = z.infer<typeof UserSchema>;

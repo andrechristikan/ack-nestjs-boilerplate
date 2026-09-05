@@ -1,10 +1,20 @@
 import { z } from 'zod';
-import { ApiKeyDateRequestSchema } from '@modules/api-key/dtos/request/api-key.date.request.dto';
+import { faker } from '@faker-js/faker';
 
 /**
- * Validates the body for changing the validity dates of an API key.
- * @public
+ * The two api-key validity dates without the cross-field rule, so a derived request can relax them.
  */
+export const ApiKeyDateRequestSchema = z.strictObject({
+    startAt: z.coerce.date().meta({
+        description: 'Api Key start date',
+        example: faker.date.recent(),
+    }),
+    endAt: z.coerce.date().meta({
+        description: 'Api Key end date',
+        example: faker.date.recent(),
+    }),
+});
+
 export const ApiKeyUpdateDateRequestSchema =
     ApiKeyDateRequestSchema.superRefine(({ startAt, endAt }, ctx) => {
         if (endAt < startAt) {
@@ -16,10 +26,6 @@ export const ApiKeyUpdateDateRequestSchema =
         }
     });
 
-/**
- * Body for changing the validity dates of an API key.
- * @public
- */
 export type ApiKeyUpdateDateRequestDto = z.infer<
     typeof ApiKeyUpdateDateRequestSchema
 >;

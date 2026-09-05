@@ -1,7 +1,3 @@
-/**
- * Status codes raised by the `pagination` kit.
- * @public
- */
 export enum EnumPaginationStatusCodeError {
     orderByNotAllowed = 50200,
     filterInvalidValue = 50201,

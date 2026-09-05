@@ -3,7 +3,6 @@ import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/us
 
 /**
  * Two-factor challenge handed back mid-login, carrying setup material only when setup is required.
- * @public
  */
 export const UserTwoFactorResponseSchema =
     UserTwoFactorSetupResponseSchema.partial().extend({
@@ -26,10 +25,6 @@ export const UserTwoFactorResponseSchema =
         }),
     });
 
-/**
- * Two-factor challenge returned mid-login.
- * @public
- */
 export type UserTwoFactorResponseDto = z.infer<
     typeof UserTwoFactorResponseSchema
 >;

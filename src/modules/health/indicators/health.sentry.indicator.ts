@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    HealthIndicatorResult,
+    HealthIndicatorService,
+} from '@nestjs/terminus';
 import * as Sentry from '@sentry/nestjs';
 
 /**

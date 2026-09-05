@@ -1,29 +1,34 @@
-import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
-import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
-    ResponsePagination,
+    ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-
-import type {
-    IResponsePaginationReturn,
+import {
+    IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-} from '@generated/prisma-client/client';
-
-import type { Project } from '@generated/prisma-client/client';
+    Prisma,
+    Project,
+} from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-
+import {
+    ProjectDefaultAvailableOrderBy,
+    ProjectDefaultAvailableSearch,
+} from '@modules/project/constants/project.list.constant';
+import {
+    ProjectAdminGetDoc,
+    ProjectAdminListDoc,
+} from '@modules/project/docs/project.admin.doc';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
@@ -40,11 +45,8 @@ import { ApiTags } from '@nestjs/swagger';
 export class ProjectAdminController {
     constructor(private readonly projectHttpService: ProjectHttpService) {}
 
-    @Doc({
-        summary:
-            'admin list all projects (read-only); optional workspaceId filter',
-    })
-    @ResponsePagination('project.admin.list', {
+    @ProjectAdminListDoc()
+    @ResponsePaging('project.admin.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -59,15 +61,21 @@ export class ProjectAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Query({ schema: ProjectAdminListRequestSchema })
-        query: ProjectAdminListRequestDto
-    ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectHttpService.getListForAdmin(query);
+        @PaginationOffsetQuery({
+            availableSearch: ProjectDefaultAvailableSearch,
+            availableOrderBy: ProjectDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+        @Query(
+            'workspaceId',
+            new RequestIsValidUuidPipe({ optional: true })
+        )
+        workspaceId?: string
+    ): Promise<IResponsePagingReturn<Project>> {
+        return this.projectHttpService.getListForAdmin(pagination, workspaceId);
     }
 
-    @Doc({
-        summary: 'admin get a project by id (read-only, includes soft-deleted)',
-    })
+    @ProjectAdminGetDoc()
     @Response('project.admin.get', {
         schema: ProjectResponseSchema,
     })
@@ -83,7 +91,7 @@ export class ProjectAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:projectId')
     async get(
-        @Param('projectId', { schema: RequestMongoIdSchema })
+        @Param('projectId', RequestRequiredPipe, RequestIsValidUuidPipe)
         projectId: string
     ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getByIdForAdmin(projectId);

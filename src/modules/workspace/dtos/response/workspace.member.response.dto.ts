@@ -2,12 +2,11 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base workspace-member shape: the row binding a user to the workspace they belong to.
- * @public
  */
 export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -15,22 +14,22 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the member belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'Identifier of the member user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description: 'Embedded user of this workspace member',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -55,10 +54,6 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Workspace member with the user it binds.
- * @public
- */
 export type WorkspaceMemberResponseDto = z.infer<
     typeof WorkspaceMemberResponseSchema
 >;

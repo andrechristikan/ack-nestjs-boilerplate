@@ -1,7 +1,7 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
-const RoleData: Prisma.RoleCreateInput[] = [
+const roleData: Prisma.RoleCreateInput[] = [
     {
         name: 'superadmin',
         description: 'Super Admin Role',
@@ -19,12 +19,12 @@ const RoleData: Prisma.RoleCreateInput[] = [
     },
 ];
 
-export const MigrationRoleData: Record<
+export const migrationRoleData: Record<
     EnumAppEnvironment,
     Prisma.RoleCreateInput[]
 > = {
-    [EnumAppEnvironment.local]: RoleData,
-    [EnumAppEnvironment.development]: RoleData,
-    [EnumAppEnvironment.staging]: RoleData,
-    [EnumAppEnvironment.production]: RoleData,
+    [EnumAppEnvironment.local]: roleData,
+    [EnumAppEnvironment.development]: roleData,
+    [EnumAppEnvironment.staging]: roleData,
+    [EnumAppEnvironment.production]: roleData,
 };

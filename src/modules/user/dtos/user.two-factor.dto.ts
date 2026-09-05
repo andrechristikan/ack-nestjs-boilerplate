@@ -4,7 +4,6 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Nested two-factor state stored against a user; the secret material never leaves the server.
- * @public
  */
 export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -12,7 +11,7 @@ export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'Identifier of the user who owns this two-factor record',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     enabled: z.boolean().meta({
         description: 'Whether the user has 2FA enabled',
@@ -28,8 +27,4 @@ export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored two-factor state of a user, without secret material.
- * @public
- */
 export type UserTwoFactorDto = z.infer<typeof UserTwoFactorSchema>;

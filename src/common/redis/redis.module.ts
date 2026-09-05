@@ -1,7 +1,6 @@
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import { createKeyv } from '@keyv/redis';
-import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
@@ -25,7 +24,6 @@ export class RedisCacheModule {
                         ),
                         useUnlink: true,
                         keyPrefixSeparator: ':',
-                        throwOnErrors: true,
                     }
                 );
             },

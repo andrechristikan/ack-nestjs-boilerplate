@@ -4,11 +4,10 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
 /**
  * Base workspace-join-request shape: the stored join request row and its review outcome.
- * @public
  */
 export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -16,11 +15,11 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the join request targets',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'Identifier of the user who submitted the join request',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     status: z.enum(EnumWorkspaceJoinRequestStatus).meta({
         description: 'Current status of the join request',
@@ -36,7 +35,7 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     }),
     reviewedByUserId: z.string().nullable().meta({
         description: 'Identifier of the user who reviewed the join request',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     reviewedAt: z.date().nullable().meta({
         description: 'When the join request was reviewed',
@@ -44,10 +43,6 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored workspace join request with its review outcome.
- * @public
- */
 export type WorkspaceJoinRequestResponseDto = z.infer<
     typeof WorkspaceJoinRequestResponseSchema
 >;

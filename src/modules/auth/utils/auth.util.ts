@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type {
+import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
@@ -7,8 +7,8 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
-} from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+    User,
+} from '@generated/prisma-client';
 
 /** Auth utility: shapes the JWT payloads and the jti. See docs/authentication.md. */
 @Injectable()

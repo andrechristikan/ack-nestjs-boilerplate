@@ -1,8 +1,5 @@
-import type {
-    Workspace,
-    WorkspaceInvite,
-} from '@generated/prisma-client/client';
-import type {
+import { Workspace, WorkspaceInvite } from '@generated/prisma-client';
+import {
     IWorkspaceInviteInviter,
     IWorkspaceInvitePreviewSummary,
 } from '@modules/workspace/interfaces/workspace.interface';

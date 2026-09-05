@@ -10,19 +10,9 @@ export class UserOnboardingUtil {
 
     /** Translates a unique collision raised by the onboarding create into its user exception, returning anything else untouched. */
     mapCreateCollision(error: unknown): unknown {
-        const isUsernameCollision = this.databaseUtil.isUniqueCollision(
-            error,
-            'username'
-        );
-        if (isUsernameCollision) {
+        if (this.databaseUtil.isUniqueCollision(error, 'username')) {
             return new UserUsernameExistException();
-        }
-
-        const isEmailCollision = this.databaseUtil.isUniqueCollision(
-            error,
-            'email'
-        );
-        if (isEmailCollision) {
+        } else if (this.databaseUtil.isUniqueCollision(error, 'email')) {
             return new UserEmailExistException();
         }
 

@@ -1,5 +1,5 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import type { StreamingBlobTypes } from '@smithy/types';
+import { StreamingBlobTypes } from '@smithy/types';
 
 export interface IAwsS3 {
     bucket: string;
@@ -44,7 +44,7 @@ export interface IAwsS3PresignPart extends IAwsS3Presign {
 }
 
 export interface IAwsS3Options {
-    access: EnumAwsS3Accessibility;
+    access?: EnumAwsS3Accessibility;
 }
 
 export interface IAwsS3PutItemOptions extends IAwsS3Options {
@@ -69,7 +69,7 @@ export interface IAwsS3PresignPutItemPartOptions extends IAwsS3Options {
     expiredInSeconds?: number;
 }
 
-export interface IAwsS3CopyItemOptions {
+export interface IAwsS3MoveItemOptions {
     accessFrom: EnumAwsS3Accessibility;
     accessTo: EnumAwsS3Accessibility;
 }

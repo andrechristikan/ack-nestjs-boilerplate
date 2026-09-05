@@ -1,17 +1,23 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
-import type { INotificationUserSettingRepository } from '@modules/notification/interfaces/notification.user-setting-repository.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
     EnumNotificationChannel,
     EnumNotificationType,
-} from '@generated/prisma-client/client';
-import type { NotificationUserSetting } from '@generated/prisma-client/client';
+    NotificationUserSetting,
+} from '@generated/prisma-client';
 
 @Injectable()
-export class NotificationUserSettingRepository implements INotificationUserSettingRepository {
-    constructor(private readonly databaseService: DatabaseService) {}
+export class NotificationUserSettingRepository {
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
+    ) {}
 
     async findUserSetting(userId: string): Promise<NotificationUserSetting[]> {
         return this.databaseService.client.notificationUserSetting.findMany({
@@ -38,36 +44,42 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         });
     }
 
-    async createDefaultsInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<void> {
-        await tx.notificationUserSetting.createMany({
-            data: Object.values(EnumNotificationChannel)
-                .map(channel =>
-                    Object.values(EnumNotificationType).map(type => ({
-                        userId,
-                        channel,
-                        type,
-                        isActive: true,
-                    }))
-                )
-                .flat(),
-        });
-    }
-
-    async updateUserSettingInTx(
-        tx: IDatabaseTransactionClient,
+    async updateUserSetting(
         userId: string,
-        { channel, type, isActive }: INotificationUserSettingUpdate
-    ): Promise<NotificationUserSetting> {
-        return tx.notificationUserSetting.update({
-            where: {
-                userId_channel_type: { userId, channel, type },
-            },
-            data: {
-                isActive,
-            },
-        });
+        { channel, type, isActive }: INotificationUserSettingUpdate,
+        { ipAddress, userAgent, geoLocation }: IRequestLog
+    ): Promise<void> {
+        await this.databaseService.client.$transaction([
+            this.databaseService.client.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    updatedBy: userId,
+                    activityLogs: {
+                        create: {
+                            action: EnumActivityLogAction.userUpdateNotificationSetting,
+                            description: this.activityLogUtil.getDescription(
+                                EnumActivityLogAction.userUpdateNotificationSetting,
+                                { channel, type, isActive }
+                            ),
+                            ipAddress,
+                            userAgent:
+                                this.databaseUtil.toPlainObject(userAgent),
+                            geoLocation:
+                                this.databaseUtil.toPlainObject(geoLocation),
+                            createdBy: userId,
+                        },
+                    },
+                },
+            }),
+            this.databaseService.client.notificationUserSetting.update({
+                where: {
+                    userId_channel_type: { userId, channel, type },
+                },
+                data: {
+                    isActive,
+                    updatedBy: userId,
+                },
+            }),
+        ]);
     }
 }

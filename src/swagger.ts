@@ -7,13 +7,6 @@ import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
-import { ApiKeyDocSecurityName } from '@modules/api-key/constants/api-key.constant';
-import {
-    AuthJwtAccessDocSecurityName,
-    AuthJwtRefreshDocSecurityName,
-    AuthSocialAppleDocSecurityName,
-    AuthSocialGoogleDocSecurityName,
-} from '@modules/auth/constants/auth.constant';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
@@ -52,23 +45,23 @@ export default async function (app: NestApplication): Promise<void> {
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                AuthJwtAccessDocSecurityName
+                'accessToken'
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                AuthJwtRefreshDocSecurityName
+                'refreshToken'
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                AuthSocialGoogleDocSecurityName
+                'google'
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                AuthSocialAppleDocSecurityName
+                'apple'
             )
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
-                ApiKeyDocSecurityName
+                'xApiKey'
             )
             .build();
 
@@ -87,7 +80,7 @@ export default async function (app: NestApplication): Promise<void> {
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: docJsonUrlPattern.replace(
                 '{docPrefix}',
-                () => docPrefix
+                docPrefix
             ),
             explorer: true,
             customSiteTitle: docName,

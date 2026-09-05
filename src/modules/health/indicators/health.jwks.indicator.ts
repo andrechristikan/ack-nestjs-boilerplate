@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    HealthIndicatorResult,
+    HealthIndicatorService,
+} from '@nestjs/terminus';
 
 /**
  * Reports JWKS URI shape as a Terminus health indicator.
@@ -17,22 +19,20 @@ export class HealthJwksIndicator {
      * Down when the access-token JWKS URI is empty or not a valid URL.
      */
     async isHealthyAccessToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.accessToken.jwksUri'
+        return this.checkUri(
+            key,
+            this.configService.get<string>('auth.jwt.accessToken.jwksUri')
         );
-
-        return this.checkUri(key, jwksUri);
     }
 
     /**
      * Down when the refresh-token JWKS URI is empty or not a valid URL.
      */
     async isHealthyRefreshToken(key: string): Promise<HealthIndicatorResult> {
-        const jwksUri = this.configService.get<string>(
-            'auth.jwt.refreshToken.jwksUri'
+        return this.checkUri(
+            key,
+            this.configService.get<string>('auth.jwt.refreshToken.jwksUri')
         );
-
-        return this.checkUri(key, jwksUri);
     }
 
     /**

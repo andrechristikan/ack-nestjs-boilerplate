@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@generated/prisma-client/client';
-import type { IDatabaseClientOptions } from '@common/database/interfaces/database.client.interface';
+import { Prisma, PrismaClient } from '@generated/prisma-client';
 import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
 
 @Injectable()
 export class DatabaseClientFactory extends PrismaClient<
-    IDatabaseClientOptions,
+    Prisma.PrismaClientOptions,
     'query' | 'error' | 'warn' | 'info'
 > {
     constructor(private readonly databaseExtensionUtil: DatabaseExtensionUtil) {
@@ -26,8 +25,6 @@ export class DatabaseClientFactory extends PrismaClient<
      * back with `ReturnType`; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
      */
     create() {
-        const extension = this.databaseExtensionUtil.build();
-
-        return this.$extends(extension);
+        return this.$extends(this.databaseExtensionUtil.build());
     }
 }

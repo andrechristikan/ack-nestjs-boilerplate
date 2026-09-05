@@ -3,18 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import Case from 'case';
 import { I18nService } from 'nestjs-i18n';
-import type {
+import {
     IMessageErrorOptions,
     IMessageSetOptions,
     IMessageValidationError,
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
+import { IMessageService } from '@common/message/interfaces/message.service.interface';
 import { MessageValidationIssueFallbackKey } from '@common/message/constants/message.constant';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 @Injectable()
-export class MessageService {
+export class MessageService implements IMessageService {
     private readonly defaultLanguage: EnumMessageLanguage;
     private readonly availableLanguage: EnumMessageLanguage[];
 
@@ -68,17 +69,14 @@ export class MessageService {
         };
 
         const overridden = this.setMessage(issue.message, properties);
-        let message: string;
-        if (overridden === issue.message) {
-            message = this.setMessage(`request.error.${key}`, properties);
-        } else {
-            message = overridden;
-        }
 
         return {
             key,
             property,
-            message,
+            message:
+                overridden === issue.message
+                    ? this.setMessage(`request.error.${key}`, properties)
+                    : overridden,
         };
     }
 
@@ -87,12 +85,9 @@ export class MessageService {
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {
-        let language: string;
-        if (options?.customLanguage) {
-            language = this.filterLanguage(options.customLanguage);
-        } else {
-            language = this.defaultLanguage;
-        }
+        const language: string = options?.customLanguage
+            ? this.filterLanguage(options.customLanguage)
+            : this.defaultLanguage;
 
         return this.i18n.translate(path, {
             lang: language,
@@ -113,10 +108,9 @@ export class MessageService {
         errors: IMessageValidationImportErrorParam[],
         options?: IMessageErrorOptions
     ): IMessageValidationImportError[] {
-        return errors.map(val => {
-            const errors = this.setValidationMessage(val.errors, options);
-
-            return { row: val.row, errors };
-        });
+        return errors.map(val => ({
+            row: val.row,
+            errors: this.setValidationMessage(val.errors, options),
+        }));
     }
 }

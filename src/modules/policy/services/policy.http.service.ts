@@ -1,19 +1,20 @@
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { PolicyDto } from '@modules/policy/dtos/policy.dto';
+import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
+import { IPolicyHttpService } from '@modules/policy/interfaces/policy.http.service.interface';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PolicyHttpService {
-    constructor(private readonly policyDomain: PolicyDomain) {}
+export class PolicyHttpService implements IPolicyHttpService {
+    constructor(private readonly policyService: PolicyService) {}
 
     async listByRole(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        const policies = await this.policyDomain.findManyByRole(roleId);
+        const policies = await this.policyService.findManyByRole(roleId);
 
         return {
             data: { policies },
@@ -24,7 +25,7 @@ export class PolicyHttpService {
         roleId: string,
         body: PolicyRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const created = await this.policyDomain.createByAdmin(roleId, body);
+        const created = await this.policyService.createByAdmin(roleId, body);
 
         return { data: created };
     }
@@ -34,7 +35,11 @@ export class PolicyHttpService {
         id: string,
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const updated = await this.policyDomain.updateByAdmin(roleId, id, body);
+        const updated = await this.policyService.updateByAdmin(
+            roleId,
+            id,
+            body
+        );
 
         return { data: updated };
     }
@@ -43,7 +48,7 @@ export class PolicyHttpService {
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
-        await this.policyDomain.deleteByAdmin(roleId, id);
+        await this.policyService.deleteByAdmin(roleId, id);
 
         return {};
     }

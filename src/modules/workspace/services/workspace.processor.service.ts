@@ -1,13 +1,15 @@
-import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { IWorkspaceProcessorService } from '@modules/workspace/interfaces/workspace.processor.service.interface';
+import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
-import { Injectable } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class WorkspaceProcessorService implements OnModuleInit {
+export class WorkspaceProcessorService
+    implements IWorkspaceProcessorService, OnModuleInit
+{
     constructor(
-        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly workspaceQueue: WorkspaceQueue
     ) {}
 
@@ -16,7 +18,7 @@ export class WorkspaceProcessorService implements OnModuleInit {
     }
 
     async processExpireStaleInvites(): Promise<IQueueResponse> {
-        const count = await this.workspaceInviteDomain.expireStalePending();
+        const count = await this.workspaceInviteService.expireStalePending();
 
         return {
             message: 'Processed stale workspace invite expiry sweep',

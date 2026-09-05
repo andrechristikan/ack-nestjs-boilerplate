@@ -3,10 +3,6 @@ import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Module } from '@nestjs/common';
-import { WorkspaceAnalyticRepository } from '@modules/workspace/repositories/workspace.analytic.repository';
-import { WorkspaceInviteAnalyticRepository } from '@modules/workspace/repositories/workspace.invite.analytic.repository';
-import { WorkspaceJoinRequestAnalyticRepository } from '@modules/workspace/repositories/workspace.join-request.analytic.repository';
-import { WorkspaceMemberAnalyticRepository } from '@modules/workspace/repositories/workspace.member.analytic.repository';
 
 @Module({
     controllers: [],
@@ -15,20 +11,12 @@ import { WorkspaceMemberAnalyticRepository } from '@modules/workspace/repositori
         WorkspaceMemberRepository,
         WorkspaceInviteRepository,
         WorkspaceJoinRequestRepository,
-        WorkspaceAnalyticRepository,
-        WorkspaceInviteAnalyticRepository,
-        WorkspaceJoinRequestAnalyticRepository,
-        WorkspaceMemberAnalyticRepository,
     ],
     exports: [
         WorkspaceRepository,
         WorkspaceMemberRepository,
         WorkspaceInviteRepository,
         WorkspaceJoinRequestRepository,
-        WorkspaceAnalyticRepository,
-        WorkspaceInviteAnalyticRepository,
-        WorkspaceJoinRequestAnalyticRepository,
-        WorkspaceMemberAnalyticRepository,
     ],
     imports: [],
 })

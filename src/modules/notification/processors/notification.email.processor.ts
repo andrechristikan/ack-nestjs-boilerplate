@@ -1,27 +1,26 @@
-import { Job, UnrecoverableError } from 'bullmq';
+import { Logger } from '@nestjs/common';
+import { Job } from 'bullmq';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
-import { SentryService } from '@common/sentry/services/sentry.service';
-import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
-import type {
+import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
     INotificationEmailUnregisteredQueuePayload,
-    INotificationForgotPasswordEncryptedPayload,
+    INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
-    INotificationTemporaryPasswordEncryptedPayload,
-    INotificationVerificationEmailEncryptedPayload,
+    INotificationTemporaryPasswordPayload,
+    INotificationVerificationEmailPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminEncryptedPayload,
-    INotificationWorkspaceInviteEncryptedPayload,
-    INotificationWorkspaceInviteUnregisteredEncryptedPayload,
+    INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteUnregisteredPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestEncryptedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
@@ -40,22 +39,23 @@ import {
     },
 })
 export class NotificationEmailProcessor extends QueueProcessorBase {
+    private readonly logger = new Logger(NotificationEmailProcessor.name);
+
     constructor(
-        private readonly notificationEmailProcessorService: NotificationEmailProcessorService,
-        sentryService: SentryService
+        private readonly notificationEmailProcessorService: NotificationEmailProcessorService
     ) {
-        super(sentryService);
+        super();
     }
 
     /** Dispatches each job to its handler by job name. */
-    protected async handle(
+    async process(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
         try {
             const jobName = job.name;
             switch (jobName) {
                 case EnumNotificationProcess.changePassword:
-                    return await this.notificationEmailProcessorService.processChangePassword(
+                    return this.notificationEmailProcessorService.processChangePassword(
                         job as Job<
                             INotificationEmailQueuePayload,
                             IQueueResponse,
@@ -64,7 +64,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.welcome:
-                    return await this.notificationEmailProcessorService.processWelcome(
+                    return this.notificationEmailProcessorService.processWelcome(
                         job as Job<
                             INotificationEmailQueuePayload,
                             IQueueResponse,
@@ -73,7 +73,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.welcomeSocial:
-                    return await this.notificationEmailProcessorService.processWelcomeSocial(
+                    return this.notificationEmailProcessorService.processWelcomeSocial(
                         job as Job<
                             INotificationEmailQueuePayload,
                             IQueueResponse,
@@ -82,43 +82,43 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.welcomeByAdmin:
-                    return await this.notificationEmailProcessorService.processWelcomeByAdmin(
+                    return this.notificationEmailProcessorService.processWelcomeByAdmin(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.temporaryPasswordByAdmin:
-                    return await this.notificationEmailProcessorService.processTemporaryPasswordByAdmin(
+                    return this.notificationEmailProcessorService.processTemporaryPasswordByAdmin(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.forgotPassword:
-                    return await this.notificationEmailProcessorService.processForgotPassword(
+                    return this.notificationEmailProcessorService.processForgotPassword(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationForgotPasswordEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.verificationEmail:
-                    return await this.notificationEmailProcessorService.processVerificationEmail(
+                    return this.notificationEmailProcessorService.processVerificationEmail(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationVerificationEmailEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.verifiedEmail:
-                    return await this.notificationEmailProcessorService.processVerifiedEmail(
+                    return this.notificationEmailProcessorService.processVerifiedEmail(
                         job as Job<
                             INotificationEmailQueuePayload<INotificationVerifiedEmailPayload>,
                             IQueueResponse,
@@ -127,7 +127,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.verifiedMobileNumber:
-                    return await this.notificationEmailProcessorService.processVerifiedMobileNumber(
+                    return this.notificationEmailProcessorService.processVerifiedMobileNumber(
                         job as Job<
                             INotificationEmailQueuePayload<INotificationVerifiedMobileNumberPayload>,
                             IQueueResponse,
@@ -136,7 +136,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.newDeviceLogin:
-                    return await this.notificationEmailProcessorService.processNewDeviceLogin(
+                    return this.notificationEmailProcessorService.processNewDeviceLogin(
                         job as Job<
                             INotificationEmailQueuePayload<INotificationNewDeviceLoginPayload>,
                             IQueueResponse,
@@ -144,7 +144,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                         >
                     );
                 case EnumNotificationProcess.resetPassword:
-                    return await this.notificationEmailProcessorService.processResetPassword(
+                    return this.notificationEmailProcessorService.processResetPassword(
                         job as Job<
                             INotificationEmailQueuePayload,
                             IQueueResponse,
@@ -153,7 +153,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.resetTwoFactorByAdmin:
-                    return await this.notificationEmailProcessorService.processResetTwoFactorByAdmin(
+                    return this.notificationEmailProcessorService.processResetTwoFactorByAdmin(
                         job as Job<
                             INotificationEmailQueuePayload,
                             IQueueResponse,
@@ -162,7 +162,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.publishTermPolicy:
-                    return await this.notificationEmailProcessorService.processPublishTermPolicy(
+                    return this.notificationEmailProcessorService.processPublishTermPolicy(
                         job as Job<
                             INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
                             IQueueResponse,
@@ -171,34 +171,34 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.workspaceInvite:
-                    return await this.notificationEmailProcessorService.processWorkspaceInvite(
+                    return this.notificationEmailProcessorService.processWorkspaceInvite(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.workspaceInviteUnregistered:
-                    return await this.notificationEmailProcessorService.processWorkspaceInviteUnregistered(
+                    return this.notificationEmailProcessorService.processWorkspaceInviteUnregistered(
                         job as Job<
-                            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload>,
+                            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.workspaceJoinRequest:
-                    return await this.notificationEmailProcessorService.processWorkspaceJoinRequest(
+                    return this.notificationEmailProcessorService.processWorkspaceJoinRequest(
                         job as Job<
-                            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
+                            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >
                     );
 
                 case EnumNotificationProcess.workspaceJoinAccepted:
-                    return await this.notificationEmailProcessorService.processWorkspaceJoinAccepted(
+                    return this.notificationEmailProcessorService.processWorkspaceJoinAccepted(
                         job as Job<
                             INotificationEmailQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
                             IQueueResponse,
@@ -207,7 +207,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     );
 
                 case EnumNotificationProcess.workspaceJoinRejected:
-                    return await this.notificationEmailProcessorService.processWorkspaceJoinRejected(
+                    return this.notificationEmailProcessorService.processWorkspaceJoinRejected(
                         job as Job<
                             INotificationEmailQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
                             IQueueResponse,
@@ -222,10 +222,10 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     };
             }
         } catch (error: unknown) {
-            if (error instanceof HelperDecryptFailedException) {
-                throw new UnrecoverableError(error.message);
-            }
-
+            this.logger.error(
+                error,
+                'Failed to process notification email job'
+            );
             throw error;
         }
     }

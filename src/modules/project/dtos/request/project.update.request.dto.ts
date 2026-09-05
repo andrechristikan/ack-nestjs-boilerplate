@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for updating a project name and description.
- * @public
- */
 export const ProjectUpdateRequestSchema = z.strictObject({
     name: z.string().max(150).optional().meta({
         description: 'Project name',
@@ -15,10 +11,6 @@ export const ProjectUpdateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for updating a project name and description.
- * @public
- */
 export type ProjectUpdateRequestDto = z.infer<
     typeof ProjectUpdateRequestSchema
 >;

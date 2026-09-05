@@ -1,25 +1,23 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import type {
+import {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type {
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
     IRole,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
+import { Prisma, Role } from '@generated/prisma-client';
 
 @Injectable()
-export class RoleRepository implements IRoleRepository {
+export class RoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
@@ -31,7 +29,7 @@ export class RoleRepository implements IRoleRepository {
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
             IRoleWithPolicyCount,
             Prisma.RoleWhereInput
@@ -51,7 +49,7 @@ export class RoleRepository implements IRoleRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor<
             IRoleWithPolicyCount,
             Prisma.RoleWhereInput
@@ -65,47 +63,33 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async findOneWithPoliciesById(
-        id: string
-    ): Promise<IRoleWithPolicies | null> {
+    async findOneById(id: string): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
             include: { policies: true },
         });
     }
 
-    async findOneById(id: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findUnique({
-            where: { id },
-            select: { id: true, type: true, name: true },
-        });
-    }
-
-    async findOneByName(name: string): Promise<IRole | null> {
+    async existByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
-            where: { name },
+            where: {
+                name: name,
+            },
             select: { id: true, type: true, name: true },
         });
     }
 
-    async existsById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: { id },
+    async existById(id: string): Promise<IRole | null> {
+        return this.databaseService.client.role.findUnique({
+            where: {
+                id,
+            },
+            select: { id: true, type: true, name: true },
         });
-
-        return count > 0;
     }
 
-    async existsByName(name: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
-            where: { name },
-        });
-
-        return count > 0;
-    }
-
-    async isUsedById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.role.count({
+    async used(id: string): Promise<{ id: string } | null> {
+        return this.databaseService.client.role.findFirst({
             where: {
                 users: {
                     some: {
@@ -113,20 +97,13 @@ export class RoleRepository implements IRoleRepository {
                     },
                 },
             },
+            select: { id: true },
         });
-
-        return count > 0;
     }
 
-    async create(
-        roleId: string,
-        data: IRoleCreate
-    ): Promise<IRoleWithPolicies> {
+    async create(data: IRoleCreate): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.create({
-            data: {
-                ...data,
-                id: roleId,
-            },
+            data,
             include: { policies: true },
         });
     }

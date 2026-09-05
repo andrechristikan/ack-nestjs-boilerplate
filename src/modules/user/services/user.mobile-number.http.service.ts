@@ -1,20 +1,21 @@
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
-import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import { IUserMobileNumberHttpService } from '@modules/user/interfaces/user.mobile-number.http.service.interface';
+import { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
+import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserMobileNumberHttpService {
+export class UserMobileNumberHttpService implements IUserMobileNumberHttpService {
     constructor(
-        private readonly userMobileNumberDomain: UserMobileNumberDomain
+        private readonly userMobileNumberService: UserMobileNumberService
     ) {}
 
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        const mobileNumber = await this.userMobileNumberDomain.addMobileNumber(
+        const mobileNumber = await this.userMobileNumberService.addMobileNumber(
             userId,
             {
                 number,
@@ -32,7 +33,7 @@ export class UserMobileNumberHttpService {
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const mobileNumber =
-            await this.userMobileNumberDomain.updateMobileNumber(
+            await this.userMobileNumberService.updateMobileNumber(
                 userId,
                 mobileNumberId,
                 { number, countryId, phoneCode }
@@ -46,7 +47,7 @@ export class UserMobileNumberHttpService {
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const mobileNumber =
-            await this.userMobileNumberDomain.deleteMobileNumber(
+            await this.userMobileNumberService.deleteMobileNumber(
                 userId,
                 mobileNumberId
             );

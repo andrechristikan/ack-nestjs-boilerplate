@@ -3,15 +3,13 @@
 **`prisma/schema.prisma` is editable. Applying it to MongoDB is not.** The line runs between
 what touches files and what opens a connection.
 
-Query and access rules are `rules/database.md`. Flow narrative: `docs/database.md` —
-explorer or planner.
+Detail in `docs/database.md`. Query and access rules are `rules/database.md`.
 
 ## What you may run
 
 `db:generate` (`prisma generate`) · `db:format` (`prisma format`) · `prisma validate`. All
 three read and write files only. Run `db:generate` after a schema edit so
-`src/generated/prisma-client/` matches what you wrote and the code you hand back typechecks.
-`pnpm generate` runs it together with `generate:package`.
+`generated/prisma-client` matches what you wrote and the code you hand back typechecks.
 
 ## What the owner runs
 
@@ -54,8 +52,8 @@ Read the existing models before editing; match them.
   carrying `@updatedAt`. A soft-deletable model adds `deletedAt` / `deletedBy`. The audit
   columns are stamped by the extended client, not by hand (`rules/database.md`).
 - `@@map("<PluralPascalCase>")` names the collection; the model name is singular PascalCase.
-- Fields are camelCase (`rules/naming.md`); relation scalars are `String @db.ObjectId`.
-- Enums are declared in the schema and imported from `@generated/prisma-client/client`, never
+- Fields are camelCase (`rules/case-convention.md`); relation scalars are `String @db.ObjectId`.
+- Enums are declared in the schema and imported from `@generated/prisma-client`, never
   re-declared in a module (`rules/enum.md`).
 - Every index is declared for a query that exists. A new index that duplicates an existing
   prefix is dead weight — check the model's current `@@index` list before adding one.

@@ -1,13 +1,11 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPolicySubject } from '@generated/prisma-client/client';
-import type { Policy } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import type { IPolicyRepository } from '@modules/policy/interfaces/policy.repository.interface';
+import { EnumPolicySubject, Policy } from '@generated/prisma-client';
+import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PolicyRepository implements IPolicyRepository {
+export class PolicyRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
     async findManyByRoleId(roleId: string): Promise<Policy[]> {
@@ -16,23 +14,24 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async existsByRoleIdAndSubject(
+    async existByRoleIdAndSubject(
         roleId: string,
         subject: EnumPolicySubject
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
-            where: { roleId, subject },
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.client.policy.findUnique({
+            where: { roleId_subject: { roleId, subject } },
+            select: { id: true },
         });
-
-        return count > 0;
     }
 
-    async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
+    async existByRoleIdAndId(
+        roleId: string,
+        id: string
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.client.policy.findFirst({
             where: { id, roleId },
+            select: { id: true },
         });
-
-        return count > 0;
     }
 
     async create(roleId: string, data: PolicyRequestDto): Promise<Policy> {

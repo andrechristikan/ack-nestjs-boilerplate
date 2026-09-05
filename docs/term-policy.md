@@ -2,16 +2,14 @@
 
 ## Overview
 
-Term Policy stores versioned legal documents (terms of service, privacy policy, marketing consent, cookie policy) and records user acceptance.
+The Term Policy module manages legal agreements and user consent within the application. It provides a complete workflow for creating, versioning, managing, and enforcing user acceptance of legal policies such as terms of service, privacy policies, marketing consents, and cookie policies.
 
 ## Related Documents
 
-- [Database Documentation][ref-doc-database] - Migration, seeding, and schema
-- [Authorization Documentation][ref-doc-authorization] - Admin RBAC on term-policy routes
-- [Authentication Documentation][ref-doc-authentication] - JWT and session context
-- [File Upload Documentation][ref-doc-file-upload] - Content upload and admin content GET (presign)
-- [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
-- [Email Documentation][ref-doc-email] - SES templates for policy publication (not the HTML bodies)
+- [Database Documentation][ref-doc-database] - Migration, seeding, and schema details
+- [Authorization Documentation][ref-doc-authorization] - RBAC for admin operations
+- [Authentication Documentation][ref-doc-authentication] - User authentication requirements
+- [Presign Documentation][ref-doc-presign] - How to upload the contents
 
 ## Table of Contents
 
@@ -56,7 +54,7 @@ Four policy types are available via `EnumTermPolicyType`:
 | `marketing` | Marketing consent |
 | `cookies` | Cookie Policy |
 
-Each type can have multiple versions. A user reaches protected endpoints only after accepting the latest published version.
+Each type can have multiple versions. Users must accept the latest published version to access protected endpoints.
 
 ## Policy Status
 
@@ -71,16 +69,16 @@ Term policies follow a two-stage status:
 
 ### Published Status
 - Policy published by admin
-- Content files exist in both buckets: the private originals the draft was uploaded to, and a copy in the **public S3 bucket**
+- Content files moved to **public S3 bucket**
 - Cannot be edited or deleted
 - Visible to all users
 - **Invalidates all existing user acceptances** for that policy type
-- Every active user re-accepts the new version before reaching protected endpoints again
+- All active users must re-accept the new version
 - Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
-Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
+Both paths resolve to the same key. Publishing changes the bucket, not the key.
 
-Publishing a new version sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts the new version before reaching protected endpoints again.
+**Important**: When a new version is published, the matching `User` acceptance column (`termsOfServiceAccepted`, `privacyAccepted`, `cookiesAccepted`, or `marketingAccepted`) is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
 
 ## Flow
 
@@ -115,12 +113,16 @@ sequenceDiagram
     
     Admin->>API: Publish policy
     API->>Database: Reject an already-published policy, then a policy with no content
-    API->>S3 Public: Copy all content files from the private bucket
-    API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>active users termPolicy[type] = false
+    API->>S3 Public: Move all content files
+    par
+        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to public keys,<br/>matching active users acceptance column = false
+    and
+        API->>S3 Private: Delete the private content directory
+    end
     API->>Users: Queue publishTermPolicy notification
     API->>Admin: Policy published
     
-    Note over Users: Users re-accept before the next protected call
+    Note over Users: Users must now re-accept
 ```
 
 Publishing is the one admin action that fans out to every user: after the transaction commits it queues a `publishTermPolicy` job, which emails every active user who still has the `transactional` + `email` notification setting enabled, in batches of `email.batchSize`.
@@ -146,7 +148,7 @@ sequenceDiagram
     User->>API: Accept policy (type)
     API->>Database: Check latest published exists (404 otherwise)
     API->>Database: Check that version not already accepted (409 otherwise)
-    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true,<br/>log activity (IP, userAgent)
+    API->>Database: One transaction: create acceptance record,<br/>set matching User acceptance column = true,<br/>log activity (IP, userAgent)
     API->>User: Queue userAcceptTermPolicy notification
     API->>User: Acceptance recorded
     
@@ -154,7 +156,7 @@ sequenceDiagram
     
     User->>API: Request protected endpoint
     API->>Guard: Check term policy requirement
-    Guard->>Database: Verify user.termPolicy[type]=true
+    Guard->>Database: Verify required User acceptance columns are true
     alt Policy Accepted
         Guard->>API: Allow access
         API->>User: Return response
@@ -188,7 +190,7 @@ POST /shared/user/term-policy/accept
 }
 ```
 
-The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 accepts version 2 again once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
+The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 can and must accept version 2 once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
 
 ### View Acceptance History
 
@@ -218,14 +220,7 @@ POST /admin/term-policy/content/presign/generate
 }
 ```
 
-The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it.
-
-Response:
-
-- the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`)
-- against the **private** bucket
-
-Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
+The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
 
 ### Create Policy
 
@@ -267,7 +262,7 @@ Get presigned URL to download policy content:
 GET /admin/term-policy/content/:termPolicyId/:language/get
 ```
 
-Works on draft and published policies alike. The signature targets the bucket named by the stored content's own `access`: the private bucket for a draft, the public one for a published policy.
+Works on draft and published policies alike, and always signs against the private bucket.
 
 ### Publish Policy
 
@@ -276,13 +271,7 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-Publishing:
-
-- sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts again
-- an already-published policy returns `400` (`statusInvalid`)
-- a policy with no content returns `400` (`contentEmpty`)
-
-Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+**Critical**: Publishing sets the matching `User` acceptance column to `false` for every active, non-deleted user, requiring re-acceptance. Existing `TermPolicyUserAcceptance` records remain as acceptance history. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files live in the public bucket while the private copy is deleted.
 
 ### List Policies
 
@@ -307,7 +296,7 @@ Only draft policies can be deleted; anything else returns `400` (`statusInvalid`
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
+**Important**: This decorator **requires** both `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied. They are what put the user into the request store; without them the guard resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
 
 **Decorator order** (from top to bottom):
 
@@ -320,51 +309,49 @@ The guard reads the user out of the request store, which `@UserProtected()` fill
 ### Basic Usage
 
 ```typescript
-@Controller({
-  version: '1',
-  path: '/user/term-policy',
-})
-export class TermPolicySharedController {
-  @Doc({ summary: 'List of terms or policies accepted by the user' })
-  @ResponsePagination('termPolicy.listAccepted', {
-    schema: TermPolicyUserAcceptanceResponseSchema,
-  })
-  @TermPolicyAcceptanceProtected()
+@Controller('user')
+export class UserController {
+  
+  // Requires termsOfService acceptance
+  @TermPolicyAcceptanceProtected(EnumTermPolicyType.termsOfService)
   @UserProtected()
   @AuthJwtAccessProtected()
-  @ApiKeyProtected()
-  @RequestThrottle({ user: true })
-  @Get('/acceptance/list')
-  async listAccepted(
-    @Query({ schema: TermPolicyAcceptedListRequestSchema })
-    query: TermPolicyAcceptedListRequestDto,
-    @AuthJwtPayload('userId') userId: string
-  ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
-    return this.termPolicyAcceptanceHttpService.getListUserAccepted(
-      userId,
-      query
-    );
+  @Get('/profile')
+  async getProfile() {
+    return { message: 'Profile data' };
   }
-
-  @Doc({ summary: 'User accepts term or policy' })
-  @Response('termPolicy.accept')
+  
+  // Requires both termsOfService and privacy acceptance
+  @TermPolicyAcceptanceProtected(
+    EnumTermPolicyType.termsOfService,
+    EnumTermPolicyType.privacy
+  )
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @Get('/settings')
+  async getSettings() {
+    return { message: 'Settings data' };
+  }
+  
+  // Requires marketing consent
+  @TermPolicyAcceptanceProtected(EnumTermPolicyType.marketing)
+  @UserProtected()
+  @AuthJwtAccessProtected()
+  @Get('/newsletter')
+  async getNewsletter() {
+    return { message: 'Newsletter content' };
+  }
+  
+  // Default: requires termsOfService and privacy
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
-  @ApiKeyProtected()
-  @RequestThrottle({ user: true })
-  @HttpCode(HttpStatus.OK)
-  @Post('/accept')
-  async accept(
-    @UserCurrent() user: IUser,
-    @Body({ schema: TermPolicyAcceptRequestSchema }) body: TermPolicyAcceptRequestDto
-  ): Promise<IResponseReturn<void>> {
-    return this.termPolicyAcceptanceHttpService.userAccept(user, body);
+  @Get('/dashboard')
+  async getDashboard() {
+    return { message: 'Dashboard data' };
   }
 }
 ```
-
-The decorator takes optional `EnumTermPolicyType` arguments. With none, it requires `termsOfService` and `privacy`. Shared and admin routes in this checkout pass no arguments.
 
 ### How It Works
 
@@ -380,7 +367,7 @@ flowchart TD
     CheckRequired -->|No| SetDefault[Use Default:<br/>termsOfService + privacy]
     CheckRequired -->|Yes| UseSpecified[Use Specified Policies]
     
-    SetDefault --> GetTermPolicy[Get user.termPolicy<br/>acceptance status]
+    SetDefault --> GetTermPolicy[Read required User<br/>acceptance columns]
     UseSpecified --> GetTermPolicy
     
     GetTermPolicy --> CheckAcceptance{All required policies<br/>accepted by user?}
@@ -400,13 +387,13 @@ flowchart TD
 
 ### Important Notes
 
-- `@TermPolicyAcceptanceProtected()` reads the user `@UserProtected()` stored, which depends on `@AuthJwtAccessProtected()`
+- `@TermPolicyAcceptanceProtected()` **requires** `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied
 - Decorator order from top to bottom: `@TermPolicyAcceptanceProtected()` → `@UserProtected()` → `@AuthJwtAccessProtected()`
 - For more details about `@AuthJwtAccessProtected()`, see [Authentication Documentation][ref-doc-authentication]
 - For more details about `@UserProtected()`, see [Authorization Documentation][ref-doc-authorization]
 - Without the required decorators, the guard finds no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`)
 - If no term policies are specified, it defaults to requiring `termsOfService` and `privacy` acceptance
-- Access is granted only when the user has accepted every specified term policy
+- All specified term policies must be accepted by the user for access to be granted
 - A user missing any required acceptance gets `403 Forbidden` (`requiredInvalid`)
 - Incorrect decorator ordering fails the same way as a missing decorator: the guard runs before the user is in the store, so the request is rejected with `401`
 
@@ -416,16 +403,13 @@ Two seeds cover term policies:
 
 ```
 src/migration/seeds/migration.term-policy.seed.ts           # command: termPolicy
-src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
+src/migration/seeds/migration.template-term-policy.seed.ts  # command: template-termPolicy
 ```
 
-- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`. Details of that seed (actor, order, remove): [Database Documentation][ref-doc-database].
-- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
+- `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
+- `template-termPolicy` is run on its own. It uploads the bundled `.hbs` documents to S3 and upserts a published version 1 record per type with a single `en` content entry. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
-```bash
-pnpm migration templateTermPolicy --type seed
-pnpm migration templateTermPolicy --type remove
-```
+For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
 
 ## Contribution
 
@@ -440,8 +424,6 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 [ref-doc-database]: database.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
-[ref-doc-file-upload]: file-upload.md#presign-upload
-[ref-doc-analytic]: analytic.md
-[ref-doc-email]: email.md
+[ref-doc-presign]: presign.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import type { Response } from 'express';
+import { Response } from 'express';
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import type {
+import {
     IRequestApp,
     IRequestThrottleOptions,
     IRequestThrottlePolicy,

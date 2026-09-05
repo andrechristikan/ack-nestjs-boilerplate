@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Response shape representing resolved geolocation data derived from the client's IP address.
- * @public
- */
+/** Response shape representing resolved geolocation data derived from the client's IP address. */
 export const RequestGeoLocationResponseSchema = z.object({
     latitude: z.number().meta({
         description: 'Latitude of the geo-location',
@@ -28,10 +25,6 @@ export const RequestGeoLocationResponseSchema = z.object({
     }),
 });
 
-/**
- * Geolocation resolved from the client IP address.
- * @public
- */
 export type RequestGeoLocationResponseDto = z.infer<
     typeof RequestGeoLocationResponseSchema
 >;

@@ -1,11 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
+import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
-const PolicyData: {
+const policyData: {
     role: string;
     policies: PolicyRequestDto[];
 }[] = [
@@ -26,15 +23,15 @@ const PolicyData: {
     },
 ];
 
-export const MigrationPolicyData: Record<
+export const migrationPolicyData: Record<
     EnumAppEnvironment,
     {
         role: string;
         policies: PolicyRequestDto[];
     }[]
 > = {
-    [EnumAppEnvironment.local]: PolicyData,
-    [EnumAppEnvironment.development]: PolicyData,
-    [EnumAppEnvironment.staging]: PolicyData,
-    [EnumAppEnvironment.production]: PolicyData,
+    [EnumAppEnvironment.local]: policyData,
+    [EnumAppEnvironment.development]: policyData,
+    [EnumAppEnvironment.staging]: policyData,
+    [EnumAppEnvironment.production]: policyData,
 };

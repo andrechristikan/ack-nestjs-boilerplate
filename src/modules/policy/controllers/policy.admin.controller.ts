@@ -1,24 +1,35 @@
-import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { Response } from '@common/response/decorators/response.decorator';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { PolicySchema } from '@modules/policy/dtos/policy.dto';
-import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import { PolicyRequestSchema } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.update.request.dto';
-import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
-import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
+import {
+    PolicyAdminCreateDoc,
+    PolicyAdminDeleteDoc,
+    PolicyAdminListDoc,
+    PolicyAdminUpdateDoc,
+} from '@modules/policy/docs/policy.admin.doc';
+import { PolicyDto, PolicySchema } from '@modules/policy/dtos/policy.dto';
+import {
+    PolicyRequestDto,
+    PolicyRequestSchema,
+} from '@modules/policy/dtos/request/policy.request.dto';
+import {
+    PolicyUpdateRequestDto,
+    PolicyUpdateRequestSchema,
+} from '@modules/policy/dtos/request/policy.update.request.dto';
+import {
+    PolicyListResponseDto,
+    PolicyListResponseSchema,
+} from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -42,7 +53,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class PolicyAdminController {
     constructor(private readonly policyHttpService: PolicyHttpService) {}
 
-    @Doc({ summary: 'get all policies granted by a role' })
+    @PolicyAdminListDoc()
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -56,13 +67,13 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);
     }
 
-    @Doc({ summary: 'grant a policy to a role' })
+    @PolicyAdminCreateDoc()
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -76,7 +87,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
@@ -84,7 +95,7 @@ export class PolicyAdminController {
         return this.policyHttpService.createByAdmin(roleId, body);
     }
 
-    @Doc({ summary: 'update the action list of a role policy' })
+    @PolicyAdminUpdateDoc()
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -98,9 +109,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:policyId')
     async update(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto
@@ -108,7 +119,7 @@ export class PolicyAdminController {
         return this.policyHttpService.updateByAdmin(roleId, policyId, body);
     }
 
-    @Doc({ summary: 'revoke a policy from a role' })
+    @PolicyAdminDeleteDoc()
     @Response('policy.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -122,9 +133,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:policyId')
     async delete(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyHttpService.deleteByAdmin(roleId, policyId);

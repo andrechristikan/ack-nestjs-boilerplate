@@ -1,7 +1,9 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { Injectable } from '@nestjs/common';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    HealthIndicatorResult,
+    HealthIndicatorService,
+} from '@nestjs/terminus';
 
 /**
  * Reports Firebase Admin SDK initialization as a Terminus health indicator.
@@ -20,8 +22,7 @@ export class HealthFirebaseIndicator {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            const isInitialized = this.firebaseService.isInitialized();
-            if (!isInitialized) {
+            if (!this.firebaseService.isInitialized()) {
                 return indicator.down('Firebase Admin SDK not initialized');
             }
 

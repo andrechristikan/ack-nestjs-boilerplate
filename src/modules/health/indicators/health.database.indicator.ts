@@ -1,10 +1,12 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { Injectable } from '@nestjs/common';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import type { HealthIndicatorResult } from '@nestjs/terminus';
+import {
+    HealthIndicatorResult,
+    HealthIndicatorService,
+} from '@nestjs/terminus';
 
 /**
- * Reports MongoDB reachability as a Terminus health indicator.
+ * Reports database reachability as a Terminus health indicator.
  */
 @Injectable()
 export class HealthDatabaseIndicator {
@@ -14,13 +16,13 @@ export class HealthDatabaseIndicator {
     ) {}
 
     /**
-     * Down when the `ping` command fails or throws.
+     * Down when the PostgreSQL health query fails or throws.
      */
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            await this.databaseService.client.$runCommandRaw({ ping: 1 });
+            await this.databaseService.client.$queryRaw`SELECT 1`;
 
             return indicator.up();
         } catch (err: unknown) {

@@ -1,7 +1,3 @@
-/**
- * Job failure that carries whether it is fatal for Sentry reporting.
- * @public
- */
 export class QueueException extends Error {
     readonly isFatal: boolean = false;
 

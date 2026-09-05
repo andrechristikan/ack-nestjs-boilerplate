@@ -4,7 +4,6 @@ import { EnumResponseStatusCodeError } from '@common/response/enums/response.sta
 
 /**
  * Raised when a paginated handler returns no payload or a non-array `data`.
- * @public
  */
 export class ResponsePaginationShapeInvalidException extends AppBaseException {
     readonly module = 'response';

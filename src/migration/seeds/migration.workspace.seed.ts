@@ -1,18 +1,14 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { RequestUtil } from '@common/request/utils/request.util';
+import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import {
-    MigrationUserData,
-    MigrationUserSuperAdminId,
-} from '@migration/data/migration.user.data';
-import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
-import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { migrationUserData } from '@migration/data/migration.user.data';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { Prisma } from '@generated/prisma-client';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
+import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -35,19 +31,26 @@ export class MigrationWorkspaceSeed
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
-    private readonly seedTransactionTimeoutInMs: number;
-    private readonly users: IMigrationUserData[] = [];
+    private readonly users: {
+        country: string;
+        email: string;
+        name: string;
+        role: string;
+        password: string;
+    }[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository
+        private readonly workspaceRepository: WorkspaceRepository,
+        private readonly workspaceMemberRepository: WorkspaceMemberRepository,
+        private readonly requestUtil: RequestUtil
     ) {
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.users = MigrationUserData[this.env];
+        this.users = migrationUserData[this.env];
 
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
@@ -57,9 +60,6 @@ export class MigrationWorkspaceSeed
         )!;
         this.slugMaxAttempts = this.configService.get<number>(
             'workspace.slugMaxAttempts'
-        )!;
-        this.seedTransactionTimeoutInMs = this.configService.get<number>(
-            'database.seedTransactionTimeoutInMs'
         )!;
     }
 
@@ -98,6 +98,11 @@ export class MigrationWorkspaceSeed
         );
 
         try {
+            const userAgent = this.requestUtil.parseUserAgent(
+                faker.internet.userAgent()
+            );
+            const ipAddress = faker.internet.ip();
+
             await Promise.all(
                 seededUsers.map(async user => {
                     const ownedCount =
@@ -108,26 +113,11 @@ export class MigrationWorkspaceSeed
                         return;
                     }
 
-                    await this.databaseService.withTransaction(
-                        async tx => {
-                            const slugCandidates = this.drawSlugCandidates();
-                            const workspace = await tx.workspace.create({
-                                data: {
-                                    name: `${user.username}'s Workspace`,
-                                    slug: slugCandidates[0],
-                                    createdBy: MigrationUserSuperAdminId,
-                                    updatedBy: MigrationUserSuperAdminId,
-                                },
-                            });
-                            await this.workspaceMemberRepository.createInTx(
-                                tx,
-                                workspace.id,
-                                user.id,
-                                EnumWorkspaceMemberRole.owner,
-                                MigrationUserSuperAdminId
-                            );
-                        },
-                        { timeout: this.seedTransactionTimeoutInMs }
+                    await this.workspaceRepository.createWithOwner(
+                        user.id,
+                        { name: `${user.username}'s Workspace` },
+                        this.drawSlugCandidates(),
+                        { userAgent, ipAddress }
                     );
                 })
             );
@@ -170,13 +160,8 @@ export class MigrationWorkspaceSeed
                     where: {
                         OR: seededUsers.map<Prisma.WorkspaceWhereInput>(
                             user => ({
+                                createdBy: user.id,
                                 name: `${user.username}'s Workspace`,
-                                members: {
-                                    some: {
-                                        userId: user.id,
-                                        role: EnumWorkspaceMemberRole.owner,
-                                    },
-                                },
                             })
                         ),
                     },
@@ -195,32 +180,29 @@ export class MigrationWorkspaceSeed
                 return;
             }
 
-            await this.databaseService.withTransaction(
-                async tx => {
-                    await tx.activityLog.deleteMany({
-                        where: {
-                            workspaceId: {
-                                in: workspaceIds,
-                            },
+            await this.databaseService.client.$transaction([
+                this.databaseService.client.activityLog.deleteMany({
+                    where: {
+                        workspaceId: {
+                            in: workspaceIds,
                         },
-                    });
-                    await tx.workspaceMember.deleteMany({
-                        where: {
-                            workspaceId: {
-                                in: workspaceIds,
-                            },
+                    },
+                }),
+                this.databaseService.client.workspaceMember.deleteMany({
+                    where: {
+                        workspaceId: {
+                            in: workspaceIds,
                         },
-                    });
-                    await tx.workspace.deleteMany({
-                        where: {
-                            id: {
-                                in: workspaceIds,
-                            },
+                    },
+                }),
+                this.databaseService.client.workspace.deleteMany({
+                    where: {
+                        id: {
+                            in: workspaceIds,
                         },
-                    });
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
-            );
+                    },
+                }),
+            ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing workspaces');
             throw error;

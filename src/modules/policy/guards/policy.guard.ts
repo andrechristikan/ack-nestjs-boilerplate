@@ -1,15 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
     PolicyRequiredMetaKey,
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyService } from '@modules/policy/services/policy.service';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
-import type { IUser } from '@modules/user/interfaces/user.interface';
-import type { Policy } from '@generated/prisma-client/client';
+import { IUser } from '@modules/user/interfaces/user.interface';
+import { Policy } from '@generated/prisma-client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /**
@@ -19,20 +18,20 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyDomain: PolicyDomain,
+        private readonly policyService: PolicyService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const policyMetadata = this.reflector.get<PolicyRequestDto[]>(
-            PolicyRequiredMetaKey,
-            context.getHandler()
-        );
-        const requiredPolicies = policyMetadata ?? [];
+        const requiredPolicies =
+            this.reflector.get<PolicyRequestDto[]>(
+                PolicyRequiredMetaKey,
+                context.getHandler()
+            ) ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
         const policies = this.requestStoreService.get<Policy[]>(PolicyStoreKey);
-        return this.policyDomain.validatePolicyGuard(
+        return this.policyService.validatePolicyGuard(
             user,
             policies,
             requiredPolicies

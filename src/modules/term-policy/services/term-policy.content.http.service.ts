@@ -1,23 +1,24 @@
-import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
+import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import { ITermPolicyContentHttpService } from '@modules/term-policy/interfaces/term-policy.content.http.service.interface';
+import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class TermPolicyContentHttpService {
+export class TermPolicyContentHttpService implements ITermPolicyContentHttpService {
     constructor(
-        private readonly termPolicyContentDomain: TermPolicyContentDomain
+        private readonly termPolicyContentService: TermPolicyContentService
     ) {}
 
     async generateContentPresignByAdmin(
         body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
         const presign =
-            await this.termPolicyContentDomain.generateContentPresignByAdmin(
+            await this.termPolicyContentService.generateContentPresignByAdmin(
                 body
             );
 
@@ -26,11 +27,13 @@ export class TermPolicyContentHttpService {
 
     async updateContentByAdmin(
         termPolicyId: string,
-        body: TermPolicyContentRequestDto
+        body: TermPolicyContentRequestDto,
+        updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentDomain.updateContentByAdmin(
+        await this.termPolicyContentService.updateContentByAdmin(
             termPolicyId,
-            body
+            body,
+            updatedBy
         );
 
         return {};
@@ -38,11 +41,13 @@ export class TermPolicyContentHttpService {
 
     async addContentByAdmin(
         termPolicyId: string,
-        body: TermPolicyContentRequestDto
+        body: TermPolicyContentRequestDto,
+        updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentDomain.addContentByAdmin(
+        await this.termPolicyContentService.addContentByAdmin(
             termPolicyId,
-            body
+            body,
+            updatedBy
         );
 
         return {};
@@ -50,11 +55,13 @@ export class TermPolicyContentHttpService {
 
     async removeContentByAdmin(
         termPolicyId: string,
-        { language }: TermPolicyRemoveContentRequestDto
+        { language }: TermPolicyRemoveContentRequestDto,
+        updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentDomain.removeContentByAdmin(
+        await this.termPolicyContentService.removeContentByAdmin(
             termPolicyId,
-            language
+            language,
+            updatedBy
         );
 
         return {};
@@ -64,7 +71,7 @@ export class TermPolicyContentHttpService {
         termPolicyId: string,
         language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        const presign = await this.termPolicyContentDomain.getContentByAdmin(
+        const presign = await this.termPolicyContentService.getContentByAdmin(
             termPolicyId,
             language
         );

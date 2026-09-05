@@ -1,25 +1,22 @@
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
-import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-policy.template.domain';
+import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
 /**
  * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Throws if S3 is uninitialized.
  */
 @Command({
-    name: 'templateTermPolicy',
+    name: 'template-termPolicy',
     description: 'Seed/Remove Term Policies',
     allowUnknownOptions: false,
 })
@@ -29,20 +26,28 @@ export class MigrationTemplateTermPolicySeed
 {
     private readonly logger = new Logger(MigrationTemplateTermPolicySeed.name);
 
-    private readonly seedTransactionTimeoutInMs: number;
-
     constructor(
-        private readonly termPolicyTemplateDomain: TermPolicyTemplateDomain,
+        private readonly termPolicyTemplateService: TermPolicyTemplateService,
         private readonly databaseService: DatabaseService,
-        private readonly awsS3Service: AwsS3Service,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly configService: ConfigService
+        private readonly awsS3Service: AwsS3Service
     ) {
         super();
+    }
 
-        this.seedTransactionTimeoutInMs = this.configService.get<number>(
-            'database.seedTransactionTimeoutInMs'
-        )!;
+    private mapContent(asset: IAwsS3): Omit<IAwsS3, 'data'> & {
+        language: EnumMessageLanguage;
+    } {
+        return {
+            language: EnumMessageLanguage.en,
+            bucket: asset.bucket,
+            key: asset.key,
+            cdnUrl: asset.cdnUrl,
+            completedUrl: asset.completedUrl,
+            mime: asset.mime,
+            extension: asset.extension,
+            access: asset.access,
+            size: asset.size,
+        };
     }
 
     async seed(): Promise<void> {
@@ -64,66 +69,117 @@ export class MigrationTemplateTermPolicySeed
                 cookieAsset,
                 marketingAsset,
             ] = await Promise.all([
-                this.termPolicyTemplateDomain.importTermsOfService(),
-                this.termPolicyTemplateDomain.importPrivacy(),
-                this.termPolicyTemplateDomain.importCookie(),
-                this.termPolicyTemplateDomain.importMarketing(),
+                this.termPolicyTemplateService.importTermsOfService(),
+                this.termPolicyTemplateService.importPrivacy(),
+                this.termPolicyTemplateService.importCookie(),
+                this.termPolicyTemplateService.importMarketing(),
             ]);
+            if (
+                !termsOfServiceAsset ||
+                !privacyAsset ||
+                !cookieAsset ||
+                !marketingAsset
+            ) {
+                this.logger.error('Term policy template asset is missing.');
+                return;
+            }
 
-            const policies = [
-                {
-                    type: EnumTermPolicyType.termsOfService,
-                    asset: termsOfServiceAsset,
-                },
-                {
-                    type: EnumTermPolicyType.privacy,
-                    asset: privacyAsset,
-                },
-                {
-                    type: EnumTermPolicyType.cookies,
-                    asset: cookieAsset,
-                },
-                {
-                    type: EnumTermPolicyType.marketing,
-                    asset: marketingAsset,
-                },
-            ];
+            const termsOfServiceContent =
+                this.mapContent(termsOfServiceAsset);
+            const privacyContent = this.mapContent(privacyAsset);
+            const cookieContent = this.mapContent(cookieAsset);
+            const marketingContent = this.mapContent(marketingAsset);
 
-            await this.databaseService.withTransaction(
-                async tx => {
-                    for (const { type, asset } of policies) {
-                        const contents: Prisma.TermPolicyContentCreateInput[] =
-                            this.databaseUtil.toPlainArray([
-                                {
-                                    language: EnumMessageLanguage.en,
-                                    ...asset,
-                                },
-                            ]);
-
-                        await tx.termPolicy.upsert({
-                            where: {
-                                type_version: {
-                                    type,
-                                    version: 1,
-                                },
-                            },
-                            create: {
-                                type,
-                                version: 1,
-                                status: EnumTermPolicyStatus.published,
-                                contents,
-                                createdBy: MigrationUserSuperAdminId,
-                                updatedBy: MigrationUserSuperAdminId,
-                            },
-                            update: {
-                                contents,
-                                updatedBy: MigrationUserSuperAdminId,
-                            },
-                        });
-                    }
-                },
-                { timeout: this.seedTransactionTimeoutInMs }
-            );
+            await this.databaseService.client.$transaction([
+                this.databaseService.client.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.termsOfService,
+                            version: 1,
+                        },
+                    },
+                    create: {
+                        type: EnumTermPolicyType.termsOfService,
+                        version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: {
+                            create: termsOfServiceContent,
+                        },
+                    },
+                    update: {
+                        contents: {
+                            deleteMany: {},
+                            create: termsOfServiceContent,
+                        },
+                    },
+                }),
+                this.databaseService.client.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.privacy,
+                            version: 1,
+                        },
+                    },
+                    create: {
+                        type: EnumTermPolicyType.privacy,
+                        version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: {
+                            create: privacyContent,
+                        },
+                    },
+                    update: {
+                        contents: {
+                            deleteMany: {},
+                            create: privacyContent,
+                        },
+                    },
+                }),
+                this.databaseService.client.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.cookies,
+                            version: 1,
+                        },
+                    },
+                    create: {
+                        type: EnumTermPolicyType.cookies,
+                        version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: {
+                            create: cookieContent,
+                        },
+                    },
+                    update: {
+                        contents: {
+                            deleteMany: {},
+                            create: cookieContent,
+                        },
+                    },
+                }),
+                this.databaseService.client.termPolicy.upsert({
+                    where: {
+                        type_version: {
+                            type: EnumTermPolicyType.marketing,
+                            version: 1,
+                        },
+                    },
+                    create: {
+                        type: EnumTermPolicyType.marketing,
+                        version: 1,
+                        status: EnumTermPolicyStatus.published,
+                        contents: {
+                            create: marketingContent,
+                        },
+                    },
+                    update: {
+                        contents: {
+                            deleteMany: {},
+                            create: marketingContent,
+                        },
+                    },
+                }),
+            ]);
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding term policies');
             throw error;

@@ -2,10 +2,6 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
-/**
- * Raised when an uploaded file has an extension the route does not accept.
- * @public
- */
 export class FileExtensionInvalidException extends AppBaseException {
     readonly module = 'file';
     readonly statusCode = EnumFileStatusCodeError.extensionInvalid;

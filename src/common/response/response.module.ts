@@ -1,5 +1,4 @@
-import { Module } from '@nestjs/common';
-import type { DynamicModule } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
 /**

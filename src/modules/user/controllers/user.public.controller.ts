@@ -1,8 +1,7 @@
-import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtPayload } from '@modules/auth/decorators/auth.jwt.decorator';
 import {
@@ -10,30 +9,62 @@ import {
     AuthSocialGoogleProtected,
 } from '@modules/auth/decorators/auth.social.decorator';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
-import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.create-social.request.dto';
-import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { UserForgotPasswordResetRequestSchema } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import { UserForgotPasswordRequestSchema } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserLoginSetupTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import type { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import type { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { UserLoginRequestSchema } from '@modules/user/dtos/request/user.login.request.dto';
-import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { UserSendEmailVerificationRequestSchema } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
-import type { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
-import { UserSignUpRequestSchema } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { UserVerifyEmailRequestSchema } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
+import {
+    AuthPublicLoginSocialAppleDoc,
+    AuthPublicLoginSocialGoogleDoc,
+    UserPublicForgotPasswordDoc,
+    UserPublicLoginCredentialDoc,
+    UserPublicLoginSetupTwoFactorDoc,
+    UserPublicLoginVerifyTwoFactorDoc,
+    UserPublicResetPasswordDoc,
+    UserPublicSendEmailVerificationDoc,
+    UserPublicSignUpDoc,
+    UserPublicVerifyEmailDoc,
+} from '@modules/user/docs/user.public.doc';
+import {
+    UserCreateSocialRequestDto,
+    UserCreateSocialRequestSchema,
+} from '@modules/user/dtos/request/user.create-social.request.dto';
+import {
+    UserForgotPasswordResetRequestDto,
+    UserForgotPasswordResetRequestSchema,
+} from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
+import {
+    UserForgotPasswordRequestDto,
+    UserForgotPasswordRequestSchema,
+} from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import {
+    UserLoginSetupTwoFactorRequestDto,
+    UserLoginSetupTwoFactorRequestSchema,
+} from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
+import {
+    UserLoginVerifyTwoFactorRequestDto,
+    UserLoginVerifyTwoFactorRequestSchema,
+} from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
+import {
+    UserLoginRequestDto,
+    UserLoginRequestSchema,
+} from '@modules/user/dtos/request/user.login.request.dto';
+import {
+    UserSendEmailVerificationRequestDto,
+    UserSendEmailVerificationRequestSchema,
+} from '@modules/user/dtos/request/user.send-email-verification.request.dto';
+import {
+    UserSignUpRequestDto,
+    UserSignUpRequestSchema,
+} from '@modules/user/dtos/request/user.sign-up.request.dto';
+import {
+    UserVerifyEmailRequestDto,
+    UserVerifyEmailRequestSchema,
+} from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
+import {
+    UserTwoFactorEnableResponseDto,
+    UserTwoFactorEnableResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { IUserLoginOutcome } from '@modules/user/interfaces/user.interface';
 import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
 import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
@@ -47,8 +78,8 @@ import {
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumUserLoginWith } from '@generated/prisma-client/client';
-import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import { EnumUserLoginWith } from '@generated/prisma-client';
+import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -63,7 +94,7 @@ export class UserPublicController {
         private readonly userTwoFactorHttpService: UserTwoFactorHttpService
     ) {}
 
-    @Doc({ summary: 'login with credential' })
+    @UserPublicLoginCredentialDoc()
     @Response('user.loginCredential', { schema: UserLoginResponseSchema })
     @FeatureFlagProtected('loginWithCredential')
     @ApiKeyProtected()
@@ -77,7 +108,7 @@ export class UserPublicController {
         return this.userAuthHttpService.loginCredential(body);
     }
 
-    @Doc({ summary: 'Login with social google' })
+    @AuthPublicLoginSocialGoogleDoc()
     @Response('user.loginWithSocialGoogle', {
         schema: UserLoginResponseSchema,
     })
@@ -100,7 +131,7 @@ export class UserPublicController {
         );
     }
 
-    @Doc({ summary: 'Login with social apple' })
+    @AuthPublicLoginSocialAppleDoc()
     @Response('user.loginWithSocialApple', {
         schema: UserLoginResponseSchema,
     })
@@ -123,7 +154,7 @@ export class UserPublicController {
         );
     }
 
-    @Doc({ summary: 'User sign up' })
+    @UserPublicSignUpDoc()
     @Response('user.signUp')
     @FeatureFlagProtected('signUp')
     @ApiKeyProtected()
@@ -136,7 +167,7 @@ export class UserPublicController {
         await this.userAuthHttpService.signUp(body);
     }
 
-    @Doc({ summary: 'User Email Verification' })
+    @UserPublicVerifyEmailDoc()
     @Response('user.verifyEmail')
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -148,7 +179,7 @@ export class UserPublicController {
         await this.userVerificationHttpService.verifyEmail(body);
     }
 
-    @Doc({ summary: 'User resend email verification' })
+    @UserPublicSendEmailVerificationDoc()
     @Response('user.sendEmailVerification')
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -161,7 +192,7 @@ export class UserPublicController {
         await this.userVerificationHttpService.sendVerificationEmail(body);
     }
 
-    @Doc({ summary: 'User forgot password' })
+    @UserPublicForgotPasswordDoc()
     @Response('user.forgotPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
@@ -175,7 +206,7 @@ export class UserPublicController {
         await this.userPasswordHttpService.forgotPassword(body);
     }
 
-    @Doc({ summary: 'User reset password' })
+    @UserPublicResetPasswordDoc()
     @Response('user.resetPassword')
     @FeatureFlagProtected('changePassword')
     @ApiKeyProtected()
@@ -188,7 +219,7 @@ export class UserPublicController {
         await this.userPasswordHttpService.resetPassword(body);
     }
 
-    @Doc({ summary: 'User verify two factor during login' })
+    @UserPublicLoginVerifyTwoFactorDoc()
     @Response('user.verifyTwoFactor', { schema: AuthTokenResponseSchema })
     @ApiKeyProtected()
     @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
@@ -200,10 +231,7 @@ export class UserPublicController {
         return this.userTwoFactorHttpService.loginVerifyTwoFactor(body);
     }
 
-    @Doc({
-        summary:
-            'User enable two factor during login after reset by admin. Required setup 2FA flow',
-    })
+    @UserPublicLoginSetupTwoFactorDoc()
     @Response('user.loginSetupTwoFactor', {
         schema: UserTwoFactorEnableResponseSchema,
     })

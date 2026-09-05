@@ -25,7 +25,6 @@ $RECYCLE.BIN/
 # Tests
 /coverage
 /.nyc_output
-/.vitest
 
 # Lint / format cache
 .eslintcache

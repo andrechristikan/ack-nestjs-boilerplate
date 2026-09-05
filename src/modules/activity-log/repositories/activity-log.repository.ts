@@ -1,23 +1,31 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type {
+import {
     IPaginationCursorReturn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type {
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import {
     IActivityLog,
-    IActivityLogCreate,
+    IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { IActivityLogRepository } from '@modules/activity-log/interfaces/activity-log.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    ActivityLog,
+    EnumActivityLogAction,
+    Prisma,
+} from '@generated/prisma-client';
 
 @Injectable()
-export class ActivityLogRepository implements IActivityLogRepository {
+export class ActivityLogRepository {
+    private readonly userScopedFilter: NonNullable<
+        Prisma.ActivityLogWhereInput['OR']
+    > = [{ workspaceId: null }, { workspaceId: { isSet: false } }];
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
@@ -29,7 +37,11 @@ export class ActivityLogRepository implements IActivityLogRepository {
         where?: Prisma.ActivityLogWhereInput
     ): Prisma.ActivityLogWhereInput {
         return {
-            AND: [...(where ? [where] : []), { userId }],
+            AND: [
+                ...(where ? [where] : []),
+                { userId },
+                { OR: this.userScopedFilter },
+            ],
         };
     }
 
@@ -53,15 +65,13 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
-
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offset<
             IActivityLog,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: this.buildUserScopedWhere(userId, where),
             include: {
                 user: {
                     select: UserRefSelect,
@@ -77,14 +87,12 @@ export class ActivityLogRepository implements IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
-
         return this.paginationService.cursor<
             IActivityLog,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: this.buildUserScopedWhere(userId, where),
             include: {
                 user: {
                     select: UserRefSelect,
@@ -100,19 +108,13 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const scopedWhere = this.buildWorkspaceScopedWhere(
-            workspaceId,
-            userId,
-            where
-        );
-
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offset<
             IActivityLog,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: this.buildWorkspaceScopedWhere(workspaceId, userId, where),
             include: {
                 user: {
                     select: UserRefSelect,
@@ -129,18 +131,12 @@ export class ActivityLogRepository implements IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        const scopedWhere = this.buildWorkspaceScopedWhere(
-            workspaceId,
-            userId,
-            where
-        );
-
         return this.paginationService.cursor<
             IActivityLog,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: scopedWhere,
+            where: this.buildWorkspaceScopedWhere(workspaceId, userId, where),
             include: {
                 user: {
                     select: UserRefSelect,
@@ -149,49 +145,28 @@ export class ActivityLogRepository implements IActivityLogRepository {
         });
     }
 
-    private mapCreateManyData(
-        rows: IActivityLogCreate[]
-    ): Prisma.ActivityLogCreateManyInput[] {
-        return rows.map(
-            ({
+    async create(
+        userId: string,
+        action: EnumActivityLogAction,
+        description: string,
+        { ipAddress, userAgent, geoLocation }: IRequestLog,
+        metadata?: IActivityLogMetadata
+    ): Promise<ActivityLog> {
+        return this.databaseService.client.activityLog.create({
+            data: {
                 userId,
-                createdBy,
-                workspaceId,
                 action,
+                ipAddress,
+                userAgent: this.databaseUtil.toPlainObject(userAgent),
+                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
                 description,
-                requestLog: { ipAddress, userAgent, geoLocation },
-                metadata,
-            }) => {
-                const plainUserAgent =
-                    this.databaseUtil.toPlainObject(userAgent);
-                const plainGeoLocation =
-                    this.databaseUtil.toPlainObject(geoLocation);
-
-                return {
-                    userId,
-                    workspaceId,
-                    action,
-                    ipAddress,
-                    userAgent: plainUserAgent,
-                    geoLocation: plainGeoLocation,
-                    description,
-                    metadata:
-                        Object.keys(metadata).length > 0
-                            ? (metadata as Prisma.InputJsonValue)
-                            : null,
-                    createdBy,
-                };
-            }
-        );
-    }
-
-    async createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload> {
-        const createManyData = this.mapCreateManyData(rows);
-
-        return this.databaseService.withTransaction(async tx =>
-            tx.activityLog.createMany({
-                data: createManyData,
-            })
-        );
+                metadata: this.databaseUtil.toPlainObject(
+                    metadata && Object.keys(metadata).length > 0
+                        ? metadata
+                        : null
+                ),
+                createdBy: userId,
+            },
+        });
     }
 }

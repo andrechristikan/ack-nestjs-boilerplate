@@ -1,34 +1,49 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
+import {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
+    EnumActivityLogAction,
+    EnumProjectMemberRole,
+    EnumUserStatus,
     EnumWorkspaceInviteStatus,
+    EnumWorkspaceMemberRole,
     Prisma,
-} from '@generated/prisma-client/client';
-import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import {
-    WorkspaceActiveFilter,
-    WorkspaceInviteUserListSelect,
-} from '@modules/workspace/constants/workspace.constant';
-import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
-import type {
-    IWorkspaceInviteCreateData,
-    IWorkspaceInviteList,
-} from '@modules/workspace/interfaces/workspace.interface';
+    Project,
+    User,
+    WorkspaceInvite,
+    WorkspaceMember,
+} from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
+import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
+export interface IWorkspaceInviteCreateData {
+    workspaceId: string;
+    email: string;
+    workspaceRole: EnumWorkspaceMemberRole;
+    projectId?: string;
+    projectRole?: EnumProjectMemberRole;
+    hashedToken: string;
+    reference: string;
+    expiredAt: Date;
+    invitedByUserId: string;
+}
+
 @Injectable()
-export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
+export class WorkspaceInviteRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     /** Flips truly-expired `pending` invites to `expired`; returns the count updated. */
@@ -51,21 +66,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         return count;
     }
 
-    async expirePendingByWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceId: string
-    ): Promise<void> {
-        await tx.workspaceInvite.updateMany({
-            where: {
-                workspaceId,
-                status: EnumWorkspaceInviteStatus.pending,
-            },
-            data: {
-                status: EnumWorkspaceInviteStatus.expired,
-            },
-        });
-    }
-
+    /** Finds a pending invite by hashed token, restricted to invites whose workspace is still active, so an invite orphaned before the soft-delete cascade existed cannot be claimed. */
     async findPendingByHashedToken(
         hashedToken: string
     ): Promise<WorkspaceInvite | null> {
@@ -112,6 +113,34 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         return count > 0;
     }
 
+    async findActiveUserByEmail(email: string): Promise<User | null> {
+        return this.databaseService.client.user.findUnique({
+            where: { email, deletedAt: null, status: EnumUserStatus.active },
+        });
+    }
+
+    async findInviterNameById(
+        userId: string
+    ): Promise<IWorkspaceInviteInviter | null> {
+        return this.databaseService.client.user.findUnique({
+            where: { id: userId },
+            select: { name: true, username: true },
+        });
+    }
+
+    async findActiveProjectByIdAndWorkspace(
+        projectId: string,
+        workspaceId: string
+    ): Promise<Project | null> {
+        return this.databaseService.client.project.findFirst({
+            where: {
+                id: projectId,
+                workspaceId,
+                OR: ProjectActiveFilter,
+            },
+        });
+    }
+
     async findWithPaginationCursor(
         workspaceId: string,
         {
@@ -119,9 +148,9 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
+    ): Promise<IPaginationCursorReturn<WorkspaceInvite>> {
         return this.paginationService.cursor<
-            IWorkspaceInviteList,
+            WorkspaceInvite,
             Prisma.WorkspaceInviteWhereInput
         >(this.databaseService.client.workspaceInvite, {
             ...others,
@@ -130,40 +159,54 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 ...(status ?? {}),
                 workspaceId,
             },
-            select: WorkspaceInviteUserListSelect,
         });
     }
 
-    async createPending({
-        workspaceInviteId,
-        workspaceId,
-        email,
-        workspaceRole,
-        projectId,
-        projectRole,
-        hashedToken,
-        reference,
-        expiredAt,
-        invitedByUserId,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
-        return this.databaseService.client.workspaceInvite.create({
-            data: {
-                id: workspaceInviteId,
-                workspaceId,
-                email,
-                workspaceRole,
-                projectId,
-                projectRole,
-                token: hashedToken,
-                reference,
-                expiredAt,
-                invitedByUserId,
-            },
-        });
+    async createPending(
+        {
+            workspaceId,
+            email,
+            workspaceRole,
+            projectId,
+            projectRole,
+            hashedToken,
+            reference,
+            expiredAt,
+            invitedByUserId,
+        }: IWorkspaceInviteCreateData,
+        requestLog: IRequestLog
+    ): Promise<WorkspaceInvite> {
+        const [invite] = await this.databaseService.client.$transaction([
+            this.databaseService.client.workspaceInvite.create({
+                data: {
+                    workspaceId,
+                    email,
+                    workspaceRole,
+                    projectId,
+                    projectRole,
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                    invitedByUserId,
+                    createdBy: invitedByUserId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    invitedByUserId,
+                    workspaceId,
+                    EnumActivityLogAction.workspaceInviteCreated,
+                    requestLog
+                )
+            ),
+        ]);
+
+        return invite;
     }
 
     async rotateForResend(
         workspaceInviteId: string,
+        actorId: string,
         hashedToken: string,
         reference: string,
         expiredAt: Date
@@ -174,33 +217,95 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 token: hashedToken,
                 reference,
                 expiredAt,
+                updatedBy: actorId,
             },
         });
     }
 
-    async revoke(workspaceInviteId: string): Promise<void> {
-        await this.databaseService.client.workspaceInvite.update({
-            where: { id: workspaceInviteId },
-            data: {
-                status: EnumWorkspaceInviteStatus.revoked,
-            },
-        });
-    }
-
-    async acceptInTx(
-        tx: IDatabaseTransactionClient,
+    async revoke(
         workspaceInviteId: string,
-        userId: string,
-        acceptedAt: Date
+        workspaceId: string,
+        actorId: string,
+        requestLog: IRequestLog
     ): Promise<void> {
-        await tx.workspaceInvite.update({
-            where: { id: workspaceInviteId },
-            data: {
-                status: EnumWorkspaceInviteStatus.accepted,
-                acceptedAt,
-                acceptedByUserId: userId,
-                updatedBy: userId,
-            },
+        await this.databaseService.client.$transaction([
+            this.databaseService.client.workspaceInvite.update({
+                where: { id: workspaceInviteId },
+                data: {
+                    status: EnumWorkspaceInviteStatus.revoked,
+                    updatedBy: actorId,
+                },
+            }),
+            this.databaseService.client.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    actorId,
+                    workspaceId,
+                    EnumActivityLogAction.workspaceInviteRevoked,
+                    requestLog
+                )
+            ),
+        ]);
+    }
+
+    /** Accepts an invite for a user who already exists: it creates the membership and settles the invite, and never creates a user row. */
+    async acceptForExistingUser(
+        userId: string,
+        invite: WorkspaceInvite,
+        role: EnumWorkspaceMemberRole,
+        requestLog: IRequestLog
+    ): Promise<WorkspaceMember> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.$transaction(async tx => {
+            const member = await tx.workspaceMember.create({
+                data: {
+                    workspaceId: invite.workspaceId,
+                    userId,
+                    role,
+                    createdBy: userId,
+                },
+            });
+
+            await tx.workspaceInvite.update({
+                where: { id: invite.id },
+                data: {
+                    status: EnumWorkspaceInviteStatus.accepted,
+                    acceptedAt: today,
+                    acceptedByUserId: userId,
+                    updatedBy: userId,
+                },
+            });
+
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    lastWorkspaceId: invite.workspaceId,
+                    lastWorkspaceChangedAt: today,
+                    updatedBy: userId,
+                },
+            });
+
+            if (invite.projectId && invite.projectRole) {
+                await tx.projectMember.create({
+                    data: {
+                        projectId: invite.projectId,
+                        userId,
+                        role: invite.projectRole,
+                        createdBy: userId,
+                    },
+                });
+            }
+
+            await tx.activityLog.create(
+                this.activityLogUtil.buildCreateArgs(
+                    userId,
+                    invite.workspaceId,
+                    EnumActivityLogAction.workspaceInviteAccepted,
+                    requestLog
+                )
+            );
+
+            return member;
         });
     }
 }

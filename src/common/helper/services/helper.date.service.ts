@@ -1,12 +1,12 @@
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
-import type { IHelperDateCreateOptions } from '@common/helper/interfaces/helper.interface';
+import { IHelperDateCreateOptions } from '@common/helper/interfaces/helper.interface';
+import { IHelperDateService } from '@common/helper/interfaces/helper.date.service.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DateTime, Duration } from 'luxon';
-import type { DateObjectUnits, DurationLikeObject } from 'luxon';
+import { DateObjectUnits, DateTime, Duration, DurationLikeObject } from 'luxon';
 
 @Injectable()
-export class HelperDateService {
+export class HelperDateService implements IHelperDateService {
     private readonly defTz: string;
 
     constructor(private readonly configService: ConfigService) {

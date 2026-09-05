@@ -5,7 +5,6 @@ import { CountryResponseSchema } from '@modules/country/dtos/response/country.re
 
 /**
  * Mobile number registered to a user, with the country that owns its calling code.
- * @public
  */
 export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -35,10 +34,6 @@ export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Mobile number of a user with its country.
- * @public
- */
 export type UserMobileNumberResponseDto = z.infer<
     typeof UserMobileNumberResponseSchema
 >;

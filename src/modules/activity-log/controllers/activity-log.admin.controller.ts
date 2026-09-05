@@ -1,13 +1,17 @@
-import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
-import { ActivityLogAdminListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import { ResponsePagination } from '@common/response/decorators/response.decorator';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
+import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import {
+    ActivityLogAdminListByUserDoc,
+    ActivityLogAdminListByWorkspaceDoc,
+} from '@modules/activity-log/docs/activity-log.admin.doc';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -21,7 +25,8 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-} from '@generated/prisma-client/client';
+    Prisma,
+} from '@generated/prisma-client';
 
 @ApiTags('modules.admin.activityLog')
 @Controller({
@@ -33,8 +38,8 @@ export class ActivityLogAdminController {
         private readonly activityLogHttpService: ActivityLogHttpService
     ) {}
 
-    @Doc({ summary: 'get all activity logs of a user' })
-    @ResponsePagination('activityLog.listByUser', {
+    @ActivityLogAdminListByUserDoc()
+    @ResponsePaging('activityLog.listByUser', {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -55,16 +60,21 @@ export class ActivityLogAdminController {
     @RequestThrottle({ user: true })
     @Get('/user/:userId/list')
     async listByUser(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @PaginationOffsetQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
         userId: string
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, query);
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.activityLogHttpService.getListOffsetByUser(
+            userId,
+            pagination
+        );
     }
 
-    @Doc({ summary: 'get all activity logs of a workspace' })
-    @ResponsePagination('activityLog.listByWorkspace', {
+    @ActivityLogAdminListByWorkspaceDoc()
+    @ResponsePaging('activityLog.listByWorkspace', {
         schema: ActivityLogResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -85,17 +95,19 @@ export class ActivityLogAdminController {
     @RequestThrottle({ user: true })
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @PaginationOffsetQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        @Param('workspaceId', RequestRequiredPipe, RequestIsValidUuidPipe)
         workspaceId: string,
-        @Query('userId', { schema: RequestMongoIdSchema.optional() })
+        @Query('userId', new RequestIsValidUuidPipe({ optional: true }))
         userId?: string
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByWorkspace(
             workspaceId,
             userId ?? null,
-            query
+            pagination
         );
     }
 }

@@ -4,11 +4,10 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
 /**
  * Base notification-user-setting shape: one stored channel/type toggle of a user.
- * @public
  */
 export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -16,7 +15,7 @@ export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'User ID',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     type: z.enum(EnumNotificationType).meta({
         description: 'Notification type',
@@ -33,10 +32,6 @@ export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * One stored channel and type notification toggle of a user.
- * @public
- */
 export type NotificationUserSettingDto = z.infer<
     typeof NotificationUserSettingSchema
 >;

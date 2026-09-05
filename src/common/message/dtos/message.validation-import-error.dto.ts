@@ -3,7 +3,6 @@ import { MessageValidationErrorSchema } from '@common/message/dtos/message.valid
 
 /**
  * Failed validation issues grouped by the imported row they came from.
- * @public
  */
 export const MessageValidationImportErrorSchema = z.object({
     row: z.number().meta({
@@ -22,10 +21,6 @@ export const MessageValidationImportErrorSchema = z.object({
     }),
 });
 
-/**
- * Localized validation failures of one imported row.
- * @public
- */
 export type MessageValidationImportErrorDto = z.infer<
     typeof MessageValidationImportErrorSchema
 >;

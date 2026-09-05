@@ -1,10 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Validates the body for requesting to join a public workspace.
- * @public
- */
 export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
     workspaceId: z
         .string()
@@ -12,7 +8,7 @@ export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
         .meta({
             description:
                 'Workspace to request joining; must be isPublic and not soft-deleted',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     message: z.string().max(500).optional().meta({
         description:
@@ -21,10 +17,6 @@ export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for requesting to join a public workspace.
- * @public
- */
 export type WorkspaceJoinRequestCreateRequestDto = z.infer<
     typeof WorkspaceJoinRequestCreateRequestSchema
 >;

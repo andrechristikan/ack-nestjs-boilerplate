@@ -4,11 +4,10 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-} from '@generated/prisma-client/client';
+} from '@generated/prisma-client';
 
 /**
  * Base device shape: the stored device row without the fingerprint and the notification token.
- * @public
  */
 export const DeviceResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -35,8 +34,4 @@ export const DeviceResponseSchema = DatabaseResponseSchema.omit({
         }),
 });
 
-/**
- * Stored device without fingerprint and notification token.
- * @public
- */
 export type DeviceResponseDto = z.infer<typeof DeviceResponseSchema>;

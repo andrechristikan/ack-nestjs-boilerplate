@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import type {
+import {
     CallHandler,
     ExecutionContext,
+    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 

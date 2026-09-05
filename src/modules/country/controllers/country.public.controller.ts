@@ -1,15 +1,20 @@
-import type { CountryListRequestDto } from '@modules/country/dtos/request/country.list.request.dto';
-import { CountryListRequestSchema } from '@modules/country/dtos/request/country.list.request.dto';
-import { Doc } from '@common/doc/decorators/doc.decorator';
-import { ResponsePagination } from '@common/response/decorators/response.decorator';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
+import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
-import type { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
+import {
+    CountryDefaultAvailableOrderBy,
+    CountryDefaultAvailableSearch,
+} from '@modules/country/constants/country.list.constant';
+import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
+import {
+    CountryResponseDto,
+    CountryResponseSchema,
+} from '@modules/country/dtos/response/country.response.dto';
 import { CountryHttpService } from '@modules/country/services/country.http.service';
-import { Controller, Get, Query } from '@nestjs/common';
-
+import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.public.country')
@@ -20,14 +25,17 @@ import { ApiTags } from '@nestjs/swagger';
 export class CountryPublicController {
     constructor(private readonly countryHttpService: CountryHttpService) {}
 
-    @Doc({ summary: 'get all list country' })
-    @ResponsePagination('country.list', { schema: CountryResponseSchema })
+    @CountryPublicListDoc()
+    @ResponsePaging('country.list', { schema: CountryResponseSchema })
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Query({ schema: CountryListRequestSchema })
-        query: CountryListRequestDto
-    ): Promise<IResponsePaginationReturn<CountryResponseDto>> {
-        return this.countryHttpService.getListCursor(query);
+        @PaginationCursorQuery({
+            availableSearch: CountryDefaultAvailableSearch,
+            availableOrderBy: CountryDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
+    ): Promise<IResponsePagingReturn<CountryResponseDto>> {
+        return this.countryHttpService.getListCursor(pagination);
     }
 }

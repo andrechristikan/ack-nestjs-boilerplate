@@ -1,37 +1,41 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type {
+import {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import type {
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import {
     ITermPolicyContent,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
+import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+    TermPolicy,
+} from '@generated/prisma-client';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 
 @Injectable()
-export class TermPolicyRepository implements ITermPolicyRepository {
+export class TermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly activityLogUtil: ActivityLogUtil
     ) {}
 
     async find(
@@ -41,7 +45,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
             Prisma.TermPolicyWhereInput
@@ -61,7 +65,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<TermPolicy>> {
         return this.paginationService.cursor<
             TermPolicy,
             Prisma.TermPolicyWhereInput
@@ -81,7 +85,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
-    ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
+    ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
         return this.paginationService.cursor<
             ITermPolicyUserAcceptance,
             Prisma.TermPolicyUserAcceptanceWhereInput
@@ -102,7 +106,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
+    async existLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
         version: number;
@@ -123,107 +127,118 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async existsAcceptanceByPolicyAndUser(
+    async existAcceptanceByPolicyAndUser(
         userId: string,
         termPolicyId: string
-    ): Promise<boolean> {
-        const count =
-            await this.databaseService.client.termPolicyUserAcceptance.count({
-                where: {
-                    userId,
-                    termPolicyId,
-                },
-            });
-
-        return count > 0;
-    }
-
-    async existsByVersionAndType(
-        version: number,
-        type: EnumTermPolicyType
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.termPolicy.count({
+    ): Promise<{ id: string } | null> {
+        return this.databaseService.client.termPolicyUserAcceptance.findFirst({
             where: {
-                version,
-                type,
-            },
-        });
-
-        return count > 0;
-    }
-
-    async findStatusByVersionAndType(
-        version: number,
-        type: EnumTermPolicyType
-    ): Promise<EnumTermPolicyStatus | null> {
-        const termPolicy =
-            await this.databaseService.client.termPolicy.findFirst({
-                where: {
-                    version,
-                    type,
-                },
-                select: {
-                    status: true,
-                },
-            });
-
-        return termPolicy?.status ?? null;
-    }
-
-    async findPublishedByTypesInTx(
-        tx: IDatabaseTransactionClient,
-        types: EnumTermPolicyType[]
-    ): Promise<{ id: string; type: EnumTermPolicyType }[]> {
-        return tx.termPolicy.findMany({
-            where: {
-                type: { in: types },
-                status: EnumTermPolicyStatus.published,
+                userId,
+                termPolicyId,
             },
             select: {
                 id: true,
-                type: true,
             },
         });
     }
 
-    async acceptInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        termPolicyId: string,
-        createdBy: string,
-        acceptedAt: Date
-    ): Promise<ITermPolicyUserAcceptance> {
-        return tx.termPolicyUserAcceptance.create({
-            data: {
-                acceptedAt,
-                userId,
-                termPolicyId,
-                createdBy,
+    async existByVersionAndType(
+        version: number,
+        type: EnumTermPolicyType
+    ): Promise<{
+        id: string;
+        contents: Prisma.JsonArray;
+        status: EnumTermPolicyStatus;
+    } | null> {
+        return this.databaseService.client.termPolicy.findFirst({
+            where: {
+                version,
+                type,
             },
-            include: {
-                termPolicy: true,
-                user: {
-                    select: UserRefSelect,
-                },
+            select: {
+                id: true,
+                contents: true,
+                status: true,
             },
         });
+    }
+
+    async accept(
+        user: IUser,
+        termPolicyId: string,
+        type: EnumTermPolicyType,
+        { ipAddress, userAgent, geoLocation }: IRequestLog
+    ): Promise<ITermPolicyUserAcceptance> {
+        const acceptedAt = this.helperDateService.create();
+        const [userAcceptance] = await this.databaseService.client.$transaction(
+            [
+                this.databaseService.client.termPolicyUserAcceptance.create({
+                    data: {
+                        acceptedAt,
+                        userId: user.id,
+                        termPolicyId,
+                        createdBy: user.id,
+                    },
+                    include: {
+                        termPolicy: true,
+                        user: {
+                            select: UserRefSelect,
+                        },
+                    },
+                }),
+                this.databaseService.client.user.update({
+                    where: {
+                        id: user.id,
+                        deletedAt: null,
+                        status: EnumUserStatus.active,
+                    },
+                    data: {
+                        termPolicy: {
+                            [type]: true,
+                        },
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userAcceptTermPolicy,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userAcceptTermPolicy,
+                                        {
+                                            type,
+                                        }
+                                    ),
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: user.id,
+                                metadata: {
+                                    termPolicyType: type,
+                                },
+                            },
+                        },
+                    },
+                }),
+            ]
+        );
+
+        return userAcceptance;
     }
 
     async create(
-        termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[]
+        contents: ITermPolicyContent[],
+        createdBy: string
     ): Promise<TermPolicy> {
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
-
         return this.databaseService.client.termPolicy.create({
             data: {
-                id: termPolicyId,
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,
-                contents: plainContents,
+                contents: this.databaseUtil.toPlainArray(contents),
+                createdBy,
             },
         });
     }
@@ -239,7 +254,8 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async updateContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        content: ITermPolicyContent
+        content: ITermPolicyContent,
+        updatedBy: string
     ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(
             c => c.language === content.language
@@ -248,36 +264,34 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             contents[contentIndex] = content;
         }
 
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
-
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
-                contents: plainContents,
+                contents: this.databaseUtil.toPlainArray(contents),
+                updatedBy,
             },
         });
     }
 
     async addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContent
+        newContent: ITermPolicyContent,
+        updatedBy: string
     ): Promise<TermPolicy> {
-        const plainContent = this.databaseUtil.toPlainObject<
-            ITermPolicyContent,
-            Prisma.TermPolicyContentCreateInput
-        >(newContent);
-
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
                 contents: {
-                    push: plainContent,
+                    push: this.databaseUtil.toPlainObject<
+                        ITermPolicyContent,
+                        Prisma.TermPolicyContentCreateInput
+                    >(newContent),
                 },
+                updatedBy,
             },
         });
     }
@@ -285,42 +299,56 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async removeContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto
+        { language }: TermPolicyRemoveContentRequestDto,
+        updatedBy: string
     ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(c => c.language === language);
         if (contentIndex !== -1) {
             contents.splice(contentIndex, 1);
         }
 
-        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-            this.databaseUtil.toPlainArray(contents);
-
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
-                contents: plainContents,
+                contents: this.databaseUtil.toPlainArray(contents),
+                updatedBy,
             },
         });
     }
 
-    async publishInTx(
-        tx: IDatabaseTransactionClient,
+    async publish(
         termPolicyId: string,
-        contents: ITermPolicyContent[]
+        type: EnumTermPolicyType,
+        contents: ITermPolicyContent[],
+        updatedBy: string
     ): Promise<TermPolicy> {
-        const publishedAt = this.helperDateService.create();
+        const [termPolicy] = await this.databaseService.client.$transaction([
+            this.databaseService.client.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                },
+                data: {
+                    status: EnumTermPolicyStatus.published,
+                    publishedAt: this.helperDateService.create(),
+                    contents,
+                    updatedBy,
+                },
+            }),
+            this.databaseService.client.user.updateMany({
+                where: {
+                    deletedAt: null,
+                    status: EnumUserStatus.active,
+                },
+                data: {
+                    termPolicy: {
+                        [type]: false,
+                    },
+                },
+            }),
+        ]);
 
-        return tx.termPolicy.update({
-            where: {
-                id: termPolicyId,
-            },
-            data: {
-                status: EnumTermPolicyStatus.published,
-                publishedAt,
-                contents,
-            },
-        });
+        return termPolicy;
     }
 }

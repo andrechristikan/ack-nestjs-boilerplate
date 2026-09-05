@@ -1,4 +1,4 @@
-import { HealthDomainModule } from '@modules/health/health.domain.module';
+import { HealthModule } from '@modules/health/health.module';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +6,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [HealthHttpService],
     exports: [HealthHttpService],
-    imports: [HealthDomainModule],
+    imports: [HealthModule],
 })
 export class HealthHttpModule {}

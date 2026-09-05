@@ -4,7 +4,6 @@ import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.res
 
 /**
  * Api-key shape returned once at creation and reset, carrying the plain secret.
- * @public
  */
 export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
     secret: z.string().meta({
@@ -13,10 +12,6 @@ export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
     }),
 });
 
-/**
- * API key with its plain secret, returned at creation and reset.
- * @public
- */
 export type ApiKeyCreateResponseDto = z.infer<
     typeof ApiKeyCreateResponseSchema
 >;

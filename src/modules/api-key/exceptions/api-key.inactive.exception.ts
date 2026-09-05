@@ -2,10 +2,6 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
-/**
- * Raised when an API key is inactive.
- * @public
- */
 export class ApiKeyInactiveException extends AppBaseException {
     readonly module = 'apiKey';
     readonly statusCode = EnumApiKeyStatusCodeError.inactive;

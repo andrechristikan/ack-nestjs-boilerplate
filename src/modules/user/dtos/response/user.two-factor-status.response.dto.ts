@@ -3,7 +3,6 @@ import { faker } from '@faker-js/faker';
 
 /**
  * Current two-factor authentication state of the signed-in account.
- * @public
  */
 export const UserTwoFactorStatusResponseSchema = z.object({
     isEnabled: z.boolean().meta({
@@ -30,10 +29,6 @@ export const UserTwoFactorStatusResponseSchema = z.object({
     }),
 });
 
-/**
- * Two-factor state of the signed-in account.
- * @public
- */
 export type UserTwoFactorStatusResponseDto = z.infer<
     typeof UserTwoFactorStatusResponseSchema
 >;

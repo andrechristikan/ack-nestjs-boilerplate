@@ -36,8 +36,8 @@ unresolvable dependency.
 export class RouterHttpUserModule {}
 ```
 
-- **The import target is `<Feature>HttpModule`, never `<Feature>DomainModule`.** A controller's only
-  collaborator is the HTTP service (`rules/architecture.md`); reaching the domain from a
+- **The import target is `<Feature>HttpModule`, never `<Feature>Module`.** A controller's only
+  collaborator is the HTTP service (`rules/architecture.md`); reaching the domain service from a
   controller skips the layer that owns DTO translation.
 - **The feature modules keep `controllers: []`** (`rules/nest-wiring.md`). A controller
   registered in its own module mounts OUTSIDE the prefix, so the endpoint exists at the wrong
@@ -59,8 +59,7 @@ export class RouterProcessorModule {}
 ## One controller per scope, and the scope decides everything
 
 `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` ·
-`shared`. One file per scope, however many endpoints it holds. The scope is not a label — three
-rules key off it:
+`shared`. The scope is not a label — three rules key off it:
 
 | Scope | Prefix | Auth surface | Pagination |
 |---|---|---|---|

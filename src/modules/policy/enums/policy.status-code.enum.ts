@@ -1,7 +1,3 @@
-/**
- * Status codes raised by the `policy` module.
- * @public
- */
 export enum EnumPolicyStatusCodeError {
     forbidden = 51100,
     predefinedNotFound = 51101,

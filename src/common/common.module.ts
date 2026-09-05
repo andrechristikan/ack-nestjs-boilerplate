@@ -3,35 +3,37 @@ import { MessageModule } from '@common/message/message.module';
 import { HelperModule } from '@common/helper/helper.module';
 import { RequestModule } from '@common/request/request.module';
 import { ResponseModule } from '@common/response/response.module';
-import configs from '@configs/index';
+import configs from '@config';
 import { FileModule } from '@common/file/file.module';
-import { AuthDomainModule } from '@modules/auth/auth.domain.module';
+import { AuthModule } from '@modules/auth/auth.module';
 import { DatabaseModule } from '@common/database/database.module';
 import { PaginationModule } from '@common/pagination/pagination.module';
-import { ApiKeyDomainModule } from '@modules/api-key/api-key.domain.module';
+import { ApiKeyModule } from '@modules/api-key/api-key.module';
 import { RedisCacheModule } from '@common/redis/redis.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheMainModule } from '@common/cache/cache.module';
 import { LoggerModule } from '@common/logger/logger.module';
-import { QueueModule } from '@queues/queue.module';
-import { TermPolicyDomainModule } from '@modules/term-policy/term-policy.domain.module';
+import { QueueRegisterModule } from '@queues/queue.register.module';
+import { TermPolicyModule } from '@modules/term-policy/term-policy.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
-import { ActivityLogDomainModule } from '@modules/activity-log/activity-log.domain.module';
-import { NotificationDomainModule } from '@modules/notification/notification.domain.module';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { NotificationModule } from '@modules/notification/notification.module';
 import { AppEnvSchema } from '@app/dtos/app.env.dto';
-import { SessionDomainModule } from '@modules/session/session.domain.module';
-import { PolicyDomainModule } from '@modules/policy/policy.domain.module';
-import { RoleDomainModule } from '@modules/role/role.domain.module';
-import { FeatureFlagDomainModule } from '@modules/feature-flag/feature-flag.domain.module';
-import { SentryModule } from '@common/sentry/sentry.module';
+import { SessionModule } from '@modules/session/session.module';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { RoleModule } from '@modules/role/role.module';
+import { FeatureFlagModule } from '@modules/feature-flag/feature-flag.module';
 
 /**
- * Composes kit `forRoot()` modules and the app-wide `@Global()` feature domains.
+ * Root shared module that composes all global infrastructure and feature modules.
  *
  * Bootstraps the following in order:
- * - Config, message, logger, Sentry, Redis cache, BullMQ connections, cache, database, request, response
+ * - Config, logger, Redis cache, BullMQ queues, cache, database, and request pipeline
  * - Shared utilities: helper, pagination, file, Firebase
- * - Feature modules: activity log, API key, auth, feature flag, role, policy, term policy, session, notification
+ * - Feature modules: activity log, API key, auth, term policy, notification
+ *
+ * Every sub-module composed here is `@Global()`, making its providers available
+ * application-wide without a per-module import.
  */
 @Module({
     controllers: [],
@@ -47,9 +49,8 @@ import { SentryModule } from '@common/sentry/sentry.module';
         }),
         MessageModule.forRoot(),
         LoggerModule.forRoot(),
-        SentryModule.forRoot(),
         RedisCacheModule.forRoot(),
-        QueueModule.forRoot(),
+        QueueRegisterModule.forRoot(),
         CacheMainModule.forRoot(),
         DatabaseModule.forRoot(),
         RequestModule.forRoot(),
@@ -60,15 +61,15 @@ import { SentryModule } from '@common/sentry/sentry.module';
         FileModule.forRoot(),
         FirebaseModule.forRoot(),
 
-        ActivityLogDomainModule,
-        ApiKeyDomainModule,
-        AuthDomainModule,
-        FeatureFlagDomainModule,
-        RoleDomainModule,
-        PolicyDomainModule,
-        TermPolicyDomainModule,
-        SessionDomainModule,
-        NotificationDomainModule,
+        ActivityLogModule,
+        ApiKeyModule,
+        AuthModule,
+        FeatureFlagModule,
+        RoleModule,
+        PolicyModule,
+        TermPolicyModule,
+        SessionModule,
+        NotificationModule,
     ],
 })
 export class CommonModule {}

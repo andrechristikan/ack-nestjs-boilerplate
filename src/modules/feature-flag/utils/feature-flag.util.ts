@@ -1,4 +1,4 @@
-import type {
+import {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
@@ -24,9 +24,10 @@ export class FeatureFlagUtil {
             const newVal = newMetadata[key];
             const oldVal = oldMetadata[key];
 
-            const newValueType = this.metadataValueType(newVal);
-            const oldValueType = this.metadataValueType(oldVal);
-            if (newValueType !== oldValueType) {
+            if (
+                this.metadataValueType(newVal) !==
+                this.metadataValueType(oldVal)
+            ) {
                 return false;
             } else if (
                 newVal === undefined ||
