@@ -37,6 +37,12 @@ Caching is decorator-driven on the route:
 `ResponseCacheInterceptor` when `options.cache` is present. A hand-mounted
 `@UseInterceptors(CacheInterceptor)` on a route is the wrong path.
 
+- **A cached route's response schema declares only shapes that survive a JSON round trip** — no
+  `z.date()`, no `Map`, no `Set`, no class instance. `ResponseCacheInterceptor` is mounted INSIDE
+  `ResponseInterceptor`, so Redis holds the handler's raw return and `ResponseInterceptor`
+  validates what comes back out of it against the route's schema; a value JSON cannot reproduce
+  is rejected on every cache hit. A cached route that carries a date declares it as a string or a
+  number.
 - **The TTL default is config, not a literal.** `redis.cache.ttlInMs` is the app-wide default;
   a per-route `ttl` still comes from a config key, in milliseconds (`rules/config.md`).
 - **Never cache a response that varies by caller without the caller in the key.** A cached
