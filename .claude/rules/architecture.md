@@ -19,7 +19,7 @@ its definition (`rules/nest-wiring.md`).
 - **The repository owns `null → {}` normalization** for filter params before they reach Prisma. Never in the caller. A service that spreads `filter ?? {}` into a repository call has taken over the repository's job.
 - Returns Prisma models or the module's `I<Module>*` interfaces. **It never returns a DTO** — a response shape belongs to one transport, and the repository answers to all of them.
 - **It MAY receive a request DTO.** Where the controller, the HTTP service and the domain service all carry the same shape unchanged down to the write, that shape travels as the DTO rather than being retyped at every layer for no gain. What decides is whether anything in between DERIVES: the moment a service merges, computes or validates the input into a different shape, that new shape is an `I<Module>*` interface, and it is the interface that reaches the repository. A repository parameter typed as a DTO says "nothing happened to this on the way down", and that has to be true.
-- **What else it may inject is the tier table below.** `src/common/` and every `@Global()` module are open to it, so `HelperService`, `PaginationService`, `DatabaseUtil` and `ActivityLogUtil` are injected directly. A non-global module's util is not, unless the repository belongs to that module.
+- **What else it may inject is the tier table below.** `src/common/` and every `@Global()` module are open to it, so `HelperDateService`, `PaginationService`, `DatabaseUtil` and `ActivityLogUtil` are injected directly. A util from a non-global module is not — including its OWN feature's util, which is provided by the service layer (`rules/nest-wiring.md`). What such a util built arrives as a parameter.
 - **`ConfigService` only for the mechanics of the write itself.** A transaction timeout, a batch size — the knobs on machinery this layer already owns — are read here. A value that expresses a business decision is not: `workspace.slugPrefix`, `project.slugMaxAttempts`, `user.personalWorkspaceNamePattern` belong to the domain service and arrive as parameters. The test is what the value decides, not where it is stored — both live in `src/configs/`. This is the "no business rules" line above, not a tier question: `ConfigModule` is global and every other global IS open.
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
 - **Prefer `$transaction` for multi-step writes** so a failure rolls back as one unit. See `rules/database.md`.
@@ -31,7 +31,7 @@ its definition (`rules/nest-wiring.md`).
 - **A `ResponseDto` never appears in a domain signature**, as a parameter or a return. Return values are `I<Module>*` interfaces, Prisma models, and primitives; assembling a response is the HTTP service's job, and the domain answers to the queue as well.
 - **A request DTO may travel through unchanged.** When the method takes the caller's input and hands it on without deriving anything from it, the DTO is the parameter type and no parallel interface is invented for it. When the method derives — merges two inputs, computes a value, resolves a reference, validates into a narrower shape — what it produces and passes on is an `I<Module>*` interface. The rule is about what the method DOES to the shape, not about which layer it sits in.
 - It knows nothing about HTTP or the queue: no `IRequestApp`, no `Job`, no response envelope, no pagination response assembly.
-- Injects repositories as classes — **one or many** (cross-module repos allowed when the module imports them). Injects other domain services and utils by the tier table below.
+- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain service, never from its repository (`rules/cross-module.md`). Injects other domain services and utils by the tier table below.
 - **NEVER injects `DatabaseService`.** Data access goes through the repository, always. This is the single hardest rule in the file.
 - **NEVER opens a Prisma `$transaction`.** Transactions live in the repository (`rules/database.md`).
 - Provided by `<feature>.module.ts`, and it is the only layer another module ever consumes.
@@ -67,10 +67,10 @@ Three tiers. Everything in a tier is open to every tier below it, and the revers
 | **2 — global feature** | a module under `src/modules/` carrying `@Global()` | anyone, exactly like tier 1 |
 | **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its SERVICE layer only |
 
-- **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperService` does. `ActivityLogUtil` in a repository is correct, not a leak.
+- **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperDateService` does. `ActivityLogUtil` in a repository is correct, not a leak.
 - **A tier 3 util never reaches ANOTHER module's repository.** It is injected by that module's services, and whatever it built arrives at the repository as a parameter. A util that genuinely belongs in several modules' repositories belongs in tier 1 or tier 2 — move it, do not widen the rule.
-- **A tier 3 util DOES reach its OWN module's repository.** It is provided by `<feature>.util.module.ts`, which the repository module imports (`rules/nest-wiring.md`).
-- **A tier 3 repository is reachable across modules** on the terms in `rules/cross-module.md`; that is a separate question from this table, which governs UTILS and SERVICES.
+- **A tier 3 util does not reach ANY repository, its own included.** Utils live beside the domain services in `<feature>.module.ts`, and `<feature>.repository.module.ts` imports nothing (`rules/nest-wiring.md`).
+- **A tier 3 repository is not reachable across modules at all.** `<Feature>RepositoryModule` stops at its own feature and the domain service is the crossing point (`rules/cross-module.md`); that is a separate question from this table, which governs UTILS and SERVICES.
 - **`src/common/` MUST NOT import a util, service, or repository from `src/modules/`.** Composition wiring in `common.module.ts` and compile-time enums are the only crossings (`rules/common.md`). A shared module that knows one feature's internals is no longer shared.
 - **Read tier 2 from the code, never from memory.** The test is `@Global()` on the module class, and the set changes.
 
@@ -157,7 +157,7 @@ do not remove a service interface as a cleanup side effect of an unrelated chang
 
 | Concern | Rule file |
 |---|---|
-| the five module files per feature, `imports` / `providers` / `exports`, global modules, DI tokens | `rules/nest-wiring.md` |
+| the four module files per feature, `imports` / `providers` / `exports`, global modules, DI tokens | `rules/nest-wiring.md` |
 | what one module may reach for in another, `forwardRef` | `rules/cross-module.md` |
 | `src/common/` promotion and import direction | `rules/common.md` |
 | path aliases, `Promise.all` on independent awaits, mirrored types | `rules/code-style.md` |

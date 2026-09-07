@@ -45,7 +45,6 @@ A feature's modules are named for the layer they provide, and only the ones with
 provide exist:
 
 ```
-<module>.util.module.ts         →  <Module>UtilModule
 <module>.repository.module.ts   →  <Module>RepositoryModule
 <module>.module.ts              →  <Module>Module
 <module>.http.module.ts         →  <Module>HttpModule
@@ -59,25 +58,30 @@ provide exist:
 - **DTO files always end `.dto.ts`**, and a DTO under `dtos/request/` or `dtos/response/` always carries its direction segment:
 
   ```
-  <module>[.<concern>].request.dto.ts    →  <Module>[<Concern>]RequestDto
-  <module>[.<concern>].response.dto.ts   →  <Module>[<Concern>]ResponseDto
-  <module>.<noun>.dto.ts                 →  <Module><Noun>Dto        (shared by both directions)
+  <module>[.<concern>].request.dto.ts    →  <Module>[<Concern>]RequestSchema  + <Module>[<Concern>]RequestDto
+  <module>[.<concern>].response.dto.ts   →  <Module>[<Concern>]ResponseSchema + <Module>[<Concern>]ResponseDto
+  <module>.<noun>.dto.ts                 →  <Module><Noun>Schema + <Module><Noun>Dto   (shared by both directions)
   ```
 
+  **A DTO file exports a zod schema and the type inferred from it** — the `Schema` const and
+  the `Dto` type, named alike (`rules/dto.md`). The const is what a decorator or a doc factory
+  receives; the type is what a signature carries.
+
   **`<concern>` is OPTIONAL and it is not necessarily a verb.** It is an action
-  (`user.create.request.dto.ts`), a noun (`role.ability.request.dto.ts`,
-  `term-policy.content.request.dto.ts`), or **absent when the DTO is the module's canonical
+  (`user.create.request.dto.ts`), a noun (`policy.update.request.dto.ts`,
+  `term-policy.contents.request.dto.ts`), or **absent when the DTO is the module's canonical
   request or response shape** — `device.request.dto.ts` → `DeviceRequestDto`,
   `country.request.dto.ts` → `CountryRequestDto`. Do not invent a filler segment to make a
   canonical DTO look like the others.
 
   The direction segment is what is NOT optional. A file in `dtos/request/` named
-  `<module>.<concern>.dto.ts` while its class is `<Module><Concern>RequestDto` is the defect —
-  the file and the class must agree on the direction.
+  `<module>.<concern>.dto.ts` while its exports are `<Module><Concern>Request*` is the defect —
+  the file and its exports must agree on the direction.
 
   A DTO genuinely shared by both directions, or a nested value object, sits directly in `dtos/`
-  and its class ends in a bare `Dto` (`role.ability.dto.ts` → `RoleAbilityDto`). **A class
-  ending in `RequestDto` or `ResponseDto` does not belong there** — it belongs in the folder its
+  and its exports end in a bare `Schema` / `Dto` (`user.two-factor.dto.ts` →
+  `UserTwoFactorSchema` + `UserTwoFactorDto`). **An export ending in `RequestDto` or
+  `ResponseDto` does not belong there** — it belongs in the folder its
   direction names.
 
 - **One file MAY hold sibling DTOs of ONE concern, and it is named for the concern, not for any
@@ -85,10 +89,10 @@ provide exist:
   `UserCheckEmailRequestDto`; `user.mobile-number.request.dto.ts` holds
   `UserAddMobileNumberRequestDto` and `UserUpdateMobileNumberRequestDto`;
   `user.profile.request.dto.ts` holds `UserUpdateProfileRequestDto` and
-  `UserUpdateProfilePhotoRequestDto`. The siblings are normally variants of each other —
-  `extends`, `PickType`, `OmitType`.
+  `UserUpdateProfilePhotoRequestDto`. The siblings are normally variants of each other, built
+  with the zod combinators — `.extend()`, `.pick()`, `.omit()`, `.partial()`.
 
-  So a file name that does not match the class name is NOT a violation on its own. **Open the
+  So a file name that does not match an export name is NOT a violation on its own. **Open the
   file before calling one:** the question is whether every class in it belongs to the concern
   the file names, not whether the first class happens to spell it out. Two unrelated concerns
   in one file is the defect.
@@ -106,19 +110,19 @@ provide exist:
 | Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `UserDefaultAvailableSearch` |
 | Method / variable / field | camelCase | `findById`, `perPage` |
 | Exception class | `<Module><Descriptor>Exception` | `UserNotFoundException` |
-| Request DTO | `<Module>...RequestDto` | `UserCreateRequestDto` |
-| Response DTO | `<Module>...ResponseDto` | `UserProfileResponseDto` |
+| Request schema + type | `<Module>...RequestSchema` / `<Module>...RequestDto` | `UserCreateRequestSchema`, `UserCreateRequestDto` |
+| Response schema + type | `<Module>...ResponseSchema` / `<Module>...ResponseDto` | `UserProfileResponseSchema`, `UserProfileResponseDto` |
 | Payload interface | `I<Module><Action>Payload` | `INotificationSendPushPayload` |
 | Data shape | `I` + PascalCase | `IUser`, `IRequestLog`, `IActivityLogMetadata` |
 
 ## Rules that get broken most often
 
 - **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Interfaces describe DATA here, not service behavior — see the header-interface rule in `rules/architecture.md`.
-- **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 5150`); see `rules/exceptions.md`.
+- **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
-- **`Dto` suffix goes on BOTH the class name and the file name.** A DTO is the module's request/response transport shape.
+- **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).
 - **Payload interface names put the KIND last:** `INotificationSendPushPayload`, never `INotificationPayloadSendPush`.
 
 ## Case

@@ -36,9 +36,10 @@ a licence for a `src/common/` service to call one.
 
 ## A feature never re-implements the kit
 
-Reach for `HelperService`, `PaginationService`, `ResponseUtil`, `MessageService`,
-`DatabaseService`, `FileService`, `AwsS3Service`, `AwsSESService`, `FirebaseService` before
-writing your own. A hand-rolled second copy of one of these is a defect regardless of how well
+Reach for the `Helper*Service` family (`HelperDateService`, `HelperStringService`,
+`HelperHashService`, `HelperEncryptionService`, `HelperNumberService`, `HelperArrayService`),
+`PaginationService`, `MessageService`, `ResponseMetadataService`, `DatabaseService`,
+`FileService`, `AwsS3Service`, `AwsSESService` and `FirebaseService` before writing your own. A hand-rolled second copy of one of these is a defect regardless of how well
 it works.
 
 ## One connection per backing service

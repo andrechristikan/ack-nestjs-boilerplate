@@ -67,7 +67,7 @@ export class RouterProcessorModule {}
 | `system` | `/system` | api-key / machine caller, no `req.user` | cursor |
 | `user` | `/user` | JWT, workspace-scoped via `x-workspace-id` | cursor |
 | `shared` | `/shared` | JWT, may be workspace-scoped | cursor |
-| `admin` | `/admin` | JWT + `@RoleProtected` + `@PolicyAbilityProtected` | **offset** |
+| `admin` | `/admin` | JWT + `@RoleProtected` + `@PolicyProtected` | **offset** |
 
 - **`/admin` is offset pagination; every other scope is cursor.** Not a per-endpoint
   judgement (`rules/pagination.md`).

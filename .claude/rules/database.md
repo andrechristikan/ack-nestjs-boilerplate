@@ -60,5 +60,5 @@ Prisma-owned enums are imported from `@generated/prisma-client`, never re-declar
 
 ## Dates
 
-Timestamps go through `HelperService`'s date helpers, never a raw `new Date()` in business
+Timestamps go through `HelperDateService`, never a raw `new Date()` in business
 logic (`rules/dates.md`).

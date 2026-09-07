@@ -46,7 +46,7 @@ export class UserNotFoundException extends AppBaseException {
 - **The DOMAIN service throws the module's typed exception.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
 - **An HTTP service and a processor service throw nothing of their own.** They translate a DTO or a job payload and let the domain service's exception travel out; a business exception raised in either is a rule the other transport never applies (`rules/architecture.md`).
 - **A util MAPS an error to the module's exception and RETURNS it; the caller throws.** `UserOnboardingUtil.mapCreateCollision` turns a unique collision on `username` or `email` into the matching exception and hands back anything else untouched, so the caller's `catch` reads `throw this.userOnboardingUtil.mapCreateCollision(error)` — one line, and the `throw` is visible where the flow actually stops. A util that throws hides that decision inside a call the reader has to open.
-- **A util may throw only what it validates from its arguments alone**, where the check IS the method's purpose: a value against a table or a pattern the util already owns (`NotificationUtil.validateSettingCombination`). What a util never does is decide a business rule that needs state it was not handed — a quota, a membership, a status transition. That belongs to the domain service, which is also the only layer allowed to read for it.
+- **A util may throw only what it validates from its arguments alone**, where the check IS the method's purpose: a value against a table or a pattern the util already owns (`NotificationUtil.validateUserSetting`). What a util never does is decide a business rule that needs state it was not handed — a quota, a membership, a status transition. That belongs to the domain service, which is also the only layer allowed to read for it.
 - **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the domain service's call.
 - **Controllers do not catch module exceptions (`AppBaseException`).** The global filter chain owns the mapping. A `try/catch` in a controller that reshapes an exception is duplicating the filter and will drift from it.
 - Framework `HttpException`s (route 404, throttler 429, payload limits) are the framework's to throw and `AppHttpFilter`'s to handle. Feature code does not raise them.
@@ -72,7 +72,7 @@ Detail and the full procedure (tables): `rules/status-code.md`. Summary:
 `app.module.ts` registers the `APP_FILTER` providers in this array order — general → base-exception → http → validation → validation-import. NestJS evaluates them in reverse, so the most specific catch runs first:
 
 - `app.validation-import.filter.ts` — `@Catch(FileImportException)`, row-level CSV import errors. No Sentry.
-- `app.validation.filter.ts` — `@Catch(RequestValidationException)`, class-validator failures. No Sentry.
+- `app.validation.filter.ts` — `@Catch(RequestValidationException)`, request-schema failures. No Sentry.
 - `app.http.filter.ts` — `@Catch(HttpException)`, framework errors only. Sentry at 500+.
 - `app.base-exception.filter.ts` — `@Catch(AppBaseException)`, every `AppBaseException`. Sentry only when `httpStatus >= 500`.
 - `app.general.filter.ts` — `@Catch()`, the fallback. Always 500, always Sentry.

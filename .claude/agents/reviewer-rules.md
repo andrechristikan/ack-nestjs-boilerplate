@@ -60,8 +60,11 @@ that touches them:
   global per-IP limit and nothing logs.
 - **A workspace or project guard on an `admin` route** — it makes a platform-wide endpoint depend
   on a client header, and opens an IDOR when the route also takes a path id.
-- **A response DTO field with no `@Expose()`** — silently absent from the response.
-- **A missing `@Type(() => Dto)`** on a nested DTO — its own `@Expose` rules never run.
+- **A field missing from the route's response schema** — stripped, so silently absent from the
+  response.
+- **A route declaring no response schema while its handler returns data** — the payload is
+  refused at serialization time, not at compile time.
+- **A request field with a bare `z.string()`** and no constraint — an unvalidated wire input.
 - **A custom `x-*` header not added to `cors.allowedHeader`** — dead from every browser, fine
   from curl.
 - **A new i18n key added to `en` only**, or written flat instead of nested.

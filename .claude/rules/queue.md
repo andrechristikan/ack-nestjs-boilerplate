@@ -5,7 +5,7 @@ Detail in `docs/queue.md`. Redis `db:1` carries BullMQ; `db:0` carries the cache
 ## Where things live
 
 - **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`. It holds no module that provides a processor.
-- **`queue.register.module.ts`** — `@Global()`; every `BullModule.registerQueue` and per-queue job default lives here, nowhere else.
+- **`queue.register.module.ts`** — `@Global()`; every `BullModule.registerQueueAsync` and per-queue job default lives here, nowhere else.
 - **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to, and importing `<Feature>Module` for the domain services behind them (`rules/nest-wiring.md`).
 - **`src/router/processor/router.processor.module.ts`** — imports every `<Feature>ProcessorModule` and provides nothing itself. Do not invent a second aggregation site (`rules/router.md`).
 - **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`), and so does their registration. A `processors/` folder under `src/queues/` is drift.

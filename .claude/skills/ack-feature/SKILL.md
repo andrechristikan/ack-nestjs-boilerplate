@@ -1,6 +1,6 @@
 ---
 name: ack-feature
-description: Build a NEW feature end to end — interrogate the requirement, plan it, write it spec-first, offer the reviews at the end, and leave every check green. Use when the owner asks for behaviour that does not exist yet. NOT for repairing behaviour that already exists (ack-fix), NOT for specs or a coverage backfill (ack-spec), NOT for seed data (ack-seed).
+description: Build a NEW feature end to end — interrogate the requirement, then spec, plan and execute it through planner and coder, offer the reviews at the end, and leave every check green. Use when the owner asks for behaviour that does not exist yet. NOT for repairing behaviour that already exists (ack-fix), NOT for specs or a coverage backfill (ack-spec), NOT for seed data (ack-seed).
 disable-model-invocation: true
 ---
 
@@ -21,8 +21,8 @@ Say which, and stop. **A repair dressed as a feature skips the whole diagnostic 
 `/ack-fix`** — it builds new behaviour beside the defect and leaves the defect in place.
 
 A feature that turns out to need an existing surface CORRECTED on the way is still this skill;
-name the correction in §1 so it lands in the requirement and the plan, rather than arriving as
-an unplanned edit in §4.
+name the correction in §1 so it lands in the requirement, the spec and the plan, rather than
+arriving as an unplanned edit in §5.
 
 ## 1 — Interrogate the requirement, HERE
 
@@ -42,34 +42,54 @@ fails at integration, which is the most expensive place to find out.
 
 State the settled requirement back in one paragraph before moving on.
 
-## 2 — Plan
+## 2 — Spec, through `planner` (HARD)
 
-Dispatch `planner` with the settled requirement. It returns a plan file under `.superpowers/`.
+Dispatch `planner` in **`SPEC` mode** with the settled requirement. It returns
+`.superpowers/<slug>-spec.md`: the behaviour as it will be true after the work, the surfaces it
+touches, the rules that bind them, what is out of scope, and its open questions.
 
-Read the plan's **Open questions** section. Anything there goes back to the owner now, not after
-code exists.
+**You do not write the spec yourself, and neither does `coder`.** Every ack-feature run is
+spec → plan → execute in that order, and each artifact exists before the next dispatch starts.
+A build that begins from a conversation rather than from a written spec has nothing the owner
+approved to check against.
+
+Read the spec's **Open questions** and put them to the owner with `AskUserQuestion` now.
+Dispatch `planner` again in `SPEC` mode with the answers when any of them changes the shape.
+
+**Put the spec to the owner before planning it.** Name the file path and ask whether it is
+right. A plan built on a spec nobody approved spends the run on the wrong behaviour.
+
+## 3 — Plan, through `planner` (HARD)
+
+Dispatch `planner` in **`PLAN` mode**, naming the APPROVED spec path. It returns
+`.superpowers/<slug>-plan.md`: ordered steps, the files each touches, the verification that
+closes it, and the rules each step is written against.
+
+Read the plan's **Open questions** — anything there goes back to the owner now, not after code
+exists.
 
 **A shape you decide yourself is bound by the same rules the plan is.** Where you answer a design
 question in conversation rather than leaving it to `planner` — which layer owns a value, whether
 a util may throw, what a repository receives — read `.claude/rules/orientation.md` and the row
 for that surface first. `coder` treats a decision made here as settled.
 
-## 3 — Schema first, if there is one (HARD)
+## 4 — Schema first, if there is one (HARD)
 
 **A schema delta is `coder`'s edit and the OWNER'S push.** `coder` edits `prisma/schema.prisma`
 and runs `db:generate`, so the code typechecks against the new field. Then relay the push to the
 owner — the model, the field, the index, the data consequence, and `pnpm db:migrate` — and say
 which endpoints stay broken until it runs. Nobody here may run `db:migrate`.
 
-## 4 — Build
+## 5 — Build
 
-Dispatch `coder` with the plan. It works spec-first and dispatches `test-writer` itself — do not
-dispatch `test-writer` from here.
+Dispatch `coder` with the plan. It works TEST-first — the failing unit spec before the code —
+and dispatches `test-writer` itself; do not dispatch `test-writer` from here. That unit spec is
+a different artifact from the `.superpowers/` spec §2 produced.
 
 **When the plan needs new baseline rows, dispatch `seed-writer`** after the schema lands. It
 writes the seed; nobody runs it — the owner does.
 
-## 5 — Review (ASK, and only at the END)
+## 6 — Review (ASK, and only at the END)
 
 The work is done and the diff is visible — that is the point at which the owner can judge which
 checks are worth their time. **Nothing in this step runs unasked (HARD).**
@@ -94,7 +114,7 @@ Findings go back to `coder`. Do not fix anything here.
 **One round of findings, then stop.** What `coder` does not resolve in that round goes to the
 owner as an open item. A second automatic round is how a run stops converging.
 
-## 6 — Everything green (HARD)
+## 7 — Everything green (HARD)
 
 Run all of these and report each with its output:
 
@@ -123,7 +143,7 @@ reports the whole kit surface by design — its entries are not findings
 `pnpm build` compiles but does NOT type-check on its own in a way that replaces `pnpm
 typecheck` here.
 
-**Booting the app is NOT part of this step.** That is `verifier`, offered in §5 and dispatched
+**Booting the app is NOT part of this step.** That is `verifier`, offered in §6 and dispatched
 only when the owner picks it.
 
 ### Coverage short of 100% is the OWNER's call (HARD)
@@ -160,7 +180,7 @@ assume a previous answer still holds.
 
 ## Hand back
 
-The settled requirement, the plan path, the schema delta the owner applied, what each agent
+The settled requirement, the spec path, the plan path, the schema delta the owner applied, what each agent
 produced, every status code allocated, every finding and whether it was resolved, every
 operational step a rename introduced, the output of all five checks, and **which optional
 checks were offered, which the owner picked, and which were skipped**.

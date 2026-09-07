@@ -7,7 +7,9 @@ rule set.
 
 Every `src/configs/*.config.ts` exports a TypeScript interface alongside its `registerAs`, and
 `src/configs/index.ts` is the barrel `CommonModule` loads. `ConfigModule.forRoot` runs with
-`isGlobal: true`, `cache: true`, and `envFilePath: ['.env', '.env.<NODE_ENV>']`.
+`isGlobal: true`, `cache: true`, `envFilePath: ['.env', '.env.<NODE_ENV>']`, and
+`validationSchema: AppEnvSchema` — the zod schema in `src/app/dtos/app.env.dto.ts` that every
+env var is validated against at boot (`rules/validation.md`).
 
 ## Reading config
 
@@ -15,8 +17,8 @@ Every `src/configs/*.config.ts` exports a TypeScript interface alongside its `re
   feature code. The one sanctioned exception is a decorator factory, where DI is not available
   at decoration time (`@QueueProcessor`'s worker name) — and that exception is already taken;
   do not extend it.
-- A new env var needs FOUR edits: the config file, its interface, `.env.example`, and
-  `docs/environment.md`.
+- A new env var needs FIVE edits: the config file, its interface, `AppEnvSchema`,
+  `.env.example`, and `docs/environment.md`.
 
 ## A config-worthy value lives in a config file, not inline
 

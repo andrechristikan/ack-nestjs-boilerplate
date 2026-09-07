@@ -51,25 +51,25 @@ decorator takes:
 Both sides use the identical option names and the identical constant. Never inline a literal
 array into a `*.doc.ts` (`rules/pagination.md`).
 
-## Response schemas come from the DTO
+## Response schemas come from the zod schema
 
-`DocResponse<T>` / `DocResponsePaging<T>` take the response DTO type. A hand-written schema
-object beside a DTO that already describes the shape is a mirror that drifts
-(`rules/code-style.md`). A field that is not `@Expose()`d is not in the response, so it does
-not belong in the schema either (`rules/dto.md`).
+`DocResponse<T>` / `DocResponsePaging<T>` take the response SCHEMA in `options.schema` and the
+inferred type as their type argument. `zod-openapi`'s `createSchema` turns it into the OpenAPI
+schema object, wrapped in the response envelope — the same conversion `SwaggerModule` is given
+through `standardSchemaConverter` in `src/swagger.ts`. A hand-written schema object beside a
+zod schema that already describes the shape is a mirror that drifts (`rules/code-style.md`).
 
-## Hiding
+A field absent from the response schema is absent from the response, so it does not belong in
+the documentation either (`rules/dto.md`).
 
-A field hidden from the JSON with `@Exclude()` also carries `@ApiHideProperty()` — both, so the
-response and the schema agree (`rules/dto.md`).
+## Field documentation is `.meta()` on the schema
 
-## `@ApiProperty` options
-
-Every `@ApiProperty` options object carries `description` and either `example` or `examples`.
-`example` uses `@faker-js/faker` when a realistic value exists; a literal is correct for enums,
-booleans, and fixed shapes. Do not call `faker.seed()`. Description is one English sentence
-naming what the field means to an API consumer. A `format: 'binary'` field is the exception: it
-carries `description` alone, because its value is the file bytes and no literal represents them.
+Every field carries `.meta({ description, example })` on the zod schema itself; there is no
+separate annotation layer to keep in sync. `example` uses `@faker-js/faker` when a realistic
+value exists; a literal is correct for enums, booleans, and fixed shapes. Do not call
+`faker.seed()`. Description is one English sentence naming what the field means to an API
+consumer. A `format: 'binary'` field is the exception: it carries `description` alone, because
+its value is the file bytes and no literal represents them.
 
 ## Comments
 

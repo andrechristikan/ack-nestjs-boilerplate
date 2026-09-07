@@ -5,7 +5,7 @@ Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is gover
 ## Naming — camelCase, and it is enforced
 
 - **A flag key is camelCase** — `loginWithGoogle`, `changePassword`. Not `login_with_google`, not `LOGIN_WITH_GOOGLE`. Same uniform-wire rule as everything else (`rules/naming.md`).
-- **A metadata key is camelCase too, and this is a HARD validation** — `IsFeatureFlagMetadataConstraint` rejects any key that fails `/^[a-z][a-zA-Z0-9]*$/`. A `forgot_allowed` sent to the update-metadata endpoint fails validation, it does not reach the database. The regex is the single source of truth for the rule; do not loosen it to admit a snake_case import.
+- **A metadata key is camelCase too, and this is a HARD validation** — `FeatureFlagUpdateMetadataRequestSchema` rejects any key that fails `/^[a-z][a-zA-Z0-9]*$/`. A `forgot_allowed` sent to the update-metadata endpoint fails validation, it does not reach the database. The regex is the single source of truth for the rule; do not loosen it to admit a snake_case import.
 - **A gate reference is the bare flag key** — `@FeatureFlagProtected('changePassword')`. A dotted `key.metadataKey` is rejected: `validateFeatureFlagGuard` throws `predefinedKeyEmpty` when the path or any segment of it is empty, and `predefinedKeyLengthExceeded` on the SECOND segment.
 
 ## Metadata shape

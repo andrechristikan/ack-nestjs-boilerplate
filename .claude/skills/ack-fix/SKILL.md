@@ -1,18 +1,18 @@
 ---
 name: ack-fix
-description: Repair existing behaviour end to end — pin the symptom, find the cause with evidence, brainstorm the repair, write the plan, build it spec-first, offer the reviews, and leave every check green. Use when something that already exists is wrong, whether or not the cause is known yet. NOT for new behaviour (ack-feature), NOT for specs alone (ack-spec), NOT for a compliance pass (ack-gate).
+description: Repair existing behaviour end to end — pin the symptom, find the cause with evidence, brainstorm the repair, then spec, plan and execute it through planner and coder, offer the reviews, and leave every check green. Use when something that already exists is wrong, whether or not the cause is known yet. NOT for new behaviour (ack-feature), NOT for specs alone (ack-spec), NOT for a compliance pass (ack-gate).
 disable-model-invocation: true
 ---
 
 Repair existing code, end to end. You orchestrate; the agents do the work.
 
-**Find the cause first, then think, then plan, then build. In that order (HARD).** Brainstorming
-a repair for a cause you have not located is guessing with extra steps, and a `coder` dispatch
-sent before the cause is pinned repairs the symptom instead.
+**Find the cause first, then think, then spec, then plan, then build. In that order (HARD).**
+Brainstorming a repair for a cause you have not located is guessing with extra steps, and a
+`coder` dispatch sent before the cause is pinned repairs the symptom instead.
 
 **A vague symptom is a legitimate start.** "Something is off in workspace invites" is enough to
 open this run — §1 to §4 exist to turn it into a cause. What is NOT legitimate is skipping to
-§7 because the symptom sounded obvious.
+the build because the symptom sounded obvious.
 
 ## Which skill is this?
 
@@ -74,8 +74,9 @@ looking for reports everything and explains nothing.
 
 | Symptom | Look at |
 |---|---|
-| a field silently missing from the response | a response DTO field with no `@Expose()`, or a nested field with no `@Type()` (`rules/dto.md`) |
-| a field silently missing from the request | the global `ValidationPipe` `whitelist` stripped it — the DTO has no decorator for it |
+| a field silently missing from the response | the route's response schema does not declare it, so it is stripped (`rules/dto.md`) |
+| a payload refused at serialization | the route declares no `schema` on `@Response` while the handler returns data (`rules/dto.md`) |
+| a request rejected as unknown key | the request schema is strict and does not declare the field (`rules/validation.md`) |
 | a guard rejecting a caller who should pass | decorator ORDER — the stack runs bottom-up and a guard above one it depends on sees `undefined` (`rules/http.md`) |
 | a route 404 that should exist | the controller registered in its own module instead of `router.http.<scope>.module.ts` (`rules/router.md`) |
 | the raw message path echoed back instead of a message | a flat i18n key, or a key missing from that language file (`rules/i18n.md`) |
@@ -95,10 +96,9 @@ them.
 ## 5 — Brainstorm the repair (REQUIRED)
 
 The cause is found. **Read `.claude/rules/orientation.md` and every row it names for the surfaces
-the repair will touch, BEFORE you brainstorm.** No agent covers this step for you: the options
-are yours, the plan in §6 is yours, and a shape decided here reaches `coder` looking like the
-assignment. An option that a rule forbids is not an option, and offering it to the owner spends
-their decision on something that cannot be built.
+the repair will touch, BEFORE you brainstorm.** The options are yours to put to the owner, and an
+option a rule forbids is not an option — offering it spends their decision on something that
+cannot be built.
 
 Then invoke `superpowers:brainstorming` and work the repair through it HERE, in this session —
 it is the step that turns a cause into options with trade-offs instead of the first patch that
@@ -109,21 +109,30 @@ both defensible — repair at the call site or at the service, guard the input o
 invariant, change the column or change the read — that is the owner's call. Put it to them with
 `AskUserQuestion`, each option carrying what the code does TODAY alongside the recommendation.
 
-## 6 — Write the plan (REQUIRED)
+## 6 — Spec, then plan, through `planner` (HARD)
 
-Invoke `superpowers:writing-plans` and write the repair plan to `.superpowers/`. The plan names
-the files that change, the order they change in, the verification for each step, and **the rules
-each step is written against** — cited by file, from the reading you did in §5. A step whose
-citations you could not produce is a step you have not checked.
+Both artifacts come from `planner`, in two dispatches, and neither is written in this session.
+Every ack-fix run is spec → plan → execute in that order.
 
-**When the owner hands you a plan already, §5 and §6 collapse to reading it** — you do not
-rewrite it. §1 to §4 still run, to confirm the cause is the one the plan assumes. A plan built
-on the wrong cause repairs the wrong file.
+1. **`SPEC` mode**, carrying the reproduced cause, the evidence, and the repair the owner chose.
+   It returns `.superpowers/<slug>-spec.md`: the behaviour as it will be true after the repair,
+   the surfaces it touches, the rules that bind them, what is out of scope.
+   **Put that spec to the owner before planning it** — name the path and ask whether it is
+   right. Its open questions go to the owner now, and a changed answer is a second `SPEC`
+   dispatch, not an edit of your own.
+2. **`PLAN` mode**, naming the APPROVED spec path. It returns `.superpowers/<slug>-plan.md`:
+   ordered steps, the files each touches, the verification that closes it, and the rules each
+   step is written against.
+
+**When the owner hands you a plan already, this step is reading it** — you do not rewrite it,
+and you do not dispatch `planner` around it. §1 to §4 still run, to confirm the cause is the
+one the plan assumes. A plan built on the wrong cause repairs the wrong file.
 
 ## 7 — Build
 
-Dispatch `coder` with the plan. It works spec-first and dispatches `test-writer` itself — do not
-dispatch `test-writer` from here.
+Dispatch `coder` with the plan. It works TEST-first — the failing unit spec before the code —
+and dispatches `test-writer` itself; do not dispatch `test-writer` from here. That unit spec is
+a different artifact from the `.superpowers/` spec §6 produced.
 
 **A schema change is `coder`'s edit plus a HAND-BACK of the push** — relay `pnpm db:migrate` and
 the data consequence, and say which endpoints stay broken until the owner runs it
@@ -196,8 +205,9 @@ assume a previous answer still holds.
 
 ## Boundaries
 
-- **Never fix anything yourself.** You dispatch and you report. The plan file under
-  `.superpowers/` is the only thing you write directly.
+- **Never fix anything yourself.** You dispatch and you report.
+- **Never write the spec or the plan yourself.** Both come from `planner`; `.superpowers/` is
+  written by that agent, not by this session.
 - **Never dispatch `reviewer-e2e` unasked.**
 - **Never stop at the first plausible explanation.** A negative grep proves a STRING is absent,
   not a behaviour.
@@ -211,8 +221,8 @@ assume a previous answer still holds.
 ## Hand back
 
 The symptom, the root cause and the evidence that reproduces it, the options brainstormed with
-the owner's answers, the plan path, what each agent produced, findings and their resolution,
-every operational step a rename introduced, the output of all five checks, and **which optional
+the owner's answers, the spec path, the plan path, what each agent produced, findings and their
+resolution, every operational step a rename introduced, the output of all five checks, and **which optional
 checks were offered, picked, and skipped**. Then, explicitly, what you could not establish —
 and whether the trace in §3 was run or declined.
 

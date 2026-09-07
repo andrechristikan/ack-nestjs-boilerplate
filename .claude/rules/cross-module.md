@@ -15,20 +15,36 @@ elsewhere.
 | From another module | Allowed? |
 |---|---|
 | its exported DOMAIN service | yes — inject the class, import `<Feature>Module` |
-| its repository | yes — import `<Feature>RepositoryModule`; from your repository or your domain service |
-| its util, from your SERVICE layer | yes — import `<Feature>UtilModule` |
-| its util, from your REPOSITORY | **no** unless the owning module is `@Global()` — tier 3 stops at the service layer (`rules/architecture.md`) |
+| its exported util, from your SERVICE layer | yes — import `<Feature>Module`, which provides utils too |
+| its exported util, from your REPOSITORY | **no** unless the owning module is `@Global()` — tier 3 stops at the service layer (`rules/architecture.md`) |
+| its repository | **no** — `<Feature>RepositoryModule` is private to its own feature |
 | its HTTP service or processor service | **no** — those are leaves the router consumes; you want the domain service |
-| its enums, interfaces, constants, DTOs | yes — compile-time only, no wiring needed |
+| its enums, interfaces, constants, schemas | yes — compile-time only, no wiring needed |
 | its exceptions | **no** — a module throws its OWN typed exception |
 | a service it did not export | no |
 | its Prisma model through your own `DatabaseService` | no — that bypasses the owning repository |
 
+## A repository module belongs to its own feature (HARD)
+
+`<Feature>RepositoryModule` has exactly one importer: the `<feature>.module.ts` beside it. Data
+that another module needs is reached through the owning DOMAIN service, which is the layer that
+holds that feature's invariants — an outside caller reading or writing the rows directly skips
+every one of them, and the owning module can no longer change its own storage without hunting
+call sites in modules it does not know about.
+
+When the domain service has no method for what the caller needs, ADD one there. A method on the
+owning service is the correct answer even when it is three lines long; importing the repository
+module to save those three lines is what this rule forbids.
+
+**Importing a feature module pulls in more than a repository module does, so it can CREATE a
+cycle.** The three ways out below apply exactly as they do to any other cycle; `forwardRef` is
+not one of them.
+
 **Everything a `@Global()` module exports is reachable with no import at all**, on the same
 terms as `src/common/`, including from a repository. That is tier 2 in
 `rules/architecture.md`, and it is the only way a util reaches another module's repository.
-When a util genuinely belongs in several modules' repositories, move it to the module that
-owns the concept and make that module global — do not inject it across a tier 3 boundary.
+When a util genuinely belongs in several modules' repositories, move it to the module that owns
+the concept and make that module global — do not inject it across a tier 3 boundary.
 
 **A module throws its own exceptions.** Catching `WorkspaceNotFoundException` in the project
 module and rethrowing it is fine; constructing one from outside the workspace module is not —
@@ -53,7 +69,7 @@ Three ways out, in order of preference:
 ## The shared kit is not a boundary crossing
 
 `src/common/` is imported by everyone by design (`rules/common.md`). Reaching for
-`HelperService` or `PaginationService` is not a cross-module dependency and needs no import in
+`HelperDateService` or `PaginationService` is not a cross-module dependency and needs no import in
 the feature module — those modules are global.
 
 ## Registration lives outside the feature module

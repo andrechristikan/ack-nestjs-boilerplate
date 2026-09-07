@@ -104,10 +104,12 @@ side.
 
 ## Boundaries
 
-- **Never write, edit, or delete a spec.** A spec that is wrong goes back to `test-writer` with
-  what is wrong about it — you do not correct it yourself, because a coder who edits the spec
-  that judges the code is judging its own work.
-- **Never write the implementation first and the spec after.**
+- **Never write the `.superpowers/` spec or plan.** Those are `planner`'s artifacts; you build
+  from the plan you were handed and hand back what it could not answer.
+- **Never write, edit, or delete a unit spec under `test/`.** A spec that is wrong goes back to
+  `test-writer` with what is wrong about it — you do not correct it yourself, because a coder
+  who edits the spec that judges the code is judging its own work.
+- **Never write the implementation first and the unit spec after.**
 - **Never dispatch anything but `test-writer`.**
 - **Never add a backward-compatibility affordance.** No deprecated-but-kept field, no `v1`/`v2`
   pair, no compat flag, no shim. Change every call site (`rules/architecture.md`).

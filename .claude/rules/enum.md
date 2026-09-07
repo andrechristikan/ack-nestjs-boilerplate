@@ -33,6 +33,15 @@ A file may hold two enums when they are the same concern seen twice — `EnumQue
 `EnumQueuePriority`, `EnumLoggerLevel` beside `EnumLoggerSeverity`. It may not hold two
 unrelated ones.
 
+## Where an enum lives
+
+- **A value the database stores is declared in `prisma/schema.prisma`** and imported from the
+  generated client — every domain enumeration the rows carry: a status, a type, a role, a
+  platform, a logged action.
+- **A TypeScript enum in `src/` is for what the database never stores** — status-code blocks,
+  queue and process names, transport and tooling scales, an option a request may carry without
+  being persisted as it stands.
+
 ## Prisma-owned enums are imported, never re-declared (HARD)
 
 An enum declared in `prisma/schema.prisma` is imported from `@generated/prisma-client`

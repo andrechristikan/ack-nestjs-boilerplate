@@ -10,7 +10,7 @@ TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rule
 | Layer | Convention |
 |---|---|
 | Request / Query DTO (input boundary) | `field?: Type` |
-| Response DTO | `field?: Type` with `@Expose()` when optional; `field: Type \| null` when the value is always present-or-null |
+| Response schema | `.optional()` when the field is genuinely absent; `.nullable()` when the value is always present-or-null |
 | Module `I*` interface — data | `field: Type \| null` |
 | Module `I*` interface — request lifecycle or external spec (JWT, Prisma) | `field?: Type` |
 | Exception options / options bag | `field?: Type` |

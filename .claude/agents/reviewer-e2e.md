@@ -36,7 +36,7 @@ dispatch again.
 
 The defects that survive a per-file review live in the INTERACTION between a file that changed
 and a file that did not — a controller whose new DTO field an untouched response DTO never
-`@Expose()`s, a service whose new exception type no longer matches the filter that catches it, a
+response schemas, a service whose new exception type no longer matches the filter that catches it, a
 guard that already set `request.user` so the new check is dead code. None is visible inside a
 single changed file. All are obvious on the path.
 
@@ -82,15 +82,16 @@ Every HTTP request crosses them whether or not the change touched them:
 - **Middlewares**, in this order, on every route: request-id → request-log → helmet →
   body-parser → cors → url-version → response-time → custom-language → **workspace** →
   compression (`src/common/request/request.middleware.module.ts`).
-- **`APP_PIPE`** — the global `ValidationPipe` with `whitelist: true`,
-  `forbidNonWhitelisted: true`, `forbidUnknownValues: true`, throwing `RequestValidationException`
-  at 422. **An un-decorated DTO field is stripped before the controller sees it.**
+- **`APP_PIPE`** — the global `RequestSchemaValidationPipe`, validating each argument against
+  the schema bound to it and throwing `RequestValidationException` at 422. **A body param with
+  no schema is refused outright** (`RequestSchemaMissingException`), and a key the schema does
+  not declare is rejected by a strict request schema (`rules/validation.md`).
 - **`APP_INTERCEPTOR`** — `RequestTimeoutInterceptor` and `RequestActorInterceptor`, plus the
   response interceptor that reads `metadata` off the returned envelope.
 - **The route-local guard stack**, bottom-up: api key → JWT → feature flag → user status →
   activity log → workspace → project → role → policy → term policy. The order is exact
   (`rules/http.md`).
-- **On the way out, the four `APP_FILTER`s** registered in `app.module.ts` in array order general
+- **On the way out, the five `APP_FILTER`s** registered in `app.module.ts` in array order general
   → base-exception → http → validation → validation-import, evaluated in REVERSE so the most
   specific catch runs first (`rules/exceptions.md`).
 - **CLS** — `RequestStoreService` is the per-request store the workspace middleware, the

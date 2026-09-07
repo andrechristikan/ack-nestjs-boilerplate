@@ -18,8 +18,9 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 - Redis: cache on `db:0` through `CACHE_REDIS_URL`, BullMQ on `db:1` through
   `QUEUE_REDIS_URL`. BullMQ registers two connections of its own under separate config keys,
   a producer and a processor
-- HTTP with Swagger under the configured `doc.prefix`; request validation is `class-validator`
-  through a global pipe; i18n through `nestjs-i18n` reading `src/languages/`
+- HTTP with Swagger under the configured `doc.prefix`; every transport shape is a **zod schema**
+  (`zod` 4 + `zod-openapi`), validated through the global `RequestSchemaValidationPipe` on the way
+  in and `ResponseInterceptor` on the way out; i18n through `nestjs-i18n` reading `src/languages/`
 - Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
 - Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
@@ -30,21 +31,22 @@ pattern, `Controller → HTTP Service → Domain Service → Repository` with `P
 Service` joining at the domain service, and flat folder-per-concern directories
 (`controllers/`, `services/`, `repositories/`, `dtos/request/`, `dtos/response/`, `enums/`,
 `exceptions/`, `interfaces/`, `constants/`, `utils/`, and `decorators/` `docs/` `guards/`
-`factories/` `indicators/` `interceptors/` `processors/` `templates/` `validations/` where the
-feature needs them). There is no layered folder scheme on top of it and no second shape to
+`factories/` `indicators/` `interceptors/` `processors/` `templates/` where the feature needs
+them). There is no layered folder scheme on top of it and no second shape to
 detect — do not invent one.
 
 Each layer gets its own Nest module in the feature folder, and only the ones with something to
-provide exist: `<feature>.util.module.ts`, `<feature>.repository.module.ts`,
-`<feature>.module.ts` (domain services — the only one another feature consumes),
-`<feature>.http.module.ts` and `<feature>.processor.module.ts`. `src/common/` and every
-`@Global()` module are injectable from any layer including a repository; a non-global feature's
-util stops at another module's service layer. Full rules: `.claude/rules/architecture.md` and
-`.claude/rules/nest-wiring.md`.
+provide exist: `<feature>.repository.module.ts`, `<feature>.module.ts` (domain services and
+utils — the only one another feature consumes), `<feature>.http.module.ts` and
+`<feature>.processor.module.ts`. A repository module imports nothing and is imported by its own
+feature only; another feature reaches the data through the owning domain service. `src/common/`
+and every `@Global()` module are injectable from any layer including a repository; a non-global
+feature's util stops at another module's service layer. Full rules:
+`.claude/rules/architecture.md` and `.claude/rules/nest-wiring.md`.
 
 ```
 src/
-├── main.ts             # HTTP bootstrap — global prefix, versioning, middleware, Swagger
+├── main.ts             # HTTP bootstrap — global prefix, versioning, trusted proxy, Swagger
 ├── migration.ts        # nest-commander entrypoint — boots MigrationModule, runs seeders
 ├── instrument.ts       # Sentry init (imported first by main.ts)
 ├── swagger.ts          # Swagger/OpenAPI document builder
@@ -97,8 +99,8 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 
 | Skill | For |
 |---|---|
-| `ack-feature` | NEW behaviour, end to end — interrogate, plan, build spec-first, offer reviews, all checks green |
-| `ack-fix` | repair EXISTING behaviour, end to end — pin the symptom, find the cause, brainstorm, plan, build, offer reviews |
+| `ack-feature` | NEW behaviour, end to end — interrogate, then spec → plan → execute through `planner` and `coder`, offer reviews, all checks green |
+| `ack-fix` | repair EXISTING behaviour, end to end — pin the symptom, find the cause, brainstorm, then spec → plan → execute through `planner` and `coder`, offer reviews |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
 | `ack-seed` | initial-data seeders under `src/migration/` |
 | `ack-gate` | the compliance pass — the whole rule set, then every mechanical check, one verdict |
@@ -124,10 +126,17 @@ automatically: a skill never invokes another skill, so every hop is the owner's 
 ```
 
 **`/ack-feature` and `/ack-fix` are the same shape on opposite subjects.** Both interrogate,
-brainstorm, plan, build spec-first, offer the reviews, and end green. `feature` starts from a
-requirement for behaviour that does not exist; `fix` starts from a symptom in behaviour that
-does, and spends its first four steps turning that symptom into a reproduced cause. Breadth
-picks neither: a one-line repair is still `fix`, and a small addition is still `feature`.
+brainstorm, then run the same three-artifact pipeline — **spec, then plan, then execute** —
+offer the reviews, and end green. `feature` starts from a requirement for behaviour that does
+not exist; `fix` starts from a symptom in behaviour that does, and spends its first four steps
+turning that symptom into a reproduced cause. Breadth picks neither: a one-line repair is still
+`fix`, and a small addition is still `feature`.
+
+**In both, the spec and the plan are written by `planner`, never by the session and never by
+`coder`.** `planner` runs twice — once in `SPEC` mode for the settled behaviour, once in `PLAN`
+mode against the approved spec — and the owner approves the spec before the plan is written.
+`coder` then builds test-first from the plan; the failing unit spec under `test/` is a different
+artifact from the `.superpowers/` spec.
 
 When a suite is red: the code is wrong → `/ack-fix`; the spec is wrong → `/ack-spec`.
 

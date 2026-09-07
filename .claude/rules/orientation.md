@@ -72,8 +72,8 @@ thought to list.
 | repository, Prisma query, transaction | `database.md` `concurrency.md` `dates.md` |
 | a schema edit, and the push it hands back | `prisma-schema.md` |
 | controller, route path, guard, decorator stack | `http.md` `router.md` `security.md` |
-| request DTO, validator | `validation.md` |
-| response DTO, `@Expose()`, serialization | `dto.md` |
+| request schema, validation | `validation.md` |
+| response schema, serialization | `dto.md` |
 | Swagger doc factory | `swagger.md` |
 | a paginated list | `pagination.md` |
 | an exception, a status code | `exceptions.md` `status-code.md` |

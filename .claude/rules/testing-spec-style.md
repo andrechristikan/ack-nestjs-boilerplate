@@ -15,19 +15,19 @@ Every spec file has the same four blocks, in this order, and nothing between the
 // 1. imports — nothing above them
 import { createMock, DeepMocked } from '@golevelup/ts-jest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CountryService } from '@modules/country/services/country.service';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { CountryUtil } from '@modules/country/utils/country.util';
+import { SessionService } from '@modules/session/services/session.service';
+import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionUtil } from '@modules/session/utils/session.util';
 
 // 2. jest.mock — AFTER the last import, BEFORE the first describe. Nowhere else.
 jest.mock('<third-party-package>');
 
-describe('CountryService', () => {
+describe('SessionService', () => {
     // 3. first door — const at the root describe, shape only
-    const countryRepository: DeepMocked<CountryRepository> =
-        createMock<CountryRepository>();
-    const countryUtil: DeepMocked<CountryUtil> = createMock<CountryUtil>();
-    let service: CountryService;
+    const sessionRepository: DeepMocked<SessionRepository> =
+        createMock<SessionRepository>();
+    const sessionUtil: DeepMocked<SessionUtil> = createMock<SessionUtil>();
+    let service: SessionService;
 
     beforeEach(async () => {
         // 4. second door — reset, then the behavior every test starts from
@@ -35,13 +35,13 @@ describe('CountryService', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                CountryService,
-                { provide: CountryRepository, useValue: countryRepository },
-                { provide: CountryUtil, useValue: countryUtil },
+                SessionService,
+                { provide: SessionRepository, useValue: sessionRepository },
+                { provide: SessionUtil, useValue: sessionUtil },
             ],
         }).compile();
 
-        service = module.get(CountryService);
+        service = module.get(SessionService);
     });
 
     describe('getListCursor', () => {
@@ -75,8 +75,8 @@ The rules the skeleton encodes:
 - **Mock variable names mirror the DI param they replace — `camelCase`.** Fixture and data
   locals are `camelCase` too (`rules/case-convention.md`). There is no snake_case surface in
   this project, including in specs.
-- **Injection is by class.** Repositories and services are provided as `{ provide: CountryRepository,
-  useValue: countryRepository }`, never behind a port token (`rules/architecture.md`).
+- **Injection is by class.** Repositories and services are provided as `{ provide: SessionRepository,
+  useValue: sessionRepository }`, never behind a port token (`rules/architecture.md`).
 
 ## `DeepMocked` is one level deep (HARD)
 
@@ -305,9 +305,10 @@ brittle specs that test the mock instead of the code.
   validation error.
 - **Interceptor / filter** — assert the emitted shape (`IResponseReturn`, `ResponseErrorDto`)
   and the headers set. These are the highest-value cheap specs in the repo.
-- **DTO** — assert that `ResponseUtil.serialize()` returns exactly the `@Expose()`d fields and
-  that nothing sensitive rides along. This spec is the executable form of the whitelist rule
-  (`rules/dto.md`).
+- **DTO** — parse a payload through the schema and assert that the result carries exactly the
+  declared fields, that an undeclared key is stripped by a response schema and rejected by a
+  request schema, and that nothing sensitive rides along. This spec is the executable form of
+  the opt-in rule (`rules/dto.md`).
 - **Exception** — assert `module`, `statusCode`, `statusCodeKey`, `httpStatus`, and
   `messagePath`. Cheap, and it catches the `statusCodeKey` / `statusCode` mismatch that
   compiles fine (`rules/exceptions.md`).

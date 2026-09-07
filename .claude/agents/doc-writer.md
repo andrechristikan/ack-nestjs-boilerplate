@@ -75,7 +75,8 @@ git log --oneline -- <doc path>
 
 **The CODE is probably wrong** when the behaviour changed in a commit whose message says nothing
 about changing it; when the doc is NEWER than the code change; when the change removed a guard,
-a session invalidation, a rate limit, a `@Expose()`, or a validation the doc says must exist; or
+a session invalidation, a rate limit, a response-schema field, or a validation the doc says must
+exist; or
 when the two disagree about authorization, credentials, or idempotency. Report those as
 suspected defects — do not rewrite the doc to match.
 
@@ -87,9 +88,10 @@ exists nowhere any more, or when the claim is descriptive rather than normative.
 Write in the INDICATIVE. `docs/` states facts; it carries no obligations — rewrite an obligation
 as a fact plus a pointer to the rule file.
 
-- Wrong: `All response DTO fields MUST carry @Expose().`
-- Right: `A field without @Expose() is dropped by the serializer, which is what keeps a new
-  column off the response. The constraint when changing this: rules/dto.md.`
+- Wrong: `Every response field MUST be declared on the route's schema.`
+- Right: `A field the response schema does not declare is stripped before the envelope is sent,
+  which is what keeps a new column off the response. The constraint when changing this:
+  rules/dto.md.`
 
 **The asymmetry.** A rule MAY carry the minimum rationale needed to apply it correctly. A
 document MUST NOT carry an obligation. Rationale inside a rule prevents cargo-cult application;

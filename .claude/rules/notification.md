@@ -32,7 +32,7 @@ The notification module carries more moving parts than most; keep the roles dist
 
 - **`*.util.ts`** builds the typed queue payload from caller inputs and enqueues it. This is where a caller-facing "send X" entry point lives.
 - **`*.processor.ts`** is the BullMQ dispatcher — `extends QueueProcessorBase`, switches on `job.name`, returns `IQueueResponse` (`rules/queue.md`). No sending logic inline.
-- **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSesService` / `FirebaseService`.
+- **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSESService` / `FirebaseService`.
 - A recipient with no token/address is a no-op the processor-service handles, not an exception — a missing push token is not a failed job.
 
 ## Security
