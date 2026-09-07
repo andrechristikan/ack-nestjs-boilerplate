@@ -4,7 +4,8 @@ import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationApiKeyData } from '@migration/data/migration.api-key.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
-import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { ApiKeyCacheService } from '@modules/api-key/services/api-key.cache.service';
+import { ApiKeyCredentialService } from '@modules/api-key/services/api-key.credential.service';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -28,7 +29,8 @@ export class MigrationApiKeySeed
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly apiKeyUtil: ApiKeyUtil,
+        private readonly apiKeyCredentialService: ApiKeyCredentialService,
+        private readonly apiKeyCacheService: ApiKeyCacheService,
         private readonly configService: ConfigService
     ) {
         super();
@@ -44,8 +46,10 @@ export class MigrationApiKeySeed
         try {
             await this.databaseService.client.$transaction(
                 this.apiKeys.map(apiKey => {
-                    const key = this.apiKeyUtil.createKey(apiKey.key);
-                    const hashed = this.apiKeyUtil.createHash(
+                    const key = this.apiKeyCredentialService.createKey(
+                        apiKey.key
+                    );
+                    const hashed = this.apiKeyCredentialService.createHash(
                         key,
                         apiKey.secret
                     );
@@ -83,8 +87,10 @@ export class MigrationApiKeySeed
                 ...this.apiKeys
                     .map(apiKey => {
                         return [
-                            this.apiKeyUtil.deleteCacheByKey(
-                                this.apiKeyUtil.createKey(apiKey.key)
+                            this.apiKeyCacheService.deleteCacheByKey(
+                                this.apiKeyCredentialService.createKey(
+                                    apiKey.key
+                                )
                             ),
                         ];
                     })

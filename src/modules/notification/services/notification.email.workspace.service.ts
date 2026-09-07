@@ -12,7 +12,7 @@ import {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -37,7 +37,7 @@ export class NotificationEmailWorkspaceService implements INotificationEmailWork
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly messageService: MessageService,
-        private readonly userUtil: UserUtil
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
@@ -64,10 +64,11 @@ export class NotificationEmailWorkspaceService implements INotificationEmailWork
         }: INotificationWorkspaceInvitePayload
     ): Promise<IQueueResponse> {
         try {
-            const inviteAcceptLink = this.userUtil.decryptedLink(
-                userId,
-                encryptedInviteAcceptLink
-            );
+            const inviteAcceptLink =
+                this.helperEncryptionService.aes256DecryptSimple(
+                    encryptedInviteAcceptLink,
+                    userId
+                );
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
@@ -108,10 +109,11 @@ export class NotificationEmailWorkspaceService implements INotificationEmailWork
     ): Promise<IQueueResponse> {
         try {
             // Keyed by `reference`: an unregistered invitee has no userId yet.
-            const inviteAcceptLink = this.userUtil.decryptedLink(
-                reference,
-                encryptedInviteAcceptLink
-            );
+            const inviteAcceptLink =
+                this.helperEncryptionService.aes256DecryptSimple(
+                    encryptedInviteAcceptLink,
+                    reference
+                );
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
@@ -152,10 +154,11 @@ export class NotificationEmailWorkspaceService implements INotificationEmailWork
         }: INotificationWorkspaceJoinRequestPayload
     ): Promise<IQueueResponse> {
         try {
-            const joinRequestReviewLink = this.userUtil.decryptedLink(
-                userId,
-                encryptedJoinRequestReviewLink
-            );
+            const joinRequestReviewLink =
+                this.helperEncryptionService.aes256DecryptSimple(
+                    encryptedJoinRequestReviewLink,
+                    userId
+                );
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceJoinRequest,

@@ -81,8 +81,8 @@ not our behavior. If you find yourself wanting one, the logic is probably in the
 change `test/jest.json`, which is the owner's call, never a spec written around the config.
 
 A file whose suffix is NOT on that list is not measured at all — `*.module.ts`, `*.enum.ts`,
-`*.interface.ts`, `*.constant.ts`, `*.util.ts`, `*.processor.ts`, `*.repository.ts`,
-`*.controller.ts`. Adding a suffix to the list adds every existing file carrying it to the
+`*.interface.ts`, `*.constant.ts`, `*.util.ts`, `*.queue.ts`, `*.processor.ts`,
+`*.repository.ts`, `*.controller.ts`. Adding a suffix to the list adds every existing file carrying it to the
 100% denominator at once.
 
 ## TDD

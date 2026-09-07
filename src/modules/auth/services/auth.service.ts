@@ -8,17 +8,17 @@ import {
     IAuthSocialPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import { IAuthService } from '@modules/auth/interfaces/auth.service.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { SessionForbiddenException } from '@modules/session/exceptions/session.forbidden.exception';
-import { SessionUtil } from '@modules/session/utils/session.util';
+import { SessionCacheService } from '@modules/session/services/session.cache.service';
 import { Injectable } from '@nestjs/common';
 import { TokenPayload } from 'google-auth-library';
 
 @Injectable()
 export class AuthService implements IAuthService {
     constructor(
-        private readonly authUtil: AuthUtil,
-        private readonly sessionUtil: SessionUtil
+        private readonly authSocialService: AuthSocialService,
+        private readonly sessionCacheService: SessionCacheService
     ) {}
 
     async validateJwtAccessStrategy(
@@ -36,7 +36,10 @@ export class AuthService implements IAuthService {
             throw new AuthJwtAccessTokenInvalidException();
         }
 
-        const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
+        const isValidSession = await this.sessionCacheService.getLogin(
+            sub,
+            sessionId
+        );
         if (!isValidSession || jti !== isValidSession.jti) {
             throw new SessionForbiddenException();
         }
@@ -70,7 +73,10 @@ export class AuthService implements IAuthService {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
-        const isValidSession = await this.sessionUtil.getLogin(sub, sessionId);
+        const isValidSession = await this.sessionCacheService.getLogin(
+            sub,
+            sessionId
+        );
         if (!isValidSession || jti !== isValidSession.jti) {
             throw new SessionForbiddenException();
         }
@@ -92,7 +98,7 @@ export class AuthService implements IAuthService {
 
     async validateOAuthApple(idToken: string): Promise<IAuthSocialPayload> {
         try {
-            const payload = await this.authUtil.verifyApple(idToken);
+            const payload = await this.authSocialService.verifyApple(idToken);
 
             return {
                 email: payload.email,
@@ -106,7 +112,7 @@ export class AuthService implements IAuthService {
     async validateOAuthGoogle(idToken: string): Promise<IAuthSocialPayload> {
         try {
             const payload: TokenPayload =
-                await this.authUtil.verifyGoogle(idToken);
+                await this.authSocialService.verifyGoogle(idToken);
 
             return {
                 email: payload.email ?? '',

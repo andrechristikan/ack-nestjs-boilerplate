@@ -1,5 +1,5 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
+import { DeviceService } from '@modules/device/services/device.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import {
     INotificationEmailSendPayload,
@@ -11,9 +11,9 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationWorkspaceService } from '@modules/notification/interfaces/notification.workspace.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -22,11 +22,11 @@ import { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class NotificationWorkspaceService implements INotificationWorkspaceService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userRepository: UserRepository,
-        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
+        private readonly userService: UserService,
+        private readonly deviceService: DeviceService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil,
-        private readonly notificationPushUtil: NotificationPushUtil
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async processWorkspaceInvite(
@@ -35,8 +35,8 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
         data: INotificationWorkspaceInvitePayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -69,7 +69,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendWorkspaceInvite(emailPayload, data),
+            this.notificationEmailQueue.sendWorkspaceInvite(emailPayload, data),
         ];
 
         if (devices.length > 0) {
@@ -83,7 +83,10 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
             };
 
             promises.push(
-                this.notificationPushUtil.sendWorkspaceInvite(pushPayload, data)
+                this.notificationPushQueue.sendWorkspaceInvite(
+                    pushPayload,
+                    data
+                )
             );
         }
 
@@ -98,8 +101,8 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
         data: INotificationWorkspaceJoinRequestPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -132,7 +135,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendWorkspaceJoinRequest(
+            this.notificationEmailQueue.sendWorkspaceJoinRequest(
                 emailPayload,
                 data
             ),
@@ -149,7 +152,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
             };
 
             promises.push(
-                this.notificationPushUtil.sendWorkspaceJoinRequest(
+                this.notificationPushQueue.sendWorkspaceJoinRequest(
                     pushPayload,
                     data
                 )
@@ -170,8 +173,8 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
         data: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -203,7 +206,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendWorkspaceJoinAccepted(
+            this.notificationEmailQueue.sendWorkspaceJoinAccepted(
                 emailPayload,
                 data
             ),
@@ -220,7 +223,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
             };
 
             promises.push(
-                this.notificationPushUtil.sendWorkspaceJoinAccepted(
+                this.notificationPushQueue.sendWorkspaceJoinAccepted(
                     pushPayload,
                     data
                 )
@@ -241,8 +244,8 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
         data: INotificationWorkspaceJoinRejectedPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -275,7 +278,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendWorkspaceJoinRejected(
+            this.notificationEmailQueue.sendWorkspaceJoinRejected(
                 emailPayload,
                 data
             ),
@@ -292,7 +295,7 @@ export class NotificationWorkspaceService implements INotificationWorkspaceServi
             };
 
             promises.push(
-                this.notificationPushUtil.sendWorkspaceJoinRejected(
+                this.notificationPushQueue.sendWorkspaceJoinRejected(
                     pushPayload,
                     data
                 )

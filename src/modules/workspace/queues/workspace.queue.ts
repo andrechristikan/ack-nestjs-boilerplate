@@ -9,7 +9,7 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
  * Owns the workspace queue connection; schedules the recurring invite-expiry sweep.
  */
 @Injectable()
-export class WorkspaceInviteUtil {
+export class WorkspaceQueue {
     private readonly defTz: string;
     private readonly expirySweepCron: string;
 

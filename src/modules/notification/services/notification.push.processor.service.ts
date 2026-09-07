@@ -13,7 +13,7 @@ import { INotificationPushProcessorService } from '@modules/notification/interfa
 import { NotificationPushMaintenanceService } from '@modules/notification/services/notification.push.maintenance.service';
 import { NotificationPushSecurityService } from '@modules/notification/services/notification.push.security.service';
 import { NotificationPushWorkspaceService } from '@modules/notification/services/notification.push.workspace.service';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -26,11 +26,11 @@ export class NotificationPushProcessorService
         private readonly notificationPushSecurityService: NotificationPushSecurityService,
         private readonly notificationPushWorkspaceService: NotificationPushWorkspaceService,
         private readonly notificationPushMaintenanceService: NotificationPushMaintenanceService,
-        private readonly notificationPushUtil: NotificationPushUtil
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async onModuleInit(): Promise<void> {
-        await this.notificationPushUtil.sendCleanupStaleTokens();
+        await this.notificationPushQueue.sendCleanupStaleTokens();
     }
 
     async processNewDeviceLogin({

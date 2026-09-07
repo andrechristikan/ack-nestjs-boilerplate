@@ -10,6 +10,11 @@ import {
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 
 export interface IFeatureFlagService {
+    checkRolloutPercentage(
+        rolloutPercent: number,
+        key: string,
+        identifier: string
+    ): boolean;
     validateFeatureFlag(
         keyPath: string,
         userId: string | null,

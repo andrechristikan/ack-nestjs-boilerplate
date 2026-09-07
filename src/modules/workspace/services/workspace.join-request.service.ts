@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
     IPaginationIn,
@@ -12,7 +15,7 @@ import {
     WorkspaceJoinRequest,
 } from '@generated/prisma-client';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/exceptions/workspace.join-request-duplicate.exception';
@@ -24,7 +27,6 @@ import { IWorkspaceJoinRequestService } from '@modules/workspace/interfaces/work
 import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -37,10 +39,10 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceUtil: WorkspaceUtil,
+        private readonly requestStoreService: RequestStoreService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly configService: ConfigService,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagService: FeatureFlagService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
@@ -83,7 +85,7 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
                         reviewer.userId
                     );
 
-                return this.notificationUtil.sendWorkspaceJoinRequest(
+                return this.notificationQueue.sendWorkspaceJoinRequest(
                     reviewer.userId,
                     {
                         workspaceId: workspace.id,
@@ -123,7 +125,8 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
     ): Promise<WorkspaceJoinRequest> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const workspace = await this.workspaceRepository.findActiveById(
             create.workspaceId
@@ -186,7 +189,8 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
     ): Promise<void> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const joinRequest = await this.validatePendingJoinRequest(
             workspaceJoinRequestId,
@@ -199,7 +203,7 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
             requestLog
         );
 
-        await this.notificationUtil.sendWorkspaceJoinAccepted(
+        await this.notificationQueue.sendWorkspaceJoinAccepted(
             joinRequest.userId,
             {
                 workspaceId: workspace.id,
@@ -217,7 +221,8 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
     ): Promise<void> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const joinRequest = await this.validatePendingJoinRequest(
             workspaceJoinRequestId,
@@ -232,7 +237,7 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
             requestLog
         );
 
-        await this.notificationUtil.sendWorkspaceJoinRejected(
+        await this.notificationQueue.sendWorkspaceJoinRejected(
             joinRequest.userId,
             {
                 workspaceId: workspace.id,

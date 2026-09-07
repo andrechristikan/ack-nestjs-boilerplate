@@ -67,7 +67,7 @@ thought to list.
 | Touches | Read |
 |---|---|
 | layer placement, module `imports` / `providers` / `exports` | `nest-wiring.md` |
-| another module's service, util, or repository | `cross-module.md` |
+| another module's service, util, queue class, or repository | `cross-module.md` |
 | `src/common/` | `common.md` |
 | repository, Prisma query, transaction | `database.md` `concurrency.md` `dates.md` |
 | a schema edit, and the push it hands back | `prisma-schema.md` |

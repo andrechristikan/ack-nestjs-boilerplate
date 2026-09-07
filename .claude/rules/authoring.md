@@ -1,7 +1,7 @@
 # Authoring — where a sentence lives
 
-The four-tree map and the placement test are in `.claude/CLAUDE.md` → "Where a sentence
-lives". What follows here is the rationale and mechanics for writing INSIDE those trees
+The tree-by-tree placement map is in `.claude/skills/ack-claude-config/SKILL.md` → "Where a
+sentence lives". What follows here is the rationale and mechanics for writing INSIDE those trees
 correctly, not the placement decision itself.
 
 ## The asymmetry (HARD)

@@ -20,6 +20,7 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
@@ -27,13 +28,31 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
  * Enqueues email notification jobs onto the email queue, deduplicated per user.
  */
 @Injectable()
-export class NotificationEmailUtil {
+export class NotificationEmailQueue {
+    private readonly dedupTtlInMs: number;
+    private readonly verificationExpiredInMs: number;
+    private readonly verificationResendInMs: number;
+    private readonly forgotPasswordResendInMs: number;
+
     constructor(
         @InjectQueue(EnumQueue.notificationEmail)
-        private readonly emailQueue: Queue
-    ) {}
+        private readonly emailQueue: Queue,
+        private readonly configService: ConfigService
+    ) {
+        this.dedupTtlInMs = this.configService.get<number>(
+            'notification.dedupTtlInMs'
+        )!;
+        this.verificationExpiredInMs = this.configService.get<number>(
+            'verification.expiredInMs'
+        )!;
+        this.verificationResendInMs = this.configService.get<number>(
+            'verification.resendInMs'
+        )!;
+        this.forgotPasswordResendInMs = this.configService.get<number>(
+            'forgotPassword.resendInMs'
+        )!;
+    }
 
-    /** Enqueues the admin-created welcome email carrying the temporary password. */
     async sendWelcomeByAdmin(
         {
             email,
@@ -69,14 +88,13 @@ export class NotificationEmailUtil {
                 jobId: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
                 deduplication: {
                     id: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.medium,
             }
         );
     }
 
-    /** Enqueues the admin-issued temporary password email. */
     async sendTemporaryPasswordByAdmin(
         {
             email,
@@ -111,14 +129,13 @@ export class NotificationEmailUtil {
             {
                 deduplication: {
                     id: `${EnumNotificationProcess.temporaryPasswordByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.medium,
             }
         );
     }
 
-    /** Enqueues the password reset confirmation email. */
     async sendResetPassword({
         email,
         username,
@@ -141,13 +158,12 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.low,
                 deduplication: {
                     id: `${EnumNotificationProcess.resetPassword}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the password change confirmation email. */
     async sendChangePassword({
         email,
         username,
@@ -170,13 +186,12 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.low,
                 deduplication: {
                     id: `${EnumNotificationProcess.changePassword}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the email verification link; the deduplication TTL matches the link lifetime so a resend is suppressed until expiry. */
     async sendVerificationEmail(
         {
             email,
@@ -213,14 +228,13 @@ export class NotificationEmailUtil {
             {
                 deduplication: {
                     id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
-                    ttl: expiredInMinutes * 60 * 1000,
+                    ttl: this.verificationExpiredInMs,
                 },
                 priority: EnumQueuePriority.high,
             }
         );
     }
 
-    /** Enqueues the post-signup welcome email. */
     async sendWelcome({
         email,
         username,
@@ -240,13 +254,12 @@ export class NotificationEmailUtil {
             jobId: `${EnumNotificationProcess.welcome}-${userId}`,
             deduplication: {
                 id: `${EnumNotificationProcess.welcome}-${userId}`,
-                ttl: 1000,
+                ttl: this.dedupTtlInMs,
             },
             priority: EnumQueuePriority.low,
         });
     }
 
-    /** Enqueues the welcome email for new social-login users. */
     async sendWelcomeSocial({
         email,
         username,
@@ -269,14 +282,13 @@ export class NotificationEmailUtil {
                 jobId: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
                 deduplication: {
                     id: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.low,
             }
         );
     }
 
-    /** Enqueues the email-verified confirmation email. */
     async sendVerifiedEmail(
         {
             email,
@@ -306,14 +318,13 @@ export class NotificationEmailUtil {
                 jobId: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
                 deduplication: {
                     id: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.low,
             }
         );
     }
 
-    /** Enqueues the forgot-password reset link; the deduplication TTL matches the resend window. */
     async sendForgotPassword(
         {
             email,
@@ -352,14 +363,13 @@ export class NotificationEmailUtil {
             {
                 deduplication: {
                     id: `${EnumNotificationProcess.forgotPassword}-${userId}`,
-                    ttl: resendInMinutes * 60 * 1000,
+                    ttl: this.forgotPasswordResendInMs,
                 },
                 priority: EnumQueuePriority.high,
             }
         );
     }
 
-    /** Enqueues the mobile-number-verified confirmation email. */
     async sendVerifiedMobileNumber(
         {
             email,
@@ -395,14 +405,13 @@ export class NotificationEmailUtil {
                 jobId: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
                 deduplication: {
                     id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
-                    ttl: resendInMinutes * 60 * 1000,
+                    ttl: this.verificationResendInMs,
                 },
                 priority: EnumQueuePriority.low,
             }
         );
     }
 
-    /** Enqueues the admin-triggered two-factor reset email. */
     async sendResetTwoFactorByAdmin({
         email,
         username,
@@ -424,14 +433,13 @@ export class NotificationEmailUtil {
             {
                 deduplication: {
                     id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.high,
             }
         );
     }
 
-    /** Enqueues the new-device login alert email. */
     async sendNewDeviceLogin(
         {
             email,
@@ -468,14 +476,13 @@ export class NotificationEmailUtil {
             {
                 deduplication: {
                     id: `${EnumNotificationProcess.newDeviceLogin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
                 priority: EnumQueuePriority.high,
             }
         );
     }
 
-    /** Enqueues a bulk term-policy publication email for the given recipients. */
     async sendPublishTermPolicy(
         sendPayload: INotificationEmailSendPayload[],
         publishTermPolicy: INotificationPublishTermPolicyPayload
@@ -493,7 +500,7 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${publishTermPolicy.type}-${publishTermPolicy.version}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
@@ -517,13 +524,13 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceInvite}-${data.reference}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); callers bypass `NotificationUtil`'s main-queue orchestration entirely. */
+    /** Enqueues the workspace invite email directly for an unregistered invitee (no `userId`, no `Notification` row); callers bypass `NotificationQueue`'s main-queue orchestration entirely. */
     async sendWorkspaceInviteUnregistered(
         email: string,
         data: INotificationWorkspaceInviteUnregisteredPayload
@@ -541,13 +548,12 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceInviteUnregistered}-${data.reference}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request email for one reviewer (workspace owner/admin). */
     async sendWorkspaceJoinRequest(
         sendPayload: INotificationEmailSendPayload,
         data: INotificationWorkspaceJoinRequestPayload
@@ -565,13 +571,12 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request-accepted email for the requester. */
     async sendWorkspaceJoinAccepted(
         sendPayload: INotificationEmailSendPayload,
         data: INotificationWorkspaceJoinAcceptedPayload
@@ -589,13 +594,12 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinAccepted}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request-rejected email for the requester. */
     async sendWorkspaceJoinRejected(
         sendPayload: INotificationEmailSendPayload,
         data: INotificationWorkspaceJoinRejectedPayload
@@ -613,7 +617,7 @@ export class NotificationEmailUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinRejected}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );

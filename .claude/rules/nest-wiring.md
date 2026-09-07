@@ -41,7 +41,7 @@ One feature, one folder, up to four modules — each owning exactly one layer:
 ```
 src/modules/<feature>/
 ├── <feature>.repository.module.ts   <Feature>RepositoryModule   repositories
-├── <feature>.module.ts              <Feature>Module             domain services + utils
+├── <feature>.module.ts              <Feature>Module             domain services + utils + queue classes
 ├── <feature>.http.module.ts         <Feature>HttpModule         HTTP services
 └── <feature>.processor.module.ts    <Feature>ProcessorModule    processors + processor services
 ```
@@ -54,14 +54,20 @@ src/modules/<feature>/
 when another module injects it. A repository therefore never injects a util from its own
 feature — what the util built arrives as a parameter (`rules/architecture.md`).
 
+**A queue class is provided by `<feature>.module.ts` too**, and exported by it. Its file sits in
+the feature's own `queues/` folder, `queues/<feature>[.<concern>].queue.ts`, one class per
+registered BullMQ queue, and it is the only place an enqueue happens (`rules/queue.md`). The
+export is what lets the feature's `<feature>.processor.module.ts` and another feature's domain
+service inject it.
+
 The import graph is fixed, and it is acyclic by construction:
 
 ```ts
 @Module({ providers: [WorkspaceRepository], exports: [WorkspaceRepository], imports: [] })
 export class WorkspaceRepositoryModule {}          // repositories only, imports nothing
 
-@Module({ imports: [WorkspaceRepositoryModule], providers: [WorkspaceService, WorkspaceUtil], exports: [WorkspaceService, WorkspaceUtil] })
-export class WorkspaceModule {}                    // domain services and utils
+@Module({ imports: [WorkspaceRepositoryModule], providers: [WorkspaceService, WorkspaceUtil, WorkspaceQueue], exports: [WorkspaceService, WorkspaceUtil, WorkspaceQueue] })
+export class WorkspaceModule {}                    // domain services, utils and queue classes
 
 @Module({ imports: [WorkspaceModule], providers: [WorkspaceHttpService], exports: [WorkspaceHttpService] })
 export class WorkspaceHttpModule {}                // HTTP services only
@@ -75,10 +81,12 @@ export class WorkspaceProcessorModule {}           // processor classes + their 
   Everything a repository injects is tier 1 or tier 2 (`rules/architecture.md`), and both are
   reachable with no import.
 - **`<feature>.repository.module.ts` is imported by its OWN feature only (HARD).** The one
-  importer is `<feature>.module.ts`. Another feature reaches the data through the owning
-  DOMAIN service, never through the repository module (`rules/cross-module.md`).
+  importer inside `src/modules/` is `<feature>.module.ts`. Another feature reaches the data
+  through the owning DOMAIN service, never through the repository module
+  (`rules/cross-module.md`). `MigrationModule` is the exception and imports any feature's
+  repository module directly (`rules/seeding.md`).
 - **`<feature>.module.ts` is what another feature consumes.** It exports its domain services,
-  and its utils where another module injects them.
+  its queue classes, and its utils where another module injects them.
 - **`<feature>.http.module.ts` and `<feature>.processor.module.ts` are LEAVES.** Nothing imports
   them except `src/router/`. A feature module that imports another feature's HTTP or processor
   module has reached for the wrong layer — it wants the domain service.
@@ -100,6 +108,7 @@ export class WorkspaceProcessorModule {}           // processor classes + their 
 | another feature's business behaviour | `<Feature>Module` |
 | another feature's data | `<Feature>Module` — its domain service reads and writes it |
 | another feature's util, feature not `@Global()` | `<Feature>Module`, which exports it |
+| another feature's queue class, to enqueue onto its queue | `<Feature>Module`, which exports it |
 | anything from a `@Global()` feature, or from `src/common/` | nothing — it is already reachable |
 
 `<Feature>RepositoryModule`, `<Feature>HttpModule` and `<Feature>ProcessorModule` are never a

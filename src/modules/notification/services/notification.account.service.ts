@@ -10,8 +10,8 @@ import {
     INotificationWelcomeByAdminPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -20,10 +20,10 @@ import { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class NotificationAccountService implements INotificationAccountService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userRepository: UserRepository,
+        private readonly userService: UserService,
         private readonly helperStringService: HelperStringService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil
+        private readonly notificationEmailQueue: NotificationEmailQueue
     ) {}
 
     async processWelcomeByAdmin(
@@ -31,7 +31,7 @@ export class NotificationAccountService implements INotificationAccountService {
         proceedBy: string,
         data: INotificationWelcomeByAdminPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -58,7 +58,7 @@ export class NotificationAccountService implements INotificationAccountService {
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendWelcomeByAdmin(emailPayload, data),
+            this.notificationEmailQueue.sendWelcomeByAdmin(emailPayload, data),
         ]);
 
         return { message: 'Welcome by admin notification processed', results };
@@ -68,7 +68,7 @@ export class NotificationAccountService implements INotificationAccountService {
         userId: string,
         data: INotificationVerificationEmailPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return { message: 'User not found, skipping welcome notification' };
@@ -111,8 +111,8 @@ export class NotificationAccountService implements INotificationAccountService {
                     },
                 },
             ]),
-            this.notificationEmailUtil.sendWelcome(welcomePayload),
-            this.notificationEmailUtil.sendVerificationEmail(
+            this.notificationEmailQueue.sendWelcome(welcomePayload),
+            this.notificationEmailQueue.sendVerificationEmail(
                 verificationEmailPayload,
                 data
             ),
@@ -122,7 +122,7 @@ export class NotificationAccountService implements INotificationAccountService {
     }
 
     async processWelcomeSocial(userId: string): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -148,7 +148,7 @@ export class NotificationAccountService implements INotificationAccountService {
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendWelcomeSocial(emailPayload),
+            this.notificationEmailQueue.sendWelcomeSocial(emailPayload),
         ]);
 
         return { message: 'Welcome social notification processed', results };
@@ -158,7 +158,7 @@ export class NotificationAccountService implements INotificationAccountService {
         userId: string,
         data: INotificationVerifiedEmailPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -184,7 +184,7 @@ export class NotificationAccountService implements INotificationAccountService {
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendVerifiedEmail(emailPayload, data),
+            this.notificationEmailQueue.sendVerifiedEmail(emailPayload, data),
         ]);
 
         return { message: 'Verified email notification processed', results };
@@ -194,7 +194,7 @@ export class NotificationAccountService implements INotificationAccountService {
         userId: string,
         data: INotificationVerificationEmailPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -221,7 +221,7 @@ export class NotificationAccountService implements INotificationAccountService {
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendVerificationEmail(
+            this.notificationEmailQueue.sendVerificationEmail(
                 emailPayload,
                 data
             ),
@@ -237,7 +237,7 @@ export class NotificationAccountService implements INotificationAccountService {
         userId: string,
         data: INotificationVerifiedMobileNumberPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -269,7 +269,7 @@ export class NotificationAccountService implements INotificationAccountService {
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendVerifiedMobileNumber(
+            this.notificationEmailQueue.sendVerifiedMobileNumber(
                 emailPayload,
                 data
             ),

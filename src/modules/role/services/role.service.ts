@@ -15,6 +15,7 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import {
+    IRole,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
@@ -61,6 +62,14 @@ export class RoleService implements IRoleService {
             pagination,
             type
         );
+    }
+
+    async existById(roleId: string): Promise<IRole | null> {
+        return this.roleRepository.existById(roleId);
+    }
+
+    async existByName(name: string): Promise<IRole | null> {
+        return this.roleRepository.existByName(name);
     }
 
     async getOne(id: string): Promise<IRoleWithPolicies> {

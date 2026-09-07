@@ -24,14 +24,16 @@ promise is banned, and so is `.then(callback)`.
 // banned
 const user = await this.userRepository
     .create(input)
-    .catch((error: unknown) => this.userUtil.throwCreateCollision(error));
+    .catch((error: unknown) => {
+        throw this.userOnboardingUtil.mapCreateCollision(error);
+    });
 
 // required
 let user: IUser;
 try {
     user = await this.userRepository.create(input);
 } catch (error: unknown) {
-    this.userUtil.throwCreateCollision(error);
+    throw this.userOnboardingUtil.mapCreateCollision(error);
 }
 ```
 

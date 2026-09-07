@@ -16,8 +16,9 @@ import {
     IAuthToken,
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { AuthCacheService } from '@modules/auth/services/auth.cache.service';
+import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
@@ -39,8 +40,9 @@ export class UserTwoFactorService implements IUserTwoFactorService {
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
         private readonly userRepository: UserRepository,
         private readonly userLoginService: UserLoginService,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly authTwoFactorService: AuthTwoFactorService,
+        private readonly authCacheService: AuthCacheService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -53,7 +55,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const challenge =
-            await this.authTwoFactorUtil.getChallenge(challengeToken);
+            await this.authCacheService.getChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
         }
@@ -90,7 +92,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
                     challenge.loginWith,
                     loginAt
                 ),
-                this.authTwoFactorUtil.clearChallenge(challengeToken),
+                this.authCacheService.clearChallenge(challengeToken),
                 this.userTwoFactorRepository.verifyTwoFactor(
                     user.id,
                     twoFactorVerified,
@@ -116,7 +118,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const challenge =
-            await this.authTwoFactorUtil.getChallenge(challengeToken);
+            await this.authCacheService.getChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
         }
@@ -142,7 +144,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
         });
 
         try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+            const backupCodes = this.authTwoFactorService.generateBackupCodes();
             await this.userTwoFactorRepository.enableTwoFactor(
                 user.id,
                 backupCodes.hashes,
@@ -173,7 +175,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
 
         try {
             const { encryptedSecret, otpauthUrl, secret, iv } =
-                await this.authTwoFactorUtil.setupTwoFactor(user.email);
+                await this.authTwoFactorService.setupTwoFactor(user.email);
             await this.userTwoFactorRepository.setupTwoFactor(
                 user.id,
                 encryptedSecret,
@@ -210,7 +212,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
         });
 
         try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+            const backupCodes = this.authTwoFactorService.generateBackupCodes();
             await this.userTwoFactorRepository.enableTwoFactor(
                 user.id,
                 backupCodes.hashes,
@@ -278,7 +280,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
         });
 
         try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
+            const backupCodes = this.authTwoFactorService.generateBackupCodes();
             await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
                 user.id,
                 backupCodes.hashes,
@@ -323,10 +325,10 @@ export class UserTwoFactorService implements IUserTwoFactorService {
                     updatedBy,
                     requestLog
                 ),
-                this.authTwoFactorUtil.clearLockTwoFactorAttempt(user),
+                this.authCacheService.clearLockTwoFactorAttempt(user),
             ]);
 
-            await this.notificationUtil.sendResetTwoFactorByAdmin(
+            await this.notificationQueue.sendResetTwoFactorByAdmin(
                 user.id,
                 updatedBy
             );

@@ -1,96 +1,11 @@
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
-import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { FeatureFlag } from '@generated/prisma-client';
-import { Cache } from 'cache-manager';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagUtil {
-    private readonly logger = new Logger(FeatureFlagUtil.name);
-    private readonly keyPattern: string;
-    private readonly cacheTtlInMs: number;
-    private readonly anonymousHeaderName: string;
-    private readonly anonymousIdMaxLength: number;
-    private readonly anonymousIdPattern: RegExp;
-
-    constructor(
-        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
-        private readonly featureFlagRepository: FeatureFlagRepository,
-        private readonly configService: ConfigService,
-        private readonly helperHashService: HelperHashService
-    ) {
-        this.keyPattern = this.configService.get<string>(
-            'featureFlag.keyPattern'
-        )!;
-        this.cacheTtlInMs = this.configService.get<number>(
-            'featureFlag.cacheTtlInMs'
-        )!;
-        this.anonymousHeaderName = this.configService.get<string>(
-            'featureFlag.anonymous.headerName'
-        )!;
-        this.anonymousIdMaxLength = this.configService.get<number>(
-            'featureFlag.anonymous.idMaxLength'
-        )!;
-        this.anonymousIdPattern = this.configService.get<RegExp>(
-            'featureFlag.anonymous.idPattern'
-        )!;
-    }
-
-    resolveAnonymousId(request: IRequestApp): string | null {
-        const anonymousId = request.headers[this.anonymousHeaderName];
-        if (
-            typeof anonymousId !== 'string' ||
-            anonymousId.length === 0 ||
-            anonymousId.length > this.anonymousIdMaxLength ||
-            !this.anonymousIdPattern.test(anonymousId)
-        ) {
-            return null;
-        }
-
-        return anonymousId;
-    }
-
-    async getCacheByKey(key: string): Promise<FeatureFlag | null> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
-        try {
-            const cachedFeatureFlag =
-                await this.cacheManager.get<FeatureFlag>(cacheKey);
-            return cachedFeatureFlag ?? null;
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache read failed');
-            return null;
-        }
-    }
-
-    async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
-        try {
-            await this.cacheManager.set(
-                cacheKey,
-                featureFlag,
-                this.cacheTtlInMs
-            );
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache write failed');
-        }
-    }
-
-    async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
-        try {
-            await this.cacheManager.del(cacheKey);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache delete failed');
-        }
-    }
-
     /** True only when both have identical keys and matching value types, with no empty/nullish value. */
     checkMetadataKey(
         oldMetadata: IFeatureFlagMetadata,
@@ -134,42 +49,5 @@ export class FeatureFlagUtil {
         }
 
         return typeof value;
-    }
-
-    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
-    checkRolloutPercentage(
-        rolloutPercent: number,
-        key: string,
-        identifier: string
-    ): boolean {
-        const hash = this.helperHashService.md5Hash(`${key}:${identifier}`);
-        const num = Number.parseInt(hash.slice(0, 8), 16);
-        const percentage = num % 100;
-
-        return percentage < rolloutPercent;
-    }
-
-    /** Read-through cache: returns the cached flag or loads from the repository and caches it. */
-    async getByKeyAndCache(key: string): Promise<FeatureFlag | null> {
-        const cached = await this.getCacheByKey(key);
-        if (cached) {
-            return cached;
-        }
-
-        const featureFlag = await this.featureFlagRepository.findOneByKey(key);
-        if (featureFlag) {
-            await this.setCacheByKey(key, featureFlag);
-        }
-
-        return featureFlag;
-    }
-
-    async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
-        const cached = await this.getByKeyAndCache(key);
-        if (cached && cached.metadata) {
-            return cached.metadata as T;
-        }
-
-        return null;
     }
 }

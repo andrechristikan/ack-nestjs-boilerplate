@@ -19,16 +19,17 @@ import {
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
+    User,
 } from '@generated/prisma-client';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { CountryService } from '@modules/country/services/country.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { RoleService } from '@modules/role/services/role.service';
 import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
@@ -48,6 +49,7 @@ import {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserContact,
     IUserCreateByAdmin,
     IUserOnboardingVerificationRow,
     IUserProfile,
@@ -56,7 +58,10 @@ import { IUserService } from '@modules/user/interfaces/user.service.interface';
 import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserLoginService } from '@modules/user/services/user.login.service';
+import { UserOnboardingService } from '@modules/user/services/user.onboarding.service';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
@@ -65,14 +70,17 @@ export class UserService implements IUserService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userOnboardingRepository: UserOnboardingRepository,
-        private readonly roleRepository: RoleRepository,
-        private readonly countryRepository: CountryRepository,
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService,
         private readonly userUtil: UserUtil,
+        private readonly userVerificationService: UserVerificationService,
+        private readonly helperHashService: HelperHashService,
         private readonly userOnboardingUtil: UserOnboardingUtil,
+        private readonly userOnboardingService: UserOnboardingService,
         private readonly userLoginService: UserLoginService,
-        private readonly authUtil: AuthUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -81,14 +89,16 @@ export class UserService implements IUserService {
     private buildVerifiedVerificationRow(
         email: string
     ): IUserOnboardingVerificationRow {
-        const token = this.userUtil.verificationCreateToken();
+        const token = this.userVerificationService.verificationCreateToken();
 
         return {
-            reference: this.userUtil.verificationCreateReference(),
-            token: this.userUtil.hashedToken(token),
+            reference:
+                this.userVerificationService.verificationCreateReference(),
+            token: this.helperHashService.sha256Hash(token),
             type: EnumVerificationType.email,
             to: email,
-            expiredAt: this.userUtil.verificationSetExpiredDate(),
+            expiredAt:
+                this.userVerificationService.verificationSetExpiredDate(),
             verifiedAt: this.helperDateService.create(),
             isUsed: true,
         };
@@ -112,7 +122,7 @@ export class UserService implements IUserService {
         }
 
         const checkPasswordExpired: boolean =
-            this.authUtil.checkPasswordExpired(user.passwordExpired);
+            this.authPasswordService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new UserPasswordExpiredException();
         }
@@ -138,6 +148,14 @@ export class UserService implements IUserService {
         );
     }
 
+    async getOneActive(userId: string): Promise<User | null> {
+        return this.userRepository.findOneActiveById(userId);
+    }
+
+    async getListActive(): Promise<IUserContact[]> {
+        return this.userRepository.findActive();
+    }
+
     async getOne(id: string): Promise<IUserProfile> {
         const user = await this.userRepository.findOneProfileById(id);
         if (!user) {
@@ -155,9 +173,9 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleRepository.existById(roleId),
+            this.roleService.existById(roleId),
             this.userRepository.existByEmail(email),
-            this.countryRepository.existById(countryId),
+            this.countryService.existById(countryId),
         ]);
 
         if (!checkRole) {
@@ -184,16 +202,18 @@ export class UserService implements IUserService {
 
         try {
             const userId = this.databaseUtil.createId();
-            const passwordString = this.authUtil.createPasswordRandom();
-            const password: IAuthPassword = this.authUtil.createPassword(
-                userId,
-                passwordString,
-                {
-                    temporary: true,
-                }
-            );
+            const passwordString =
+                this.authPasswordService.createPasswordRandom();
+            const password: IAuthPassword =
+                this.authPasswordService.createPassword(
+                    userId,
+                    passwordString,
+                    {
+                        temporary: true,
+                    }
+                );
             const [workspaceContext] =
-                this.userOnboardingUtil.buildPersonalWorkspaceContexts([
+                this.userOnboardingService.buildPersonalWorkspaceContexts([
                     username,
                 ]);
             const isVerified = checkRole.type !== EnumRoleType.user;
@@ -228,7 +248,7 @@ export class UserService implements IUserService {
                             ? this.buildVerifiedVerificationRow(email)
                             : null,
                         activityLogs:
-                            this.userOnboardingUtil.buildOnboardingActivityLogs(
+                            this.userOnboardingService.buildOnboardingActivityLogs(
                                 EnumUserCreateMode.admin,
                                 workspaceContext,
                                 requestLog,
@@ -236,7 +256,7 @@ export class UserService implements IUserService {
                             ),
                         workspaceContext,
                         workspaceRows:
-                            this.userOnboardingUtil.buildWorkspaceRows(
+                            this.userOnboardingService.buildWorkspaceRows(
                                 userId,
                                 workspaceContext,
                                 createdBy
@@ -247,7 +267,7 @@ export class UserService implements IUserService {
                 throw this.userOnboardingUtil.mapCreateCollision(error);
             }
 
-            await this.notificationUtil.sendWelcomeByAdmin(
+            await this.notificationQueue.sendWelcomeByAdmin(
                 created.id,
                 {
                     password: password.passwordEncrypted,

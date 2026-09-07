@@ -6,7 +6,7 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
@@ -21,7 +21,7 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
 export class TermPolicyAcceptanceService implements ITermPolicyAcceptanceService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationQueue: NotificationQueue,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -83,7 +83,7 @@ export class TermPolicyAcceptanceService implements ITermPolicyAcceptanceService
                 requestLog
             );
 
-            await this.notificationUtil.sendUserAcceptTermPolicy(user.id, {
+            await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,
                 type: policy.type,
                 version: policy.version,

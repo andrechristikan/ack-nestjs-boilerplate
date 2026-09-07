@@ -31,13 +31,13 @@ pattern, `Controller → HTTP Service → Domain Service → Repository` with `P
 Service` joining at the domain service, and flat folder-per-concern directories
 (`controllers/`, `services/`, `repositories/`, `dtos/request/`, `dtos/response/`, `enums/`,
 `exceptions/`, `interfaces/`, `constants/`, `utils/`, and `decorators/` `docs/` `guards/`
-`factories/` `indicators/` `interceptors/` `processors/` `templates/` where the feature needs
-them). There is no layered folder scheme on top of it and no second shape to
+`factories/` `indicators/` `interceptors/` `processors/` `queues/` `templates/` where the
+feature needs them). There is no layered folder scheme on top of it and no second shape to
 detect — do not invent one.
 
 Each layer gets its own Nest module in the feature folder, and only the ones with something to
-provide exist: `<feature>.repository.module.ts`, `<feature>.module.ts` (domain services and
-utils — the only one another feature consumes), `<feature>.http.module.ts` and
+provide exist: `<feature>.repository.module.ts`, `<feature>.module.ts` (domain services, utils
+and queue classes — the only one another feature consumes), `<feature>.http.module.ts` and
 `<feature>.processor.module.ts`. A repository module imports nothing and is imported by its own
 feature only; another feature reaches the data through the owning domain service. `src/common/`
 and every `@Global()` module are injectable from any layer including a repository; a non-global
@@ -57,7 +57,8 @@ src/
 ├── languages/          # nestjs-i18n JSON, one file per module prefix
 ├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
-├── queues/             # BullMQ framework layer — enums, decorator, base, queue registration
+├── queues/             # BullMQ FRAMEWORK layer — enums, decorator, base, queue registration;
+│                       #   a feature's own queues/ folder holds its enqueue classes instead
 └── router/             # http/ mounts controllers under /public /system /admin /user /shared;
                         #   processor/ aggregates every <feature>.processor.module.ts
 
@@ -231,9 +232,9 @@ installs them once:
   `testing.md` (where specs live, jest facts) versus `testing-spec-style.md` (how a spec is
   written — `test-writer` only).
 - **A shape decided in conversation is bound by the same rules as the code.** Answering "which
-  layer owns this", "may a util throw", "what may a repository receive" without opening the rule
-  for that surface commits the violation earlier than any agent could, and in a form the next
-  reader treats as settled.
+  layer owns this", "which module's exception names this subject", "what may a repository
+  receive" without opening the rule for that surface commits the violation earlier than any
+  agent could, and in a form the next reader treats as settled.
 - `docs/` **and the root `README.md`** are documentation written for people to read, describing
   how the system behaves today. Both are tracked in git, never loaded automatically, and written
   only by the `doc-writer` agent. `README.md` is the front page and carries what no file under

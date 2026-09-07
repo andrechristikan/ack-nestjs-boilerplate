@@ -1,9 +1,9 @@
 import { AwsModule } from '@common/aws/aws.module';
-import { DeviceRepositoryModule } from '@modules/device/device.repository.module';
+import { DeviceModule } from '@modules/device/device.module';
 import { NotificationRepositoryModule } from '@modules/notification/notification.repository.module';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { NotificationAccountService } from '@modules/notification/services/notification.account.service';
 import { NotificationEmailAccountService } from '@modules/notification/services/notification.email.account.service';
 import { NotificationEmailSecurityService } from '@modules/notification/services/notification.email.security.service';
@@ -20,7 +20,6 @@ import { NotificationTemplateTermPolicyService } from '@modules/notification/ser
 import { NotificationTemplateWorkspaceService } from '@modules/notification/services/notification.template.workspace.service';
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { NotificationWorkspaceService } from '@modules/notification/services/notification.workspace.service';
-import { UserRepositoryModule } from '@modules/user/user.repository.module';
 import { UserModule } from '@modules/user/user.module';
 import { Global, Module } from '@nestjs/common';
 
@@ -44,9 +43,9 @@ import { Global, Module } from '@nestjs/common';
         NotificationPushSecurityService,
         NotificationPushWorkspaceService,
         NotificationPushMaintenanceService,
-        NotificationUtil,
-        NotificationEmailUtil,
-        NotificationPushUtil,
+        NotificationQueue,
+        NotificationEmailQueue,
+        NotificationPushQueue,
     ],
     exports: [
         NotificationService,
@@ -65,15 +64,14 @@ import { Global, Module } from '@nestjs/common';
         NotificationPushSecurityService,
         NotificationPushWorkspaceService,
         NotificationPushMaintenanceService,
-        NotificationUtil,
-        NotificationEmailUtil,
-        NotificationPushUtil,
+        NotificationQueue,
+        NotificationEmailQueue,
+        NotificationPushQueue,
     ],
     imports: [
         NotificationRepositoryModule,
-        UserRepositoryModule,
         UserModule,
-        DeviceRepositoryModule,
+        DeviceModule,
         AwsModule,
     ],
 })

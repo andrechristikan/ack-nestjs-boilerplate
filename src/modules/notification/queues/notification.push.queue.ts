@@ -20,8 +20,9 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
  * Enqueues push notification jobs (FCM) onto the push queue, deduplicated per user.
  */
 @Injectable()
-export class NotificationPushUtil {
+export class NotificationPushQueue {
     private readonly defTz: string;
+    private readonly dedupTtlInMs: number;
     private readonly cleanupDedupTtlInMs: number;
     private readonly cleanupStaleTokensCron: string;
 
@@ -31,6 +32,9 @@ export class NotificationPushUtil {
         private readonly configService: ConfigService
     ) {
         this.defTz = this.configService.get<string>('app.timezone')!;
+        this.dedupTtlInMs = this.configService.get<number>(
+            'notification.dedupTtlInMs'
+        )!;
         this.cleanupDedupTtlInMs = this.configService.get<number>(
             'notification.push.cleanupDedupTtlInMs'
         )!;
@@ -39,7 +43,6 @@ export class NotificationPushUtil {
         )!;
     }
 
-    /** Enqueues the admin-issued temporary password push. */
     async sendTemporaryPasswordByAdmin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPayload
@@ -56,13 +59,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.temporaryPasswordByAdmin}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the password reset confirmation push. */
     async sendResetPassword(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -77,13 +79,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.resetPassword}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the admin-triggered two-factor reset push. */
     async sendResetTwoFactorByAdmin(
         sendPayload: INotificationSendPushPayload
     ): Promise<void> {
@@ -98,13 +99,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.resetTwoFactorByAdmin}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the new-device login alert push. */
     async sendNewDeviceLogin(
         sendPayload: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload
@@ -122,13 +122,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace invite push for a registered invitee. */
     async sendWorkspaceInvite(
         sendPayload: INotificationSendPushPayload,
         data: INotificationWorkspaceInvitePayload
@@ -146,13 +145,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.workspaceInvite}-${data.reference}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request push for one reviewer (workspace owner/admin). */
     async sendWorkspaceJoinRequest(
         sendPayload: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRequestPayload
@@ -170,13 +168,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.workspaceJoinRequest}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request-accepted push for the requester. */
     async sendWorkspaceJoinAccepted(
         sendPayload: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinAcceptedPayload
@@ -194,13 +191,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.workspaceJoinAccepted}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues the workspace join-request-rejected push for the requester. */
     async sendWorkspaceJoinRejected(
         sendPayload: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRejectedPayload
@@ -218,13 +214,12 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.workspaceJoinRejected}-${data.workspaceId}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Enqueues removal of invalid FCM tokens; no-op when there are no failures, deduplicated for 1 hour per user. */
     async sendCleanupTokens(
         userId: string,
         failureTokens: string[]
@@ -248,7 +243,6 @@ export class NotificationPushUtil {
         }
     }
 
-    /** Schedules the recurring stale-token cleanup (daily at midnight in the configured timezone). */
     async sendCleanupStaleTokens(): Promise<void> {
         await this.notificationPushQueue.upsertJobScheduler(
             EnumNotificationPushProcess.cleanupStaleTokens,

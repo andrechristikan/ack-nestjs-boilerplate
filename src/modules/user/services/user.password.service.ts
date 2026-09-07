@@ -1,16 +1,18 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -21,6 +23,7 @@ import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.pas
 import {
     IUser,
     IUserChangePassword,
+    IUserForgotPasswordCreate,
     IUserResetPassword,
 } from '@modules/user/interfaces/user.interface';
 import { IUserPasswordService } from '@modules/user/interfaces/user.password.service.interface';
@@ -28,32 +31,111 @@ import { UserPasswordRepository } from '@modules/user/repositories/user.password
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserLoginService } from '@modules/user/services/user.login.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { EnumUserStatus } from '@generated/prisma-client';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import ms from 'ms';
 
 @Injectable()
 export class UserPasswordService implements IUserPasswordService {
+    private readonly homeUrl: string;
+
+    private readonly forgotPasswordReferencePrefix: string;
+    private readonly forgotPasswordReferenceLength: number;
+    private readonly forgotExpiredInMinutes: number;
+    private readonly forgotTokenLength: number;
+    private readonly forgotResendInMinutes: number;
+    private readonly forgotLinkBaseUrl: string;
+
     constructor(
         private readonly userPasswordRepository: UserPasswordRepository,
         private readonly userRepository: UserRepository,
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
-        private readonly passwordHistoryRepository: PasswordHistoryRepository,
+        private readonly passwordHistoryService: PasswordHistoryService,
         private readonly userUtil: UserUtil,
+        private readonly helperHashService: HelperHashService,
         private readonly userLoginService: UserLoginService,
-        private readonly authUtil: AuthUtil,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly authPasswordService: AuthPasswordService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
+        private readonly requestStoreService: RequestStoreService,
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService,
+        private readonly helperEncryptionService: HelperEncryptionService
+    ) {
+        this.homeUrl = this.configService.get<string>('home.url')!;
+
+        this.forgotPasswordReferencePrefix = this.configService.get<string>(
+            'forgotPassword.reference.prefix'
+        )!;
+        this.forgotPasswordReferenceLength = this.configService.get<number>(
+            'forgotPassword.reference.length'
+        )!;
+        this.forgotExpiredInMinutes =
+            this.configService.get<number>('forgotPassword.expiredInMs')! /
+            ms('1m');
+        this.forgotTokenLength = this.configService.get<number>(
+            'forgotPassword.tokenLength'
+        )!;
+        this.forgotResendInMinutes =
+            this.configService.get<number>('forgotPassword.resendInMs')! /
+            ms('1m');
+        this.forgotLinkBaseUrl = this.configService.get<string>(
+            'forgotPassword.linkBaseUrl'
+        )!;
+    }
 
     private async assertForgotPasswordAllowed(): Promise<void> {
         await this.featureFlagService.validateFeatureFlagMetadata(
             'changePassword',
             'forgotAllowed'
         );
+    }
+
+    forgotPasswordCreateReference(): string {
+        const random = this.helperStringService.random(
+            this.forgotPasswordReferenceLength
+        );
+
+        return `${this.forgotPasswordReferencePrefix}-${random}`;
+    }
+
+    forgotPasswordCreateToken(): string {
+        return this.helperStringService.random(this.forgotTokenLength);
+    }
+
+    forgotPasswordSetExpiredDate(): Date {
+        const now = this.helperDateService.create();
+
+        return this.helperDateService.forward(
+            now,
+            Duration.fromObject({ minutes: this.forgotExpiredInMinutes })
+        );
+    }
+
+    forgotPasswordCreate(userId: string): IUserForgotPasswordCreate {
+        const token = this.forgotPasswordCreateToken();
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const link = `${this.homeUrl}/${this.forgotLinkBaseUrl}/${token}`;
+        const encryptedLink = this.helperEncryptionService.aes256EncryptSimple(
+            link,
+            userId
+        );
+
+        return {
+            reference: this.forgotPasswordCreateReference(),
+            expiredAt: this.forgotPasswordSetExpiredDate(),
+            token,
+            hashedToken,
+            expiredInMinutes: this.forgotExpiredInMinutes,
+            resendInMinutes: this.forgotResendInMinutes,
+            link,
+            encryptedLink,
+        };
     }
 
     async updatePasswordByAdmin(
@@ -75,8 +157,9 @@ export class UserPasswordService implements IUserPasswordService {
         }
 
         try {
-            const passwordString = this.authUtil.createPasswordRandom();
-            const password = this.authUtil.createPassword(
+            const passwordString =
+                this.authPasswordService.createPasswordRandom();
+            const password = this.authPasswordService.createPassword(
                 userId,
                 passwordString,
                 {
@@ -94,7 +177,7 @@ export class UserPasswordService implements IUserPasswordService {
                     updatedBy
                 );
 
-            await this.notificationUtil.sendTemporaryPasswordByAdmin(
+            await this.notificationQueue.sendTemporaryPasswordByAdmin(
                 updated.id,
                 {
                     password: password.passwordEncrypted,
@@ -137,10 +220,13 @@ export class UserPasswordService implements IUserPasswordService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (user.password) {
-            if (this.authUtil.checkPasswordAttempt(user)) {
+            if (this.authPasswordService.checkPasswordAttempt(user)) {
                 throw new UserPasswordAttemptMaxException();
             } else if (
-                !this.authUtil.validatePassword(oldPassword, user.password)
+                !this.authPasswordService.validatePassword(
+                    oldPassword,
+                    user.password
+                )
             ) {
                 await this.userPasswordRepository.increasePasswordAttempt(
                     user.id
@@ -152,8 +238,8 @@ export class UserPasswordService implements IUserPasswordService {
             await this.userPasswordRepository.resetPasswordAttempt(user.id);
 
             const passwordHistories =
-                await this.passwordHistoryRepository.findActiveUser(user.id);
-            const passwordCheck = this.authUtil.checkPasswordPeriod(
+                await this.passwordHistoryService.getActiveByUser(user.id);
+            const passwordCheck = this.authPasswordService.checkPasswordPeriod(
                 passwordHistories,
                 newPassword
             );
@@ -177,7 +263,10 @@ export class UserPasswordService implements IUserPasswordService {
         }
 
         try {
-            const password = this.authUtil.createPassword(user.id, newPassword);
+            const password = this.authPasswordService.createPassword(
+                user.id,
+                newPassword
+            );
 
             await this.userLoginService.revokeAllSessions(user.id);
             await Promise.all([
@@ -195,7 +284,7 @@ export class UserPasswordService implements IUserPasswordService {
                     : Promise.resolve(),
             ]);
 
-            await this.notificationUtil.sendChangePassword(user.id);
+            await this.notificationQueue.sendChangePassword(user.id);
 
             return;
         } catch (err: unknown) {
@@ -227,7 +316,7 @@ export class UserPasswordService implements IUserPasswordService {
             const canResendAt = this.helperDateService.forward(
                 lastForgotPassword.createdAt,
                 Duration.fromObject({
-                    minutes: this.userUtil.forgotResendInMinutes,
+                    minutes: this.forgotResendInMinutes,
                 })
             );
 
@@ -239,7 +328,7 @@ export class UserPasswordService implements IUserPasswordService {
         }
 
         try {
-            const resetPassword = this.userUtil.forgotPasswordCreate(user.id);
+            const resetPassword = this.forgotPasswordCreate(user.id);
 
             await this.userPasswordRepository.forgotPassword(
                 user.id,
@@ -248,7 +337,7 @@ export class UserPasswordService implements IUserPasswordService {
                 requestLog
             );
 
-            await this.notificationUtil.sendForgotPassword(user.id, {
+            await this.notificationQueue.sendForgotPassword(user.id, {
                 expiredAt: this.helperDateService.formatToIso(
                     resetPassword.expiredAt
                 ),
@@ -280,7 +369,7 @@ export class UserPasswordService implements IUserPasswordService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const hashedToken = this.userUtil.hashedToken(token);
+        const hashedToken = this.helperHashService.sha256Hash(token);
         const resetPassword =
             await this.userPasswordRepository.findOneActiveByForgotPasswordToken(
                 hashedToken
@@ -290,16 +379,16 @@ export class UserPasswordService implements IUserPasswordService {
         }
 
         const passwordHistories =
-            await this.passwordHistoryRepository.findActiveUser(
+            await this.passwordHistoryService.getActiveByUser(
                 resetPassword.userId
             );
-        const passwordCheck = this.authUtil.checkPasswordPeriod(
+        const passwordCheck = this.authPasswordService.checkPasswordPeriod(
             passwordHistories,
             newPassword
         );
         if (passwordCheck) {
             throw new UserPasswordMustNewException(
-                this.authUtil.getPasswordPeriodInDays()
+                this.authPasswordService.getPasswordPeriodInDays()
             );
         }
 
@@ -317,7 +406,7 @@ export class UserPasswordService implements IUserPasswordService {
         }
 
         try {
-            const password = this.authUtil.createPassword(
+            const password = this.authPasswordService.createPassword(
                 resetPassword.userId,
                 newPassword
             );
@@ -339,7 +428,9 @@ export class UserPasswordService implements IUserPasswordService {
                     : Promise.resolve(),
             ]);
 
-            await this.notificationUtil.sendResetPassword(resetPassword.userId);
+            await this.notificationQueue.sendResetPassword(
+                resetPassword.userId
+            );
 
             return;
         } catch (err: unknown) {

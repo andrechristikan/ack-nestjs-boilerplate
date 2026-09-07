@@ -15,7 +15,7 @@
 ```
 .service   .repository   .controller   .guard   .strategy   .decorator
 .interceptor   .filter   .middleware   .pipe   .processor   .indicator
-.factory   .validation   .util   .dto   .doc   .module
+.factory   .validation   .util   .queue   .dto   .doc   .module
 .enum   .constant   .interface   .exception
 ```
 
@@ -39,6 +39,13 @@ A service file carries the LAYER it belongs to, and the layer decides which modu
 <module>[.<concern>].service.ts             →  <Module>[<Concern>]Service            domain
 <module>[.<concern>].http.service.ts        →  <Module>[<Concern>]HttpService        HTTP
 <module>[.<concern>].processor.service.ts   →  <Module>[<Concern>]ProcessorService   queue
+```
+
+A queue class carries the queue it enqueues onto, and lives in the feature's `queues/` folder
+(`rules/queue.md`):
+
+```
+<module>[.<concern>].queue.ts               →  <Module>[<Concern>]Queue
 ```
 
 A feature's modules are named for the layer they provide, and only the ones with something to
@@ -104,6 +111,7 @@ provide exist:
 | Type | Rule | Example |
 |---|---|---|
 | Class | PascalCase, module-prefixed | `UserService`, `UserHttpService`, `UserRepository`, `UserAdminController` |
+| Queue class | `<Module>[<Concern>]Queue` | `NotificationQueue`, `NotificationEmailQueue`, `WorkspaceQueue` |
 | Interface | `I` + PascalCase | `IUser`, `IPaginationQuery`, `IRequestApp` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |
@@ -144,7 +152,7 @@ A handful of identifiers are read back out of state that already exists at deplo
 |---|---|
 | `EnumQueue` value (queue name) | jobs sitting in the old queue are orphaned — nothing consumes them. Drain the queue before deploying |
 | BullMQ job name | the processor dispatch no longer matches in-flight jobs. Drain the queue before deploying |
-| BullMQ job payload field (`I<Module><Action>Payload`) | jobs already in Redis reach a processor expecting new field names. Drain the queue before deploying |
+| BullMQ job payload field (`I<Module><Action>QueuePayload`) | jobs already in Redis reach a processor expecting new field names. Drain the queue before deploying |
 | JWT payload field | every issued token decodes wrong — every live session dies. Ship it as a forced re-login, deliberately |
 | Pagination cursor payload field | every base64 cursor a client holds fails the shape check; clients mid-scroll cannot advance. Ship in a window where a dead cursor is acceptable |
 | i18n key path | the key is the link between an exception's `messagePath` and `languages/*/<module>.json`. Rename both halves together, in every language |

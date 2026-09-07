@@ -2,7 +2,7 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { WorkspaceInviteUtil } from '@modules/workspace/utils/workspace.invite.util';
+import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 import { Module } from '@nestjs/common';
@@ -16,7 +16,7 @@ import { Module } from '@nestjs/common';
         WorkspaceInviteService,
         WorkspaceJoinRequestService,
         WorkspaceUtil,
-        WorkspaceInviteUtil,
+        WorkspaceQueue,
     ],
     exports: [
         WorkspaceService,
@@ -24,7 +24,7 @@ import { Module } from '@nestjs/common';
         WorkspaceInviteService,
         WorkspaceJoinRequestService,
         WorkspaceUtil,
-        WorkspaceInviteUtil,
+        WorkspaceQueue,
     ],
     imports: [WorkspaceRepositoryModule],
 })

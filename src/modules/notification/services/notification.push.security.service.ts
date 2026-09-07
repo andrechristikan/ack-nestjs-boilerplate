@@ -10,7 +10,7 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushSecurityService } from '@modules/notification/interfaces/notification.push.security.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -23,7 +23,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         private readonly messageService: MessageService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
-        private readonly notificationPushUtil: NotificationPushUtil
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async processNewDeviceLogin(
@@ -77,7 +77,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         );
 
         await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -134,7 +134,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         );
 
         await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -198,7 +198,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         );
 
         await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -255,7 +255,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         );
 
         await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -312,7 +312,7 @@ export class NotificationPushSecurityService implements INotificationPushSecurit
         );
 
         await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),

@@ -1,4 +1,4 @@
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
+import { DeviceService } from '@modules/device/services/device.service';
 import { INotificationPushMaintenanceService } from '@modules/notification/interfaces/notification.push.maintenance.service.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,7 +10,7 @@ export class NotificationPushMaintenanceService implements INotificationPushMain
     private readonly staleTokenThresholdInMs: number;
 
     constructor(
-        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
+        private readonly deviceService: DeviceService,
         private readonly configService: ConfigService
     ) {
         this.staleTokenThresholdInMs = this.configService.get<number>(
@@ -22,27 +22,28 @@ export class NotificationPushMaintenanceService implements INotificationPushMain
         userId: string,
         failureTokens: string[]
     ): Promise<IQueueResponse> {
-        const result = await this.deviceOwnershipRepository.cleanupTokens(
-            userId,
-            failureTokens
-        );
+        const countRemovedTokens =
+            await this.deviceService.cleanupNotificationTokens(
+                userId,
+                failureTokens
+            );
 
         return {
             message: `Processed token cleanup for invalid tokens`,
             countRequestedTokens: failureTokens.length,
-            countRemovedTokens: result.count,
+            countRemovedTokens,
         };
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        const staleTokens =
-            await this.deviceOwnershipRepository.cleanupStaleTokens(
+        const countRemovedTokens =
+            await this.deviceService.cleanupStaleNotificationTokens(
                 this.staleTokenThresholdInMs
             );
 
         return {
             message: `Processed stale token cleanup`,
-            countRemovedTokens: staleTokens.count,
+            countRemovedTokens,
         };
     }
 }

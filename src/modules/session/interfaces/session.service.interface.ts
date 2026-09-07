@@ -17,6 +17,12 @@ export interface ISessionService {
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<ISession>>;
+    deleteAllLogins(userId: string): Promise<void>;
+    deleteOneLogin(userId: string, sessionId: string): Promise<void>;
+    deleteLoginsByDeviceOwnership(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<void>;
     revoke(userId: string, sessionId: string): Promise<void>;
     revokeByAdmin(
         userId: string,

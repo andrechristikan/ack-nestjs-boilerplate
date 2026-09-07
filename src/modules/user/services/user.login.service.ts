@@ -19,15 +19,15 @@ import {
     IAuthTwoFactorVerify,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthCacheService } from '@modules/auth/services/auth.cache.service';
+import { AuthTwoFactorService } from '@modules/auth/services/auth.two-factor.service';
+import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionUtil } from '@modules/session/utils/session.util';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { SessionService } from '@modules/session/services/session.service';
+import { SessionCacheService } from '@modules/session/services/session.cache.service';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
 import {
     IUser,
@@ -38,6 +38,7 @@ import { IUserLoginService } from '@modules/user/interfaces/user.login.service.i
 import { UserSessionRepository } from '@modules/user/repositories/user.session.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
@@ -50,12 +51,14 @@ export class UserLoginService implements IUserLoginService {
         private readonly userTwoFactorRepository: UserTwoFactorRepository,
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userUtil: UserUtil,
+        private readonly userVerificationService: UserVerificationService,
         private readonly deviceUtil: DeviceUtil,
-        private readonly authUtil: AuthUtil,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
-        private readonly sessionUtil: SessionUtil,
-        private readonly sessionRepository: SessionRepository,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly authJwtService: AuthJwtService,
+        private readonly authTwoFactorService: AuthTwoFactorService,
+        private readonly authCacheService: AuthCacheService,
+        private readonly sessionCacheService: SessionCacheService,
+        private readonly sessionService: SessionService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService
@@ -78,7 +81,7 @@ export class UserLoginService implements IUserLoginService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const { tokens, sessionId, jti } = this.authUtil.createTokens(
+        const { tokens, sessionId, jti } = this.authJwtService.createTokens(
             user,
             loginFrom,
             loginWith
@@ -86,7 +89,8 @@ export class UserLoginService implements IUserLoginService {
         const expiredAt = this.helperDateService.forward(
             loginAt,
             Duration.fromObject({
-                milliseconds: this.authUtil.jwtRefreshTokenExpirationTimeInMs,
+                milliseconds:
+                    this.authJwtService.jwtRefreshTokenExpirationTimeInMs,
             })
         );
 
@@ -109,12 +113,17 @@ export class UserLoginService implements IUserLoginService {
             );
 
         const promises = [
-            this.sessionUtil.setLogin(user.id, sessionId, jti, expiredAt),
+            this.sessionCacheService.setLogin(
+                user.id,
+                sessionId,
+                jti,
+                expiredAt
+            ),
         ];
 
         if (sessionShouldBeInactive && sessionShouldBeInactive.length > 0) {
             promises.push(
-                this.sessionUtil.deleteAllLogins(
+                this.sessionCacheService.deleteAllLogins(
                     user.id,
                     sessionShouldBeInactive
                 )
@@ -123,7 +132,7 @@ export class UserLoginService implements IUserLoginService {
 
         if (isNewDevice) {
             promises.push(
-                this.notificationUtil.sendNewDeviceLogin(user.id, {
+                this.notificationQueue.sendNewDeviceLogin(user.id, {
                     requestLog,
                     loginFrom,
                     loginWith,
@@ -149,7 +158,7 @@ export class UserLoginService implements IUserLoginService {
 
         if (!user.isVerified) {
             const emailVerification =
-                this.userUtil.verificationCreateVerification(
+                this.userVerificationService.verificationCreateVerification(
                     user.id,
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
@@ -161,7 +170,7 @@ export class UserLoginService implements IUserLoginService {
                 requestLog
             );
 
-            await this.notificationUtil.sendVerificationEmail(user.id, {
+            await this.notificationQueue.sendVerificationEmail(user.id, {
                 expiredAt: this.helperDateService.formatToIso(
                     emailVerification.expiredAt
                 ),
@@ -191,7 +200,7 @@ export class UserLoginService implements IUserLoginService {
         }
 
         const { challengeToken, expiresInMs } =
-            await this.authTwoFactorUtil.createChallenge({
+            await this.authCacheService.createChallenge({
                 userId: user.id,
                 device,
                 loginFrom,
@@ -199,7 +208,7 @@ export class UserLoginService implements IUserLoginService {
             });
         if (user.twoFactor?.requiredSetup) {
             const { encryptedSecret, otpauthUrl, secret, iv } =
-                await this.authTwoFactorUtil.setupTwoFactor(user.email);
+                await this.authTwoFactorService.setupTwoFactor(user.email);
             await this.userTwoFactorRepository.setupTwoFactor(
                 user.id,
                 encryptedSecret,
@@ -241,7 +250,7 @@ export class UserLoginService implements IUserLoginService {
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
         const retryAfterMs =
-            await this.authTwoFactorUtil.getLockTwoFactorAttempt(user);
+            await this.authCacheService.getLockTwoFactorAttempt(user);
         if (retryAfterMs > 0) {
             throw new AuthTwoFactorAttemptTemporaryLockException(
                 retryAfterMs / 1000
@@ -250,7 +259,7 @@ export class UserLoginService implements IUserLoginService {
             throw new AuthTwoFactorMethodRequiredException();
         }
 
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
+        const verified = await this.authTwoFactorService.verifyTwoFactor(
             user.twoFactor!,
             {
                 method,
@@ -264,8 +273,8 @@ export class UserLoginService implements IUserLoginService {
                     user.id
                 );
 
-            if (this.authTwoFactorUtil.checkAttempt(attempted)) {
-                await this.authTwoFactorUtil.lockTwoFactorAttempt(attempted);
+            if (this.authTwoFactorService.checkAttempt(attempted)) {
+                await this.authCacheService.lockTwoFactorAttempt(attempted);
             }
 
             throw new AuthTwoFactorInvalidException();
@@ -277,22 +286,13 @@ export class UserLoginService implements IUserLoginService {
     }
 
     async revokeAllSessions(userId: string): Promise<void> {
-        const sessions = await this.sessionRepository.findActive(userId);
-        await this.sessionUtil.deleteAllLogins(userId, sessions);
+        await this.sessionService.deleteAllLogins(userId);
 
         return;
     }
 
     async revokeSession(userId: string, sessionId: string): Promise<void> {
-        const checkActive = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!checkActive) {
-            throw new SessionNotFoundException();
-        }
-
-        await this.sessionUtil.deleteOneLogin(userId, sessionId);
+        await this.sessionService.deleteOneLogin(userId, sessionId);
 
         return;
     }
@@ -310,11 +310,14 @@ export class UserLoginService implements IUserLoginService {
             jti: oldJti,
             loginFrom,
             loginWith,
-        } = this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
+        } = this.authJwtService.payloadToken<IAuthJwtRefreshTokenPayload>(
             refreshToken
         );
 
-        const session = await this.sessionUtil.getLogin(userId, sessionId);
+        const session = await this.sessionCacheService.getLogin(
+            userId,
+            sessionId
+        );
         if (!session || session.jti !== oldJti) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
@@ -324,10 +327,10 @@ export class UserLoginService implements IUserLoginService {
                 jti: newJti,
                 tokens,
                 expiredInMs,
-            } = this.authUtil.refreshToken(user, refreshToken);
+            } = this.authJwtService.refreshToken(user, refreshToken);
 
             await Promise.all([
-                this.sessionUtil.updateLogin(
+                this.sessionCacheService.updateLogin(
                     userId,
                     sessionId,
                     session,

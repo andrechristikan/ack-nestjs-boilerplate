@@ -1,6 +1,4 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
-import { FileService } from '@common/file/services/file.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -21,8 +19,7 @@ export class TermPolicyUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService,
-        private readonly fileService: FileService
+        private readonly helperArrayService: HelperArrayService
     ) {
         this.uploadContentPath = this.configService.get<string>(
             'termPolicy.uploadContentPath'
@@ -76,22 +73,6 @@ export class TermPolicyUtil {
         return this.contentPublicPath
             .replace('{type}', termPolicy.type)
             .replace('{version}', termPolicy.version.toString());
-    }
-
-    /** Re-attaches each content language to its moved S3 item by matching filenames. */
-    mapPublicContent(
-        newItems: IAwsS3[],
-        contents: ITermPolicyContent[]
-    ): ITermPolicyContent[] {
-        return newItems.map(item => {
-            const language = contents.find(
-                c =>
-                    this.fileService.extractFilenameFromPath(c.key) ===
-                    this.fileService.extractFilenameFromPath(item.key)
-            )?.language as EnumMessageLanguage;
-
-            return { ...item, language };
-        });
     }
 
     mapActivityLogMetadata(termPolicy: TermPolicy): IActivityLogMetadata {

@@ -1,7 +1,7 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
+import { DeviceService } from '@modules/device/services/device.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import {
     INotificationEmailSendPayload,
@@ -12,9 +12,9 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationSecurityService } from '@modules/notification/interfaces/notification.security.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -23,13 +23,13 @@ import { IQueueResponse } from '@queues/interfaces/queue.interface';
 export class NotificationSecurityService implements INotificationSecurityService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly userRepository: UserRepository,
-        private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
+        private readonly userService: UserService,
+        private readonly deviceService: DeviceService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil,
-        private readonly notificationPushUtil: NotificationPushUtil
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async processTemporaryPasswordByAdmin(
@@ -38,8 +38,8 @@ export class NotificationSecurityService implements INotificationSecurityService
         data: INotificationTemporaryPasswordPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -72,7 +72,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendTemporaryPasswordByAdmin(
+            this.notificationEmailQueue.sendTemporaryPasswordByAdmin(
                 emailPayload,
                 data
             ),
@@ -89,7 +89,7 @@ export class NotificationSecurityService implements INotificationSecurityService
             };
 
             promises.push(
-                this.notificationPushUtil.sendTemporaryPasswordByAdmin(
+                this.notificationPushQueue.sendTemporaryPasswordByAdmin(
                     pushPayload,
                     data
                 )
@@ -105,7 +105,7 @@ export class NotificationSecurityService implements INotificationSecurityService
     }
 
     async processChangePassword(userId: string): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -132,7 +132,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendChangePassword(emailPayload),
+            this.notificationEmailQueue.sendChangePassword(emailPayload),
         ]);
 
         return { message: 'Change password notification processed', results };
@@ -142,7 +142,7 @@ export class NotificationSecurityService implements INotificationSecurityService
         userId: string,
         data: INotificationForgotPasswordPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {
@@ -169,7 +169,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendForgotPassword(emailPayload, data),
+            this.notificationEmailQueue.sendForgotPassword(emailPayload, data),
         ]);
 
         return { message: 'Forgot password notification processed', results };
@@ -177,8 +177,8 @@ export class NotificationSecurityService implements INotificationSecurityService
 
     async processResetPassword(userId: string): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -205,7 +205,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendResetPassword(emailPayload),
+            this.notificationEmailQueue.sendResetPassword(emailPayload),
         ];
 
         if (devices.length > 0) {
@@ -219,7 +219,7 @@ export class NotificationSecurityService implements INotificationSecurityService
             };
 
             promises.push(
-                this.notificationPushUtil.sendResetPassword(pushPayload)
+                this.notificationPushQueue.sendResetPassword(pushPayload)
             );
         }
 
@@ -233,8 +233,8 @@ export class NotificationSecurityService implements INotificationSecurityService
         proceedBy: string
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -262,7 +262,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: proceedBy,
                 }
             ),
-            this.notificationEmailUtil.sendResetTwoFactorByAdmin(emailPayload),
+            this.notificationEmailQueue.sendResetTwoFactorByAdmin(emailPayload),
         ];
 
         if (devices.length > 0) {
@@ -276,7 +276,9 @@ export class NotificationSecurityService implements INotificationSecurityService
             };
 
             promises.push(
-                this.notificationPushUtil.sendResetTwoFactorByAdmin(pushPayload)
+                this.notificationPushQueue.sendResetTwoFactorByAdmin(
+                    pushPayload
+                )
             );
         }
 
@@ -293,8 +295,8 @@ export class NotificationSecurityService implements INotificationSecurityService
         data: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
-            this.userRepository.findOneActiveById(userId),
-            this.deviceOwnershipRepository.findTokensByUserId(userId),
+            this.userService.getOneActive(userId),
+            this.deviceService.getOwnershipsWithNotificationToken(userId),
         ]);
 
         if (!user) {
@@ -337,7 +339,7 @@ export class NotificationSecurityService implements INotificationSecurityService
                     createdBy: user.id,
                 }
             ),
-            this.notificationEmailUtil.sendNewDeviceLogin(emailPayload, data),
+            this.notificationEmailQueue.sendNewDeviceLogin(emailPayload, data),
         ];
 
         if (devices.length > 0) {
@@ -351,7 +353,7 @@ export class NotificationSecurityService implements INotificationSecurityService
             };
 
             promises.push(
-                this.notificationPushUtil.sendNewDeviceLogin(pushPayload, data)
+                this.notificationPushQueue.sendNewDeviceLogin(pushPayload, data)
             );
         }
 

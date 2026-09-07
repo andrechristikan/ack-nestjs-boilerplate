@@ -22,6 +22,10 @@ export interface IDeviceOwnership extends DeviceOwnership {
     };
 }
 
+export interface IDeviceOwnershipWithDevice extends DeviceOwnership {
+    device: Device;
+}
+
 export interface IDeviceOwnershipWithSession extends IDeviceOwnership {
     sessions: Session[];
 }

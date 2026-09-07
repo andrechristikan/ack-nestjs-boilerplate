@@ -15,12 +15,12 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { CountryService } from '@modules/country/services/country.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { RoleService } from '@modules/role/services/role.service';
 import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
@@ -34,6 +34,7 @@ import {
 } from '@modules/user/interfaces/user.interface';
 import { UserImportRepository } from '@modules/user/repositories/user.import.repository';
 import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
+import { UserOnboardingService } from '@modules/user/services/user.onboarding.service';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
@@ -47,13 +48,14 @@ export class UserImportService implements IUserImportService {
     constructor(
         private readonly userImportRepository: UserImportRepository,
         private readonly userOnboardingRepository: UserOnboardingRepository,
-        private readonly roleRepository: RoleRepository,
-        private readonly countryRepository: CountryRepository,
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService,
         private readonly userUtil: UserUtil,
         private readonly userOnboardingUtil: UserOnboardingUtil,
-        private readonly authUtil: AuthUtil,
+        private readonly userOnboardingService: UserOnboardingService,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService
@@ -88,8 +90,8 @@ export class UserImportService implements IUserImportService {
             existingUsersByUsername,
             badWordChecks,
         ] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
-            this.countryRepository.existByAlpha2Code(this.userCountryName),
+            this.roleService.existByName(this.userRoleName),
+            this.countryService.existByAlpha2Code(this.userCountryName),
             this.userImportRepository.findByEmails(emails),
             this.userImportRepository.findByUsernames(usernames),
             Promise.all(
@@ -128,13 +130,13 @@ export class UserImportService implements IUserImportService {
                 .map(() => this.databaseUtil.createId());
             const passwords = Array(totalData)
                 .fill(0)
-                .map(() => this.authUtil.createPasswordRandom());
+                .map(() => this.authPasswordService.createPasswordRandom());
             const passwordHasheds = userIds.map((e, i) =>
-                this.authUtil.createPassword(e, passwords[i])
+                this.authPasswordService.createPassword(e, passwords[i])
             );
 
             const workspaceContexts =
-                this.userOnboardingUtil.buildPersonalWorkspaceContexts(
+                this.userOnboardingService.buildPersonalWorkspaceContexts(
                     usernames
                 );
             const isVerified = checkRole.type !== EnumRoleType.user;
@@ -165,18 +167,19 @@ export class UserImportService implements IUserImportService {
                             .passwordHistoryType,
                     verification: null,
                     activityLogs:
-                        this.userOnboardingUtil.buildOnboardingActivityLogs(
+                        this.userOnboardingService.buildOnboardingActivityLogs(
                             EnumUserCreateMode.admin,
                             workspaceContexts[index],
                             requestLog,
                             createdBy
                         ),
                     workspaceContext: workspaceContexts[index],
-                    workspaceRows: this.userOnboardingUtil.buildWorkspaceRows(
-                        userIds[index],
-                        workspaceContexts[index],
-                        createdBy
-                    ),
+                    workspaceRows:
+                        this.userOnboardingService.buildWorkspaceRows(
+                            userIds[index],
+                            workspaceContexts[index],
+                            createdBy
+                        ),
                     createdBy,
                 })
             );
@@ -193,7 +196,7 @@ export class UserImportService implements IUserImportService {
             const sendEmailPromises = [];
             for (const [index, newUser] of newUsers.entries()) {
                 sendEmailPromises.push(
-                    this.notificationUtil.sendWelcomeByAdmin(
+                    this.notificationQueue.sendWelcomeByAdmin(
                         newUser.id,
                         {
                             password: passwordHasheds[index].passwordEncrypted,

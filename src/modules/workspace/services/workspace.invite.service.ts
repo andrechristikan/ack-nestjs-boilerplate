@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -15,8 +18,8 @@ import {
 } from '@generated/prisma-client';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { INotificationWorkspaceInvitePayload } from '@modules/notification/interfaces/notification.interface';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -33,7 +36,6 @@ import { IWorkspaceInviteService } from '@modules/workspace/interfaces/workspace
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -51,14 +53,14 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceUtil: WorkspaceUtil,
+        private readonly requestStoreService: RequestStoreService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
         private readonly configService: ConfigService,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly featureFlagService: FeatureFlagService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
@@ -137,7 +139,7 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
                     existingUser.id
                 );
 
-            await this.notificationUtil.sendWorkspaceInvite(
+            await this.notificationQueue.sendWorkspaceInvite(
                 existingUser.id,
                 { ...payloadBase, encryptedInviteAcceptLink },
                 actorId
@@ -152,7 +154,7 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
                 invite.reference
             );
 
-        await this.notificationEmailUtil.sendWorkspaceInviteUnregistered(
+        await this.notificationEmailQueue.sendWorkspaceInviteUnregistered(
             invite.email,
             { ...payloadBase, encryptedInviteAcceptLink }
         );
@@ -196,7 +198,8 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
     ): Promise<WorkspaceInvite> {
         await this.assertInvitationAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const hasProjectId = !!create.projectId;
         const hasProjectRole = !!create.projectRole;
@@ -295,7 +298,8 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
     ): Promise<void> {
         await this.assertInvitationAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const existing =
             await this.workspaceInviteRepository.findByIdAndWorkspace(
@@ -323,7 +327,8 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
     ): Promise<void> {
         await this.assertInvitationAllowed();
 
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const invite = await this.validateInviteToken(inviteToken);
         if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {

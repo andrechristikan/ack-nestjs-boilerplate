@@ -13,6 +13,17 @@ connection — `RedisCacheModule.forRoot()` provides the shared Keyv client,
 **Never open a second Redis connection.** Not in a feature module, not in a util, not "just for
 this one lock".
 
+## A module's cache reads and writes live in a cache service
+
+A feature that caches gets a `<module>[.<concern>].cache.service.ts` domain service holding the
+cache manager and the `keyPattern` it reads from config — `SessionCacheService`,
+`ApiKeyCacheService`, `FeatureFlagCacheService`, `AuthCacheService`. Every get, set and
+delete for that module goes through it, so one class owns the key shape and the invalidation
+path for a given pattern.
+
+**A util never touches the cache.** It shapes data and does no IO (`rules/architecture.md`), so
+the cached value reaches it as an argument.
+
 ## Caching a response
 
 Caching is decorator-driven on the route:

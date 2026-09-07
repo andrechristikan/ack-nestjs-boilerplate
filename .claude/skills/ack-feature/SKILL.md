@@ -69,8 +69,9 @@ Read the plan's **Open questions** — anything there goes back to the owner now
 exists.
 
 **A shape you decide yourself is bound by the same rules the plan is.** Where you answer a design
-question in conversation rather than leaving it to `planner` — which layer owns a value, whether
-a util may throw, what a repository receives — read `.claude/rules/orientation.md` and the row
+question in conversation rather than leaving it to `planner` — which layer owns a value, which
+module's exception names a failing subject, what a repository receives — read
+`.claude/rules/orientation.md` and the row
 for that surface first. `coder` treats a decision made here as settled.
 
 ## 4 — Schema first, if there is one (HARD)

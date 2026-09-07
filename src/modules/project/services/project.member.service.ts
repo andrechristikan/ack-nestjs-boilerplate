@@ -1,4 +1,6 @@
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -22,14 +24,14 @@ import { IProjectMemberService } from '@modules/project/interfaces/project.membe
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
-import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectMemberService implements IProjectMemberService {
     constructor(
         private readonly projectMemberRepository: ProjectMemberRepository,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository,
+        private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly projectUtil: ProjectUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -119,7 +121,8 @@ export class ProjectMemberService implements IProjectMemberService {
         userId: string,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         this.assertProjectMemberPeerAllowed(
             this.currentActorIsWorkspaceOwner(),
@@ -127,7 +130,7 @@ export class ProjectMemberService implements IProjectMemberService {
         );
 
         const [targetIsWorkspaceMember, existing] = await Promise.all([
-            this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+            this.workspaceMemberService.getOneByWorkspaceAndUser(
                 project.workspaceId,
                 userId
             ),
@@ -158,7 +161,8 @@ export class ProjectMemberService implements IProjectMemberService {
         targetMemberId: string,
         newRole: EnumProjectMemberRole
     ): Promise<void> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
@@ -189,7 +193,8 @@ export class ProjectMemberService implements IProjectMemberService {
         actorId: string,
         targetMemberId: string
     ): Promise<void> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
@@ -219,7 +224,8 @@ export class ProjectMemberService implements IProjectMemberService {
     }
 
     async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         await this.projectMemberRepository.removeMember(
             project.workspaceId,

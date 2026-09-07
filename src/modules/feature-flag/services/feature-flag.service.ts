@@ -18,14 +18,18 @@ import {
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagService } from '@modules/feature-flag/interfaces/feature-flag.service.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
+import { FeatureFlagCacheService } from '@modules/feature-flag/services/feature-flag.cache.service';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagService implements IFeatureFlagService {
     constructor(
         private readonly featureFlagRepository: FeatureFlagRepository,
-        private readonly featureFlagUtil: FeatureFlagUtil
+        private readonly featureFlagUtil: FeatureFlagUtil,
+        private readonly featureFlagCacheService: FeatureFlagCacheService,
+        private readonly helperHashService: HelperHashService
     ) {}
 
     private assertRollout(
@@ -33,7 +37,7 @@ export class FeatureFlagService implements IFeatureFlagService {
         key: string,
         identifier: string
     ): void {
-        const checkRollout = this.featureFlagUtil.checkRolloutPercentage(
+        const checkRollout = this.checkRolloutPercentage(
             rolloutPercent,
             key,
             identifier
@@ -41,6 +45,19 @@ export class FeatureFlagService implements IFeatureFlagService {
         if (!checkRollout) {
             throw new FeatureFlagServiceUnavailableException();
         }
+    }
+
+    /** Deterministic bucketing salted by flag key so each flag buckets a user independently. */
+    checkRolloutPercentage(
+        rolloutPercent: number,
+        key: string,
+        identifier: string
+    ): boolean {
+        const hash = this.helperHashService.md5Hash(`${key}:${identifier}`);
+        const num = Number.parseInt(hash.slice(0, 8), 16);
+        const percentage = num % 100;
+
+        return percentage < rolloutPercent;
     }
 
     async validateFeatureFlag(
@@ -56,7 +73,8 @@ export class FeatureFlagService implements IFeatureFlagService {
         }
 
         const key = keys[0];
-        const featureFlag = await this.featureFlagUtil.getByKeyAndCache(key);
+        const featureFlag =
+            await this.featureFlagCacheService.getByKeyAndCache(key);
         if (!featureFlag) {
             throw new FeatureFlagPredefinedKeyNotFoundException();
         } else if (!featureFlag.isEnable) {
@@ -88,7 +106,8 @@ export class FeatureFlagService implements IFeatureFlagService {
         key: string,
         metadataKey: string
     ): Promise<void> {
-        const featureFlag = await this.featureFlagUtil.getByKeyAndCache(key);
+        const featureFlag =
+            await this.featureFlagCacheService.getByKeyAndCache(key);
         if (!featureFlag) {
             throw new FeatureFlagPredefinedKeyNotFoundException();
         } else if (!featureFlag.isEnable) {
@@ -130,7 +149,7 @@ export class FeatureFlagService implements IFeatureFlagService {
 
         const [updated] = await Promise.all([
             this.featureFlagRepository.updateStatus(id, data),
-            this.featureFlagUtil.deleteCacheByKey(featureFlag.key),
+            this.featureFlagCacheService.deleteCacheByKey(featureFlag.key),
         ]);
 
         return updated;
@@ -155,7 +174,7 @@ export class FeatureFlagService implements IFeatureFlagService {
 
         const [updated] = await Promise.all([
             this.featureFlagRepository.updateMetadata(id, data),
-            this.featureFlagUtil.deleteCacheByKey(featureFlag.key),
+            this.featureFlagCacheService.deleteCacheByKey(featureFlag.key),
         ]);
 
         return updated;

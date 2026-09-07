@@ -3,8 +3,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
+import { CountryService } from '@modules/country/services/country.service';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
@@ -21,7 +20,7 @@ import { Injectable } from '@nestjs/common';
 export class UserMobileNumberService implements IUserMobileNumberService {
     constructor(
         private readonly userMobileNumberRepository: UserMobileNumberRepository,
-        private readonly countryRepository: CountryRepository,
+        private readonly countryService: CountryService,
         private readonly userUtil: UserUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -33,17 +32,13 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const checkCountry =
-            await this.countryRepository.findOneById(countryId);
-        if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
+        const country = await this.countryService.getOne(countryId);
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(checkCountry.phoneCode, phoneCode),
+            this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
             this.userMobileNumberRepository.existMobileNumber(userId, {
                 number,
-                countryId: checkCountry.id,
+                countryId: country.id,
                 phoneCode,
             }),
         ]);
@@ -80,17 +75,15 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const [checkMobileNumberExist, checkCountry] = await Promise.all([
+        const [checkMobileNumberExist, country] = await Promise.all([
             this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
                 mobileNumberId
             ),
-            this.countryRepository.findOneById(countryId),
+            this.countryService.getOne(countryId),
         ]);
         if (!checkMobileNumberExist) {
             throw new UserMobileNumberNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
         }
 
         const checkExist =
@@ -104,7 +97,7 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         }
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            checkCountry.phoneCode,
+            country.phoneCode,
             phoneCode
         );
         if (!checkValidMobileNumber) {

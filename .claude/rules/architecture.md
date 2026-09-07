@@ -1,12 +1,15 @@
 # Architecture — repository pattern
 
-Five roles, one reason to change each. Blurring them is the most expensive mistake available in this codebase.
+Five roles on the path a request takes, one reason to change each. Blurring them is the most expensive mistake available in this codebase.
 
 ```
 Controller ──▶ HTTP Service ──────┐
                                   ├──▶ Domain Service ──▶ Repository ──▶ DatabaseService (Prisma)
 Processor ───▶ Processor Service ─┘
 ```
+
+Two supporting classes sit beside that path: a **util**, which shapes data for whichever role
+holds it, and a **queue class**, which is the one place a BullMQ job is enqueued.
 
 Each role is provided by its own Nest module, and the module a class is provided by is part of
 its definition (`rules/nest-wiring.md`).
@@ -31,7 +34,7 @@ its definition (`rules/nest-wiring.md`).
 - **A `ResponseDto` never appears in a domain signature**, as a parameter or a return. Return values are `I<Module>*` interfaces, Prisma models, and primitives; assembling a response is the HTTP service's job, and the domain answers to the queue as well.
 - **A request DTO may travel through unchanged.** When the method takes the caller's input and hands it on without deriving anything from it, the DTO is the parameter type and no parallel interface is invented for it. When the method derives — merges two inputs, computes a value, resolves a reference, validates into a narrower shape — what it produces and passes on is an `I<Module>*` interface. The rule is about what the method DOES to the shape, not about which layer it sits in.
 - It knows nothing about HTTP or the queue: no `IRequestApp`, no `Job`, no response envelope, no pagination response assembly.
-- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain service, never from its repository (`rules/cross-module.md`). Injects other domain services and utils by the tier table below.
+- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain service, never from its repository (`rules/cross-module.md`). Injects other domain services, utils and queue classes by the tier table below.
 - **NEVER injects `DatabaseService`.** Data access goes through the repository, always. This is the single hardest rule in the file.
 - **NEVER opens a Prisma `$transaction`.** Transactions live in the repository (`rules/database.md`).
 - Provided by `<feature>.module.ts`, and it is the only layer another module ever consumes.
@@ -57,17 +60,67 @@ its definition (`rules/nest-wiring.md`).
 - No business rules, no domain service, no repository access, no pagination metadata assembled by hand.
 - The FILE lives in the feature module; the REGISTRATION lives in `src/router/http/` (`rules/router.md`).
 
+## Util — `<module>[.<concern>].util.ts`
+
+- **A util SHAPES data and nothing else.** Mappers, predicates, format checks, pure transforms:
+  arguments in, a value out. `UserUtil.checkUsernamePattern`, `ApiKeyUtil.isExpired`,
+  `WorkspaceUtil.mapInvitePreview`, `SessionUtil.mapActivityLogMetadata`.
+- **It never DECIDES a business rule and it never does IO.** Token minting and lifetime,
+  password expiry and reuse policy, the forgot-password and verification lifecycles, credential
+  validation, attempt lockout, two-factor challenge and backup-code policy, rollout percentage —
+  each of those is a domain service in the same feature. **The test is what the code DOES**, not
+  what it injects: a method that reads state it was not handed, writes anywhere, or picks an
+  outcome the caller could not have computed from its own arguments belongs in a service.
+- **What it MAY inject:** `ConfigService`, and the part of `src/common/` that computes in memory
+  — the `Helper*` services, `MessageService`, `DatabaseUtil`.
+- **What it MUST NOT inject:** a cache, a repository, a BullMQ `Queue`, `RequestStoreService`,
+  `FileService`, or **another module's util**. That last one is absolute — `@Global()` does not
+  loosen it, and what a util needs from another module arrives as an argument
+  (`rules/cross-module.md`).
+- **It maps an error to the module's exception and RETURNS it; the caller throws.** A util
+  raises nothing itself (`rules/exceptions.md`).
+- Provided by `<feature>.module.ts` beside the domain services, and exported by it when another
+  module's service layer injects it. No header interface.
+- **A util left with no members is deleted, together with its provider and export entries.** An
+  empty class kept as a home for future helpers is structure nobody asked for.
+- `src/common/` carries utils of its own. Those are kit plumbing on tier 1 and their import
+  direction is `rules/common.md`; the injection list above governs a util under
+  `src/modules/<feature>/utils/`.
+
+## Queue class — `<module>[.<concern>].queue.ts`
+
+- **One class per registered BullMQ queue**, in `src/modules/<feature>/queues/`, holding the
+  `@InjectQueue(EnumQueue.<member>)` for it. `NotificationQueue`, `NotificationEmailQueue`,
+  `NotificationPushQueue`, `WorkspaceQueue`.
+- **It is thick.** A method takes domain arguments, builds the typed job payload, and calls
+  `add` or `upsertJobScheduler` with the job name, `EnumQueuePriority` member, `jobId` and
+  deduplication options it owns. The enqueue surface belongs to this class alone: `@InjectQueue`,
+  the BullMQ `Queue` type, `EnumQueuePriority` and BullMQ job options appear here and nowhere
+  else under `src/modules/`, apart from the health indicator that injects a queue to read depth.
+  `EnumQueue` also names the queue a processor consumes, in that processor's own
+  `@QueueProcessor(EnumQueue.<member>)` (`rules/queue.md`).
+- Injects the BullMQ `Queue` and `ConfigService` for the mechanics of the job itself — a cron
+  pattern, a timezone, a deduplication TTL.
+- **It owns no business rule and reaches no repository.** Whether to notify is the domain
+  service's decision; the queue class carries out the enqueue that decision produced.
+- Provided AND exported by `<feature>.module.ts`. A domain service or a processor service
+  injects it, in its own feature or across a module boundary
+  (`rules/cross-module.md`); a controller and an HTTP service never touch it.
+- **No header interface**, on the same terms as a repository.
+- A queue injected to READ depth or health is a health indicator, which enqueues nothing.
+
 ## Import tiers — what may inject what (HARD)
 
 Three tiers. Everything in a tier is open to every tier below it, and the reverse never holds.
 
 | Tier | What is in it | Who may inject it |
 |---|---|---|
-| **1 — kit** | everything under `src/common/` | anyone: a repository, any service, any util |
-| **2 — global feature** | a module under `src/modules/` carrying `@Global()` | anyone, exactly like tier 1 |
-| **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its SERVICE layer only |
+| **1 — kit** | everything under `src/common/` | anyone: a repository, any service, any util — a util takes the in-memory part only, never `FileService` and never a cache |
+| **2 — global feature** | a module under `src/modules/` carrying `@Global()` | anyone, exactly like tier 1 — with the same carve-out, and a util is never injected by another module's util |
+| **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its SERVICE layer and its exported queue class, injected by a service layer |
 
-- **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperDateService` does. `ActivityLogUtil` in a repository is correct, not a leak.
+- **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperDateService` does. `ActivityLogUtil` in sixteen repositories is correct, not a leak — the ban is on what a util INJECTS, not on who injects a util.
+- **A util never injects another module's util, `@Global()` or not.** Tier 2 widens who may reach a util; it does not widen what a util may reach. What one util needs from another module arrives as an argument from the service that called it.
 - **A tier 3 util never reaches ANOTHER module's repository.** It is injected by that module's services, and whatever it built arrives at the repository as a parameter. A util that genuinely belongs in several modules' repositories belongs in tier 1 or tier 2 — move it, do not widen the rule.
 - **A tier 3 util does not reach ANY repository, its own included.** Utils live beside the domain services in `<feature>.module.ts`, and `<feature>.repository.module.ts` imports nothing (`rules/nest-wiring.md`).
 - **A tier 3 repository is not reachable across modules at all.** `<Feature>RepositoryModule` stops at its own feature and the domain service is the crossing point (`rules/cross-module.md`); that is a separate question from this table, which governs UTILS and SERVICES.
@@ -130,7 +183,7 @@ processor — at `interfaces/<feature>[.<concern>][.<layer>].service.interface.t
 |---|---|
 | `UserService` | `user.service.interface.ts` |
 | `UserHttpService` | `user.http.service.interface.ts` |
-| `UserProcessorService` | `user.processor.service.interface.ts` |
+| `WorkspaceProcessorService` | `workspace.processor.service.interface.ts` |
 | `NotificationPushProcessorService` | `notification.push.processor.service.interface.ts` |
 
 Injection stays by **class** (`UserService`) unless a real DI token seam exists — the interface
@@ -140,6 +193,9 @@ is still required.
 one Prisma surface — an `I<Feature>Repository` beside it is ceremony. Do not confuse that ban
 with data-shape ports such as `IPaginationRepository` in `pagination.interface.ts` — those
 describe a duck type, not a feature repository.
+
+**A queue class and a util get no header interface either**, for the same reason: one
+implementor, no seam, and an `I<Feature>Queue` beside `<Feature>Queue` is ceremony.
 
 An interface still earns a place for **data shapes** (`IUser`, payloads, option bags) and for a
 **real multi-implementor seam** (rare). Framework lifecycle contracts (`OnModuleInit`,

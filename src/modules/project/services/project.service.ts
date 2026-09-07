@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationQueryCursorParams,
@@ -29,6 +32,7 @@ export class ProjectService implements IProjectService {
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
+        private readonly requestStoreService: RequestStoreService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -102,7 +106,8 @@ export class ProjectService implements IProjectService {
         actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         return this.projectRepository.createInWorkspace(
             workspaceId,
@@ -122,7 +127,8 @@ export class ProjectService implements IProjectService {
         actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         return this.projectRepository.updateDetails(
             project.id,
@@ -138,7 +144,8 @@ export class ProjectService implements IProjectService {
         actorId: string,
         slug: string
     ): Promise<Project> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         this.assertSlugAllowed(slug);
 
@@ -161,7 +168,8 @@ export class ProjectService implements IProjectService {
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const requestLog = this.projectUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         await this.projectRepository.softDelete(
             project.id,

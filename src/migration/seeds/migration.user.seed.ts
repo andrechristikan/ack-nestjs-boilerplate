@@ -7,8 +7,8 @@ import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -56,8 +56,8 @@ export class MigrationUserSeed
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authUtil: AuthUtil,
-        private readonly userUtil: UserUtil,
+        private readonly authPasswordService: AuthPasswordService,
+        private readonly userVerificationService: UserVerificationService,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -151,9 +151,12 @@ export class MigrationUserSeed
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authUtil.createPassword(userId, user.password);
+                        this.authPasswordService.createPassword(
+                            userId,
+                            user.password
+                        );
                     const { reference, hashedToken, type } =
-                        this.userUtil.verificationCreateVerification(
+                        this.userVerificationService.verificationCreateVerification(
                             userId,
                             EnumVerificationType.email
                         );

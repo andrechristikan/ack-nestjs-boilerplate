@@ -4,6 +4,7 @@ import { ThrottlerException } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface';
 import { Response } from 'express';
 import { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
+import { IRequestThrottleService } from '@common/request/interfaces/request.throttle.service.interface';
 import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
 
 /**
@@ -11,7 +12,7 @@ import { RequestThrottlerStorageService } from '@common/request/services/request
  * `Retry-After` or sets the rate-limit headers.
  */
 @Injectable()
-export class RequestThrottleUtil {
+export class RequestThrottleService implements IRequestThrottleService {
     private readonly headerPrefix: string;
 
     constructor(

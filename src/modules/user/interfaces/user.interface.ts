@@ -34,6 +34,8 @@ export interface IUser extends User {
     twoFactor: TwoFactor | null;
 }
 
+export type IUserContact = Pick<User, 'id' | 'email' | 'username'>;
+
 export interface IUserRef {
     id: string;
     name: string | null;

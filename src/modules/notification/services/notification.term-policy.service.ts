@@ -14,8 +14,8 @@ import {
 import { INotificationTermPolicyService } from '@modules/notification/interfaces/notification.term-policy.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
-import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
-import { UserRepository } from '@modules/user/repositories/user.repository';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -28,11 +28,11 @@ export class NotificationTermPolicyService implements INotificationTermPolicySer
     constructor(
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
-        private readonly userRepository: UserRepository,
+        private readonly userService: UserService,
         private readonly configService: ConfigService,
         private readonly helperArrayService: HelperArrayService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly notificationEmailUtil: NotificationEmailUtil
+        private readonly notificationEmailQueue: NotificationEmailQueue
     ) {
         this.emailBatchSize =
             this.configService.get<number>('email.batchSize')!;
@@ -42,7 +42,7 @@ export class NotificationTermPolicyService implements INotificationTermPolicySer
         proceedBy: string,
         data: INotificationPublishTermPolicyPayload
     ): Promise<IQueueResponse> {
-        const users = await this.userRepository.findActive();
+        const users = await this.userService.getListActive();
         const activeSettings =
             await this.notificationUserSettingRepository.findActiveUserSettingByType(
                 users.map(u => u.id),
@@ -96,7 +96,7 @@ export class NotificationTermPolicyService implements INotificationTermPolicySer
 
             await Promise.all([
                 this.notificationRepository.createMany(entries),
-                this.notificationEmailUtil.sendPublishTermPolicy(
+                this.notificationEmailQueue.sendPublishTermPolicy(
                     emailPayload,
                     data
                 ),
@@ -115,7 +115,7 @@ export class NotificationTermPolicyService implements INotificationTermPolicySer
         userId: string,
         data: INotificationAcceptTermPolicyPayload
     ): Promise<IQueueResponse> {
-        const user = await this.userRepository.findOneActiveById(userId);
+        const user = await this.userService.getOneActive(userId);
 
         if (!user) {
             return {

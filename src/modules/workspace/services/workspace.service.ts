@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     IPaginationEqual,
@@ -19,7 +22,6 @@ import { IWorkspaceService } from '@modules/workspace/interfaces/workspace.servi
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -35,7 +37,7 @@ export class WorkspaceService implements IWorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly workspaceUtil: WorkspaceUtil,
+        private readonly requestStoreService: RequestStoreService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly featureFlagService: FeatureFlagService
@@ -109,7 +111,8 @@ export class WorkspaceService implements IWorkspaceService {
         userId: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const ownedCount =
             await this.workspaceMemberRepository.countOwnedActiveByUser(userId);
@@ -134,7 +137,8 @@ export class WorkspaceService implements IWorkspaceService {
         actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         return this.workspaceRepository.updateDetails(
             workspaceId,
@@ -149,7 +153,8 @@ export class WorkspaceService implements IWorkspaceService {
         actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         return this.workspaceRepository.updateIsPublic(
             workspaceId,
@@ -164,7 +169,8 @@ export class WorkspaceService implements IWorkspaceService {
         actorId: string,
         slug: string
     ): Promise<Workspace> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         this.assertSlugAllowed(slug);
 
@@ -185,7 +191,8 @@ export class WorkspaceService implements IWorkspaceService {
     }
 
     async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         await this.validateWorkspaceGuard(workspaceId);
         await this.workspaceMemberService.validateWorkspaceMemberGuard(
@@ -204,7 +211,8 @@ export class WorkspaceService implements IWorkspaceService {
         workspaceId: string,
         actorId: string
     ): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         await this.workspaceRepository.softDelete(
             workspaceId,

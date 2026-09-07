@@ -15,22 +15,21 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import {
     IDeviceOwnership,
+    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
     IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
 import { IDeviceService } from '@modules/device/interfaces/device.service.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionUtil } from '@modules/session/utils/session.util';
+import { SessionService } from '@modules/session/services/session.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceService implements IDeviceService {
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
-        private readonly sessionRepository: SessionRepository,
-        private readonly sessionUtil: SessionUtil,
+        private readonly sessionService: SessionService,
         private readonly deviceUtil: DeviceUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -57,6 +56,35 @@ export class DeviceService implements IDeviceService {
             sessionId,
             pagination
         );
+    }
+
+    async getOwnershipsWithNotificationToken(
+        userId: string
+    ): Promise<IDeviceOwnershipWithDevice[]> {
+        return this.deviceOwnershipRepository.findTokensByUserId(userId);
+    }
+
+    async cleanupNotificationTokens(
+        userId: string,
+        tokens: string[]
+    ): Promise<number> {
+        const { count } = await this.deviceOwnershipRepository.cleanupTokens(
+            userId,
+            tokens
+        );
+
+        return count;
+    }
+
+    async cleanupStaleNotificationTokens(
+        thresholdInMs: number
+    ): Promise<number> {
+        const { count } =
+            await this.deviceOwnershipRepository.cleanupStaleTokens(
+                thresholdInMs
+            );
+
+        return count;
     }
 
     async refresh(
@@ -111,20 +139,15 @@ export class DeviceService implements IDeviceService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
-            const sessions =
-                await this.sessionRepository.findActiveByDeviceOwnership(
-                    userId,
-                    existDeviceOwnership.id
-                );
-
-            await Promise.all([
-                this.deviceOwnershipRepository.remove(
-                    userId,
-                    existDeviceOwnership.id,
-                    requestLog
-                ),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-            ]);
+            await this.sessionService.deleteLoginsByDeviceOwnership(
+                userId,
+                existDeviceOwnership.id
+            );
+            await this.deviceOwnershipRepository.remove(
+                userId,
+                existDeviceOwnership.id,
+                requestLog
+            );
 
             return;
         } catch (err: unknown) {
@@ -154,21 +177,16 @@ export class DeviceService implements IDeviceService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
-            const sessions =
-                await this.sessionRepository.findActiveByDeviceOwnership(
-                    userId,
-                    existDeviceOwnership.id
-                );
-
-            const [removed] = await Promise.all([
-                this.deviceOwnershipRepository.removeByAdmin(
-                    userId,
-                    existDeviceOwnership.id,
-                    removedBy,
-                    requestLog
-                ),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-            ]);
+            await this.sessionService.deleteLoginsByDeviceOwnership(
+                userId,
+                existDeviceOwnership.id
+            );
+            const removed = await this.deviceOwnershipRepository.removeByAdmin(
+                userId,
+                existDeviceOwnership.id,
+                removedBy,
+                requestLog
+            );
 
             this.requestStoreService.merge<IActivityLogMetadata>(
                 ActivityLogMetadataStoreKey,

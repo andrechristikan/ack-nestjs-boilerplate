@@ -9,7 +9,7 @@ import {
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -31,7 +31,7 @@ export class NotificationEmailAccountService implements INotificationEmailAccoun
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly userUtil: UserUtil
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
@@ -143,7 +143,10 @@ export class NotificationEmailAccountService implements INotificationEmailAccoun
         }: INotificationVerificationEmailPayload
     ): Promise<IQueueResponse> {
         try {
-            const link = this.userUtil.decryptedLink(userId, encryptedLink);
+            const link = this.helperEncryptionService.aes256DecryptSimple(
+                encryptedLink,
+                userId
+            );
             const expiredAtFormatted = this.helperDateService.formatToRFC2822(
                 this.helperDateService.createFromIso(expiredAt)
             );

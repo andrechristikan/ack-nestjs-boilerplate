@@ -20,7 +20,6 @@ export class HelloHttpService implements IHelloHttpService {
         return {
             data: {
                 date: {
-                    date,
                     iso: dateIso,
                     timestamp: dateTimestamp,
                 },

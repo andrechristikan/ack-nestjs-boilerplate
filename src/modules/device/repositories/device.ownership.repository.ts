@@ -10,8 +10,6 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
-    Device,
-    DeviceOwnership,
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     Prisma,
@@ -19,6 +17,7 @@ import {
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import {
     IDeviceOwnership,
+    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
     IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
@@ -224,7 +223,7 @@ export class DeviceOwnershipRepository {
 
     async findTokensByUserId(
         userId: string
-    ): Promise<(DeviceOwnership & { device: Device })[]> {
+    ): Promise<IDeviceOwnershipWithDevice[]> {
         return this.databaseService.client.deviceOwnership.findMany({
             where: {
                 userId,

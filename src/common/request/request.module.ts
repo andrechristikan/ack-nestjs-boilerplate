@@ -8,7 +8,7 @@ import { RequestActorInterceptor } from '@common/request/interceptors/request.ac
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestThrottleUtil } from '@common/request/utils/request.throttle.util';
+import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
@@ -27,13 +27,13 @@ export class RequestModule {
                 RequestStoreService,
                 RequestContextService,
                 RequestUtil,
-                RequestThrottleUtil,
+                RequestThrottleService,
             ],
             providers: [
                 RequestStoreService,
                 RequestContextService,
                 RequestUtil,
-                RequestThrottleUtil,
+                RequestThrottleService,
                 {
                     provide: APP_INTERCEPTOR,
                     useClass: RequestTimeoutInterceptor,

@@ -1,6 +1,6 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { INotificationEmailSecurityService } from '@modules/notification/interfaces/notification.email.security.service.interface';
 import {
@@ -9,7 +9,7 @@ import {
     INotificationNewDeviceLoginPayload,
     INotificationTemporaryPasswordPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { flatten } from 'flat';
@@ -32,8 +32,8 @@ export class NotificationEmailSecurityService implements INotificationEmailSecur
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly userUtil: UserUtil,
-        private readonly authUtil: AuthUtil
+        private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly authPasswordService: AuthPasswordService
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
         this.supportEmail = this.configService.get<string>('email.support')!;
@@ -57,7 +57,7 @@ export class NotificationEmailSecurityService implements INotificationEmailSecur
         }: INotificationTemporaryPasswordPayload
     ): Promise<IQueueResponse> {
         try {
-            const passwordString = this.authUtil.decryptPassword(
+            const passwordString = this.authPasswordService.decryptPassword(
                 userId,
                 encryptedPasswordString
             );
@@ -153,7 +153,10 @@ export class NotificationEmailSecurityService implements INotificationEmailSecur
         }: INotificationForgotPasswordPayload
     ): Promise<IQueueResponse> {
         try {
-            const link = this.userUtil.decryptedLink(userId, encryptedLink);
+            const link = this.helperEncryptionService.aes256DecryptSimple(
+                encryptedLink,
+                userId
+            );
 
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.forgotPassword,

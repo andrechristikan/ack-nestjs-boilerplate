@@ -18,9 +18,11 @@ a parking lot for anything that happens to be imported in several places.**
 
 ## The import direction
 
-`src/common/` is **tier 1** (`rules/architecture.md`): everything in it is injectable from any
-repository, any service, and any util, with no `imports:` entry. That openness only holds
-because the direction is one-way.
+`src/common/` is **tier 1** (`rules/architecture.md`): a repository and a service of any layer
+inject everything in it, with no `imports:` entry. A util takes the narrower half — the part
+that computes in memory, `Helper*`, `MessageService`, `DatabaseUtil` — and never `FileService`
+and never a cache, because a util shapes data and does no IO (`rules/architecture.md`). That
+openness only holds because the direction is one-way.
 
 - `src/common/` MAY import a feature module for composition (`common.module.ts` wiring) or a
   feature's compile-time enum.

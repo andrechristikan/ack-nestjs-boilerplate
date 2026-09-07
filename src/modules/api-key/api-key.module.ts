@@ -1,4 +1,6 @@
 import { ApiKeyRepositoryModule } from '@modules/api-key/api-key.repository.module';
+import { ApiKeyCacheService } from '@modules/api-key/services/api-key.cache.service';
+import { ApiKeyCredentialService } from '@modules/api-key/services/api-key.credential.service';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Global, Module } from '@nestjs/common';
@@ -10,8 +12,18 @@ import { Global, Module } from '@nestjs/common';
 @Global()
 @Module({
     controllers: [],
-    providers: [ApiKeyService, ApiKeyUtil],
-    exports: [ApiKeyService, ApiKeyUtil],
+    providers: [
+        ApiKeyService,
+        ApiKeyCredentialService,
+        ApiKeyCacheService,
+        ApiKeyUtil,
+    ],
+    exports: [
+        ApiKeyService,
+        ApiKeyCredentialService,
+        ApiKeyCacheService,
+        ApiKeyUtil,
+    ],
     imports: [ApiKeyRepositoryModule],
 })
 export class ApiKeyModule {}

@@ -3,7 +3,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import { PasswordHistory, Prisma } from '@generated/prisma-client';
 import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
 
 export interface IPasswordHistoryService {
@@ -15,4 +15,5 @@ export interface IPasswordHistoryService {
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>>;
+    getActiveByUser(userId: string): Promise<PasswordHistory[]>;
 }

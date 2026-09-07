@@ -106,7 +106,7 @@ flight.**
 
 | Hand-off | Follow it to |
 |---|---|
-| `<queue>.add(...)` / a notification util enqueue | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, and the processor-service behind it |
+| a queue class method — `<module>/queues/<module>[.<concern>].queue.ts` calling `add` or `upsertJobScheduler` | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, and the processor-service behind it |
 | a processor that enqueues again | the next processor, and what IT enqueues in turn |
 | a notification send | the email or push processor-service, the template it renders, and the SES / Firebase call |
 | a soft-delete cascade | every child `updateMany` inside the same transaction, and whether it filtered to live rows |

@@ -4,11 +4,12 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { EnumUserStatus, Prisma } from '@generated/prisma-client';
+import { EnumUserStatus, Prisma, User } from '@generated/prisma-client';
 import {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserContact,
     IUserCreateByAdmin,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -24,6 +25,8 @@ export interface IUserService {
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>>;
+    getOneActive(userId: string): Promise<User | null>;
+    getListActive(): Promise<IUserContact[]>;
     getOne(id: string): Promise<IUserProfile>;
     createByAdmin(
         { countryId, email, name, roleId }: IUserCreateByAdmin,

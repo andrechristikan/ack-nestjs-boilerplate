@@ -1,10 +1,15 @@
 import {
     IUser,
     IUserChangePassword,
+    IUserForgotPasswordCreate,
     IUserResetPassword,
 } from '@modules/user/interfaces/user.interface';
 
 export interface IUserPasswordService {
+    forgotPasswordCreateReference(): string;
+    forgotPasswordCreateToken(): string;
+    forgotPasswordSetExpiredDate(): Date;
+    forgotPasswordCreate(userId: string): IUserForgotPasswordCreate;
     updatePasswordByAdmin(userId: string, updatedBy: string): Promise<void>;
     changePassword(
         user: IUser,

@@ -1,17 +1,20 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { FileService } from '@common/file/services/file.service';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
@@ -38,8 +41,9 @@ export class TermPolicyService implements ITermPolicyService {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly notificationQueue: NotificationQueue,
+        private readonly requestStoreService: RequestStoreService,
+        private readonly fileService: FileService
     ) {}
 
     private storeActivityLogMetadata(termPolicy: TermPolicy): void {
@@ -49,6 +53,21 @@ export class TermPolicyService implements ITermPolicyService {
         );
 
         return;
+    }
+
+    mapPublicContent(
+        newItems: IAwsS3[],
+        contents: ITermPolicyContent[]
+    ): ITermPolicyContent[] {
+        return newItems.map(item => {
+            const language = contents.find(
+                c =>
+                    this.fileService.extractFilenameFromPath(c.key) ===
+                    this.fileService.extractFilenameFromPath(item.key)
+            )?.language as EnumMessageLanguage;
+
+            return { ...item, language };
+        });
     }
 
     async getListByAdmin(
@@ -176,10 +195,7 @@ export class TermPolicyService implements ITermPolicyService {
                 {}
             );
 
-            const newContents = this.termPolicyUtil.mapPublicContent(
-                newItems,
-                contents
-            );
+            const newContents = this.mapPublicContent(newItems, contents);
 
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
             const [updated] = await Promise.all([
@@ -194,7 +210,7 @@ export class TermPolicyService implements ITermPolicyService {
                 }),
             ]);
 
-            await this.notificationUtil.sendPublishTermPolicy(
+            await this.notificationQueue.sendPublishTermPolicy(
                 {
                     type: termPolicy.type,
                     version: termPolicy.version,

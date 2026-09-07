@@ -18,7 +18,7 @@ import {
     IRequestThrottlePolicy,
 } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestThrottleUtil } from '@common/request/utils/request.throttle.util';
+import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 
 /**
  * Enforces the per-user limiter for routes carrying `@RequestThrottle`.
@@ -32,7 +32,7 @@ export class RequestThrottleInterceptor implements NestInterceptor {
         private readonly reflector: Reflector,
         private readonly configService: ConfigService,
         private readonly requestStoreService: RequestStoreService,
-        private readonly requestThrottleUtil: RequestThrottleUtil
+        private readonly requestThrottleService: RequestThrottleService
     ) {
         this.policy = this.configService.get<IRequestThrottlePolicy>(
             'request.throttle.user'
@@ -74,7 +74,7 @@ export class RequestThrottleInterceptor implements NestInterceptor {
         }
 
         const response = context.switchToHttp().getResponse<Response>();
-        await this.requestThrottleUtil.evaluate(
+        await this.requestThrottleService.evaluate(
             response,
             this.name,
             userId,

@@ -4,13 +4,16 @@ import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.servi
 import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import { IFile } from '@common/file/interfaces/file.interface';
+import {
+    IFile,
+    IFileRandomFilenameOptions,
+} from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
+import { CountryService } from '@modules/country/services/country.service';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -25,19 +28,42 @@ import { IUserProfileService } from '@modules/user/interfaces/user.profile.servi
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProfileService implements IUserProfileService {
     private readonly logger = new Logger(UserProfileService.name);
 
+    private readonly uploadPhotoProfilePath: string;
+
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly countryRepository: CountryRepository,
+        private readonly countryService: CountryService,
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly requestStoreService: RequestStoreService
-    ) {}
+        private readonly requestStoreService: RequestStoreService,
+        private readonly configService: ConfigService
+    ) {
+        this.uploadPhotoProfilePath = this.configService.get<string>(
+            'user.uploadPhotoProfilePath'
+        )!;
+    }
+
+    createRandomFilenamePhotoProfileWithPath(
+        user: string,
+        { extension }: IFileRandomFilenameOptions
+    ): string {
+        const path: string = this.uploadPhotoProfilePath.replace(
+            '{userId}',
+            user
+        );
+        return this.fileService.createRandomFilename({
+            path,
+            extension,
+            randomLength: 20,
+        });
+    }
 
     async getProfile(userId: string): Promise<IUserProfile> {
         const user = await this.userRepository.findOneActiveProfileById(userId);
@@ -55,7 +81,7 @@ export class UserProfileService implements IUserProfileService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const checkCountry = await this.countryRepository.existById(countryId);
+        const checkCountry = await this.countryService.existById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
         }
@@ -84,10 +110,12 @@ export class UserProfileService implements IUserProfileService {
         userId: string,
         { extension, size }: IUserGeneratePhotoProfile
     ): Promise<IAwsS3Presign> {
-        const key: string =
-            this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
+        const key: string = this.createRandomFilenamePhotoProfileWithPath(
+            userId,
+            {
                 extension,
-            });
+            }
+        );
 
         const aws: IAwsS3Presign | null =
             await this.awsS3Service.presignPutItem(
@@ -146,10 +174,12 @@ export class UserProfileService implements IUserProfileService {
                     file.originalname
                 ) as EnumFileExtensionImage;
 
-            const key: string =
-                this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
+            const key: string = this.createRandomFilenamePhotoProfileWithPath(
+                userId,
+                {
                     extension,
-                });
+                }
+            );
 
             const aws: IAwsS3 | null = await this.awsS3Service.putItem({
                 key,

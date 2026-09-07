@@ -1,13 +1,8 @@
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 const HelloDateResponseSchema = z.object({
-    date: z.date().meta({
-        description: 'Current server date as a Date object',
-        example: faker.date.recent(),
-    }),
     iso: z.string().meta({
         description: 'Current server date as an ISO-8601 string',
         example: '2022-08-10T07:22:17.231Z',
@@ -49,7 +44,6 @@ export const HelloResponseSchema = z.object({
     date: HelloDateResponseSchema.meta({
         description: 'Current server date in several representations',
         example: {
-            date: faker.date.recent(),
             iso: '2022-08-10T07:22:17.231Z',
             timestamp: 1660190937231,
         },

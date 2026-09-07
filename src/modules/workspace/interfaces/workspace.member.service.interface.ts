@@ -20,6 +20,10 @@ export interface IWorkspaceMemberService {
         member: WorkspaceMember | null,
         allowedRoles: EnumWorkspaceMemberRole[]
     ): WorkspaceMember;
+    getOneByWorkspaceAndUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<WorkspaceMember | null>;
     transferOwnership(
         workspaceId: string,
         actorMember: WorkspaceMember,

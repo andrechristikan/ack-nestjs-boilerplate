@@ -7,6 +7,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { Prisma } from '@generated/prisma-client';
 import {
     IDeviceOwnership,
+    IDeviceOwnershipWithDevice,
     IDeviceOwnershipWithSession,
     IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
@@ -14,18 +15,22 @@ import {
 export interface IDeviceService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnership>>;
     getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>>;
+    getOwnershipsWithNotificationToken(
+        userId: string
+    ): Promise<IDeviceOwnershipWithDevice[]>;
+    cleanupNotificationTokens(
+        userId: string,
+        tokens: string[]
+    ): Promise<number>;
+    cleanupStaleNotificationTokens(thresholdInMs: number): Promise<number>;
     refresh(
         userId: string,
         deviceOwnershipId: string,

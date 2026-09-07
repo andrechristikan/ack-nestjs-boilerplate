@@ -13,7 +13,11 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import {
+    IUser,
+    IUserContact,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -61,13 +65,7 @@ export class UserRepository {
         );
     }
 
-    async findActive(): Promise<
-        {
-            id: string;
-            email: string;
-            username: string;
-        }[]
-    > {
+    async findActive(): Promise<IUserContact[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 status: EnumUserStatus.active,

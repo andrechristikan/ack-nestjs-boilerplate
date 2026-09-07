@@ -1,6 +1,8 @@
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumNotificationChannel,
+    EnumNotificationType,
     Notification,
     NotificationUserSetting,
     Prisma,
@@ -19,4 +21,8 @@ export interface INotificationService {
         userId: string,
         data: INotificationUserSettingUpdate
     ): Promise<void>;
+    validateUserSetting(
+        type: EnumNotificationType,
+        channel: EnumNotificationChannel
+    ): void;
 }

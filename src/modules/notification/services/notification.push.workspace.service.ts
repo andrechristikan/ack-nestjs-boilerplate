@@ -10,7 +10,7 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { INotificationPushWorkspaceService } from '@modules/notification/interfaces/notification.push.workspace.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable } from '@nestjs/common';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
@@ -21,7 +21,7 @@ export class NotificationPushWorkspaceService implements INotificationPushWorksp
         private readonly firebaseService: FirebaseService,
         private readonly notificationRepository: NotificationRepository,
         private readonly messageService: MessageService,
-        private readonly notificationPushUtil: NotificationPushUtil
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async processWorkspaceInvite(
@@ -70,7 +70,7 @@ export class NotificationPushWorkspaceService implements INotificationPushWorksp
         );
 
         await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -134,7 +134,7 @@ export class NotificationPushWorkspaceService implements INotificationPushWorksp
         );
 
         await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -197,7 +197,7 @@ export class NotificationPushWorkspaceService implements INotificationPushWorksp
         );
 
         await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),
@@ -265,7 +265,7 @@ export class NotificationPushWorkspaceService implements INotificationPushWorksp
         );
 
         await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
+            this.notificationPushQueue.sendCleanupTokens(
                 userId,
                 result.failureTokens
             ),

@@ -3,7 +3,7 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { INotificationEmailTermPolicyService } from '@modules/notification/interfaces/notification.email.term-policy.service.interface';
 import { INotificationPublishTermPolicyPayload } from '@modules/notification/interfaces/notification.interface';
-import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserService } from '@modules/user/services/user.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -28,7 +28,7 @@ export class NotificationEmailTermPolicyService implements INotificationEmailTer
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly configService: ConfigService,
-        private readonly userRepository: UserRepository,
+        private readonly userService: UserService,
         private readonly helperArrayService: HelperArrayService
     ) {
         this.noreplyEmail = this.configService.get<string>('email.noreply')!;
@@ -51,7 +51,7 @@ export class NotificationEmailTermPolicyService implements INotificationEmailTer
         version,
     }: INotificationPublishTermPolicyPayload): Promise<IQueueResponse> {
         try {
-            const users = await this.userRepository.findActive();
+            const users = await this.userService.getListActive();
             const userChunks = this.helperArrayService.chunk(
                 users,
                 this.batchSize

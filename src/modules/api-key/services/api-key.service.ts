@@ -25,6 +25,8 @@ import {
 } from '@modules/api-key/interfaces/api-key.interface';
 import { IApiKeyService } from '@modules/api-key/interfaces/api-key.service.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
+import { ApiKeyCacheService } from '@modules/api-key/services/api-key.cache.service';
+import { ApiKeyCredentialService } from '@modules/api-key/services/api-key.credential.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Injectable } from '@nestjs/common';
 
@@ -33,6 +35,8 @@ export class ApiKeyService implements IApiKeyService {
     constructor(
         private readonly helperDateService: HelperDateService,
         private readonly apiKeyUtil: ApiKeyUtil,
+        private readonly apiKeyCredentialService: ApiKeyCredentialService,
+        private readonly apiKeyCacheService: ApiKeyCacheService,
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -88,7 +92,8 @@ export class ApiKeyService implements IApiKeyService {
             this.validateStartAtIsFuture(startAt);
         }
 
-        const { key, secret, hash } = this.apiKeyUtil.generateCredential();
+        const { key, secret, hash } =
+            this.apiKeyCredentialService.generateCredential();
         const created = await this.apiKeyRepository.create(
             {
                 ...others,
@@ -135,7 +140,7 @@ export class ApiKeyService implements IApiKeyService {
 
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateStatus(id, { isActive }),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
+            this.apiKeyCacheService.deleteCacheByKey(apiKey.key),
         ]);
 
         this.storeActivityLogMetadata(updated);
@@ -151,7 +156,7 @@ export class ApiKeyService implements IApiKeyService {
             name
                 ? this.apiKeyRepository.updateName(id, name)
                 : Promise.resolve(apiKey!),
-            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
+            this.apiKeyCacheService.deleteCacheByKey(apiKey!.key),
         ]);
 
         this.storeActivityLogMetadata(updated);
@@ -181,7 +186,7 @@ export class ApiKeyService implements IApiKeyService {
                 startAt: newStartAt,
                 endAt: newEndAt,
             }),
-            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
+            this.apiKeyCacheService.deleteCacheByKey(apiKey!.key),
         ]);
 
         this.storeActivityLogMetadata(updated);
@@ -193,11 +198,14 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 
-        const secret: string = this.apiKeyUtil.createSecret();
-        const hash: string = this.apiKeyUtil.createHash(apiKey!.key, secret);
+        const secret: string = this.apiKeyCredentialService.createSecret();
+        const hash: string = this.apiKeyCredentialService.createHash(
+            apiKey!.key,
+            secret
+        );
         const [updated] = await Promise.all([
             this.apiKeyRepository.updateHash(id, hash),
-            this.apiKeyUtil.deleteCacheByKey(apiKey!.key),
+            this.apiKeyCacheService.deleteCacheByKey(apiKey!.key),
         ]);
 
         this.storeActivityLogMetadata(updated);
@@ -213,7 +221,7 @@ export class ApiKeyService implements IApiKeyService {
 
         const [deleted] = await Promise.all([
             this.apiKeyRepository.delete(id),
-            this.apiKeyUtil.deleteCacheByKey(apiKey.key),
+            this.apiKeyCacheService.deleteCacheByKey(apiKey.key),
         ]);
 
         this.storeActivityLogMetadata(deleted);
@@ -222,14 +230,14 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async findOneActiveByKeyAndCache(key: string): Promise<ApiKey | null> {
-        const cached = await this.apiKeyUtil.getCacheByKey(key);
+        const cached = await this.apiKeyCacheService.getCacheByKey(key);
         if (cached) {
             return cached;
         }
 
         const apiKey = await this.apiKeyRepository.findOneByKey(key);
         if (apiKey) {
-            await this.apiKeyUtil.setCacheByKey(key, apiKey);
+            await this.apiKeyCacheService.setCacheByKey(key, apiKey);
         }
 
         return apiKey;
@@ -257,7 +265,11 @@ export class ApiKeyService implements IApiKeyService {
         if (!apiKey) {
             throw new ApiKeyXApiKeyNotFoundException();
         } else if (
-            !this.apiKeyUtil.validateCredential(key, secret, apiKey) ||
+            !this.apiKeyCredentialService.validateCredential(
+                key,
+                secret,
+                apiKey
+            ) ||
             !this.apiKeyUtil.isValid(
                 {
                     isActive: apiKey.isActive,

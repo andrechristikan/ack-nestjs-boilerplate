@@ -1,11 +1,4 @@
-import {
-    EnumNotificationChannel,
-    EnumNotificationType,
-} from '@generated/prisma-client';
-import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
-import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import {
     INotificationAcceptTermPolicyPayload,
     INotificationBulkQueuePayload,
@@ -25,6 +18,7 @@ import {
 } from '@modules/notification/interfaces/notification.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
@@ -32,13 +26,19 @@ import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
  * Enqueues jobs onto the main notification queue.
  */
 @Injectable()
-export class NotificationUtil {
+export class NotificationQueue {
+    private readonly dedupTtlInMs: number;
+
     constructor(
         @InjectQueue(EnumQueue.notification)
-        private readonly notificationQueue: Queue
-    ) {}
+        private readonly notificationQueue: Queue,
+        private readonly configService: ConfigService
+    ) {
+        this.dedupTtlInMs = this.configService.get<number>(
+            'notification.dedupTtlInMs'
+        )!;
+    }
 
-    /** Queues the admin-created welcome notification carrying the temporary password. */
     async sendWelcomeByAdmin(
         userId: string,
         {
@@ -63,13 +63,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.welcomeByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the welcome notification for a new user (bundles the email verification link). */
     async sendWelcome(
         userId: string,
         {
@@ -95,13 +94,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.welcome}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the welcome notification for a social-login signup. */
     async sendWelcomeSocial(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.welcomeSocial,
@@ -113,13 +111,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.welcomeSocial}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the admin-issued temporary password notification. */
     async sendTemporaryPasswordByAdmin(
         userId: string,
         {
@@ -144,13 +141,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.temporaryPasswordByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the password change confirmation notification. */
     async sendChangePassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.changePassword,
@@ -162,13 +158,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.changePassword}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the email-verified confirmation notification. */
     async sendVerifiedEmail(
         userId: string,
         verified: INotificationVerifiedEmailPayload
@@ -184,13 +179,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.verifiedEmail}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the email verification link notification. */
     async sendVerificationEmail(
         userId: string,
         {
@@ -216,13 +210,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.verificationEmail}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the forgot-password reset link notification. */
     async sendForgotPassword(
         userId: string,
         {
@@ -250,13 +243,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.forgotPassword}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the password reset confirmation notification. */
     async sendResetPassword(userId: string): Promise<void> {
         await this.notificationQueue.add(
             EnumNotificationProcess.resetPassword,
@@ -268,13 +260,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.resetPassword}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the admin-triggered two-factor reset notification. */
     async sendResetTwoFactorByAdmin(
         userId: string,
         createdBy: string
@@ -289,13 +280,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.resetTwoFactorByAdmin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the new-device login alert notification. */
     async sendNewDeviceLogin(
         userId: string,
         newDevice: INotificationNewDeviceLoginPayload
@@ -311,13 +301,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationProcess.newDeviceLogin}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the bulk term-policy publication notification. */
     async sendPublishTermPolicy(
         payload: INotificationPublishTermPolicyPayload,
         publishedBy: string
@@ -332,13 +321,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.publishTermPolicy}-${payload.type}-${payload.version}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the mobile-number-verified confirmation notification. */
     async sendVerifiedMobileNumber(
         userId: string,
         verifiedMobile: INotificationVerifiedMobileNumberPayload
@@ -354,13 +342,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.verifiedMobileNumber}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the user-accepted-term-policy notification. */
     async sendUserAcceptTermPolicy(
         userId: string,
         payload: INotificationAcceptTermPolicyPayload
@@ -376,7 +363,7 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.low,
                 deduplication: {
                     id: `${EnumNotificationProcess.userAcceptTermPolicy}-${userId}-${payload.termPolicyId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
@@ -399,7 +386,7 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceInvite}-${payload.reference}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
@@ -422,13 +409,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinRequest}-${payload.workspaceId}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the workspace join-request-accepted notification for the requester. */
     async sendWorkspaceJoinAccepted(
         userId: string,
         payload: INotificationWorkspaceJoinAcceptedPayload,
@@ -445,13 +431,12 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinAccepted}-${payload.workspaceId}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
     }
 
-    /** Queues the workspace join-request-rejected notification for the requester. */
     async sendWorkspaceJoinRejected(
         userId: string,
         payload: INotificationWorkspaceJoinRejectedPayload,
@@ -468,27 +453,9 @@ export class NotificationUtil {
                 priority: EnumQueuePriority.medium,
                 deduplication: {
                     id: `${EnumNotificationProcess.workspaceJoinRejected}-${payload.workspaceId}-${userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
-    }
-
-    /** Rejects any type/channel pair not in the allowed combinations list. */
-    validateUserSetting(
-        type: EnumNotificationType,
-        channel: EnumNotificationChannel
-    ): void {
-        const validType = NotificationSettingUpdateAllowedCombinations.find(
-            e => e.type === type
-        );
-
-        if (!validType) {
-            throw new NotificationInvalidTypeException();
-        }
-
-        if (!validType.channels.includes(channel)) {
-            throw new NotificationInvalidChannelException();
-        }
     }
 }

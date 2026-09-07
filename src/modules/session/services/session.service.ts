@@ -14,6 +14,7 @@ import { SessionNotFoundException } from '@modules/session/exceptions/session.no
 import { ISession } from '@modules/session/interfaces/session.interface';
 import { ISessionService } from '@modules/session/interfaces/session.service.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
+import { SessionCacheService } from '@modules/session/services/session.cache.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable } from '@nestjs/common';
 
@@ -22,6 +23,7 @@ export class SessionService implements ISessionService {
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
+        private readonly sessionCacheService: SessionCacheService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -47,6 +49,45 @@ export class SessionService implements ISessionService {
         );
     }
 
+    async deleteAllLogins(userId: string): Promise<void> {
+        const sessions = await this.sessionRepository.findActive(userId);
+        await this.sessionCacheService.deleteAllLogins(userId, sessions);
+
+        return;
+    }
+
+    async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
+        const checkActive = await this.sessionRepository.findOneActive(
+            userId,
+            sessionId
+        );
+        if (!checkActive) {
+            throw new SessionNotFoundException();
+        }
+
+        await this.sessionCacheService.deleteOneLogin(userId, sessionId);
+
+        return;
+    }
+
+    /**
+     * Reads the still-active sessions before their rows are revoked: the read filters on
+     * active rows, so a caller that revokes first purges nothing and leaves live logins.
+     */
+    async deleteLoginsByDeviceOwnership(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<void> {
+        const sessions =
+            await this.sessionRepository.findActiveByDeviceOwnership(
+                userId,
+                deviceOwnershipId
+            );
+        await this.sessionCacheService.deleteAllLogins(userId, sessions);
+
+        return;
+    }
+
     async revoke(userId: string, sessionId: string): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
@@ -61,7 +102,7 @@ export class SessionService implements ISessionService {
 
         await Promise.all([
             this.sessionRepository.revoke(userId, sessionId, requestLog),
-            this.sessionUtil.deleteOneLogin(userId, sessionId),
+            this.sessionCacheService.deleteOneLogin(userId, sessionId),
         ]);
 
         return;
@@ -89,7 +130,7 @@ export class SessionService implements ISessionService {
                 revokedBy,
                 requestLog
             ),
-            this.sessionUtil.deleteOneLogin(userId, sessionId),
+            this.sessionCacheService.deleteOneLogin(userId, sessionId),
         ]);
 
         this.requestStoreService.merge<IActivityLogMetadata>(

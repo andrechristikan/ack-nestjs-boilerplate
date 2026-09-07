@@ -6,6 +6,7 @@ import {
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType, Policy, Prisma, Role } from '@generated/prisma-client';
 import {
+    IRole,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
@@ -22,6 +23,8 @@ export interface IRoleService {
         pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>>;
+    existById(roleId: string): Promise<IRole | null>;
+    existByName(name: string): Promise<IRole | null>;
     getOne(id: string): Promise<IRoleWithPolicies>;
     createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies>;
     updateByAdmin(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;

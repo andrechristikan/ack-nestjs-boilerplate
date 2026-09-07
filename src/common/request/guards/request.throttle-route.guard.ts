@@ -9,7 +9,7 @@ import {
     IRequestThrottleOptions,
     IRequestThrottlePolicy,
 } from '@common/request/interfaces/request.interface';
-import { RequestThrottleUtil } from '@common/request/utils/request.throttle.util';
+import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
@@ -27,7 +27,7 @@ export class RequestThrottleRouteGuard implements CanActivate {
         private readonly reflector: Reflector,
         private readonly configService: ConfigService,
         private readonly requestUtil: RequestUtil,
-        private readonly requestThrottleUtil: RequestThrottleUtil
+        private readonly requestThrottleService: RequestThrottleService
     ) {
         this.policies = this.configService.get<
             Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>
@@ -50,7 +50,7 @@ export class RequestThrottleRouteGuard implements CanActivate {
         const ip = this.requestUtil.resolveThrottleTrackerIp(request);
         const tracker = `${options.route}:${context.getClass().name}.${context.getHandler().name}:${ip}`;
 
-        await this.requestThrottleUtil.evaluate(
+        await this.requestThrottleService.evaluate(
             response,
             this.name,
             tracker,

@@ -1,7 +1,7 @@
 import { AwsModule } from '@common/aws/aws.module';
-import { CountryRepositoryModule } from '@modules/country/country.repository.module';
+import { CountryModule } from '@modules/country/country.module';
 import { DeviceModule } from '@modules/device/device.module';
-import { PasswordHistoryRepositoryModule } from '@modules/password-history/password-history.repository.module';
+import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserLoginService } from '@modules/user/services/user.login.service';
@@ -10,6 +10,7 @@ import { UserPasswordService } from '@modules/user/services/user.password.servic
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { UserOnboardingService } from '@modules/user/services/user.onboarding.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepositoryModule } from '@modules/user/user.repository.module';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
@@ -29,6 +30,7 @@ import { Module } from '@nestjs/common';
         UserTwoFactorService,
         UserProfileService,
         UserMobileNumberService,
+        UserOnboardingService,
         UserUtil,
         UserOnboardingUtil,
     ],
@@ -42,12 +44,11 @@ import { Module } from '@nestjs/common';
         UserProfileService,
         UserMobileNumberService,
         UserUtil,
-        UserOnboardingUtil,
     ],
     imports: [
         UserRepositoryModule,
-        CountryRepositoryModule,
-        PasswordHistoryRepositoryModule,
+        CountryModule,
+        PasswordHistoryModule,
         DeviceModule,
         AwsModule,
     ],

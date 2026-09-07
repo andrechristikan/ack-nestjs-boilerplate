@@ -1,3 +1,6 @@
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -22,7 +25,6 @@ import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interf
 import { IWorkspaceMemberService } from '@modules/workspace/interfaces/workspace.member.service.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -30,7 +32,7 @@ export class WorkspaceMemberService implements IWorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private assertPeerActionAllowed(
@@ -91,12 +93,23 @@ export class WorkspaceMemberService implements IWorkspaceMemberService {
         return member;
     }
 
+    async getOneByWorkspaceAndUser(
+        workspaceId: string,
+        userId: string
+    ): Promise<WorkspaceMember | null> {
+        return this.workspaceMemberRepository.findOneByWorkspaceAndUser(
+            workspaceId,
+            userId
+        );
+    }
+
     async transferOwnership(
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetUserId: string
     ): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (targetUserId === actorMember.userId) {
             throw new WorkspaceSelfTransferException();
@@ -124,7 +137,8 @@ export class WorkspaceMemberService implements IWorkspaceMemberService {
         workspaceId: string,
         member: WorkspaceMember
     ): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         if (member.role === EnumWorkspaceMemberRole.owner) {
             const ownerCount =
@@ -161,7 +175,8 @@ export class WorkspaceMemberService implements IWorkspaceMemberService {
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
@@ -188,7 +203,8 @@ export class WorkspaceMemberService implements IWorkspaceMemberService {
         actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<void> {
-        const requestLog = this.workspaceUtil.getCurrentRequestLog();
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
