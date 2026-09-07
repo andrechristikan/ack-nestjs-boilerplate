@@ -6,28 +6,24 @@ import {
 import { Prisma, Project, ProjectMember } from '@generated/prisma-client';
 import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project.member.response.dto';
 import { IProjectMemberHttpService } from '@modules/project/interfaces/project.member.http.service.interface';
+import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectMemberHttpService implements IProjectMemberHttpService {
-    constructor(
-        private readonly projectMemberService: ProjectMemberService,
-        private readonly projectUtil: ProjectUtil
-    ) {}
+    constructor(private readonly projectMemberService: ProjectMemberService) {}
 
     async getMembersList(
         project: Project,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
+    ): Promise<IResponsePagingReturn<IProjectMember>> {
         const { data, ...others } =
             await this.projectMemberService.getMembersList(project, pagination);
 
         return {
-            data: this.projectUtil.mapMemberList(data),
+            data,
             ...others,
         };
     }
@@ -36,7 +32,7 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
         project: Project,
         actorId: string,
         { userId, role }: ProjectMemberAssignRequestDto
-    ): Promise<IResponseReturn<ProjectMemberResponseDto>> {
+    ): Promise<IResponseReturn<IProjectMember>> {
         const member = await this.projectMemberService.assignMember(
             project,
             actorId,
@@ -44,7 +40,7 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
             role
         );
 
-        return { data: this.projectUtil.mapMember(member) };
+        return { data: member };
     }
 
     async updateMemberRole(

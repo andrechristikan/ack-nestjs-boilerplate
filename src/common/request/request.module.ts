@@ -1,25 +1,10 @@
-import {
-    DynamicModule,
-    HttpStatus,
-    Module,
-    ValidationPipe,
-} from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { ValidationError } from 'class-validator';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
+import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
 import { RequestActorInterceptor } from '@common/request/interceptors/request.actor.interceptor';
-import { IsCustomEmailConstraint } from '@common/request/validations/request.custom-email.validation';
-import { IsAfterNowConstraint } from '@common/request/validations/request.is-after-now.validation';
-import {
-    GreaterThanEqualOtherPropertyConstraint,
-    GreaterThanOtherPropertyConstraint,
-} from '@common/request/validations/request.greater-than-other-property.validation';
-import { IsPasswordConstraint } from '@common/request/validations/request.is-password.validation';
-import {
-    LessThanEqualOtherPropertyConstraint,
-    LessThanOtherPropertyConstraint,
-} from '@common/request/validations/request.less-than-other-property.validation';
 import { RequestMiddlewareModule } from '@common/request/request.middleware.module';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -28,7 +13,7 @@ import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
 /**
- * Global module wiring the validation pipe, timeout interceptor, custom validators,
+ * Global module wiring the validation pipe, timeout interceptor,
  * `RequestStoreService`, and middleware.
  */
 @Module({})
@@ -60,35 +45,12 @@ export class RequestModule {
                 {
                     provide: APP_PIPE,
                     useFactory: () =>
-                        new ValidationPipe({
-                            transform: true,
-                            skipMissingProperties: false,
-                            skipNullProperties: false,
-                            skipUndefinedProperties: false,
-                            forbidUnknownValues: true,
-                            whitelist: true,
-                            forbidNonWhitelisted: true,
-                            transformOptions: {
-                                excludeExtraneousValues: false,
-                            },
-                            validationError: {
-                                target: false,
-                                value: true,
-                            },
-                            errorHttpStatusCode:
-                                HttpStatus.UNPROCESSABLE_ENTITY,
-                            exceptionFactory: async (
-                                errors: ValidationError[]
-                            ) => new RequestValidationException(errors),
+                        new RequestSchemaValidationPipe({
+                            exceptionFactory: (
+                                issues: readonly StandardSchemaV1.Issue[]
+                            ) => new RequestValidationException(issues),
                         }),
                 },
-                GreaterThanEqualOtherPropertyConstraint,
-                GreaterThanOtherPropertyConstraint,
-                IsAfterNowConstraint,
-                IsPasswordConstraint,
-                IsCustomEmailConstraint,
-                LessThanEqualOtherPropertyConstraint,
-                LessThanOtherPropertyConstraint,
             ],
             imports: [
                 ClsModule.forRoot({

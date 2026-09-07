@@ -2,25 +2,36 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponse,
+    DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { RoleDocParamsId } from '@modules/role/constants/role.doc.constant';
-import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { RoleDocQueryList } from '@modules/role/constants/role.doc.constant';
+import {
+    RoleDefaultAvailableOrderBy,
+    RoleDefaultAvailableSearch,
+} from '@modules/role/constants/role.list.constant';
+import {
+    RoleListResponseDto,
+    RoleListResponseSchema,
+} from '@modules/role/dtos/response/role.list.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
-export function RoleSystemGetAbilitiesDoc(): MethodDecorator {
+export function RoleSystemListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'get detail a role',
+            summary: 'get list of roles',
         }),
         DocRequest({
-            params: RoleDocParamsId,
+            queries: RoleDocQueryList,
         }),
         DocAuth({
             xApiKey: true,
         }),
-        DocResponse<RoleAbilitiesResponseDto>('role.getAbilities', {
-            dto: RoleAbilitiesResponseDto,
+        DocResponsePaging<RoleListResponseDto>('role.list', {
+            schema: RoleListResponseSchema,
+            availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
+            type: EnumPaginationType.cursor,
         })
     );
 }

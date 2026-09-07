@@ -1,31 +1,22 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsMongoId,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-} from 'class-validator';
 
-export class WorkspaceJoinRequestCreateRequestDto {
-    @ApiProperty({
-        description: 'Workspace to request joining; must be isPublic and not soft-deleted',
-        example: faker.database.mongodbObjectId(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsMongoId()
-    workspaceId: string;
-
-    @ApiProperty({
-        description: 'Optional note to the workspace owners/admins reviewing the request',
+export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
+    workspaceId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .meta({
+            description:
+                'Workspace to request joining; must be isPublic and not soft-deleted',
+            example: faker.database.mongodbObjectId(),
+        }),
+    message: z.string().max(500).optional().meta({
+        description:
+            'Optional note to the workspace owners/admins reviewing the request',
         example: faker.lorem.sentence(),
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(500)
-    message?: string;
-}
+    }),
+});
+
+export type WorkspaceJoinRequestCreateRequestDto = z.infer<
+    typeof WorkspaceJoinRequestCreateRequestSchema
+>;

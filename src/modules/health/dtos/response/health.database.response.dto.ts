@@ -1,17 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { HealthCheckStatus, HealthIndicatorResult } from '@nestjs/terminus';
+import { z } from 'zod';
+import { HealthIndicatorResultSchema } from '@modules/health/dtos/health.indicator-result.dto';
 
-export class HealthDatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/** Response shape of the database health check. */
+export const HealthDatabaseResponseSchema = z.object({
+    status: z.enum(['error', 'ok', 'shutting_down']).meta({
+        description: 'Overall health status of the checked database indicators',
         examples: ['error', 'ok', 'shutting_down'],
-        description:
-            'Overall health status of the checked database indicators',
-    })
-    status: HealthCheckStatus;
-
-    @ApiProperty({
-        required: true,
+    }),
+    info: HealthIndicatorResultSchema.optional().meta({
         description: 'Database indicators that reported up',
         example: {
             database: {
@@ -24,11 +20,8 @@ export class HealthDatabaseResponseDto {
                 status: 'up',
             },
         },
-    })
-    info?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    error: HealthIndicatorResultSchema.optional().meta({
         description: 'Database indicators that reported down',
         example: {
             database: {
@@ -41,11 +34,8 @@ export class HealthDatabaseResponseDto {
                 status: 'down',
             },
         },
-    })
-    error?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    details: HealthIndicatorResultSchema.meta({
         description: 'Combined database indicator results for this check',
         example: {
             database: {
@@ -58,6 +48,9 @@ export class HealthDatabaseResponseDto {
                 status: 'up',
             },
         },
-    })
-    details: HealthIndicatorResult;
-}
+    }),
+});
+
+export type HealthDatabaseResponseDto = z.infer<
+    typeof HealthDatabaseResponseSchema
+>;

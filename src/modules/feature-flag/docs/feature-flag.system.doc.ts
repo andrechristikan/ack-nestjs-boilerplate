@@ -10,7 +10,10 @@ import {
     FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import {
+    FeatureFlagResponseDto,
+    FeatureFlagResponseSchema,
+} from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function FeatureFlagSystemListDoc(): MethodDecorator {
@@ -25,7 +28,7 @@ export function FeatureFlagSystemListDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
-            dto: FeatureFlagResponseDto,
+            schema: FeatureFlagResponseSchema,
             availableSearch: FeatureFlagDefaultAvailableSearch,
             availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,

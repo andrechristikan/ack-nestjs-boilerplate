@@ -8,34 +8,28 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { ISessionHttpService } from '@modules/session/interfaces/session.http.service.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class SessionHttpService implements ISessionHttpService {
-    constructor(
-        private readonly sessionService: SessionService,
-        private readonly sessionUtil: SessionUtil
-    ) {}
+    constructor(private readonly sessionService: SessionService) {}
 
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+    ): Promise<IResponsePagingReturn<ISession>> {
         const { data, ...others } =
             await this.sessionService.getListOffsetByAdmin(
                 userId,
                 pagination,
                 isRevoked
             );
-        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
-
         return {
-            data: sessions,
+            data,
             ...others,
         };
     }
@@ -43,15 +37,13 @@ export class SessionHttpService implements ISessionHttpService {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+    ): Promise<IResponsePagingReturn<ISession>> {
         const { data, ...others } = await this.sessionService.getListCursor(
             userId,
             pagination
         );
-        const sessions: SessionResponseDto[] = this.sessionUtil.mapList(data);
-
         return {
-            data: sessions,
+            data,
             ...others,
         };
     }

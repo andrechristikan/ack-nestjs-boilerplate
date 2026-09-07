@@ -1,31 +1,26 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumProjectMemberRole } from '@generated/prisma-client';
-import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-export class ProjectMemberResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base project-member shape: the row binding a user to the project they are assigned to.
+ */
+export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    projectId: z.string().meta({
         description: 'Identifier of the project the member belongs to',
-    })
-    @Expose()
-    projectId: string;
-
-    @ApiProperty({
-        required: true,
         example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
         description: 'Identifier of the member user',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        type: UserRefResponseDto,
+        example: faker.database.mongodbObjectId(),
+    }),
+    user: UserRefResponseSchema.meta({
         description: 'Embedded user of this project member',
         example: {
             id: faker.database.mongodbObjectId(),
@@ -48,25 +43,17 @@ export class ProjectMemberResponseDto extends DatabaseResponseDto {
                 size: 1024,
             },
         },
-    })
-    @Expose()
-    @Type(() => UserRefResponseDto)
-    user: UserRefResponseDto;
-
-    @ApiProperty({
-        required: true,
-        example: EnumProjectMemberRole.member,
-        enum: EnumProjectMemberRole,
+    }),
+    role: z.enum(EnumProjectMemberRole).meta({
         description: 'Project role of the member',
-    })
-    @Expose()
-    role: EnumProjectMemberRole;
-
-    @ApiProperty({
-        required: true,
-        example: faker.date.past(),
+        example: EnumProjectMemberRole.member,
+    }),
+    joinedAt: z.date().meta({
         description: 'When the user joined the project',
-    })
-    @Expose()
-    joinedAt: Date;
-}
+        example: faker.date.past(),
+    }),
+});
+
+export type ProjectMemberResponseDto = z.infer<
+    typeof ProjectMemberResponseSchema
+>;

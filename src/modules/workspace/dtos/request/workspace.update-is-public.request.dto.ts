@@ -1,14 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { z } from 'zod';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 
-export class WorkspaceUpdateIsPublicRequestDto {
-    @ApiProperty({
-        description:
-            'Whether the workspace is publicly discoverable and accepts join requests',
-        example: false,
-        required: true,
-    })
-    @IsBoolean()
-    @IsNotEmpty()
-    isPublic: boolean;
-}
+export const WorkspaceUpdateIsPublicRequestSchema =
+    WorkspaceResponseSchema.pick({ isPublic: true }).strict();
+
+export type WorkspaceUpdateIsPublicRequestDto = z.infer<
+    typeof WorkspaceUpdateIsPublicRequestSchema
+>;

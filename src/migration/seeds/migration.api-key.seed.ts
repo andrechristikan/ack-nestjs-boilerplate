@@ -3,7 +3,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationApiKeyData } from '@migration/data/migration.api-key.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

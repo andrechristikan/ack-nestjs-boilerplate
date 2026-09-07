@@ -1,55 +1,38 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client';
-import { Expose, Type } from 'class-transformer';
+import { TermContentSchema } from '@modules/term-policy/dtos/term-policy.content.dto';
 
-export class TermPolicyResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
+/**
+ * Base term-policy shape: the stored terms or policy row with its localized contents.
+ */
+export const TermPolicyResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    type: z.enum(EnumTermPolicyType).meta({
         description: 'Type of terms or policy',
-        enum: EnumTermPolicyType,
         example: EnumTermPolicyType.termsOfService,
-        required: true,
-    })
-    @Expose()
-    readonly type: EnumTermPolicyType;
-
-    @ApiProperty({
+    }),
+    status: z.enum(EnumTermPolicyStatus).meta({
         description: 'Status of terms or policy',
-        enum: EnumTermPolicyStatus,
         example: EnumTermPolicyStatus.draft,
-        required: true,
-    })
-    @Expose()
-    readonly status: EnumTermPolicyStatus;
-
-    @ApiProperty({
-        required: true,
-        type: [TermContentDto],
-        isArray: true,
+    }),
+    contents: z.array(TermContentSchema).meta({
         description: 'Localized contents of the terms or policy',
         example: [],
-    })
-    @Expose()
-    @Type(() => TermContentDto)
-    readonly contents: TermContentDto[];
-
-    @ApiProperty({
+    }),
+    version: z.number().meta({
         description: 'Version of the terms or policy',
         example: 1,
-        required: true,
-    })
-    @Expose()
-    readonly version: number;
-
-    @ApiProperty({
-        required: false,
+    }),
+    publishedAt: z.date().nullable().meta({
         description: 'Published date of the terms or policy',
         example: '2023-01-01T00:00:00.000Z',
-    })
-    @Expose()
-    readonly publishedAt?: Date;
-}
+    }),
+});
+
+export type TermPolicyResponseDto = z.infer<typeof TermPolicyResponseSchema>;

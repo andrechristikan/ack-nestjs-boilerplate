@@ -7,10 +7,22 @@ import {
     HealthSystemCheckInstanceDoc,
     HealthSystemCheckThirdPartyDoc,
 } from '@modules/health/docs/health.system.doc';
-import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import {
+    HealthAwsResponseDto,
+    HealthAwsResponseSchema,
+} from '@modules/health/dtos/response/health.aws.response.dto';
+import {
+    HealthDatabaseResponseDto,
+    HealthDatabaseResponseSchema,
+} from '@modules/health/dtos/response/health.database.response.dto';
+import {
+    HealthInstanceResponseDto,
+    HealthInstanceResponseSchema,
+} from '@modules/health/dtos/response/health.instance.response.dto';
+import {
+    HealthThirdPartyResponseDto,
+    HealthThirdPartyResponseSchema,
+} from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -25,7 +37,7 @@ export class HealthSystemController {
     constructor(private readonly healthHttpService: HealthHttpService) {}
 
     @HealthSystemCheckAwsDoc()
-    @Response('health.checkAws')
+    @Response('health.checkAws', { schema: HealthAwsResponseSchema })
     @HealthCheck()
     @ApiKeySystemProtected()
     @Get('/aws')
@@ -34,7 +46,7 @@ export class HealthSystemController {
     }
 
     @HealthSystemCheckDatabaseDoc()
-    @Response('health.checkDatabase')
+    @Response('health.checkDatabase', { schema: HealthDatabaseResponseSchema })
     @HealthCheck()
     @ApiKeySystemProtected()
     @Get('/database')
@@ -43,7 +55,9 @@ export class HealthSystemController {
     }
 
     @HealthSystemCheckThirdPartyDoc()
-    @Response('health.checkThirdParty')
+    @Response('health.checkThirdParty', {
+        schema: HealthThirdPartyResponseSchema,
+    })
     @HealthCheck()
     @ApiKeySystemProtected()
     @Get('/third-party')
@@ -54,7 +68,7 @@ export class HealthSystemController {
     }
 
     @HealthSystemCheckInstanceDoc()
-    @Response('health.checkInstance')
+    @Response('health.checkInstance', { schema: HealthInstanceResponseSchema })
     @HealthCheck()
     @ApiKeySystemProtected()
     @Get('/instance')

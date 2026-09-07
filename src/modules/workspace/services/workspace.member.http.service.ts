@@ -7,17 +7,15 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { Prisma, WorkspaceMember } from '@generated/prisma-client';
 import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { IWorkspaceMemberHttpService } from '@modules/workspace/interfaces/workspace.member.http.service.interface';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
     constructor(
-        private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly workspaceMemberService: WorkspaceMemberService
     ) {}
 
     async transferOwnership(
@@ -43,7 +41,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         const { data, ...others } =
             await this.workspaceMemberService.getMembersList(
                 workspaceId,
@@ -52,7 +50,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
             );
 
         return {
-            data: this.workspaceUtil.mapMemberList(data),
+            data,
             ...others,
         };
     }
@@ -86,7 +84,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
     async getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         const { data, ...others } =
             await this.workspaceMemberService.getMembersListForAdmin(
                 workspaceId,
@@ -94,7 +92,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
             );
 
         return {
-            data: this.workspaceUtil.mapMemberList(data),
+            data,
             ...others,
         };
     }

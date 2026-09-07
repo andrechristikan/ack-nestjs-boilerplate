@@ -1,54 +1,39 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
+import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
-export class UserMobileNumberResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        example: `8${faker.string.fromCharacters('1234567890', {
-            min: 7,
-            max: 11,
-        })}`,
-        required: true,
-        maxLength: 20,
-        minLength: 8,
-        description: 'Mobile number without the country phone code',
-    })
-    @Expose()
-    number: string;
-
-    @ApiProperty({
-        example: faker.location.countryCode('alpha-2'),
-        required: true,
-        maxLength: 6,
-        minLength: 1,
-        description: 'Country calling code of the mobile number',
-    })
-    @Expose()
-    phoneCode: string;
-
-    @ApiProperty({
-        required: true,
-        type: CountryResponseDto,
+/**
+ * Mobile number registered to a user, with the country that owns its calling code.
+ */
+export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    number: z
+        .string()
+        .min(8)
+        .max(22)
+        .meta({
+            description: 'Mobile number without the country phone code',
+            example: `8${faker.string.fromCharacters('1234567890', {
+                min: 7,
+                max: 11,
+            })}`,
+        }),
+    phoneCode: z
+        .string()
+        .min(1)
+        .max(6)
+        .meta({
+            description: 'Country calling code of the mobile number',
+            example: faker.location.countryCode('alpha-2'),
+        }),
+    country: CountryResponseSchema.meta({
         description: 'Country of the mobile number',
-        example: {
-            id: faker.database.mongodbObjectId(),
-            createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
-            updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
-            deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
-            name: faker.location.country(),
-            alpha2Code: faker.location.countryCode('alpha-2'),
-            alpha3Code: faker.location.countryCode('alpha-3'),
-            phoneCode: [faker.helpers.arrayElement(['62', '65'])],
-            continent: faker.location.country(),
-            timezone: faker.location.timeZone(),
-        },
-    })
-    @Expose()
-    @Type(() => CountryResponseDto)
-    country: CountryResponseDto;
-}
+    }),
+});
+
+export type UserMobileNumberResponseDto = z.infer<
+    typeof UserMobileNumberResponseSchema
+>;

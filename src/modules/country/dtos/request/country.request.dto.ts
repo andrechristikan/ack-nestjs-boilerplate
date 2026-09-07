@@ -1,86 +1,37 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import {
-    ArrayNotEmpty,
-    IsArray,
-    IsNotEmpty,
-    IsString,
-    MaxLength,
-    MinLength,
-} from 'class-validator';
+import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
-export class CountryRequestDto {
-    @ApiProperty({
-        required: true,
-        description: 'Country name',
-        example: faker.location.country(),
-        maxLength: 100,
-        minLength: 1,
+export const CountryRequestSchema = CountryResponseSchema.pick({
+    name: true,
+    continent: true,
+    timezone: true,
+})
+    .extend({
+        alpha2Code: z
+            .string()
+            .length(2)
+            .meta({
+                description: 'Country code, Alpha 2 code version',
+                example: faker.location.countryCode('alpha-2'),
+            })
+            .transform(value => value.toUpperCase()),
+        alpha3Code: z
+            .string()
+            .length(3)
+            .meta({
+                description: 'Country code, Alpha 3 code version',
+                example: faker.location.countryCode('alpha-3'),
+            })
+            .transform(value => value.toUpperCase()),
+        phoneCode: z
+            .array(z.string().max(4))
+            .min(1)
+            .meta({
+                description: 'Country phone code',
+                example: [faker.helpers.arrayElement(['62', '65'])],
+            }),
     })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(100)
-    @MinLength(1)
-    name: string;
+    .strict();
 
-    @ApiProperty({
-        required: true,
-        description: 'Country code, Alpha 2 code version',
-        example: faker.location.countryCode('alpha-2'),
-        maxLength: 2,
-        minLength: 2,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(2)
-    @MinLength(2)
-    @Transform(({ value }) => value.toUpperCase())
-    alpha2Code: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Country code, Alpha 3 code version',
-        example: faker.location.countryCode('alpha-3'),
-        maxLength: 3,
-        minLength: 3,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(3)
-    @MinLength(3)
-    @Transform(({ value }) => value.toUpperCase())
-    alpha3Code: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Country phone code',
-        example: [faker.helpers.arrayElement(['62', '65'])],
-        maxLength: 4,
-        isArray: true,
-    })
-    @IsArray()
-    @ArrayNotEmpty()
-    @IsNotEmpty({ each: true })
-    @IsString({ each: true })
-    @MaxLength(4, { each: true })
-    phoneCode: string[];
-
-    @ApiProperty({
-        required: true,
-        example: faker.location.country(),
-        description: 'Continent the country belongs to',
-    })
-    @IsNotEmpty()
-    @IsString()
-    continent: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.location.timeZone(),
-        description: 'Timezone of the country',
-    })
-    @IsNotEmpty()
-    @IsString()
-    timezone: string;
-}
+export type CountryRequestDto = z.infer<typeof CountryRequestSchema>;

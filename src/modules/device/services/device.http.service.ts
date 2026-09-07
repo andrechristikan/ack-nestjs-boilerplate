@@ -9,34 +9,33 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { IDeviceHttpService } from '@modules/device/interfaces/device.http.service.interface';
 import { DeviceService } from '@modules/device/services/device.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceHttpService implements IDeviceHttpService {
-    constructor(
-        private readonly deviceService: DeviceService,
-        private readonly deviceUtil: DeviceUtil
-    ) {}
+    constructor(private readonly deviceService: DeviceService) {}
 
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
         const { data, ...others } =
             await this.deviceService.getListOffsetByAdmin(
                 userId,
                 pagination,
                 isRevoked
             );
-        const deviceOwnerships: DeviceOwnershipResponseDto[] =
-            this.deviceUtil.mapList(data);
+        const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
+            deviceOwnership => ({
+                ...deviceOwnership,
+                activeSessionCount: deviceOwnership._count.sessions,
+                isCurrentDevice: false,
+            })
+        );
 
         return {
             data: deviceOwnerships,
@@ -47,17 +46,20 @@ export class DeviceHttpService implements IDeviceHttpService {
     async getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipWhereInput
-        >
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
         const { data, ...others } = await this.deviceService.getListCursor(
             userId,
             sessionId,
             pagination
         );
-        const deviceOwnerships: DeviceOwnershipResponseDto[] =
-            this.deviceUtil.mapList(data);
+        const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
+            deviceOwnership => ({
+                ...deviceOwnership,
+                activeSessionCount: deviceOwnership._count.sessions,
+                isCurrentDevice: deviceOwnership.sessions.length > 0,
+            })
+        );
 
         return {
             data: deviceOwnerships,

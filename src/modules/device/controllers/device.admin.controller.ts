@@ -19,6 +19,8 @@ import {
 } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
     Prisma,
 } from '@generated/prisma-client';
@@ -33,13 +35,10 @@ import {
     DeviceAdminRemoveDoc,
 } from '@modules/device/docs/device.admin.doc';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -55,9 +54,11 @@ export class DeviceAdminController {
     constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
     @DeviceAdminListDoc()
-    @ResponsePaging('device.list')
+    @ResponsePaging('device.list', {
+        schema: DeviceOwnershipResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -77,14 +78,12 @@ export class DeviceAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: DeviceDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
         return this.deviceHttpService.getListOffsetByAdmin(
             userId,
             pagination,
@@ -95,7 +94,7 @@ export class DeviceAdminController {
     @DeviceAdminRemoveDoc()
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],

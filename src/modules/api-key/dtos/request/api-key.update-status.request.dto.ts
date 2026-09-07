@@ -1,13 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { z } from 'zod';
 
-export class ApiKeyUpdateStatusRequestDto {
-    @ApiProperty({
-        example: true,
-        required: true,
+export const ApiKeyUpdateStatusRequestSchema = z.strictObject({
+    isActive: z.boolean().meta({
         description: 'API Key status',
-    })
-    @IsNotEmpty()
-    @IsBoolean()
-    isActive: boolean;
-}
+        example: true,
+    }),
+});
+
+export type ApiKeyUpdateStatusRequestDto = z.infer<
+    typeof ApiKeyUpdateStatusRequestSchema
+>;

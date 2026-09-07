@@ -7,7 +7,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { Prisma, WorkspaceMember } from '@generated/prisma-client';
 import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberHttpService {
     transferOwnership(
@@ -20,7 +20,7 @@ export interface IWorkspaceMemberHttpService {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>>;
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>>;
     updateMemberRole(
         workspaceId: string,
         actorMember: WorkspaceMember,
@@ -35,5 +35,5 @@ export interface IWorkspaceMemberHttpService {
     getMembersListForAdmin(
         workspaceId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>>;
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>>;
 }

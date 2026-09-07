@@ -24,22 +24,22 @@ import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
-import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
-import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
-import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
-import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
-import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
-import { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
-import { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
-import { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
-import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
-import { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
+import {
+    WorkspaceInviteResponseDto,
+    WorkspaceInviteResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import {
+    WorkspaceJoinRequestResponseDto,
+    WorkspaceJoinRequestResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import {
+    WorkspaceMemberResponseDto,
+    WorkspaceMemberResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import {
+    WorkspaceResponseDto,
+    WorkspaceResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -63,7 +63,7 @@ export function WorkspaceUserListDoc(): MethodDecorator {
         Doc({ summary: 'list workspaces the caller is a member of' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
             type: EnumPaginationType.cursor,
             availableSearch: WorkspaceDefaultAvailableSearch,
             availableOrderBy: WorkspaceCursorAvailableOrderBy,
@@ -76,7 +76,6 @@ export function WorkspaceUserCreateDoc(): MethodDecorator {
         Doc({ summary: 'create a new workspace; caller becomes owner' }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceCreateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocOneOf(HttpStatus.BAD_REQUEST, {
@@ -84,7 +83,7 @@ export function WorkspaceUserCreateDoc(): MethodDecorator {
             messagePath: 'workspace.error.capReached',
         }),
         DocResponse<WorkspaceResponseDto>('workspace.create', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
             httpStatus: HttpStatus.CREATED,
         })
     );
@@ -97,7 +96,7 @@ export function WorkspaceUserGetDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         DocResponse<WorkspaceResponseDto>('workspace.get', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
         })
     );
 }
@@ -107,14 +106,13 @@ export function WorkspaceUserUpdateDoc(): MethodDecorator {
         Doc({ summary: 'update the current workspace name/description' }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceUpdateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
         DocResponse<WorkspaceResponseDto>('workspace.update', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
         })
     );
 }
@@ -127,14 +125,13 @@ export function WorkspaceUserUpdateIsPublicDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceUpdateIsPublicRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
         DocResponse<WorkspaceResponseDto>('workspace.updateIsPublic', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
         })
     );
 }
@@ -144,7 +141,6 @@ export function WorkspaceUserUpdateSlugDoc(): MethodDecorator {
         Doc({ summary: 'update the current workspace slug' }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceUpdateSlugRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -155,7 +151,7 @@ export function WorkspaceUserUpdateSlugDoc(): MethodDecorator {
             messagePath: 'workspace.error.slugAlreadyExists',
         }),
         DocResponse<WorkspaceResponseDto>('workspace.updateSlug', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
         })
     );
 }
@@ -168,7 +164,6 @@ export function WorkspaceUserSwitchDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceSwitchRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -182,7 +177,6 @@ export function WorkspaceUserTransferOwnershipDoc(): MethodDecorator {
         Doc({ summary: 'transfer workspace ownership to another member' }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceTransferOwnershipRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -229,7 +223,7 @@ export function WorkspaceMemberUserListDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         DocResponsePaging<WorkspaceMemberResponseDto>('workspace.member.list', {
-            dto: WorkspaceMemberResponseDto,
+            schema: WorkspaceMemberResponseSchema,
             type: EnumPaginationType.cursor,
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         })
@@ -242,7 +236,6 @@ export function WorkspaceMemberUserUpdateRoleDoc(): MethodDecorator {
         DocRequest({
             params: WorkspaceMemberDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceMemberUpdateRoleRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -289,7 +282,7 @@ export function WorkspaceInviteUserListDoc(): MethodDecorator {
         MemberForbiddenDoc,
         RoleForbiddenDoc,
         DocResponsePaging<WorkspaceInviteResponseDto>('workspace.invite.list', {
-            dto: WorkspaceInviteResponseDto,
+            schema: WorkspaceInviteResponseSchema,
             type: EnumPaginationType.cursor,
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
             availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
@@ -305,7 +298,6 @@ export function WorkspaceInviteUserCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceInviteCreateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -324,7 +316,7 @@ export function WorkspaceInviteUserCreateDoc(): MethodDecorator {
             messagePath: 'workspace.error.inviteRoleRequired',
         }),
         DocResponse<WorkspaceInviteResponseDto>('workspace.invite.create', {
-            dto: WorkspaceInviteResponseDto,
+            schema: WorkspaceInviteResponseSchema,
             httpStatus: HttpStatus.CREATED,
         })
     );
@@ -339,7 +331,6 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
         DocRequest({
             params: WorkspaceInviteDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceInviteResendRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -354,7 +345,7 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
             messagePath: 'workspace.error.inviteAlreadyProcessed',
         }),
         DocResponse<WorkspaceInviteResponseDto>('workspace.invite.resend', {
-            dto: WorkspaceInviteResponseDto,
+            schema: WorkspaceInviteResponseSchema,
         })
     );
 }
@@ -387,7 +378,6 @@ export function WorkspaceInviteUserClaimDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceInviteClaimRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocOneOf(HttpStatus.BAD_REQUEST, {
@@ -406,7 +396,6 @@ export function WorkspaceJoinRequestUserCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceJoinRequestCreateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -425,7 +414,7 @@ export function WorkspaceJoinRequestUserCreateDoc(): MethodDecorator {
         DocResponse<WorkspaceJoinRequestResponseDto>(
             'workspace.joinRequest.create',
             {
-                dto: WorkspaceJoinRequestResponseDto,
+                schema: WorkspaceJoinRequestResponseSchema,
                 httpStatus: HttpStatus.CREATED,
             }
         )
@@ -443,7 +432,7 @@ export function WorkspaceJoinRequestUserListDoc(): MethodDecorator {
         DocResponsePaging<WorkspaceJoinRequestResponseDto>(
             'workspace.joinRequest.list',
             {
-                dto: WorkspaceJoinRequestResponseDto,
+                schema: WorkspaceJoinRequestResponseSchema,
                 type: EnumPaginationType.cursor,
                 availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
             }
@@ -481,7 +470,6 @@ export function WorkspaceJoinRequestUserRejectDoc(): MethodDecorator {
         DocRequest({
             params: WorkspaceJoinRequestDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: WorkspaceJoinRequestRejectRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,

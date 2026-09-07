@@ -8,18 +8,18 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
 
 export interface ISessionHttpService {
     getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>>;
+    ): Promise<IResponsePagingReturn<ISession>>;
     getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>>;
+    ): Promise<IResponsePagingReturn<ISession>>;
     revoke(userId: string, sessionId: string): Promise<void>;
     revokeByAdmin(
         userId: string,

@@ -6,40 +6,41 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Workspace } from '@generated/prisma-client';
+import {
+    Prisma,
+    Workspace,
+    WorkspaceJoinRequest,
+} from '@generated/prisma-client';
 import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { IWorkspaceJoinRequestHttpService } from '@modules/workspace/interfaces/workspace.join-request.http.service.interface';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
-import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHttpService {
     constructor(
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly workspaceUtil: WorkspaceUtil
+        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService
     ) {}
 
     async createJoinRequest(
         userId: string,
         { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceJoinRequestResponseDto>> {
+    ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         const joinRequest =
             await this.workspaceJoinRequestService.createJoinRequest(userId, {
                 workspaceId,
                 message,
             });
 
-        return { data: this.workspaceUtil.mapJoinRequest(joinRequest) };
+        return { data: joinRequest };
     }
 
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequestResponseDto>> {
+    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
         const { data, ...others } =
             await this.workspaceJoinRequestService.getJoinRequestsList(
                 workspaceId,
@@ -48,7 +49,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
             );
 
         return {
-            data: this.workspaceUtil.mapJoinRequestList(data),
+            data,
             ...others,
         };
     }

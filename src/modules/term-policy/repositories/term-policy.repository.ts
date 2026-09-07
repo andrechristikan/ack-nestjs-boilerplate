@@ -11,8 +11,10 @@ import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
-import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
+import {
+    ITermPolicyContent,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -227,7 +229,7 @@ export class TermPolicyRepository {
 
     async create(
         { type, version }: TermPolicyCreateRequestDto,
-        contents: TermContentDto[],
+        contents: ITermPolicyContent[],
         createdBy: string
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.create({
@@ -251,8 +253,8 @@ export class TermPolicyRepository {
 
     async updateContent(
         termPolicyId: string,
-        contents: TermContentDto[],
-        content: TermContentDto,
+        contents: ITermPolicyContent[],
+        content: ITermPolicyContent,
         updatedBy: string
     ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(
@@ -275,7 +277,7 @@ export class TermPolicyRepository {
 
     async addContent(
         termPolicyId: string,
-        newContent: TermContentDto,
+        newContent: ITermPolicyContent,
         updatedBy: string
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.update({
@@ -285,7 +287,7 @@ export class TermPolicyRepository {
             data: {
                 contents: {
                     push: this.databaseUtil.toPlainObject<
-                        TermContentDto,
+                        ITermPolicyContent,
                         Prisma.TermPolicyContentCreateInput
                     >(newContent),
                 },
@@ -296,7 +298,7 @@ export class TermPolicyRepository {
 
     async removeContent(
         termPolicyId: string,
-        contents: TermContentDto[],
+        contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto,
         updatedBy: string
     ): Promise<TermPolicy> {
@@ -319,7 +321,7 @@ export class TermPolicyRepository {
     async publish(
         termPolicyId: string,
         type: EnumTermPolicyType,
-        contents: TermContentDto[],
+        contents: ITermPolicyContent[],
         updatedBy: string
     ): Promise<TermPolicy> {
         const [termPolicy] = await this.databaseService.client.$transaction([

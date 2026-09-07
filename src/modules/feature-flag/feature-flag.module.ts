@@ -1,14 +1,14 @@
 import { FeatureFlagRepositoryModule } from '@modules/feature-flag/feature-flag.repository.module';
-import { FeatureFlagUtilModule } from '@modules/feature-flag/feature-flag.util.module';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
 import { Global, Module } from '@nestjs/common';
 
-/** Global so the feature flag guard reaches the domain service app-wide. */
+/** Global so the feature flag guard reaches the domain service and the cache helpers app-wide. */
 @Global()
 @Module({
     controllers: [],
-    providers: [FeatureFlagService],
-    exports: [FeatureFlagService],
-    imports: [FeatureFlagRepositoryModule, FeatureFlagUtilModule],
+    providers: [FeatureFlagService, FeatureFlagUtil],
+    exports: [FeatureFlagService, FeatureFlagUtil],
+    imports: [FeatureFlagRepositoryModule],
 })
 export class FeatureFlagModule {}

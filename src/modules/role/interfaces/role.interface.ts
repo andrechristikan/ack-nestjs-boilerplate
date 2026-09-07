@@ -1,8 +1,4 @@
-import { EnumRoleType } from '@generated/prisma-client';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { EnumRoleType, Policy, Role } from '@generated/prisma-client';
 
 export interface IRole {
     id: string;
@@ -10,15 +6,17 @@ export interface IRole {
     name: string;
 }
 
-export interface IRoleAbility {
-    subject: EnumPolicySubject;
-    action: EnumPolicyAction[];
-}
+export type IRoleWithPolicies = Role & {
+    policies: Policy[];
+};
+
+export type IRoleWithPolicyCount = Role & {
+    _count: { policies: number };
+};
 
 export interface IRoleUpdate {
     description?: string;
     type: EnumRoleType;
-    abilities: IRoleAbility[];
 }
 
 export interface IRoleCreate extends IRoleUpdate {

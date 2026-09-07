@@ -16,15 +16,18 @@ import {
     ApiKeyDocQueryList,
 } from '@modules/api-key/constants/api-key.doc.constant';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
-import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
-import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import {
+    ApiKeyCreateResponseDto,
+    ApiKeyCreateResponseSchema,
+} from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import {
     ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
 } from '@modules/api-key/constants/api-key.list.constant';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import {
+    ApiKeyResponseDto,
+    ApiKeyResponseSchema,
+} from '@modules/api-key/dtos/response/api-key.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -38,7 +41,7 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponsePaging<ApiKeyResponseDto>('apiKey.list', {
-            dto: ApiKeyResponseDto,
+            schema: ApiKeyResponseSchema,
             availableSearch: ApiKeyDefaultAvailableSearch,
             availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -55,12 +58,16 @@ export function ApiKeyAdminCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: ApiKeyCreateRequestDto,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponse<ApiKeyCreateResponseDto>('apiKey.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: ApiKeyCreateResponseDto,
+            schema: ApiKeyCreateResponseSchema,
+        }),
+        DocDefault({
+            httpStatus: HttpStatus.BAD_REQUEST,
+            statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
+            messagePath: 'apiKey.error.startAtNotFuture',
         })
     );
 }
@@ -75,8 +82,8 @@ export function ApiKeyAdminUpdateStatusDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('apiKey.updateStatus', {
-            dto: ApiKeyResponseDto,
+        DocResponse<ApiKeyResponseDto>('apiKey.updateStatus', {
+            schema: ApiKeyResponseSchema,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocDefault({
@@ -103,7 +110,7 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
         DocResponse<ApiKeyCreateResponseDto>('apiKey.reset', {
-            dto: ApiKeyCreateResponseDto,
+            schema: ApiKeyCreateResponseSchema,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,
@@ -130,15 +137,14 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ApiKeyUpdateRequestDto,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
-        DocResponse('apiKey.update', {
-            dto: ApiKeyResponseDto,
+        DocResponse<ApiKeyResponseDto>('apiKey.update', {
+            schema: ApiKeyResponseSchema,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,
@@ -165,15 +171,14 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ApiKeyUpdateDateRequestDto,
         }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
-        DocResponse('apiKey.updateDate', {
-            dto: ApiKeyResponseDto,
+        DocResponse<ApiKeyResponseDto>('apiKey.updateDate', {
+            schema: ApiKeyResponseSchema,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,
@@ -189,6 +194,10 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
             {
                 statusCode: EnumApiKeyStatusCodeError.expired,
                 messagePath: 'apiKey.error.expired',
+            },
+            {
+                statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
+                messagePath: 'apiKey.error.startAtNotFuture',
             }
         )
     );
@@ -205,8 +214,8 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ policy: true, role: true, termPolicy: true }),
-        DocResponse('apiKey.delete', {
-            dto: ApiKeyResponseDto,
+        DocResponse<ApiKeyResponseDto>('apiKey.delete', {
+            schema: ApiKeyResponseSchema,
         }),
         DocDefault({
             httpStatus: HttpStatus.NOT_FOUND,

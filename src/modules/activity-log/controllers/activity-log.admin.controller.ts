@@ -10,21 +10,23 @@ import {
     ActivityLogAdminListByUserDoc,
     ActivityLogAdminListByWorkspaceDoc,
 } from '@modules/activity-log/docs/activity-log.admin.doc';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleType,
+    Prisma,
+} from '@generated/prisma-client';
 
 @ApiTags('modules.admin.activityLog')
 @Controller({
@@ -37,9 +39,11 @@ export class ActivityLogAdminController {
     ) {}
 
     @ActivityLogAdminListByUserDoc()
-    @ResponsePaging('activityLog.listByUser')
+    @ResponsePaging('activityLog.listByUser', {
+        schema: ActivityLogResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -62,14 +66,19 @@ export class ActivityLogAdminController {
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, pagination);
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.activityLogHttpService.getListOffsetByUser(
+            userId,
+            pagination
+        );
     }
 
     @ActivityLogAdminListByWorkspaceDoc()
-    @ResponsePaging('activityLog.listByWorkspace')
+    @ResponsePaging('activityLog.listByWorkspace', {
+        schema: ActivityLogResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.workspace,
             action: [EnumPolicyAction.read],
@@ -94,7 +103,7 @@ export class ActivityLogAdminController {
         workspaceId: string,
         @Query('userId', new RequestIsValidObjectIdPipe({ optional: true }))
         userId?: string
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByWorkspace(
             workspaceId,
             userId ?? null,

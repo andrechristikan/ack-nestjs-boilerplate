@@ -1,43 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsBoolean,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-} from 'class-validator';
+import { z } from 'zod';
 
-export class WorkspaceCreateRequestDto {
-    @ApiProperty({
+export const WorkspaceCreateRequestSchema = z.strictObject({
+    name: z.string().min(1).max(150).meta({
         description: 'Workspace name',
         example: 'Acme',
-        required: true,
-        maxLength: 150,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MaxLength(150)
-    name: string;
-
-    @ApiProperty({
+    }),
+    description: z.string().max(500).optional().meta({
         description: 'Workspace description',
         example: 'Our team workspace',
-        required: false,
-        maxLength: 500,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(500)
-    description?: string;
-
-    @ApiProperty({
+    }),
+    isPublic: z.boolean().optional().meta({
         description:
             'Whether the workspace is publicly discoverable for join requests',
         example: false,
-        required: false,
         default: false,
-    })
-    @IsBoolean()
-    @IsOptional()
-    isPublic?: boolean;
-}
+    }),
+});
+
+export type WorkspaceCreateRequestDto = z.infer<
+    typeof WorkspaceCreateRequestSchema
+>;

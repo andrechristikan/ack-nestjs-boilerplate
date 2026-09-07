@@ -8,9 +8,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserImportRepository {
-    constructor(
-        private readonly databaseService: DatabaseService
-    ) {}
+    constructor(private readonly databaseService: DatabaseService) {}
 
     async findByEmails(emails: string[]): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
@@ -18,7 +16,7 @@ export class UserImportRepository {
                 email: { in: emails },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -30,7 +28,7 @@ export class UserImportRepository {
                 username: { in: usernames },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -49,7 +47,7 @@ export class UserImportRepository {
                 deletedAt: null,
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });

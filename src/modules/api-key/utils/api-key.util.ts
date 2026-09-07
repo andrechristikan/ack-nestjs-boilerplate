@@ -2,16 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { ResponseUtil } from '@common/response/utils/response.util';
 import { Cache } from 'cache-manager';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
-import { IApiKeyGenerateCredential } from '@modules/api-key/interfaces/api-key.interface';
-import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import {
+    IApiKeyCreated,
+    IApiKeyGenerateCredential,
+} from '@modules/api-key/interfaces/api-key.interface';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -23,8 +23,7 @@ export class ApiKeyUtil {
         @Inject(CacheMainProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly helperHashService: HelperHashService,
-        private readonly responseUtil: ResponseUtil
+        private readonly helperHashService: HelperHashService
     ) {
         this.keyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
@@ -33,19 +32,11 @@ export class ApiKeyUtil {
         this.header = this.configService.get<string>('auth.xApiKey.header')!;
     }
 
-    mapList(apiKeys: ApiKey[]): ApiKeyResponseDto[] {
-        return this.responseUtil.serialize(ApiKeyResponseDto, apiKeys);
-    }
-
-    mapOne(apiKey: ApiKey): ApiKeyResponseDto {
-        return this.responseUtil.serialize(ApiKeyResponseDto, apiKey);
-    }
-
-    mapCreate(apiKey: ApiKey, secret: string): ApiKeyCreateResponseDto {
-        return this.responseUtil.serialize(ApiKeyCreateResponseDto, {
+    mapCreate(apiKey: ApiKey, secret: string): IApiKeyCreated {
+        return {
             ...apiKey,
             secret,
-        });
+        };
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {

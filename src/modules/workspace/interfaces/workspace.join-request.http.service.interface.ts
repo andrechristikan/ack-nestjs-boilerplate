@@ -6,21 +6,24 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Workspace } from '@generated/prisma-client';
+import {
+    Prisma,
+    Workspace,
+    WorkspaceJoinRequest,
+} from '@generated/prisma-client';
 import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 
 export interface IWorkspaceJoinRequestHttpService {
     createJoinRequest(
         userId: string,
         body: WorkspaceJoinRequestCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceJoinRequestResponseDto>>;
+    ): Promise<IResponseReturn<WorkspaceJoinRequest>>;
     getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequestResponseDto>>;
+    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>>;
     acceptJoinRequest(
         workspace: Workspace,
         reviewerId: string,

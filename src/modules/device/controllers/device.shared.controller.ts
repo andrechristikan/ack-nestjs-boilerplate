@@ -20,8 +20,12 @@ import {
     DeviceSharedRemoveDoc,
 } from '@modules/device/docs/device.shared.doc';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import {
+    DeviceRefreshRequestDto,
+    DeviceRefreshRequestSchema,
+} from '@modules/device/dtos/request/device.refresh.request.dto';
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -46,7 +50,9 @@ export class DeviceSharedController {
     constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
     @DeviceSharedListDoc()
-    @ResponsePaging('device.list')
+    @ResponsePaging('device.list', {
+        schema: DeviceOwnershipResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -57,13 +63,15 @@ export class DeviceSharedController {
         @PaginationCursorQuery({
             availableOrderBy: DeviceCursorAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('sessionId') sessionId: string
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>> {
-        return this.deviceHttpService.getListCursor(userId, sessionId, pagination);
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
+        return this.deviceHttpService.getListCursor(
+            userId,
+            sessionId,
+            pagination
+        );
     }
 
     @DeviceSharedRefreshDoc()
@@ -78,7 +86,8 @@ export class DeviceSharedController {
     async refresh(
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('deviceOwnershipId') deviceOwnershipId: string,
-        @Body() body: DeviceRefreshRequestDto
+        @Body({ schema: DeviceRefreshRequestSchema })
+        body: DeviceRefreshRequestDto
     ): Promise<void> {
         await this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
     }

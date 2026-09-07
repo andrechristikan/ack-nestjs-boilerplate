@@ -31,22 +31,39 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        EnumRoleType  @default(user)
-  abilities   RoleAbility[]
+  type        EnumRoleType @default(user)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  users User[] @relation("UserRole")
+  policies Policy[] @relation("RolePolicy")
+  users    User[]   @relation("UserRole")
 
   @@unique(fields: [name])
   @@index(fields: [type, createdAt(sort: Desc)])
   @@map("Roles")
+}
+
+model Policy {
+  id      String             @id @default(auto()) @map("_id") @db.ObjectId
+  roleId  String             @db.ObjectId
+  subject EnumPolicySubject
+  action  EnumPolicyAction[]
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [roleId, subject])
+  @@map("Policies")
 }
 
 model Country {
@@ -518,19 +535,19 @@ model WorkspaceMember {
 }
 
 model WorkspaceInvite {
-  id               String                        @id @default(auto()) @map("_id") @db.ObjectId
-  workspaceId      String                        @db.ObjectId
+  id               String                    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String                    @db.ObjectId
   email            String
   workspaceRole    EnumWorkspaceMemberRole
-  projectId        String?                       @db.ObjectId
+  projectId        String?                   @db.ObjectId
   projectRole      EnumProjectMemberRole?
   token            String
   reference        String
   expiredAt        DateTime
-  status           EnumWorkspaceInviteStatus     @default(pending)
-  invitedByUserId  String                        @db.ObjectId
+  status           EnumWorkspaceInviteStatus @default(pending)
+  invitedByUserId  String                    @db.ObjectId
   acceptedAt       DateTime?
-  acceptedByUserId String?                       @db.ObjectId
+  acceptedByUserId String?                   @db.ObjectId
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   project   Project?  @relation(fields: [projectId], references: [id])
@@ -624,11 +641,6 @@ type UserTermPolicy {
   privacy        Boolean
   marketing      Boolean
   cookies        Boolean
-}
-
-type RoleAbility {
-  action  String[]
-  subject String
 }
 
 type UserPhoto {
@@ -738,6 +750,29 @@ enum EnumRoleType {
   user
 }
 
+enum EnumPolicyAction {
+  manage
+  read
+  create
+  update
+  delete
+}
+
+enum EnumPolicySubject {
+  all
+  apiKey
+  role
+  user
+  session
+  activityLog
+  passwordHistory
+  termPolicy
+  featureFlag
+  device
+  workspace
+  project
+}
+
 enum EnumApiKeyType {
   system
   default
@@ -843,7 +878,7 @@ enum EnumActivityLogAction {
   workspaceJoinRequested
   workspaceJoinAccepted
   workspaceJoinRejected
-  
+
   projectCreated
   projectUpdated
   projectDeleted

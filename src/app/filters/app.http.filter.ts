@@ -11,7 +11,7 @@ import { Response } from 'express';
 import Case from 'case';
 import { MessageService } from '@common/message/services/message.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import * as Sentry from '@sentry/nestjs';

@@ -19,7 +19,8 @@ import {
     SessionSharedListDoc,
     SessionSharedRevokeDoc,
 } from '@modules/session/docs/session.shared.doc';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -35,7 +36,7 @@ export class SessionSharedController {
     constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionSharedListDoc()
-    @ResponsePaging('session.list')
+    @ResponsePaging('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -48,7 +49,7 @@ export class SessionSharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+    ): Promise<IResponsePagingReturn<ISession>> {
         return this.sessionHttpService.getListCursor(userId, pagination);
     }
 

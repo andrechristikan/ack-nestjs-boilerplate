@@ -8,26 +8,23 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma, TermPolicy } from '@generated/prisma-client';
 
 export interface ITermPolicyHttpService {
     getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
+    ): Promise<IResponsePagingReturn<TermPolicy>>;
     getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>>;
+    ): Promise<IResponsePagingReturn<TermPolicy>>;
     createByAdmin(
         body: TermPolicyCreateRequestDto,
         createdBy: string
-    ): Promise<IResponseReturn<TermPolicyResponseDto>>;
-    deleteByAdmin(
-        termPolicyId: string
-    ): Promise<IResponseReturn<TermPolicyResponseDto>>;
+    ): Promise<IResponseReturn<TermPolicy>>;
+    deleteByAdmin(termPolicyId: string): Promise<IResponseReturn<TermPolicy>>;
     publishByAdmin(
         termPolicyId: string,
         updatedBy: string

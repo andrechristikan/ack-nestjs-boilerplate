@@ -28,7 +28,7 @@ export class DatabaseModule {
                 DatabaseService,
                 DatabaseUtil,
             ],
-            exports: [DatabaseService, DatabaseUtil],
+            exports: [DatabaseService, DatabaseUtil, DatabaseExtensionUtil],
             imports: [],
             controllers: [],
         };

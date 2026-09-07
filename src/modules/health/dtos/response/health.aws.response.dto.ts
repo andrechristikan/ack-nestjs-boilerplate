@@ -1,16 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { HealthCheckStatus, HealthIndicatorResult } from '@nestjs/terminus';
+import { z } from 'zod';
+import { HealthIndicatorResultSchema } from '@modules/health/dtos/health.indicator-result.dto';
 
-export class HealthAwsResponseDto {
-    @ApiProperty({
-        required: true,
-        examples: ['error', 'ok', 'shutting_down'],
+/** Response shape of the AWS health check. */
+export const HealthAwsResponseSchema = z.object({
+    status: z.enum(['error', 'ok', 'shutting_down']).meta({
         description: 'Overall health status of the checked AWS indicators',
-    })
-    status: HealthCheckStatus;
-
-    @ApiProperty({
-        required: true,
+        examples: ['error', 'ok', 'shutting_down'],
+    }),
+    info: HealthIndicatorResultSchema.optional().meta({
         description: 'AWS indicators that reported up',
         example: {
             s3PublicBucket: {
@@ -23,11 +20,8 @@ export class HealthAwsResponseDto {
                 status: 'up',
             },
         },
-    })
-    info?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    error: HealthIndicatorResultSchema.optional().meta({
         description: 'AWS indicators that reported down',
         example: {
             s3PublicBucket: {
@@ -40,11 +34,8 @@ export class HealthAwsResponseDto {
                 status: 'down',
             },
         },
-    })
-    error?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    details: HealthIndicatorResultSchema.meta({
         description: 'Combined AWS indicator results for this check',
         example: {
             s3PublicBucket: {
@@ -57,6 +48,7 @@ export class HealthAwsResponseDto {
                 status: 'up',
             },
         },
-    })
-    details: HealthIndicatorResult;
-}
+    }),
+});
+
+export type HealthAwsResponseDto = z.infer<typeof HealthAwsResponseSchema>;

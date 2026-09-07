@@ -1,3 +1,4 @@
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyType,
@@ -11,16 +12,20 @@ export interface ITermPolicyUserAcceptance extends TermPolicyUserAcceptance {
     termPolicy: TermPolicy;
 }
 
-export interface ITermPolicyContent {
+export interface ITermPolicyContentUpload {
     language: EnumMessageLanguage;
     size: number;
     key: string;
 }
 
+export interface ITermPolicyContent extends Omit<IAwsS3, 'data'> {
+    language: EnumMessageLanguage;
+}
+
 export interface ITermPolicyCreate {
     type: EnumTermPolicyType;
     version: number;
-    contents: ITermPolicyContent[];
+    contents: ITermPolicyContentUpload[];
 }
 
 export interface ITermPolicyContentPresign {

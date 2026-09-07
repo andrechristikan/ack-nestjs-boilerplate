@@ -9,7 +9,10 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import {
+    DeviceOwnershipResponseDto,
+    DeviceOwnershipResponseSchema,
+} from '@modules/device/dtos/response/device.ownership.response.dto';
 import {
     DeviceOwnershipDocParamsId,
     DeviceOwnershipDocQueryList,
@@ -31,7 +34,7 @@ export function DeviceAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
-            dto: DeviceOwnershipResponseDto,
+            schema: DeviceOwnershipResponseSchema,
             availableOrderBy: DeviceDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
         })

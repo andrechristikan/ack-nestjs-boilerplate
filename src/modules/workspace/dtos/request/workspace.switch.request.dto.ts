@@ -1,15 +1,17 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsMongoId, IsNotEmpty, IsString } from 'class-validator';
 
-export class WorkspaceSwitchRequestDto {
-    @ApiProperty({
-        description: 'Workspace to switch into; caller must already be a member',
-        example: faker.database.mongodbObjectId(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsMongoId()
-    workspaceId: string;
-}
+export const WorkspaceSwitchRequestSchema = z.strictObject({
+    workspaceId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .meta({
+            description:
+                'Workspace to switch into; caller must already be a member',
+            example: faker.database.mongodbObjectId(),
+        }),
+});
+
+export type WorkspaceSwitchRequestDto = z.infer<
+    typeof WorkspaceSwitchRequestSchema
+>;

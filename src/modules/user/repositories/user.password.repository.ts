@@ -47,7 +47,7 @@ export class UserPasswordRepository {
             include: {
                 user: {
                     include: {
-                        role: true,
+                        role: { include: { policies: true } },
                         twoFactor: true,
                     },
                 },

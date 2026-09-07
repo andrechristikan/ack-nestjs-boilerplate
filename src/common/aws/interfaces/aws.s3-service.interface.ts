@@ -16,10 +16,8 @@ import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
 } from '@common/aws/interfaces/aws.interface';
-import {
-    AwsS3PresignPartRequestDto,
-    AwsS3PresignRequestDto,
-} from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
+import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 
 export interface IAwsS3Service {
     checkConnection(): Promise<boolean>;

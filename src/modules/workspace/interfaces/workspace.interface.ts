@@ -55,6 +55,13 @@ export interface IWorkspaceInvitePreview {
     inviter: IWorkspaceInviteInviter | null;
 }
 
+export interface IWorkspaceInvitePreviewSummary {
+    workspaceName: string;
+    inviterName: string;
+    workspaceRole: EnumWorkspaceMemberRole;
+    expiredAt: Date;
+}
+
 export interface IWorkspaceJoinRequestCreate {
     workspaceId: string;
     message?: string;

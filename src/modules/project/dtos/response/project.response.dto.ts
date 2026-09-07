@@ -1,39 +1,29 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-export class ProjectResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base project shape: the stored project row.
+ */
+export const ProjectResponseSchema = DatabaseResponseSchema.omit({
+    deletedBy: true,
+}).extend({
+    workspaceId: z.string().meta({
         description: 'Identifier of the workspace the project belongs to',
-    })
-    @Expose()
-    workspaceId: string;
-
-    @ApiProperty({
-        required: true,
+        example: faker.database.mongodbObjectId(),
+    }),
+    name: z.string().meta({
         description: 'Project name',
         example: 'Website Revamp',
-    })
-    @Expose()
-    name: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    slug: z.string().meta({
         description: 'Project slug',
         example: 'website-revamp',
-    })
-    @Expose()
-    slug: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    description: z.string().nullable().meta({
         description: 'Project description',
         example: 'Marketing site redesign',
-        nullable: true,
-    })
-    @Expose()
-    description: string | null;
-}
+    }),
+});
+
+export type ProjectResponseDto = z.infer<typeof ProjectResponseSchema>;

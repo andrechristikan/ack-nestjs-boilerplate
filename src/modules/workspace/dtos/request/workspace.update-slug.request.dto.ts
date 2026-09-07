@@ -1,14 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { z } from 'zod';
 
-export class WorkspaceUpdateSlugRequestDto {
-    @ApiProperty({
+export const WorkspaceUpdateSlugRequestSchema = z.strictObject({
+    slug: z.string().min(1).meta({
         description:
             'New workspace slug. Charset [0-9a-zA-Z-], length capped by the workspace slug configuration (30 characters)',
         example: 'acme-team',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    slug: string;
-}
+    }),
+});
+
+export type WorkspaceUpdateSlugRequestDto = z.infer<
+    typeof WorkspaceUpdateSlugRequestSchema
+>;

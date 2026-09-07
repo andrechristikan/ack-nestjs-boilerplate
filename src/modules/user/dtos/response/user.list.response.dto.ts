@@ -1,61 +1,22 @@
-import { ApiHideProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-import { UserDto } from '@modules/user/dtos/user.dto';
-import {
-    EnumUserGender,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-} from '@generated/prisma-client';
-import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
+import { z } from 'zod';
+import { UserSchema } from '@modules/user/dtos/user.dto';
 
-export class UserListResponseDto extends UserDto {
-    @ApiHideProperty()
-    @Exclude()
-    passwordExpired?: Date;
+/**
+ * User row as it appears in an admin list, without credential, sign-up and last-login detail.
+ */
+export const UserListResponseSchema = UserSchema.omit({
+    passwordExpired: true,
+    passwordCreated: true,
+    passwordAttempt: true,
+    signUpAt: true,
+    signUpFrom: true,
+    signUpWith: true,
+    gender: true,
+    lastLoginAt: true,
+    lastIPAddress: true,
+    lastLoginFrom: true,
+    lastLoginWith: true,
+    twoFactor: true,
+});
 
-    @ApiHideProperty()
-    @Exclude()
-    passwordCreated?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    passwordAttempt?: number;
-
-    @ApiHideProperty()
-    @Exclude()
-    signUpDate: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    signUpFrom: EnumUserSignUpFrom;
-
-    @ApiHideProperty()
-    @Exclude()
-    signUpWith: EnumUserSignUpWith;
-
-    @ApiHideProperty()
-    @Exclude()
-    gender?: EnumUserGender;
-
-    @ApiHideProperty()
-    @Exclude()
-    lastLoginAt?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    lastIPAddress?: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    lastLoginFrom?: EnumUserLoginFrom;
-
-    @ApiHideProperty()
-    @Exclude()
-    lastLoginWith?: EnumUserLoginWith;
-
-    @ApiHideProperty()
-    @Exclude()
-    twoFactor: UserTwoFactorDto;
-}
+export type UserListResponseDto = z.infer<typeof UserListResponseSchema>;

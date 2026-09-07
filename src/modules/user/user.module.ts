@@ -1,6 +1,6 @@
 import { AwsModule } from '@common/aws/aws.module';
 import { CountryRepositoryModule } from '@modules/country/country.repository.module';
-import { DeviceUtilModule } from '@modules/device/device.util.module';
+import { DeviceModule } from '@modules/device/device.module';
 import { PasswordHistoryRepositoryModule } from '@modules/password-history/password-history.repository.module';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserImportService } from '@modules/user/services/user.import.service';
@@ -12,7 +12,8 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepositoryModule } from '@modules/user/user.repository.module';
-import { UserUtilModule } from '@modules/user/user.util.module';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Module } from '@nestjs/common';
 
 /** User domain services backing `UserGuard` and the user HTTP layer. */
@@ -28,6 +29,8 @@ import { Module } from '@nestjs/common';
         UserTwoFactorService,
         UserProfileService,
         UserMobileNumberService,
+        UserUtil,
+        UserOnboardingUtil,
     ],
     exports: [
         UserService,
@@ -38,13 +41,14 @@ import { Module } from '@nestjs/common';
         UserTwoFactorService,
         UserProfileService,
         UserMobileNumberService,
+        UserUtil,
+        UserOnboardingUtil,
     ],
     imports: [
         UserRepositoryModule,
-        UserUtilModule,
         CountryRepositoryModule,
         PasswordHistoryRepositoryModule,
-        DeviceUtilModule,
+        DeviceModule,
         AwsModule,
     ],
 })

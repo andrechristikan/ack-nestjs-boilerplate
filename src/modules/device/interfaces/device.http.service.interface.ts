@@ -9,23 +9,19 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 
 export interface IDeviceHttpService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>>;
     getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipWhereInput
-        >
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>>;
     refresh(
         userId: string,
         deviceOwnershipId: string,

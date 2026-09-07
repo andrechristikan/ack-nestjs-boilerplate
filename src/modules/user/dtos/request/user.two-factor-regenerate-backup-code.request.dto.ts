@@ -1,3 +1,9 @@
-import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { z } from 'zod';
+import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 
-export class UserTwoFactorRegenerateBackupCodeRequestDto extends UserTwoFactorEnableRequestDto {}
+export const UserTwoFactorRegenerateBackupCodeRequestSchema =
+    UserTwoFactorEnableRequestSchema;
+
+export type UserTwoFactorRegenerateBackupCodeRequestDto = z.infer<
+    typeof UserTwoFactorRegenerateBackupCodeRequestSchema
+>;

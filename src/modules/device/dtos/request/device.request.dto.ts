@@ -1,43 +1,23 @@
+import { z } from 'zod';
 import { EnumDevicePlatform } from '@generated/prisma-client';
-import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class DeviceRequestDto implements IDeviceIdentity {
-    @ApiProperty({
+export const DeviceRequestSchema = z.strictObject({
+    fingerprint: z.string().meta({
         description: 'Device fingerprint to uniquely identify the device',
         example: 'abc123def456ghi789jkl012mno345pq',
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsString()
-    fingerprint: string;
-
-    @ApiProperty({
+    }),
+    name: z.string().optional().meta({
         description: 'Device name',
         example: "John's iPhone 12",
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    name?: string;
-
-    @ApiProperty({
+    }),
+    platform: z.enum(EnumDevicePlatform).optional().meta({
         description: 'Device platform',
         example: EnumDevicePlatform.ios,
-        required: false,
-        enum: EnumDevicePlatform,
-    })
-    @IsOptional()
-    @IsEnum(EnumDevicePlatform)
-    platform?: EnumDevicePlatform;
-
-    @ApiProperty({
+    }),
+    notificationToken: z.string().optional().meta({
         description: 'Notification token for push notifications',
         example: 'fcm_token_1234567890abcdef',
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    notificationToken?: string;
-}
+    }),
+});
+
+export type DeviceRequestDto = z.infer<typeof DeviceRequestSchema>;

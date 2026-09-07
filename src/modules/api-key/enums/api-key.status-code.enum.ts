@@ -7,4 +7,5 @@ export enum EnumApiKeyStatusCodeError {
     expired = 50705,
     notFound = 50706,
     inactive = 50707,
+    startAtNotFuture = 50708,
 }

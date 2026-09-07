@@ -16,7 +16,10 @@ import {
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
 } from '@modules/project/constants/project.list.constant';
-import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import {
+    ProjectResponseDto,
+    ProjectResponseSchema,
+} from '@modules/project/dtos/response/project.response.dto';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -30,7 +33,7 @@ export function ProjectAdminListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
         DocResponsePaging<ProjectResponseDto>('project.admin.list', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
             availableOrderBy: ProjectDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -52,7 +55,7 @@ export function ProjectAdminGetDoc(): MethodDecorator {
             messagePath: 'project.error.notFound',
         }),
         DocResponse<ProjectResponseDto>('project.admin.get', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
         })
     );
 }

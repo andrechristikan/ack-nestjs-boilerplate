@@ -7,7 +7,6 @@ import { UserProfileHttpService } from '@modules/user/services/user.profile.http
 import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import { UserVerificationHttpService } from '@modules/user/services/user.verification.http.service';
 import { UserModule } from '@modules/user/user.module';
-import { UserUtilModule } from '@modules/user/user.util.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -33,6 +32,6 @@ import { Module } from '@nestjs/common';
         UserMobileNumberHttpService,
         UserModule,
     ],
-    imports: [UserModule, UserUtilModule],
+    imports: [UserModule],
 })
 export class UserHttpModule {}

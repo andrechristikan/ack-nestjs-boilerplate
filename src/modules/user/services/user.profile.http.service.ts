@@ -1,4 +1,4 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
@@ -7,25 +7,19 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { IUserProfileHttpService } from '@modules/user/interfaces/user.profile.http.service.interface';
+import { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserProfileHttpService implements IUserProfileHttpService {
-    constructor(
-        private readonly userProfileService: UserProfileService,
-        private readonly userUtil: UserUtil
-    ) {}
+    constructor(private readonly userProfileService: UserProfileService) {}
 
-    async getProfile(
-        userId: string
-    ): Promise<IResponseReturn<UserProfileResponseDto>> {
+    async getProfile(userId: string): Promise<IResponseReturn<IUserProfile>> {
         const user = await this.userProfileService.getProfile(userId);
 
-        return { data: this.userUtil.mapProfile(user) };
+        return { data: user };
     }
 
     async updateProfile(
@@ -42,7 +36,7 @@ export class UserProfileHttpService implements IUserProfileHttpService {
     async generatePhotoProfilePresign(
         userId: string,
         { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
+    ): Promise<IResponseReturn<IAwsS3Presign>> {
         const presign =
             await this.userProfileService.generatePhotoProfilePresign(userId, {
                 extension,

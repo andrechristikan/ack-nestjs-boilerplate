@@ -14,11 +14,15 @@ import {
     TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
+import {
+    EnumTermPolicyType,
+    Prisma,
+    TermPolicy,
+} from '@generated/prisma-client';
 
 @ApiTags('modules.public.termPolicy')
 @Controller({
@@ -31,7 +35,9 @@ export class TermPolicyPublicController {
     ) {}
 
     @TermPolicyPublicListDoc()
-    @ResponsePaging('termPolicy.list')
+    @ResponsePaging('termPolicy.list', {
+        schema: TermPolicyResponseSchema,
+    })
     @ApiKeyProtected()
     @Get('/list')
     async list(
@@ -44,7 +50,7 @@ export class TermPolicyPublicController {
             TermPolicyDefaultType
         )
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
+    ): Promise<IResponsePagingReturn<TermPolicy>> {
         return this.termPolicyHttpService.getListPublished(pagination, type);
     }
 }

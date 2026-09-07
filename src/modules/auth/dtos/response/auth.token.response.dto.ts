@@ -1,43 +1,31 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
 import { EnumRoleType } from '@generated/prisma-client';
-import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 
-export class AuthTokenResponseDto implements IAuthToken {
-    @ApiProperty({
-        example: 'Bearer',
-        required: true,
+/**
+ * Token pair issued to a client after a successful authentication.
+ */
+export const AuthTokenResponseSchema = z.object({
+    tokenType: z.string().meta({
         description: 'Token type prefix sent with the access token',
-    })
-    tokenType: string;
-
-    @ApiProperty({
-        example: EnumRoleType.user,
-        enum: EnumRoleType,
-        type: String,
-        required: true,
+        example: 'Bearer',
+    }),
+    roleType: z.enum(EnumRoleType).meta({
         description: 'Role type encoded in the issued tokens',
-    })
-    roleType: EnumRoleType;
-
-    @ApiProperty({
-        example: 3600,
+        example: EnumRoleType.user,
+    }),
+    expiresIn: z.number().meta({
         description: 'timestamp in minutes',
-        required: true,
-    })
-    expiresIn: number;
-
-    @ApiProperty({
-        required: true,
-        example: faker.string.alphanumeric(64),
+        example: 3600,
+    }),
+    accessToken: z.string().meta({
         description: 'JWT access token',
-    })
-    accessToken: string;
-
-    @ApiProperty({
-        required: true,
         example: faker.string.alphanumeric(64),
+    }),
+    refreshToken: z.string().meta({
         description: 'JWT refresh token',
-    })
-    refreshToken: string;
-}
+        example: faker.string.alphanumeric(64),
+    }),
+});
+
+export type AuthTokenResponseDto = z.infer<typeof AuthTokenResponseSchema>;

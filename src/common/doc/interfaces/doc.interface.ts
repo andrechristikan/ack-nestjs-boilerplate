@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
-import { ClassConstructor } from 'class-transformer';
+import { z } from 'zod';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -15,7 +15,7 @@ export interface IDocOptions {
 export interface IDocOfOptions<T = unknown> {
     statusCode: number;
     messagePath: string;
-    dto?: ClassConstructor<T>;
+    schema?: z.ZodType<T>;
 }
 
 export interface IDocDefaultOptions<T = unknown> extends IDocOfOptions<T> {
@@ -30,17 +30,18 @@ export interface IDocAuthOptions {
     apple?: boolean;
 }
 
-export interface IDocRequestOptions<T = unknown> {
+export interface IDocRequestOptions {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: EnumDocRequestBodyType;
-    dto?: ClassConstructor<T>;
 }
 
-export type IDocRequestFileOptions<T = unknown> = Omit<
-    IDocRequestOptions<T>,
+export interface IDocRequestFileOptions<T = unknown> extends Omit<
+    IDocRequestOptions,
     'bodyType'
->;
+> {
+    schema?: z.ZodType<T>;
+}
 
 export interface IDocGuardOptions {
     policy?: boolean;
@@ -51,13 +52,13 @@ export interface IDocGuardOptions {
 export interface IDocResponseOptions<T = unknown> {
     statusCode?: number;
     httpStatus?: HttpStatus;
-    dto?: ClassConstructor<T>;
+    schema?: z.ZodType<T>;
 }
 
 export interface IDocResponsePagingOptions<
     T = unknown,
 > extends IDocResponseOptions<T> {
-    dto: ClassConstructor<T>;
+    schema: z.ZodType<T>;
     availableSearch?: string[];
     availableOrderBy?: string[];
     type: EnumPaginationType;
@@ -65,7 +66,7 @@ export interface IDocResponsePagingOptions<
 
 export interface IDocResponseFileOptions extends Omit<
     IDocResponseOptions,
-    'dto' | 'statusCode'
+    'schema' | 'statusCode'
 > {
     extension?: EnumFileExtensionDocument;
 }

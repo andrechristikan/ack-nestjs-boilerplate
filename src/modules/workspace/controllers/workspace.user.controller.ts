@@ -23,6 +23,8 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
     Workspace,
+    WorkspaceInvite,
+    WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -68,22 +70,59 @@ import {
     WorkspaceUserUpdateIsPublicDoc,
     WorkspaceUserUpdateSlugDoc,
 } from '@modules/workspace/docs/workspace.user.doc';
-import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
-import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
-import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
-import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
-import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
-import { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/workspace.switch.request.dto';
-import { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
-import { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
-import { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
-import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
-import { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
+import {
+    WorkspaceCreateRequestDto,
+    WorkspaceCreateRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.create.request.dto';
+import {
+    WorkspaceInviteClaimRequestDto,
+    WorkspaceInviteClaimRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
+import {
+    WorkspaceInviteCreateRequestDto,
+    WorkspaceInviteCreateRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import {
+    WorkspaceInviteResendRequestDto,
+    WorkspaceInviteResendRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import {
+    WorkspaceJoinRequestCreateRequestDto,
+    WorkspaceJoinRequestCreateRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
+import {
+    WorkspaceJoinRequestRejectRequestDto,
+    WorkspaceJoinRequestRejectRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
+import {
+    WorkspaceMemberUpdateRoleRequestDto,
+    WorkspaceMemberUpdateRoleRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
+import {
+    WorkspaceSwitchRequestDto,
+    WorkspaceSwitchRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.switch.request.dto';
+import {
+    WorkspaceTransferOwnershipRequestDto,
+    WorkspaceTransferOwnershipRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
+import {
+    WorkspaceUpdateIsPublicRequestDto,
+    WorkspaceUpdateIsPublicRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
+import {
+    WorkspaceUpdateSlugRequestDto,
+    WorkspaceUpdateSlugRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
+import {
+    WorkspaceUpdateRequestDto,
+    WorkspaceUpdateRequestSchema,
+} from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
@@ -122,7 +161,9 @@ export class WorkspaceUserController {
     ) {}
 
     @WorkspaceUserListDoc()
-    @ResponsePaging('workspace.list')
+    @ResponsePaging('workspace.list', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -137,12 +178,14 @@ export class WorkspaceUserController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
+    ): Promise<IResponsePagingReturn<Workspace>> {
         return this.workspaceHttpService.getListForMember(userId, pagination);
     }
 
     @WorkspaceUserCreateDoc()
-    @Response('workspace.create')
+    @Response('workspace.create', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -152,13 +195,16 @@ export class WorkspaceUserController {
     @Post('/create')
     async create(
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+        @Body({ schema: WorkspaceCreateRequestSchema })
+        body: WorkspaceCreateRequestDto
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.createWorkspace(userId, body);
     }
 
     @WorkspaceUserGetDoc()
-    @Response('workspace.get')
+    @Response('workspace.get', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -170,12 +216,14 @@ export class WorkspaceUserController {
     @Get('/get')
     async get(
         @WorkspaceCurrent() workspace: Workspace
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.getCurrentWorkspace(workspace);
     }
 
     @WorkspaceUserUpdateDoc()
-    @Response('workspace.update')
+    @Response('workspace.update', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -188,8 +236,9 @@ export class WorkspaceUserController {
     async update(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceUpdateRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+        @Body({ schema: WorkspaceUpdateRequestSchema })
+        body: WorkspaceUpdateRequestDto
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspace(
             workspace.id,
             userId,
@@ -198,7 +247,9 @@ export class WorkspaceUserController {
     }
 
     @WorkspaceUserUpdateIsPublicDoc()
-    @Response('workspace.updateIsPublic')
+    @Response('workspace.updateIsPublic', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -211,8 +262,9 @@ export class WorkspaceUserController {
     async updateIsPublic(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceUpdateIsPublicRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+        @Body({ schema: WorkspaceUpdateIsPublicRequestSchema })
+        body: WorkspaceUpdateIsPublicRequestDto
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspaceIsPublic(
             workspace.id,
             userId,
@@ -221,7 +273,9 @@ export class WorkspaceUserController {
     }
 
     @WorkspaceUserUpdateSlugDoc()
-    @Response('workspace.updateSlug')
+    @Response('workspace.updateSlug', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -234,8 +288,9 @@ export class WorkspaceUserController {
     async updateSlug(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceUpdateSlugRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+        @Body({ schema: WorkspaceUpdateSlugRequestSchema })
+        body: WorkspaceUpdateSlugRequestDto
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.updateWorkspaceSlug(
             workspace.id,
             userId,
@@ -255,7 +310,8 @@ export class WorkspaceUserController {
     @Post('/switch')
     async switch(
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceSwitchRequestDto
+        @Body({ schema: WorkspaceSwitchRequestSchema })
+        body: WorkspaceSwitchRequestDto
     ): Promise<void> {
         await this.workspaceHttpService.switchWorkspace(userId, body);
     }
@@ -275,7 +331,8 @@ export class WorkspaceUserController {
     async ownershipTransfer(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember,
-        @Body() body: WorkspaceTransferOwnershipRequestDto
+        @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
+        body: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
         await this.workspaceMemberHttpService.transferOwnership(
             workspace.id,
@@ -300,7 +357,10 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() member: WorkspaceMember
     ): Promise<void> {
-        await this.workspaceMemberHttpService.leaveWorkspace(workspace.id, member);
+        await this.workspaceMemberHttpService.leaveWorkspace(
+            workspace.id,
+            member
+        );
     }
 
     @WorkspaceUserSoftDeleteDoc()
@@ -318,11 +378,16 @@ export class WorkspaceUserController {
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        await this.workspaceHttpService.softDeleteWorkspace(workspace.id, userId);
+        await this.workspaceHttpService.softDeleteWorkspace(
+            workspace.id,
+            userId
+        );
     }
 
     @WorkspaceMemberUserListDoc()
-    @ResponsePaging('workspace.member.list')
+    @ResponsePaging('workspace.member.list', {
+        schema: WorkspaceMemberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -336,16 +401,14 @@ export class WorkspaceUserController {
         @PaginationCursorQuery({
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceMemberWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         @WorkspaceCurrent() workspace: Workspace,
         @PaginationQueryFilterInEnum<EnumWorkspaceMemberRole>(
             'role',
             WorkspaceMemberDefaultRole
         )
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersList(
             workspace.id,
             pagination,
@@ -373,7 +436,8 @@ export class WorkspaceUserController {
             RequestIsValidObjectIdPipe
         )
         workspaceMemberId: string,
-        @Body() body: WorkspaceMemberUpdateRoleRequestDto
+        @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
+        body: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.workspaceMemberHttpService.updateMemberRole(
             workspace.id,
@@ -412,7 +476,9 @@ export class WorkspaceUserController {
     }
 
     @WorkspaceInviteUserListDoc()
-    @ResponsePaging('workspace.invite.list')
+    @ResponsePaging('workspace.invite.list', {
+        schema: WorkspaceInviteResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -427,16 +493,14 @@ export class WorkspaceUserController {
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
             availableOrderBy: WorkspaceInviteDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceInviteWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         @WorkspaceCurrent() workspace: Workspace,
         @PaginationQueryFilterInEnum<EnumWorkspaceInviteStatus>(
             'status',
             WorkspaceInviteDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInviteResponseDto>> {
+    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
         return this.workspaceInviteHttpService.getInvitesList(
             workspace.id,
             pagination,
@@ -445,7 +509,9 @@ export class WorkspaceUserController {
     }
 
     @WorkspaceInviteUserCreateDoc()
-    @Response('workspace.invite.create')
+    @Response('workspace.invite.create', {
+        schema: WorkspaceInviteResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -458,8 +524,9 @@ export class WorkspaceUserController {
     async inviteCreate(
         @WorkspaceCurrent() workspace: Workspace,
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+        @Body({ schema: WorkspaceInviteCreateRequestSchema })
+        body: WorkspaceInviteCreateRequestDto
+    ): Promise<IResponseReturn<WorkspaceInvite>> {
         return this.workspaceInviteHttpService.createInvite(
             workspace,
             userId,
@@ -468,7 +535,9 @@ export class WorkspaceUserController {
     }
 
     @WorkspaceInviteUserResendDoc()
-    @Response('workspace.invite.resend')
+    @Response('workspace.invite.resend', {
+        schema: WorkspaceInviteResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -488,8 +557,9 @@ export class WorkspaceUserController {
             RequestIsValidObjectIdPipe
         )
         workspaceInviteId: string,
-        @Body() body: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+        @Body({ schema: WorkspaceInviteResendRequestSchema })
+        body: WorkspaceInviteResendRequestDto
+    ): Promise<IResponseReturn<WorkspaceInvite>> {
         return this.workspaceInviteHttpService.resendInvite(
             workspace,
             userId,
@@ -539,13 +609,16 @@ export class WorkspaceUserController {
     async inviteClaim(
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('email') email: string,
-        @Body() body: WorkspaceInviteClaimRequestDto
+        @Body({ schema: WorkspaceInviteClaimRequestSchema })
+        body: WorkspaceInviteClaimRequestDto
     ): Promise<void> {
         await this.workspaceInviteHttpService.claimInvite(userId, email, body);
     }
 
     @WorkspaceJoinRequestUserCreateDoc()
-    @Response('workspace.joinRequest.create')
+    @Response('workspace.joinRequest.create', {
+        schema: WorkspaceJoinRequestResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected('workspace')
@@ -555,13 +628,19 @@ export class WorkspaceUserController {
     @Post('/join-request/create')
     async joinRequestCreate(
         @AuthJwtPayload('userId') userId: string,
-        @Body() body: WorkspaceJoinRequestCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceJoinRequestResponseDto>> {
-        return this.workspaceJoinRequestHttpService.createJoinRequest(userId, body);
+        @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
+        body: WorkspaceJoinRequestCreateRequestDto
+    ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
+        return this.workspaceJoinRequestHttpService.createJoinRequest(
+            userId,
+            body
+        );
     }
 
     @WorkspaceJoinRequestUserListDoc()
-    @ResponsePaging('workspace.joinRequest.list')
+    @ResponsePaging('workspace.joinRequest.list', {
+        schema: WorkspaceJoinRequestResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -575,16 +654,14 @@ export class WorkspaceUserController {
         @PaginationCursorQuery({
             availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.WorkspaceJoinRequestWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         @WorkspaceCurrent() workspace: Workspace,
         @PaginationQueryFilterInEnum<EnumWorkspaceJoinRequestStatus>(
             'status',
             WorkspaceJoinRequestDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequestResponseDto>> {
+    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
         return this.workspaceJoinRequestHttpService.getJoinRequestsList(
             workspace.id,
             pagination,
@@ -642,7 +719,8 @@ export class WorkspaceUserController {
             RequestIsValidObjectIdPipe
         )
         workspaceJoinRequestId: string,
-        @Body() body: WorkspaceJoinRequestRejectRequestDto
+        @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
+        body: WorkspaceJoinRequestRejectRequestDto
     ): Promise<void> {
         await this.workspaceJoinRequestHttpService.rejectJoinRequest(
             workspace,

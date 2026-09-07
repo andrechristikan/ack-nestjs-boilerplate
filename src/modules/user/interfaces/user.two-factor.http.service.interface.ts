@@ -1,14 +1,16 @@
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    IUser,
+    IUserTwoFactorSetup,
+} from '@modules/user/interfaces/user.interface';
 
 export interface IUserTwoFactorHttpService {
     loginVerifyTwoFactor({
@@ -17,7 +19,7 @@ export interface IUserTwoFactorHttpService {
         backupCode,
         method,
     }: UserLoginVerifyTwoFactorRequestDto): Promise<
-        IResponseReturn<AuthTokenResponseDto>
+        IResponseReturn<IAuthToken>
     >;
     loginSetupTwoFactor({
         code,
@@ -28,9 +30,7 @@ export interface IUserTwoFactorHttpService {
     getTwoFactorStatus(
         user: IUser
     ): IResponseReturn<UserTwoFactorStatusResponseDto>;
-    setupTwoFactor(
-        user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>>;
+    setupTwoFactor(user: IUser): Promise<IResponseReturn<IUserTwoFactorSetup>>;
     enableTwoFactor(
         user: IUser,
         { code }: UserTwoFactorEnableRequestDto

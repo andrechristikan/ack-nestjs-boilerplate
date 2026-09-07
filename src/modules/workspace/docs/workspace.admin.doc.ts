@@ -17,8 +17,14 @@ import {
     WorkspaceDefaultAvailableSearch,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
+import {
+    WorkspaceMemberResponseDto,
+    WorkspaceMemberResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import {
+    WorkspaceResponseDto,
+    WorkspaceResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -29,7 +35,7 @@ export function WorkspaceAdminListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
         DocResponsePaging<WorkspaceResponseDto>('workspace.admin.list', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
             type: EnumPaginationType.offset,
             availableSearch: WorkspaceDefaultAvailableSearch,
             availableOrderBy: WorkspaceDefaultAvailableOrderBy,
@@ -39,7 +45,10 @@ export function WorkspaceAdminListDoc(): MethodDecorator {
 
 export function WorkspaceAdminGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ summary: 'admin get a workspace by id (read-only, includes soft-deleted)' }),
+        Doc({
+            summary:
+                'admin get a workspace by id (read-only, includes soft-deleted)',
+        }),
         DocRequest({ params: WorkspaceDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
@@ -48,7 +57,7 @@ export function WorkspaceAdminGetDoc(): MethodDecorator {
             messagePath: 'workspace.error.notFound',
         }),
         DocResponse<WorkspaceResponseDto>('workspace.admin.get', {
-            dto: WorkspaceResponseDto,
+            schema: WorkspaceResponseSchema,
         })
     );
 }
@@ -66,7 +75,7 @@ export function WorkspaceAdminMemberListDoc(): MethodDecorator {
         DocResponsePaging<WorkspaceMemberResponseDto>(
             'workspace.admin.member.list',
             {
-                dto: WorkspaceMemberResponseDto,
+                schema: WorkspaceMemberResponseSchema,
                 availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
                 type: EnumPaginationType.offset,
             }

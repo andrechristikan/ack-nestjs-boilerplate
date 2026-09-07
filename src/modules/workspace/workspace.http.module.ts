@@ -3,7 +3,6 @@ import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspac
 import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
 import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
-import { WorkspaceUtilModule } from '@modules/workspace/workspace.util.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -21,6 +20,6 @@ import { Module } from '@nestjs/common';
         WorkspaceJoinRequestHttpService,
         WorkspaceModule,
     ],
-    imports: [WorkspaceModule, WorkspaceUtilModule],
+    imports: [WorkspaceModule],
 })
 export class WorkspaceHttpModule {}

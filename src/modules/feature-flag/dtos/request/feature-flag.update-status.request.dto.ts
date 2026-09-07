@@ -1,44 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsArray,
-    IsBoolean,
-    IsInt,
-    IsMongoId,
-    IsNotEmpty,
-    IsNumber,
-    IsOptional,
-    Max,
-    Min,
-} from 'class-validator';
+import { z } from 'zod';
+import { faker } from '@faker-js/faker';
 
-export class FeatureFlagUpdateStatusRequestDto {
-    @ApiProperty({
+export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
+    isEnable: z.boolean().meta({
         description: 'Status of the feature flag',
         example: true,
-    })
-    @IsBoolean()
-    @IsNotEmpty()
-    isEnable: boolean;
-
-    @ApiProperty({
+    }),
+    rolloutPercent: z.number().int().min(0).max(100).meta({
         description: 'Feature flag rollout percentage (0-100)',
         example: 50,
-    })
-    @IsNotEmpty()
-    @IsNumber()
-    @IsInt()
-    @Min(0)
-    @Max(100)
-    rolloutPercent: number;
+    }),
+    targetUserIds: z
+        .array(z.string().regex(/^[0-9a-fA-F]{24}$/))
+        .optional()
+        .meta({
+            description:
+                'Target user ids allow-list; omit to keep, [] to clear',
+            example: [faker.database.mongodbObjectId()],
+        }),
+});
 
-    @ApiProperty({
-        description: 'Target user ids allow-list; omit to keep, [] to clear',
-        example: [],
-        type: [String],
-        required: false,
-    })
-    @IsOptional()
-    @IsArray()
-    @IsMongoId({ each: true })
-    targetUserIds?: string[];
-}
+export type FeatureFlagUpdateStatusRequestDto = z.infer<
+    typeof FeatureFlagUpdateStatusRequestSchema
+>;

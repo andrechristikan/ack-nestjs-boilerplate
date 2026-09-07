@@ -1,96 +1,122 @@
-import { Injectable } from '@nestjs/common';
-import {
-    ValidationArguments,
-    ValidationOptions,
-    ValidatorConstraint,
-    ValidatorConstraintInterface,
-    getMetadataStorage,
-    registerDecorator,
-} from 'class-validator';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { IHelperEmailValidation } from '@common/helper/interfaces/helper.interface';
 
-/**
- * Validates email structure via `HelperStringService.checkEmail`; passes empty values on optional fields.
- */
-@ValidatorConstraint({ async: false })
-@Injectable()
-export class IsCustomEmailConstraint implements ValidatorConstraintInterface {
-    constructor(private readonly helperStringService: HelperStringService) {}
-
-    validate(
-        value: string,
-        validationArguments?: ValidationArguments
-    ): boolean {
-        if (
-            this.isEmptyValue(value) &&
-            this.isPropertyOptional(validationArguments)
-        ) {
-            return true;
-        }
-
-        if (this.isEmptyValue(value)) {
-            return false;
-        }
-
-        const validationResult = this.helperStringService.checkEmail(value);
-        return validationResult.validated;
+export function validateEmail(value: string): IHelperEmailValidation {
+    const regex = new RegExp(/\S+@\S+\.\S+/);
+    const valid = regex.test(value);
+    if (!valid) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.invalid',
+        };
     }
 
-    defaultMessage(validationArguments?: ValidationArguments): string {
-        if (!validationArguments?.value) {
-            return 'request.error.email.required';
-        }
-
-        const validationResult = this.helperStringService.checkEmail(
-            validationArguments.value
-        );
-        return validationResult.messagePath ?? 'request.error.email.invalid';
+    const atSymbolCount = (value.match(/@/g) ?? []).length;
+    if (atSymbolCount !== 1) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.multipleAtSymbols',
+        };
     }
 
-    private isEmptyValue(value: unknown): boolean {
-        return value === null || value === undefined || value === '';
+    const [localPart, domain] = value.split('@');
+
+    if (!domain || domain.length > 253) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.domainLength',
+        };
+    } else if (domain.startsWith('-') || domain.endsWith('-')) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.domainDash',
+        };
+    } else if (domain.startsWith('.') || domain.endsWith('.')) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.domainDot',
+        };
+    } else if (domain.includes('..')) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.domainConsecutiveDots',
+        };
     }
 
-    /**
-     * True when the property carries `@IsOptional`/conditional validation metadata.
-     */
-    private isPropertyOptional(
-        validationArguments?: ValidationArguments
-    ): boolean {
-        if (!validationArguments?.object || !validationArguments?.property) {
-            return false;
+    const domainLabels = domain.split('.');
+    if (domainLabels.length < 2) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.domainFormat',
+        };
+    }
+
+    for (const label of domainLabels) {
+        if (label.length === 0) {
+            return {
+                validated: false,
+                messagePath: 'request.error.email.domainEmptyLabel',
+            };
+        } else if (label.length > 63) {
+            return {
+                validated: false,
+                messagePath: 'request.error.email.domainLabelLength',
+            };
+        } else if (label.startsWith('-') || label.endsWith('-')) {
+            return {
+                validated: false,
+                messagePath: 'request.error.email.domainLabelDash',
+            };
         }
 
-        try {
-            const validationMetadatas =
-                getMetadataStorage().getTargetValidationMetadatas(
-                    validationArguments.object.constructor,
-                    '',
-                    false,
-                    false
-                );
-
-            return validationMetadatas.some(
-                metadata =>
-                    metadata.propertyName === validationArguments.property &&
-                    (metadata.type === 'conditionalValidation' ||
-                        metadata.type === 'isOptional')
-            );
-        } catch (_error) {
-            return false;
+        const validLabelChars = /^[a-zA-Z0-9-]+$/;
+        if (!validLabelChars.test(label)) {
+            return {
+                validated: false,
+                messagePath: 'request.error.email.domainInvalidChars',
+            };
         }
     }
-}
 
-export function IsCustomEmail(validationOptions?: ValidationOptions) {
-    return function (object: object, propertyName: string): void {
-        registerDecorator({
-            name: 'IsCustomEmail',
-            target: object.constructor,
-            propertyName: propertyName,
-            options: validationOptions,
-            constraints: [],
-            validator: IsCustomEmailConstraint,
-        });
+    const tld = domainLabels[domainLabels.length - 1];
+    const validTLD = /^[a-zA-Z]{2,}$/;
+    if (!validTLD.test(tld)) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.invalidTLD',
+        };
+    }
+
+    if (!localPart || localPart.length === 0) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.localPartNotEmpty',
+        };
+    } else if (localPart.length > 64) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.localPartMaxLength',
+        };
+    } else if (localPart.startsWith('.') || localPart.endsWith('.')) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.localPartDot',
+        };
+    } else if (localPart.includes('..')) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.consecutiveDots',
+        };
+    }
+
+    const allowedLocalPartChars = /^[a-zA-Z0-9-_.]+$/;
+    if (!allowedLocalPartChars.test(localPart)) {
+        return {
+            validated: false,
+            messagePath: 'request.error.email.invalidChars',
+        };
+    }
+
+    return {
+        validated: true,
     };
 }

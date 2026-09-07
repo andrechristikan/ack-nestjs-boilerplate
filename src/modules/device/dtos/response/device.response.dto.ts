@@ -1,52 +1,37 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
 
-export class DeviceResponseDto extends DatabaseResponseDto {
-    @Exclude()
-    @ApiHideProperty()
-    fingerprint: string;
-
-    @ApiProperty({
-        required: false,
+/**
+ * Base device shape: the stored device row without the fingerprint and the notification token.
+ */
+export const DeviceResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    name: z.string().nullable().meta({
         description: 'Device name',
         example: faker.commerce.productName(),
-    })
-    @Expose()
-    name: string | null;
-
-    @ApiProperty({
-        required: true,
+    }),
+    platform: z.enum(EnumDevicePlatform).meta({
         description: 'Device platform',
         example: EnumDevicePlatform.android,
-        enum: EnumDevicePlatform,
-    })
-    @Expose()
-    platform: EnumDevicePlatform;
-
-    @ApiProperty({
-        required: true,
+    }),
+    lastActiveAt: z.date().meta({
         description: 'Last active date',
-        example: faker.date.recent().toISOString(),
-    })
-    @Expose()
-    lastActiveAt: Date;
+        example: faker.date.recent(),
+    }),
+    notificationProvider: z
+        .enum(EnumDeviceNotificationProvider)
+        .nullable()
+        .meta({
+            description: 'Device notification provider',
+            example: EnumDeviceNotificationProvider.fcm,
+        }),
+});
 
-    @Exclude()
-    @ApiHideProperty()
-    notificationToken: string | null;
-
-    @ApiProperty({
-        required: false,
-        description: 'Device notification provider',
-        example: EnumDeviceNotificationProvider.fcm,
-        enum: EnumDeviceNotificationProvider,
-    })
-    @Expose()
-    notificationProvider: EnumDeviceNotificationProvider | null;
-}
+export type DeviceResponseDto = z.infer<typeof DeviceResponseSchema>;

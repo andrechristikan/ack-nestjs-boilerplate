@@ -1,15 +1,13 @@
+import { z } from 'zod';
 import { EnumWorkspaceJoinRejectReason } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty } from 'class-validator';
 
-export class WorkspaceJoinRequestRejectRequestDto {
-    @ApiProperty({
+export const WorkspaceJoinRequestRejectRequestSchema = z.strictObject({
+    rejectReasonCode: z.enum(EnumWorkspaceJoinRejectReason).meta({
         description: 'Reason the join request is being rejected',
         example: EnumWorkspaceJoinRejectReason.wrongWorkspace,
-        enum: EnumWorkspaceJoinRejectReason,
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsEnum(EnumWorkspaceJoinRejectReason)
-    rejectReasonCode: EnumWorkspaceJoinRejectReason;
-}
+    }),
+});
+
+export type WorkspaceJoinRequestRejectRequestDto = z.infer<
+    typeof WorkspaceJoinRequestRejectRequestSchema
+>;

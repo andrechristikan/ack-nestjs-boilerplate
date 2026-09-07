@@ -1,16 +1,14 @@
+import { z } from 'zod';
 import { EnumProjectMemberRole } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty } from 'class-validator';
 
-export class ProjectMemberUpdateRoleRequestDto {
-    @ApiProperty({
+export const ProjectMemberUpdateRoleRequestSchema = z.strictObject({
+    role: z.enum(EnumProjectMemberRole).meta({
         description:
             'New project member role; setting or changing admin requires the caller to be workspace owner or admin',
         example: EnumProjectMemberRole.member,
-        enum: EnumProjectMemberRole,
-        required: true,
-    })
-    @IsNotEmpty()
-    @IsEnum(EnumProjectMemberRole)
-    role: EnumProjectMemberRole;
-}
+    }),
+});
+
+export type ProjectMemberUpdateRoleRequestDto = z.infer<
+    typeof ProjectMemberUpdateRoleRequestSchema
+>;

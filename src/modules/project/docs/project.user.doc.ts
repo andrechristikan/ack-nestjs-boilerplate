@@ -17,13 +17,14 @@ import {
     ProjectDefaultAvailableSearch,
     ProjectMemberDefaultAvailableOrderBy,
 } from '@modules/project/constants/project.list.constant';
-import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
-import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
-import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project.member.response.dto';
-import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import {
+    ProjectMemberResponseDto,
+    ProjectMemberResponseSchema,
+} from '@modules/project/dtos/response/project.member.response.dto';
+import {
+    ProjectResponseDto,
+    ProjectResponseSchema,
+} from '@modules/project/dtos/response/project.response.dto';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
@@ -61,7 +62,7 @@ export function ProjectUserListDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocResponsePaging<ProjectResponseDto>('project.list', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
             availableOrderBy: ProjectCursorAvailableOrderBy,
             type: EnumPaginationType.cursor,
@@ -74,12 +75,11 @@ export function ProjectUserCreateDoc(): MethodDecorator {
         Doc({ summary: 'create a project in the current workspace' }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectCreateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         RoleForbiddenDoc,
         DocResponse<ProjectResponseDto>('project.create', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
             httpStatus: HttpStatus.CREATED,
         })
     );
@@ -93,7 +93,7 @@ export function ProjectUserGetDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         DocResponse<ProjectResponseDto>('project.get', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
         })
     );
 }
@@ -107,13 +107,12 @@ export function ProjectUserUpdateDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectUpdateRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         RoleForbiddenDoc,
         DocResponse<ProjectResponseDto>('project.update', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
         })
     );
 }
@@ -127,7 +126,6 @@ export function ProjectUserUpdateSlugDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectUpdateSlugRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -137,7 +135,7 @@ export function ProjectUserUpdateSlugDoc(): MethodDecorator {
             messagePath: 'project.error.slugAlreadyExists',
         }),
         DocResponse<ProjectResponseDto>('project.updateSlug', {
-            dto: ProjectResponseDto,
+            schema: ProjectResponseSchema,
         })
     );
 }
@@ -161,7 +159,7 @@ export function ProjectMemberUserListDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         DocResponsePaging<ProjectMemberResponseDto>('project.member.list', {
-            dto: ProjectMemberResponseDto,
+            schema: ProjectMemberResponseSchema,
             availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })
@@ -177,7 +175,6 @@ export function ProjectMemberUserAssignDoc(): MethodDecorator {
         DocRequest({
             params: ProjectDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectMemberAssignRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
@@ -192,7 +189,7 @@ export function ProjectMemberUserAssignDoc(): MethodDecorator {
             messagePath: 'project.error.memberAlreadyAssigned',
         }),
         DocResponse<ProjectMemberResponseDto>('project.member.assign', {
-            dto: ProjectMemberResponseDto,
+            schema: ProjectMemberResponseSchema,
             httpStatus: HttpStatus.CREATED,
         })
     );
@@ -207,7 +204,6 @@ export function ProjectMemberUserUpdateRoleDoc(): MethodDecorator {
         DocRequest({
             params: ProjectMemberDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: ProjectMemberUpdateRoleRequestDto,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,

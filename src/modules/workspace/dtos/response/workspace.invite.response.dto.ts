@@ -1,106 +1,65 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumProjectMemberRole,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-export class WorkspaceInviteResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base workspace-invite shape: the stored invite row, without the hashed token.
+ */
+export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    workspaceId: z.string().meta({
         description: 'Identifier of the workspace the invite belongs to',
-    })
-    @Expose()
-    workspaceId: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.internet.email(),
+        example: faker.database.mongodbObjectId(),
+    }),
+    email: z.string().meta({
         description: 'Email address the invite is sent to',
-    })
-    @Expose()
-    email: string;
-
-    @ApiProperty({
-        required: true,
-        example: EnumWorkspaceMemberRole.member,
-        enum: EnumWorkspaceMemberRole,
+        example: faker.internet.email(),
+    }),
+    workspaceRole: z.enum(EnumWorkspaceMemberRole).meta({
         description: 'Workspace role granted when the invite is accepted',
-    })
-    @Expose()
-    workspaceRole: EnumWorkspaceMemberRole;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: faker.database.mongodbObjectId(),
+        example: EnumWorkspaceMemberRole.member,
+    }),
+    projectId: z.string().nullable().meta({
         description: 'Identifier of the project the invite also grants, if any',
-    })
-    @Expose()
-    projectId: string | null;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: EnumProjectMemberRole.member,
-        enum: EnumProjectMemberRole,
+        example: faker.database.mongodbObjectId(),
+    }),
+    projectRole: z.enum(EnumProjectMemberRole).nullable().meta({
         description: 'Project role granted when the invite is accepted, if any',
-    })
-    @Expose()
-    projectRole: EnumProjectMemberRole | null;
-
-    @ApiProperty({
-        required: true,
-        example: 'WIN-abc123',
+        example: EnumProjectMemberRole.member,
+    }),
+    reference: z.string().meta({
         description: 'Human-readable reference of the invite',
-    })
-    @Expose()
-    reference: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.date.future(),
+        example: 'WIN-abc123',
+    }),
+    expiredAt: z.date().meta({
         description: 'When the invite expires',
-    })
-    @Expose()
-    expiredAt: Date;
-
-    @ApiProperty({
-        required: true,
-        example: EnumWorkspaceInviteStatus.pending,
-        enum: EnumWorkspaceInviteStatus,
+        example: faker.date.future(),
+    }),
+    status: z.enum(EnumWorkspaceInviteStatus).meta({
         description: 'Current status of the invite',
-    })
-    @Expose()
-    status: EnumWorkspaceInviteStatus;
-
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+        example: EnumWorkspaceInviteStatus.pending,
+    }),
+    invitedByUserId: z.string().meta({
         description: 'Identifier of the user who sent the invite',
-    })
-    @Expose()
-    invitedByUserId: string;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: faker.date.recent(),
-        description: 'When the invite was accepted',
-    })
-    @Expose()
-    acceptedAt: Date | null;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
         example: faker.database.mongodbObjectId(),
+    }),
+    acceptedAt: z.date().nullable().meta({
+        description: 'When the invite was accepted',
+        example: faker.date.recent(),
+    }),
+    acceptedByUserId: z.string().nullable().meta({
         description: 'Identifier of the user who accepted the invite',
-    })
-    @Expose()
-    acceptedByUserId: string | null;
-}
+        example: faker.database.mongodbObjectId(),
+    }),
+});
+
+export type WorkspaceInviteResponseDto = z.infer<
+    typeof WorkspaceInviteResponseSchema
+>;

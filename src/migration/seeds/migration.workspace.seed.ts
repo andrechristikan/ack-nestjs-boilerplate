@@ -7,7 +7,6 @@ import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Prisma } from '@generated/prisma-client';
-import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Logger } from '@nestjs/common';
@@ -114,12 +113,9 @@ export class MigrationWorkspaceSeed
                         return;
                     }
 
-                    const dto = new WorkspaceCreateRequestDto();
-                    dto.name = `${user.username}'s Workspace`;
-
                     await this.workspaceRepository.createWithOwner(
                         user.id,
-                        dto,
+                        { name: `${user.username}'s Workspace` },
                         this.drawSlugCandidates(),
                         { userAgent, ipAddress }
                     );

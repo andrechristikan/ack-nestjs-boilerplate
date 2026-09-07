@@ -1,37 +1,23 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { z } from 'zod';
 import { EnumTermPolicyType } from '@generated/prisma-client';
 
-export class UserTermPolicyDto {
-    @ApiProperty({
-        required: true,
+export const UserTermPolicySchema = z.object({
+    [EnumTermPolicyType.termsOfService]: z.boolean().meta({
         description: 'Terms of Service acceptance',
         example: true,
-    })
-    @Expose()
-    [EnumTermPolicyType.termsOfService]: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    [EnumTermPolicyType.privacy]: z.boolean().meta({
         description: 'Privacy Policy acceptance',
         example: true,
-    })
-    @Expose()
-    [EnumTermPolicyType.privacy]: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    [EnumTermPolicyType.cookies]: z.boolean().meta({
         description: 'Cookie Policy acceptance',
         example: true,
-    })
-    @Expose()
-    [EnumTermPolicyType.cookies]: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    [EnumTermPolicyType.marketing]: z.boolean().meta({
         description: 'Marketing Policy acceptance',
         example: false,
-    })
-    @Expose()
-    [EnumTermPolicyType.marketing]: boolean;
-}
+    }),
+});
+
+export type UserTermPolicyDto = z.infer<typeof UserTermPolicySchema>;

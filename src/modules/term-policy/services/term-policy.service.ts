@@ -12,7 +12,6 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
@@ -20,6 +19,7 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import {
     ITermPolicyContent,
+    ITermPolicyContentUpload,
     ITermPolicyCreate,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { ITermPolicyService } from '@modules/term-policy/interfaces/term-policy.service.interface';
@@ -85,8 +85,8 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const mappedContents: TermContentDto[] = contents.map(
-                ({ language, key, size }: ITermPolicyContent) => ({
+            const mappedContents: ITermPolicyContent[] = contents.map(
+                ({ language, key, size }: ITermPolicyContentUpload) => ({
                     language,
                     ...this.awsS3Service.mapPresign(
                         {
@@ -158,7 +158,8 @@ export class TermPolicyService implements ITermPolicyService {
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new TermPolicyStatusInvalidException();
         } else if (
-            (termPolicy.contents as unknown as TermContentDto[]).length === 0
+            (termPolicy.contents as unknown as ITermPolicyContent[]).length ===
+            0
         ) {
             throw new TermPolicyContentEmptyException();
         }
@@ -166,7 +167,8 @@ export class TermPolicyService implements ITermPolicyService {
         try {
             const contentPublicPath =
                 this.termPolicyUtil.getContentPublicPath(termPolicy);
-            const contents = termPolicy.contents as unknown as TermContentDto[];
+            const contents =
+                termPolicy.contents as unknown as ITermPolicyContent[];
 
             const newItems = await this.awsS3Service.moveItems(
                 contents,

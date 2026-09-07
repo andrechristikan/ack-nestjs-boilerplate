@@ -1,8 +1,6 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ResponseUtil } from '@common/response/utils/response.util';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
@@ -26,8 +24,7 @@ export class FeatureFlagUtil {
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly configService: ConfigService,
-        private readonly helperHashService: HelperHashService,
-        private readonly responseUtil: ResponseUtil
+        private readonly helperHashService: HelperHashService
     ) {
         this.keyPattern = this.configService.get<string>(
             'featureFlag.keyPattern'
@@ -92,17 +89,6 @@ export class FeatureFlagUtil {
         } catch (error: unknown) {
             this.logger.error(error, 'Feature flag cache delete failed');
         }
-    }
-
-    mapList(featureFlags: FeatureFlag[]): FeatureFlagResponseDto[] {
-        return this.responseUtil.serialize(
-            FeatureFlagResponseDto,
-            featureFlags
-        );
-    }
-
-    mapOne(featureFlag: FeatureFlag): FeatureFlagResponseDto {
-        return this.responseUtil.serialize(FeatureFlagResponseDto, featureFlag);
     }
 
     /** True only when both have identical keys and matching value types, with no empty/nullish value. */

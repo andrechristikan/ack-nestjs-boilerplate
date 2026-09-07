@@ -11,6 +11,7 @@ import {
     IAuthPasswordOptions,
     IAuthRefreshTokenGenerate,
     IAuthSocialPayload,
+    IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -30,7 +31,6 @@ import verifyAppleToken, {
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 
 /** Auth utility: JWT signing/verification, password hashing, and social token verification. See docs/authentication.md. */
 @Injectable()
@@ -512,7 +512,7 @@ export class AuthUtil {
             payloadRefreshToken
         );
 
-        const tokens: AuthTokenResponseDto = {
+        const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
             expiresIn: Math.floor(this.jwtAccessTokenExpirationTimeInMs / 1000),
@@ -582,7 +582,7 @@ export class AuthUtil {
             newRefreshTokenExpireInSeconds
         );
 
-        const tokens: AuthTokenResponseDto = {
+        const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
             expiresIn: Math.floor(this.jwtAccessTokenExpirationTimeInMs / 1000),

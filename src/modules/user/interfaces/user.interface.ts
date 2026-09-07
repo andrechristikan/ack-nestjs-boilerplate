@@ -15,7 +15,6 @@ import {
     EnumVerificationType,
     EnumWorkspaceMemberRole,
     Prisma,
-    Role,
     TwoFactor,
     User,
     UserMobileNumber,
@@ -27,10 +26,11 @@ import {
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
-    role: Role;
+    role: IRoleWithPolicies;
     twoFactor: TwoFactor | null;
 }
 
@@ -254,6 +254,14 @@ export interface IUserChangePassword extends IAuthTwoFactorVerify {
 export interface IUserResetPassword extends IAuthTwoFactorVerify {
     newPassword: string;
     token: string;
+}
+
+export interface IUserTwoFactorStatus {
+    isEnabled: boolean;
+    isPendingConfirmation: boolean;
+    backupCodesRemaining: number;
+    confirmedAt: Date | null;
+    lastUsedAt: Date | null;
 }
 
 export interface IUserTwoFactorSetup {

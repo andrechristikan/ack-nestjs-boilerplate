@@ -1,31 +1,26 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
-import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-export class WorkspaceMemberResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base workspace-member shape: the row binding a user to the workspace they belong to.
+ */
+export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    workspaceId: z.string().meta({
         description: 'Identifier of the workspace the member belongs to',
-    })
-    @Expose()
-    workspaceId: string;
-
-    @ApiProperty({
-        required: true,
         example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
         description: 'Identifier of the member user',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        type: UserRefResponseDto,
+        example: faker.database.mongodbObjectId(),
+    }),
+    user: UserRefResponseSchema.meta({
         description: 'Embedded user of this workspace member',
         example: {
             id: faker.database.mongodbObjectId(),
@@ -48,25 +43,17 @@ export class WorkspaceMemberResponseDto extends DatabaseResponseDto {
                 size: 1024,
             },
         },
-    })
-    @Expose()
-    @Type(() => UserRefResponseDto)
-    user: UserRefResponseDto;
-
-    @ApiProperty({
-        required: true,
-        example: EnumWorkspaceMemberRole.member,
-        enum: EnumWorkspaceMemberRole,
+    }),
+    role: z.enum(EnumWorkspaceMemberRole).meta({
         description: 'Workspace role of the member',
-    })
-    @Expose()
-    role: EnumWorkspaceMemberRole;
-
-    @ApiProperty({
-        required: true,
-        example: faker.date.past(),
+        example: EnumWorkspaceMemberRole.member,
+    }),
+    joinedAt: z.date().meta({
         description: 'When the user joined the workspace',
-    })
-    @Expose()
-    joinedAt: Date;
-}
+        example: faker.date.past(),
+    }),
+});
+
+export type WorkspaceMemberResponseDto = z.infer<
+    typeof WorkspaceMemberResponseSchema
+>;

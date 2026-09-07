@@ -1,20 +1,14 @@
-import { RoleDto } from '@modules/role/dtos/role.dto';
-import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { z } from 'zod';
+import { RoleSchema } from '@modules/role/dtos/role.dto';
 
-export class RoleListResponseDto extends OmitType(RoleDto, [
-    'abilities',
-] as const) {
-    @ApiHideProperty()
-    @Exclude()
-    description?: string;
-
-    @ApiProperty({
-        description: 'count of abilities',
-        required: true,
+export const RoleListResponseSchema = RoleSchema.omit({
+    description: true,
+    policies: true,
+}).extend({
+    policies: z.number().meta({
+        description: 'count of policies',
         example: 3,
-    })
-    @Expose()
-    @Transform(({ value }) => value.length)
-    abilities: number;
-}
+    }),
+});
+
+export type RoleListResponseDto = z.infer<typeof RoleListResponseSchema>;

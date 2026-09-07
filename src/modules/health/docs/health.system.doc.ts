@@ -4,10 +4,22 @@ import {
     DocAuth,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import {
+    HealthAwsResponseDto,
+    HealthAwsResponseSchema,
+} from '@modules/health/dtos/response/health.aws.response.dto';
+import {
+    HealthDatabaseResponseDto,
+    HealthDatabaseResponseSchema,
+} from '@modules/health/dtos/response/health.database.response.dto';
+import {
+    HealthInstanceResponseDto,
+    HealthInstanceResponseSchema,
+} from '@modules/health/dtos/response/health.instance.response.dto';
+import {
+    HealthThirdPartyResponseDto,
+    HealthThirdPartyResponseSchema,
+} from '@modules/health/dtos/response/health.third-party.response.dto';
 
 export function HealthSystemCheckAwsDoc(): MethodDecorator {
     return applyDecorators(
@@ -18,7 +30,7 @@ export function HealthSystemCheckAwsDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse<HealthAwsResponseDto>('health.checkAws', {
-            dto: HealthAwsResponseDto,
+            schema: HealthAwsResponseSchema,
         })
     );
 }
@@ -32,7 +44,7 @@ export function HealthSystemCheckDatabaseDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse<HealthDatabaseResponseDto>('health.checkDatabase', {
-            dto: HealthDatabaseResponseDto,
+            schema: HealthDatabaseResponseSchema,
         })
     );
 }
@@ -46,7 +58,7 @@ export function HealthSystemCheckThirdPartyDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse<HealthThirdPartyResponseDto>('health.checkThirdParty', {
-            dto: HealthThirdPartyResponseDto,
+            schema: HealthThirdPartyResponseSchema,
         })
     );
 }
@@ -60,7 +72,7 @@ export function HealthSystemCheckInstanceDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponse<HealthInstanceResponseDto>('health.checkInstance', {
-            dto: HealthInstanceResponseDto,
+            schema: HealthInstanceResponseSchema,
         })
     );
 }

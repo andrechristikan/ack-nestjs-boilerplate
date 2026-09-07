@@ -9,7 +9,8 @@ import {
     ActivityLogSharedListSelfByWorkspaceDoc,
     ActivityLogSharedListSelfDoc,
 } from '@modules/activity-log/docs/activity-log.shared.doc';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
@@ -38,7 +39,9 @@ export class ActivityLogSharedController {
     ) {}
 
     @ActivityLogSharedListSelfDoc()
-    @ResponsePaging('activityLog.listSelf')
+    @ResponsePaging('activityLog.listSelf', {
+        schema: ActivityLogResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -51,12 +54,17 @@ export class ActivityLogSharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogHttpService.getListCursorByUser(userId, pagination);
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.activityLogHttpService.getListCursorByUser(
+            userId,
+            pagination
+        );
     }
 
     @ActivityLogSharedListSelfByWorkspaceDoc()
-    @ResponsePaging('activityLog.listSelfByWorkspace')
+    @ResponsePaging('activityLog.listSelfByWorkspace', {
+        schema: ActivityLogResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -73,7 +81,7 @@ export class ActivityLogSharedController {
         pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string,
         @WorkspaceCurrent() workspace: Workspace
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.activityLogHttpService.getListCursorByWorkspace(
             workspace.id,
             userId,

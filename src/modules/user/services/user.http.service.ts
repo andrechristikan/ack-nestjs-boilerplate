@@ -15,47 +15,38 @@ import {
 } from '@modules/user/dtos/request/user.check.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
-    UserCheckEmailResponseDto,
-    UserCheckUsernameResponseDto,
-} from '@modules/user/dtos/response/user.check.response.dto';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import { IUserHttpService } from '@modules/user/interfaces/user.http.service.interface';
+import {
+    IUser,
+    IUserCheckEmail,
+    IUserCheckUsername,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserHttpService implements IUserHttpService {
-    constructor(
-        private readonly userService: UserService,
-        private readonly userUtil: UserUtil
-    ) {}
+    constructor(private readonly userService: UserService) {}
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        const { data, ...others } = await this.userService.getListOffsetByAdmin(
+    ): Promise<IResponsePagingReturn<IUser>> {
+        return this.userService.getListOffsetByAdmin(
             pagination,
             status,
             roleId,
             countryId
         );
-
-        return {
-            data: this.userUtil.mapList(data),
-            ...others,
-        };
     }
 
-    async getOne(id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
+    async getOne(id: string): Promise<IResponseReturn<IUserProfile>> {
         const user = await this.userService.getOne(id);
 
-        return { data: this.userUtil.mapProfile(user) };
+        return { data: user };
     }
 
     async createByAdmin(
@@ -83,16 +74,14 @@ export class UserHttpService implements IUserHttpService {
     async checkUsername({
         username,
     }: UserCheckUsernameRequestDto): Promise<
-        IResponseReturn<UserCheckUsernameResponseDto>
+        IResponseReturn<IUserCheckUsername>
     > {
         return { data: await this.userService.checkUsername(username) };
     }
 
     async checkEmail({
         email,
-    }: UserCheckEmailRequestDto): Promise<
-        IResponseReturn<UserCheckEmailResponseDto>
-    > {
+    }: UserCheckEmailRequestDto): Promise<IResponseReturn<IUserCheckEmail>> {
         return { data: await this.userService.checkEmail(email) };
     }
 

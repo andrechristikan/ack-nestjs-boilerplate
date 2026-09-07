@@ -1,54 +1,30 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-export class UserTwoFactorDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Nested two-factor state stored against a user; the secret material never leaves the server.
+ */
+export const UserTwoFactorSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    userId: z.string().meta({
         description: 'Identifier of the user who owns this two-factor record',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    secret?: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    iv?: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    backupCodes?: string[];
-
-    @ApiProperty({
-        required: true,
+        example: faker.database.mongodbObjectId(),
+    }),
+    enabled: z.boolean().meta({
         description: 'Whether the user has 2FA enabled',
         example: false,
-    })
-    @Expose()
-    enabled: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    requiredSetup: z.boolean().meta({
         description: 'Whether the user is required to set up 2FA',
         example: false,
-    })
-    @Expose()
-    requiredSetup: boolean;
-
-    @ApiProperty({
-        required: false,
-        example: faker.date.past(),
+    }),
+    confirmedAt: z.date().nullable().meta({
         description: 'When two-factor authentication was confirmed',
-    })
-    @Expose()
-    confirmedAt?: Date;
+        example: faker.date.past(),
+    }),
+});
 
-    @ApiHideProperty()
-    @Exclude()
-    lastUsedAt?: Date;
-}
+export type UserTwoFactorDto = z.infer<typeof UserTwoFactorSchema>;

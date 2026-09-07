@@ -23,18 +23,15 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionAdminListDoc,
     SessionAdminRevokeDoc,
 } from '@modules/session/docs/session.admin.doc';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -42,6 +39,8 @@ import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
     Prisma,
 } from '@generated/prisma-client';
@@ -55,9 +54,9 @@ export class SessionAdminController {
     constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionAdminListDoc()
-    @ResponsePaging('session.list')
+    @ResponsePaging('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -82,7 +81,7 @@ export class SessionAdminController {
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
+    ): Promise<IResponsePagingReturn<ISession>> {
         return this.sessionHttpService.getListOffsetByAdmin(
             userId,
             pagination,
@@ -93,7 +92,7 @@ export class SessionAdminController {
     @SessionAdminRevokeDoc()
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],

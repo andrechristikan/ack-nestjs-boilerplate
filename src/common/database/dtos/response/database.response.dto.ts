@@ -1,68 +1,38 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
 /**
- * Base response DTO with the audit fields (id, timestamps, soft-delete) on every document.
+ * Base response shape with the audit fields (id, timestamps, soft-delete) on every document.
  */
-export class DatabaseResponseDto {
-    @ApiProperty({
+export const DatabaseResponseSchema = z.object({
+    id: z.string().meta({
         description: 'Database document identifier',
         example: faker.database.mongodbObjectId(),
-        required: true,
-    })
-    @Expose()
-    id: string;
-
-    @ApiProperty({
+    }),
+    createdAt: z.date().meta({
         description: 'Date created at',
         example: faker.date.recent(),
-        required: true,
-    })
-    @Expose()
-    createdAt: Date;
-
-    @ApiProperty({
+    }),
+    createdBy: z.string().nullable().meta({
         description: 'created by',
-        required: false,
-        nullable: true,
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    createdBy: string | null;
-
-    @ApiProperty({
+    }),
+    updatedAt: z.date().meta({
         description: 'Date updated at',
         example: faker.date.recent(),
-        required: true,
-    })
-    @Expose()
-    updatedAt: Date;
-
-    @ApiProperty({
+    }),
+    updatedBy: z.string().nullable().meta({
         description: 'updated by',
-        required: false,
-        nullable: true,
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    updatedBy: string | null;
-
-    @ApiProperty({
+    }),
+    deletedAt: z.date().nullable().meta({
         description: 'Date delete at',
-        required: false,
-        nullable: true,
         example: faker.date.recent(),
-    })
-    @Expose()
-    deletedAt: Date | null;
-
-    @ApiProperty({
+    }),
+    deletedBy: z.string().nullable().meta({
         description: 'Delete by',
-        required: false,
-        nullable: true,
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    deletedBy: string | null;
-}
+    }),
+});
+
+export type DatabaseResponseDto = z.infer<typeof DatabaseResponseSchema>;

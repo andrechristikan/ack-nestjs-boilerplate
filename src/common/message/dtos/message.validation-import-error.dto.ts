@@ -1,29 +1,26 @@
-import { MessageValidationErrorDto } from '@common/message/dtos/message.validation-error.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
+import { MessageValidationErrorSchema } from '@common/message/dtos/message.validation-error.dto';
 
 /**
- * Failed constraints grouped by the imported row they came from.
+ * Failed validation issues grouped by the imported row they came from.
  */
-export class MessageValidationImportErrorDto {
-    @ApiProperty({
-        type: Number,
-        required: true,
+export const MessageValidationImportErrorSchema = z.object({
+    row: z.number().meta({
         description: 'Row of the imported file the errors belong to',
         example: 3,
-    })
-    row: number;
-
-    @ApiProperty({
-        type: [MessageValidationErrorDto],
-        required: true,
-        description: 'Failed constraints found on that row',
+    }),
+    errors: z.array(MessageValidationErrorSchema).meta({
+        description: 'Failed validation issues found on that row',
         example: [
             {
-                key: 'isNotEmpty',
+                key: 'tooSmall',
                 property: 'email',
-                message: 'email cannot be empty.',
+                message: 'email is shorter than the minimum length allowed.',
             },
         ],
-    })
-    errors: MessageValidationErrorDto[];
-}
+    }),
+});
+
+export type MessageValidationImportErrorDto = z.infer<
+    typeof MessageValidationImportErrorSchema
+>;

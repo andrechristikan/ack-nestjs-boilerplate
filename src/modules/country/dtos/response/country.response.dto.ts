@@ -1,63 +1,44 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-export class CountryResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Base country shape: the stored country row.
+ */
+export const CountryResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    name: z.string().min(1).max(100).meta({
         description: 'Country name',
         example: faker.location.country(),
-        maxLength: 100,
-        minLength: 1,
-    })
-    @Expose()
-    name: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Country code, Alpha 2 code version',
-        example: faker.location.countryCode('alpha-2'),
-        maxLength: 2,
-        minLength: 2,
-    })
-    @Expose()
-    alpha2Code: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Country code, Alpha 3 code version',
-        example: faker.location.countryCode('alpha-3'),
-        maxLength: 3,
-        minLength: 3,
-    })
-    @Expose()
-    alpha3Code: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    alpha2Code: z
+        .string()
+        .length(2)
+        .meta({
+            description: 'Country code, Alpha 2 code version',
+            example: faker.location.countryCode('alpha-2'),
+        }),
+    alpha3Code: z
+        .string()
+        .length(3)
+        .meta({
+            description: 'Country code, Alpha 3 code version',
+            example: faker.location.countryCode('alpha-3'),
+        }),
+    phoneCode: z.array(z.string()).meta({
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
-        maxLength: 4,
-        minLength: 4,
-        isArray: true,
-    })
-    @Expose()
-    phoneCode: string[];
-
-    @ApiProperty({
-        required: true,
-        example: faker.location.country(),
+    }),
+    continent: z.string().meta({
         description: 'Continent the country belongs to',
-    })
-    @Expose()
-    continent: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.location.timeZone(),
+        example: faker.location.country(),
+    }),
+    timezone: z.string().meta({
         description: 'Timezone of the country',
-    })
-    @Expose()
-    timezone: string;
-}
+        example: faker.location.timeZone(),
+    }),
+});
+
+export type CountryResponseDto = z.infer<typeof CountryResponseSchema>;

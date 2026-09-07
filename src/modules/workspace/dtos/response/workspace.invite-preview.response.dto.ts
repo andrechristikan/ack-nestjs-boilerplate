@@ -1,40 +1,30 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-/** Safe, minimal invite preview for an unauthenticated accept-page — never the token or an internal id. */
-export class WorkspaceInvitePreviewResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Safe, minimal invite preview for an unauthenticated accept-page — never the token or an
+ * internal id.
+ */
+export const WorkspaceInvitePreviewResponseSchema = z.object({
+    workspaceName: z.string().meta({
         description: 'Name of the workspace the invite is for',
         example: 'Acme',
-    })
-    @Expose()
-    workspaceName: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    inviterName: z.string().meta({
         description: 'Display name of the person who sent the invite',
         example: faker.person.fullName(),
-    })
-    @Expose()
-    inviterName: string;
-
-    @ApiProperty({
-        required: true,
-        example: EnumWorkspaceMemberRole.member,
-        enum: EnumWorkspaceMemberRole,
+    }),
+    workspaceRole: z.enum(EnumWorkspaceMemberRole).meta({
         description: 'Workspace role the invite grants',
-    })
-    @Expose()
-    workspaceRole: EnumWorkspaceMemberRole;
-
-    @ApiProperty({
-        required: true,
-        example: faker.date.future(),
+        example: EnumWorkspaceMemberRole.member,
+    }),
+    expiredAt: z.date().meta({
         description: 'When the invite expires',
-    })
-    @Expose()
-    expiredAt: Date;
-}
+        example: faker.date.future(),
+    }),
+});
+
+export type WorkspaceInvitePreviewResponseDto = z.infer<
+    typeof WorkspaceInvitePreviewResponseSchema
+>;

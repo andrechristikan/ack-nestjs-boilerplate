@@ -7,13 +7,12 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import { ApiKey, Prisma } from '@generated/prisma-client';
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 import { IApiKeyHttpService } from '@modules/api-key/interfaces/api-key.http.service.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -30,16 +29,15 @@ export class ApiKeyHttpService implements IApiKeyHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponsePagingReturn<ApiKey>> {
         const { data, ...others } = await this.apiKeyService.getListByAdmin(
             pagination,
             isActive,
             type
         );
-        const apiKeys: ApiKeyResponseDto[] = this.apiKeyUtil.mapList(data);
 
         return {
-            data: apiKeys,
+            data,
             ...others,
         };
     }
@@ -57,32 +55,32 @@ export class ApiKeyHttpService implements IApiKeyHttpService {
     async updateStatusByAdmin(
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKey>> {
         const updated = await this.apiKeyService.updateStatusByAdmin(
             id,
             isActive
         );
 
         return {
-            data: this.apiKeyUtil.mapOne(updated),
+            data: updated,
         };
     }
 
     async updateByAdmin(
         id: string,
         { name }: ApiKeyUpdateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKey>> {
         const updated = await this.apiKeyService.updateByAdmin(id, name);
 
         return {
-            data: this.apiKeyUtil.mapOne(updated),
+            data: updated,
         };
     }
 
     async updateDatesByAdmin(
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    ): Promise<IResponseReturn<ApiKey>> {
         const updated = await this.apiKeyService.updateDatesByAdmin(
             id,
             startAt,
@@ -90,7 +88,7 @@ export class ApiKeyHttpService implements IApiKeyHttpService {
         );
 
         return {
-            data: this.apiKeyUtil.mapOne(updated),
+            data: updated,
         };
     }
 
@@ -104,13 +102,11 @@ export class ApiKeyHttpService implements IApiKeyHttpService {
         };
     }
 
-    async deleteByAdmin(
-        id: string
-    ): Promise<IResponseReturn<ApiKeyResponseDto>> {
+    async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKey>> {
         const deleted = await this.apiKeyService.deleteByAdmin(id);
 
         return {
-            data: this.apiKeyUtil.mapOne(deleted),
+            data: deleted,
         };
     }
 }

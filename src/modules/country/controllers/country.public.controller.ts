@@ -9,7 +9,10 @@ import {
     CountryDefaultAvailableSearch,
 } from '@modules/country/constants/country.list.constant';
 import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
-import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
+import {
+    CountryResponseDto,
+    CountryResponseSchema,
+} from '@modules/country/dtos/response/country.response.dto';
 import { CountryHttpService } from '@modules/country/services/country.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -23,7 +26,7 @@ export class CountryPublicController {
     constructor(private readonly countryHttpService: CountryHttpService) {}
 
     @CountryPublicListDoc()
-    @ResponsePaging('country.list')
+    @ResponsePaging('country.list', { schema: CountryResponseSchema })
     @ApiKeyProtected()
     @Get('/list')
     async list(

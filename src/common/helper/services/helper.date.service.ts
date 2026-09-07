@@ -81,9 +81,9 @@ export class HelperDateService implements IHelperDateService {
     }
 
     create(date?: Date, options?: IHelperDateCreateOptions): Date {
-        let mDate = date
-            ? DateTime.fromJSDate(date).setZone(this.defTz)
-            : DateTime.now().setZone(this.defTz);
+        let mDate = (date ? DateTime.fromJSDate(date) : DateTime.now()).setZone(
+            this.defTz
+        );
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             mDate = mDate.startOf('day');

@@ -58,6 +58,7 @@
         "PTTL",
         "QUDRX",
         "randexp",
+        "stringbool",
         "requestid",
         "safestring",
         "sealedcode",

@@ -16,9 +16,10 @@ import {
     FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import {
+    FeatureFlagResponseDto,
+    FeatureFlagResponseSchema,
+} from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function FeatureFlagAdminListDoc(): MethodDecorator {
@@ -35,7 +36,7 @@ export function FeatureFlagAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
-            dto: FeatureFlagResponseDto,
+            schema: FeatureFlagResponseSchema,
             availableSearch: FeatureFlagDefaultAvailableSearch,
             availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -49,7 +50,6 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
         DocRequest({
             params: FeatureFlagDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: FeatureFlagUpdateStatusRequestDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -57,7 +57,7 @@ export function FeatureFlagAdminUpdateStatusDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<FeatureFlagResponseDto>('featureFlag.updateStatus', {
-            dto: FeatureFlagResponseDto,
+            schema: FeatureFlagResponseSchema,
         })
     );
 }
@@ -68,7 +68,6 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
         DocRequest({
             params: FeatureFlagDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: FeatureFlagUpdateMetadataRequestDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -76,7 +75,7 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<FeatureFlagResponseDto>('featureFlag.updateMetadata', {
-            dto: FeatureFlagResponseDto,
+            schema: FeatureFlagResponseSchema,
         })
     );
 }

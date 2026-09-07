@@ -11,14 +11,16 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+    EnumRoleType,
+    Prisma,
+    Project,
+} from '@generated/prisma-client';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
@@ -27,7 +29,7 @@ import {
     ProjectAdminGetDoc,
     ProjectAdminListDoc,
 } from '@modules/project/docs/project.admin.doc';
-import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -44,9 +46,11 @@ export class ProjectAdminController {
     constructor(private readonly projectHttpService: ProjectHttpService) {}
 
     @ProjectAdminListDoc()
-    @ResponsePaging('project.admin.list')
+    @ResponsePaging('project.admin.list', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
@@ -67,14 +71,16 @@ export class ProjectAdminController {
             new RequestIsValidObjectIdPipe({ optional: true })
         )
         workspaceId?: string
-    ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
+    ): Promise<IResponsePagingReturn<Project>> {
         return this.projectHttpService.getListForAdmin(pagination, workspaceId);
     }
 
     @ProjectAdminGetDoc()
-    @Response('project.admin.get')
+    @Response('project.admin.get', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.project,
         action: [EnumPolicyAction.read],
     })
@@ -87,7 +93,7 @@ export class ProjectAdminController {
     async get(
         @Param('projectId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         projectId: string
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+    ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getByIdForAdmin(projectId);
     }
 }

@@ -1,4 +1,7 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import {
+    AwsS3PresignResponseDto,
+    AwsS3PresignResponseSchema,
+} from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -8,28 +11,32 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { FileUploadSingleRequestDto } from '@common/file/dtos/file.single.dto';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { FileUploadSingleRequestSchema } from '@common/file/dtos/file.single.dto';
+import {
+    AuthTokenResponseDto,
+    AuthTokenResponseSchema,
+} from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
-    UserAddMobileNumberRequestDto,
-    UserUpdateMobileNumberRequestDto,
-} from '@modules/user/dtos/request/user.mobile-number.request.dto';
+    UserProfileResponseDto,
+    UserProfileResponseSchema,
+} from '@modules/user/dtos/response/user.profile.response.dto';
 import {
-    UserUpdateProfilePhotoRequestDto,
-    UserUpdateProfileRequestDto,
-} from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+    UserTwoFactorEnableResponseDto,
+    UserTwoFactorEnableResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import {
+    UserTwoFactorSetupResponseDto,
+    UserTwoFactorSetupResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import {
+    UserTwoFactorStatusResponseDto,
+    UserTwoFactorStatusResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import {
+    UserMobileNumberResponseDto,
+    UserMobileNumberResponseSchema,
+} from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserSharedRefreshDoc(): MethodDecorator {
@@ -45,7 +52,7 @@ export function UserSharedRefreshDoc(): MethodDecorator {
             termPolicy: true,
         }),
         DocResponse<AuthTokenResponseDto>('user.response', {
-            dto: AuthTokenResponseDto,
+            schema: AuthTokenResponseSchema,
         })
     );
 }
@@ -63,7 +70,7 @@ export function UserSharedProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse<UserProfileResponseDto>('user.profile', {
-            dto: UserProfileResponseDto,
+            schema: UserProfileResponseSchema,
         })
     );
 }
@@ -75,7 +82,6 @@ export function UserSharedUpdateProfileDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserUpdateProfileRequestDto,
         }),
         DocGuard({
             termPolicy: true,
@@ -102,12 +108,11 @@ export function UserSharedGeneratePhotoProfilePresignDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserGeneratePhotoProfileRequestDto,
         }),
         DocResponse<AwsS3PresignResponseDto>(
             'user.generatePhotoProfilePresign',
             {
-                dto: AwsS3PresignResponseDto,
+                schema: AwsS3PresignResponseSchema,
             }
         )
     );
@@ -127,7 +132,6 @@ export function UserSharedUpdatePhotoProfileDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserUpdateProfilePhotoRequestDto,
         }),
         DocResponse('user.updatePhotoProfile')
     );
@@ -146,7 +150,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequestFile({
-            dto: FileUploadSingleRequestDto,
+            schema: FileUploadSingleRequestSchema,
         }),
         DocResponse('user.uploadPhotoProfile')
     );
@@ -166,7 +170,6 @@ export function UserSharedChangePasswordDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserChangePasswordRequestDto,
         }),
         DocResponse('user.changePassword')
     );
@@ -179,7 +182,6 @@ export function UserSharedAddMobileNumberDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserAddMobileNumberRequestDto,
         }),
         DocGuard({
             termPolicy: true,
@@ -188,9 +190,9 @@ export function UserSharedAddMobileNumberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.addMobileNumber', {
+        DocResponse<UserMobileNumberResponseDto>('user.addMobileNumber', {
             httpStatus: HttpStatus.CREATED,
-            dto: UserMobileNumberResponseDto,
+            schema: UserMobileNumberResponseSchema,
         })
     );
 }
@@ -202,7 +204,6 @@ export function UserSharedUpdateMobileNumberDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserUpdateMobileNumberRequestDto,
             params: UserDocParamsMobileNumberId,
         }),
         DocGuard({
@@ -212,8 +213,8 @@ export function UserSharedUpdateMobileNumberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.updateMobileNumber', {
-            dto: UserMobileNumberResponseDto,
+        DocResponse<UserMobileNumberResponseDto>('user.updateMobileNumber', {
+            schema: UserMobileNumberResponseSchema,
         })
     );
 }
@@ -233,8 +234,8 @@ export function UserSharedDeleteMobileNumberDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.deleteMobileNumber', {
-            dto: UserMobileNumberResponseDto,
+        DocResponse<UserMobileNumberResponseDto>('user.deleteMobileNumber', {
+            schema: UserMobileNumberResponseSchema,
         })
     );
 }
@@ -246,7 +247,6 @@ export function UserSharedClaimUsernameDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserClaimUsernameRequestDto,
         }),
         DocGuard({
             termPolicy: true,
@@ -271,8 +271,8 @@ export function UserSharedTwoFactorSetupDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.twoFactor.setup', {
-            dto: UserTwoFactorSetupResponseDto,
+        DocResponse<UserTwoFactorSetupResponseDto>('user.twoFactor.setup', {
+            schema: UserTwoFactorSetupResponseSchema,
         })
     );
 }
@@ -289,8 +289,8 @@ export function UserSharedTwoFactorStatusDoc(): MethodDecorator {
             xApiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse('user.twoFactor.status', {
-            dto: UserTwoFactorStatusResponseDto,
+        DocResponse<UserTwoFactorStatusResponseDto>('user.twoFactor.status', {
+            schema: UserTwoFactorStatusResponseSchema,
         })
     );
 }
@@ -309,10 +309,9 @@ export function UserSharedTwoFactorEnableDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserTwoFactorEnableRequestDto,
         }),
-        DocResponse('user.twoFactor.enable', {
-            dto: UserTwoFactorEnableResponseDto,
+        DocResponse<UserTwoFactorEnableResponseDto>('user.twoFactor.enable', {
+            schema: UserTwoFactorEnableResponseSchema,
         })
     );
 }
@@ -331,7 +330,6 @@ export function UserSharedTwoFactorDisableDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserTwoFactorDisableRequestDto,
         }),
         DocResponse('user.twoFactor.disable')
     );
@@ -351,11 +349,13 @@ export function UserSharedTwoFactorRegenerateBackupDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserTwoFactorRegenerateBackupCodeRequestDto,
         }),
-        DocResponse('user.twoFactor.regenerateBackupCodes', {
-            dto: UserTwoFactorEnableResponseDto,
-        })
+        DocResponse<UserTwoFactorEnableResponseDto>(
+            'user.twoFactor.regenerateBackupCodes',
+            {
+                schema: UserTwoFactorEnableResponseSchema,
+            }
+        )
     );
 }
 

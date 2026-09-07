@@ -7,7 +7,10 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import {
+    SessionResponseDto,
+    SessionResponseSchema,
+} from '@modules/session/dtos/response/session.response.dto';
 import { SessionDocParamsId } from '@modules/session/constants/session.doc.constant';
 import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -23,7 +26,7 @@ export function SessionSharedListDoc(): MethodDecorator {
         }),
         DocGuard({ termPolicy: true }),
         DocResponsePaging<SessionResponseDto>('session.list', {
-            dto: SessionResponseDto,
+            schema: SessionResponseSchema,
             availableOrderBy: SessionCursorAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })

@@ -2,7 +2,6 @@ import { RequestIsMongoIdException } from '@common/request/exceptions/request.is
 import { IRequestIsValidObjectIdPipeOptions } from '@common/request/interfaces/request.interface';
 import { ArgumentMetadata, Injectable, Optional } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common';
-import { isMongoId } from 'class-validator';
 
 /**
  * Validates a param is a MongoDB ObjectId; throws 400 otherwise, or passes an absent value through in optional mode.
@@ -24,7 +23,11 @@ export class RequestIsValidObjectIdPipe implements PipeTransform {
             return undefined;
         }
 
-        if (!value || typeof value !== 'string' || !isMongoId(value)) {
+        if (
+            !value ||
+            typeof value !== 'string' ||
+            !/^[0-9a-fA-F]{24}$/.test(value)
+        ) {
             throw new RequestIsMongoIdException(metadata.data!);
         }
 

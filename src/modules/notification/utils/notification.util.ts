@@ -1,13 +1,8 @@
-import { ResponseUtil } from '@common/response/utils/response.util';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-    Notification,
-    NotificationUserSetting,
 } from '@generated/prisma-client';
 import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
-import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
@@ -34,14 +29,13 @@ import { Queue } from 'bullmq';
 import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
 
 /**
- * Enqueues jobs onto the main notification queue and maps notification entities to response DTOs.
+ * Enqueues jobs onto the main notification queue.
  */
 @Injectable()
 export class NotificationUtil {
     constructor(
         @InjectQueue(EnumQueue.notification)
-        private readonly notificationQueue: Queue,
-        private readonly responseUtil: ResponseUtil
+        private readonly notificationQueue: Queue
     ) {}
 
     /** Queues the admin-created welcome notification carrying the temporary password. */
@@ -496,21 +490,5 @@ export class NotificationUtil {
         if (!validType.channels.includes(channel)) {
             throw new NotificationInvalidChannelException();
         }
-    }
-
-    mapList(notifications: Notification[]): NotificationResponseDto[] {
-        return this.responseUtil.serialize(
-            NotificationResponseDto,
-            notifications
-        );
-    }
-
-    mapUserSettingList(
-        settings: NotificationUserSetting[]
-    ): NotificationUserSettingDto[] {
-        return this.responseUtil.serialize(
-            NotificationUserSettingDto,
-            settings
-        );
     }
 }

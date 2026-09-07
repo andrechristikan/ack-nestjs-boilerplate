@@ -1,4 +1,4 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -8,7 +8,7 @@ import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/req
 export interface ITermPolicyContentHttpService {
     generateContentPresignByAdmin(
         body: TermPolicyContentPresignRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
+    ): Promise<IResponseReturn<IAwsS3Presign>>;
     updateContentByAdmin(
         termPolicyId: string,
         body: TermPolicyContentRequestDto,
@@ -27,5 +27,5 @@ export interface ITermPolicyContentHttpService {
     getContentByAdmin(
         termPolicyId: string,
         language: EnumMessageLanguage
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
+    ): Promise<IResponseReturn<IAwsS3Presign>>;
 }

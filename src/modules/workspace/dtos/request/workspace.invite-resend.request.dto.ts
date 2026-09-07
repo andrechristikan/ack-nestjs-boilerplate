@@ -1,7 +1,9 @@
-import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
-import { PickType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { WorkspaceInviteCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 
-export class WorkspaceInviteResendRequestDto extends PickType(
-    WorkspaceInviteCreateRequestDto,
-    ['expiryDuration'] as const
-) {}
+export const WorkspaceInviteResendRequestSchema =
+    WorkspaceInviteCreateRequestSchema.pick({ expiryDuration: true });
+
+export type WorkspaceInviteResendRequestDto = z.infer<
+    typeof WorkspaceInviteResendRequestSchema
+>;

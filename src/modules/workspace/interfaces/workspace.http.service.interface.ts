@@ -13,36 +13,32 @@ import { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/works
 import { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
 import { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { WorkspacePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
 
 export interface IWorkspaceHttpService {
     getListForMember(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
-    ): Promise<IResponsePagingReturn<WorkspaceResponseDto>>;
+    ): Promise<IResponsePagingReturn<Workspace>>;
     createWorkspace(
         userId: string,
         body: WorkspaceCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>>;
-    getCurrentWorkspace(
-        workspace: Workspace
-    ): IResponseReturn<WorkspaceResponseDto>;
+    ): Promise<IResponseReturn<Workspace>>;
+    getCurrentWorkspace(workspace: Workspace): IResponseReturn<Workspace>;
     updateWorkspace(
         workspaceId: string,
         actorId: string,
         body: WorkspaceUpdateRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>>;
+    ): Promise<IResponseReturn<Workspace>>;
     updateWorkspaceIsPublic(
         workspaceId: string,
         actorId: string,
         body: WorkspaceUpdateIsPublicRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>>;
+    ): Promise<IResponseReturn<Workspace>>;
     updateWorkspaceSlug(
         workspaceId: string,
         actorId: string,
         body: WorkspaceUpdateSlugRequestDto
-    ): Promise<IResponseReturn<WorkspaceResponseDto>>;
+    ): Promise<IResponseReturn<Workspace>>;
     switchWorkspace(
         userId: string,
         body: WorkspaceSwitchRequestDto
@@ -51,11 +47,7 @@ export interface IWorkspaceHttpService {
     getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<WorkspaceResponseDto>>;
-    getByIdForAdmin(
-        workspaceId: string
-    ): Promise<IResponseReturn<WorkspaceResponseDto>>;
-    previewWorkspace(
-        slug: string
-    ): Promise<IResponseReturn<WorkspacePreviewResponseDto>>;
+    ): Promise<IResponsePagingReturn<Workspace>>;
+    getByIdForAdmin(workspaceId: string): Promise<IResponseReturn<Workspace>>;
+    previewWorkspace(slug: string): Promise<IResponseReturn<Workspace>>;
 }

@@ -13,10 +13,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
-    IUser,
-    IUserProfile,
-} from '@modules/user/interfaces/user.interface';
+import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -57,7 +54,7 @@ export class UserRepository {
                     deletedAt: null,
                 },
                 include: {
-                    role: true,
+                    role: { include: { policies: true } },
                     twoFactor: true,
                 },
             }
@@ -106,7 +103,7 @@ export class UserRepository {
         return this.databaseService.client.user.findUnique({
             where: { email, deletedAt: null },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -116,7 +113,7 @@ export class UserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 country: true,
                 twoFactor: true,
                 mobileNumbers: {
@@ -132,7 +129,7 @@ export class UserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null, status: EnumUserStatus.active },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 country: true,
                 twoFactor: true,
                 mobileNumbers: {
@@ -148,7 +145,7 @@ export class UserRepository {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });

@@ -17,14 +17,16 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+    EnumRoleType,
+    Prisma,
+    Workspace,
+} from '@generated/prisma-client';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -38,8 +40,9 @@ import {
     WorkspaceAdminListDoc,
     WorkspaceAdminMemberListDoc,
 } from '@modules/workspace/docs/workspace.admin.doc';
-import { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
+import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
@@ -57,9 +60,11 @@ export class WorkspaceAdminController {
     ) {}
 
     @WorkspaceAdminListDoc()
-    @ResponsePaging('workspace.admin.list')
+    @ResponsePaging('workspace.admin.list', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.workspace,
         action: [EnumPolicyAction.read],
     })
@@ -77,14 +82,16 @@ export class WorkspaceAdminController {
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         @PaginationQueryFilterEqualBoolean('isPublic')
         isPublic?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
+    ): Promise<IResponsePagingReturn<Workspace>> {
         return this.workspaceHttpService.getListForAdmin(pagination, isPublic);
     }
 
     @WorkspaceAdminGetDoc()
-    @Response('workspace.admin.get')
+    @Response('workspace.admin.get', {
+        schema: WorkspaceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.workspace,
         action: [EnumPolicyAction.read],
     })
@@ -97,14 +104,16 @@ export class WorkspaceAdminController {
     async get(
         @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         workspaceId: string
-    ): Promise<IResponseReturn<WorkspaceResponseDto>> {
+    ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.getByIdForAdmin(workspaceId);
     }
 
     @WorkspaceAdminMemberListDoc()
-    @ResponsePaging('workspace.admin.member.list')
+    @ResponsePaging('workspace.admin.member.list', {
+        schema: WorkspaceMemberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.workspace,
         action: [EnumPolicyAction.read],
     })
@@ -120,10 +129,8 @@ export class WorkspaceAdminController {
         @PaginationOffsetQuery({
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.WorkspaceMemberWhereInput
-        >
-    ): Promise<IResponsePagingReturn<WorkspaceMemberResponseDto>> {
+        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         return this.workspaceMemberHttpService.getMembersListForAdmin(
             workspaceId,
             pagination

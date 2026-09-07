@@ -226,7 +226,7 @@ export class UserOnboardingRepository {
                                 tx.user.create({
                                     data: this.buildUserCreateData(input),
                                     include: {
-                                        role: true,
+                                        role: { include: { policies: true } },
                                         twoFactor: true,
                                     },
                                 })

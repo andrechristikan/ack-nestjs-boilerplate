@@ -5,7 +5,10 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import {
+    TermPolicyResponseDto,
+    TermPolicyResponseSchema,
+} from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -22,7 +25,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
-            dto: TermPolicyResponseDto,
+            schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })

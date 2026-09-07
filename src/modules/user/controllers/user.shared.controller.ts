@@ -1,4 +1,5 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
@@ -17,8 +18,11 @@ import {
     AuthJwtRefreshProtected,
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
+import {
+    IAuthJwtAccessTokenPayload,
+    IAuthToken,
+} from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
@@ -44,26 +48,59 @@ import {
     UserSharedUpdateProfileDoc,
     UserSharedUploadPhotoProfileDoc,
 } from '@modules/user/docs/user.shared.doc';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import {
+    UserChangePasswordRequestDto,
+    UserChangePasswordRequestSchema,
+} from '@modules/user/dtos/request/user.change-password.request.dto';
+import {
+    UserClaimUsernameRequestDto,
+    UserClaimUsernameRequestSchema,
+} from '@modules/user/dtos/request/user.claim-username.request.dto';
+import {
+    UserGeneratePhotoProfileRequestDto,
+    UserGeneratePhotoProfileRequestSchema,
+} from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
 import {
     UserAddMobileNumberRequestDto,
+    UserAddMobileNumberRequestSchema,
     UserUpdateMobileNumberRequestDto,
+    UserUpdateMobileNumberRequestSchema,
 } from '@modules/user/dtos/request/user.mobile-number.request.dto';
 import {
     UserUpdateProfilePhotoRequestDto,
+    UserUpdateProfilePhotoRequestSchema,
     UserUpdateProfileRequestDto,
+    UserUpdateProfileRequestSchema,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    UserTwoFactorDisableRequestDto,
+    UserTwoFactorDisableRequestSchema,
+} from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import {
+    UserTwoFactorRegenerateBackupCodeRequestDto,
+    UserTwoFactorRegenerateBackupCodeRequestSchema,
+} from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import {
+    UserTwoFactorEnableRequestDto,
+    UserTwoFactorEnableRequestSchema,
+} from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
+import {
+    UserTwoFactorEnableResponseDto,
+    UserTwoFactorEnableResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import {
+    UserTwoFactorStatusResponseDto,
+    UserTwoFactorStatusResponseSchema,
+} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import {
+    IUser,
+    IUserMobileNumber,
+    IUserProfile,
+    IUserTwoFactorSetup,
+} from '@modules/user/interfaces/user.interface';
 import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
 import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
@@ -99,7 +136,7 @@ export class UserSharedController {
     ) {}
 
     @UserSharedRefreshDoc()
-    @Response('user.refresh')
+    @Response('user.refresh', { schema: AuthTokenResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
@@ -110,12 +147,12 @@ export class UserSharedController {
     async refresh(
         @UserCurrent() user: IUser,
         @AuthJwtToken() refreshToken: string
-    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
+    ): Promise<IResponseReturn<IAuthToken>> {
         return this.userAuthHttpService.refresh(user, refreshToken);
     }
 
     @UserSharedProfileDoc()
-    @Response('user.profile')
+    @Response('user.profile', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -125,7 +162,7 @@ export class UserSharedController {
     async profile(
         @AuthJwtPayload('userId')
         userId: string
-    ): Promise<IResponseReturn<UserProfileResponseDto>> {
+    ): Promise<IResponseReturn<IUserProfile>> {
         return this.userProfileHttpService.getProfile(userId);
     }
 
@@ -140,14 +177,16 @@ export class UserSharedController {
     async updateProfile(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body()
+        @Body({ schema: UserUpdateProfileRequestSchema })
         body: UserUpdateProfileRequestDto
     ): Promise<void> {
         await this.userProfileHttpService.updateProfile(userId, body);
     }
 
     @UserSharedGeneratePhotoProfilePresignDoc()
-    @Response('user.generatePhotoProfilePresign')
+    @Response('user.generatePhotoProfilePresign', {
+        schema: AwsS3PresignResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -158,8 +197,9 @@ export class UserSharedController {
     async generatePhotoProfilePresign(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body() body: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
+        @Body({ schema: UserGeneratePhotoProfileRequestSchema })
+        body: UserGeneratePhotoProfileRequestDto
+    ): Promise<IResponseReturn<IAwsS3Presign>> {
         return this.userProfileHttpService.generatePhotoProfilePresign(
             userId,
             body
@@ -177,7 +217,8 @@ export class UserSharedController {
     async updatePhotoProfile(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body() body: UserUpdateProfilePhotoRequestDto
+        @Body({ schema: UserUpdateProfilePhotoRequestSchema })
+        body: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
         await this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
@@ -220,13 +261,16 @@ export class UserSharedController {
     @Patch('/password/change')
     async changePassword(
         @UserCurrent() user: IUser,
-        @Body() body: UserChangePasswordRequestDto
+        @Body({ schema: UserChangePasswordRequestSchema })
+        body: UserChangePasswordRequestDto
     ): Promise<void> {
         await this.userPasswordHttpService.changePassword(user, body);
     }
 
     @UserSharedAddMobileNumberDoc()
-    @Response('user.addMobileNumber')
+    @Response('user.addMobileNumber', {
+        schema: UserMobileNumberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -235,14 +279,16 @@ export class UserSharedController {
     @Post('/mobile-number/add')
     async addMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Body()
+        @Body({ schema: UserAddMobileNumberRequestSchema })
         body: UserAddMobileNumberRequestDto
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.addMobileNumber(userId, body);
     }
 
     @UserSharedUpdateMobileNumberDoc()
-    @Response('user.updateMobileNumber')
+    @Response('user.updateMobileNumber', {
+        schema: UserMobileNumberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -257,9 +303,9 @@ export class UserSharedController {
             RequestIsValidObjectIdPipe
         )
         mobileNumberId: string,
-        @Body()
+        @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.updateMobileNumber(
             userId,
             mobileNumberId,
@@ -268,7 +314,9 @@ export class UserSharedController {
     }
 
     @UserSharedDeleteMobileNumberDoc()
-    @Response('user.deleteMobileNumber')
+    @Response('user.deleteMobileNumber', {
+        schema: UserMobileNumberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -283,7 +331,7 @@ export class UserSharedController {
             RequestIsValidObjectIdPipe
         )
         mobileNumberId: string
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.deleteMobileNumber(
             userId,
             mobileNumberId
@@ -301,14 +349,16 @@ export class UserSharedController {
     @Post('/username/claim')
     async claimUsername(
         @AuthJwtPayload('userId') userId: string,
-        @Body()
+        @Body({ schema: UserClaimUsernameRequestSchema })
         body: UserClaimUsernameRequestDto
     ): Promise<void> {
         await this.userProfileHttpService.claimUsername(userId, body);
     }
 
     @UserSharedTwoFactorStatusDoc()
-    @Response('user.twoFactor.status')
+    @Response('user.twoFactor.status', {
+        schema: UserTwoFactorStatusResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -322,7 +372,9 @@ export class UserSharedController {
     }
 
     @UserSharedTwoFactorSetupDoc()
-    @Response('user.twoFactor.setup')
+    @Response('user.twoFactor.setup', {
+        schema: UserTwoFactorSetupResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -332,12 +384,14 @@ export class UserSharedController {
     @Post('/2fa/setup')
     async setupTwoFactor(
         @UserCurrent() user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
+    ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
         return this.userTwoFactorHttpService.setupTwoFactor(user);
     }
 
     @UserSharedTwoFactorEnableDoc()
-    @Response('user.twoFactor.enable')
+    @Response('user.twoFactor.enable', {
+        schema: UserTwoFactorEnableResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -347,7 +401,8 @@ export class UserSharedController {
     @Post('/2fa/enable')
     async enableTwoFactor(
         @UserCurrent() user: IUser,
-        @Body() body: UserTwoFactorEnableRequestDto
+        @Body({ schema: UserTwoFactorEnableRequestSchema })
+        body: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userTwoFactorHttpService.enableTwoFactor(user, body);
     }
@@ -362,13 +417,16 @@ export class UserSharedController {
     @Delete('/2fa/disable')
     async disableTwoFactor(
         @UserCurrent() user: IUser,
-        @Body() body: UserTwoFactorDisableRequestDto
+        @Body({ schema: UserTwoFactorDisableRequestSchema })
+        body: UserTwoFactorDisableRequestDto
     ): Promise<void> {
         await this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
     @UserSharedTwoFactorRegenerateBackupDoc()
-    @Response('user.twoFactor.regenerateBackupCodes')
+    @Response('user.twoFactor.regenerateBackupCodes', {
+        schema: UserTwoFactorEnableResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -377,7 +435,8 @@ export class UserSharedController {
     @Post('/2fa/backup-code/regenerate')
     async regenerateTwoFactorBackupCodes(
         @UserCurrent() user: IUser,
-        @Body() body: UserTwoFactorRegenerateBackupCodeRequestDto
+        @Body({ schema: UserTwoFactorRegenerateBackupCodeRequestSchema })
+        body: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         return this.userTwoFactorHttpService.regenerateTwoFactorBackupCodes(
             user,

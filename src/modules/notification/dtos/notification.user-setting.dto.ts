@@ -1,45 +1,37 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client';
 
-export class NotificationUserSettingDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base notification-user-setting shape: one stored channel/type toggle of a user.
+ */
+export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    userId: z.string().meta({
         description: 'User ID',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        example: EnumNotificationType.securityAlert,
-        enum: EnumNotificationType,
+        example: faker.database.mongodbObjectId(),
+    }),
+    type: z.enum(EnumNotificationType).meta({
         description: 'Notification type',
-    })
-    @Expose()
-    type: EnumNotificationType;
-
-    @ApiProperty({
-        required: true,
-        example: EnumNotificationChannel.email,
-        enum: EnumNotificationChannel,
+        example: EnumNotificationType.securityAlert,
+    }),
+    channel: z.enum(EnumNotificationChannel).meta({
         description: 'Notification channel',
-    })
-    @Expose()
-    channel: EnumNotificationChannel;
-
-    @ApiProperty({
-        required: true,
-        default: true,
-        example: true,
+        example: EnumNotificationChannel.email,
+    }),
+    isActive: z.boolean().meta({
         description: 'Whether the notification is active',
-    })
-    @Expose()
-    isActive: boolean;
-}
+        example: true,
+        default: true,
+    }),
+});
+
+export type NotificationUserSettingDto = z.infer<
+    typeof NotificationUserSettingSchema
+>;

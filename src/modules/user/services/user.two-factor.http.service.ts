@@ -1,15 +1,17 @@
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
 import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
 import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { IUserTwoFactorHttpService } from '@modules/user/interfaces/user.two-factor.http.service.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    IUser,
+    IUserTwoFactorSetup,
+} from '@modules/user/interfaces/user.interface';
 import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
@@ -27,7 +29,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
         backupCode,
         method,
     }: UserLoginVerifyTwoFactorRequestDto): Promise<
-        IResponseReturn<AuthTokenResponseDto>
+        IResponseReturn<IAuthToken>
     > {
         const tokens = await this.userTwoFactorService.loginVerifyTwoFactor(
             challengeToken,
@@ -63,7 +65,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
 
     async setupTwoFactor(
         user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
+    ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
         const setup = await this.userTwoFactorService.setupTwoFactor(user);
 
         return { data: setup };

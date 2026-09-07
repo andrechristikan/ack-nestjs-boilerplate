@@ -1,6 +1,10 @@
-import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
-import { OmitType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { DeviceRequestSchema } from '@modules/device/dtos/request/device.request.dto';
 
-export class DeviceRefreshRequestDto extends OmitType(DeviceRequestDto, [
-    'fingerprint',
-] as const) {}
+export const DeviceRefreshRequestSchema = DeviceRequestSchema.omit({
+    fingerprint: true,
+});
+
+export type DeviceRefreshRequestDto = z.infer<
+    typeof DeviceRefreshRequestSchema
+>;

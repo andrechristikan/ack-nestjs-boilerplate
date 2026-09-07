@@ -212,7 +212,7 @@ export class AuthTwoFactorUtil {
 
     /** Validates the TOTP code format (digits only, configured length). */
     validateCode(code: string): boolean {
-        const rgx = new RegExp(`^\d{${this.digits}}$`);
+        const rgx = new RegExp(`^[0-9]{${this.digits}}$`);
         return rgx.test(code);
     }
 

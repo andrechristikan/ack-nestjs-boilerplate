@@ -11,7 +11,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import { Notification, Prisma } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -25,9 +25,15 @@ import {
     NotificationSharedUpdateUserSettingDoc,
 } from '@modules/notification/docs/notification.shared.doc';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import {
+    NotificationUserSettingRequestDto,
+    NotificationUserSettingRequestSchema,
+} from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
+import {
+    NotificationUserSettingResponseDto,
+    NotificationUserSettingResponseSchema,
+} from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -55,7 +61,9 @@ export class NotificationSharedController {
     ) {}
 
     @NotificationSharedListDoc()
-    @ResponsePaging('notification.list')
+    @ResponsePaging('notification.list', {
+        schema: NotificationResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -68,12 +76,14 @@ export class NotificationSharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
+    ): Promise<IResponsePagingReturn<Notification>> {
         return this.notificationHttpService.getListCursor(userId, pagination);
     }
 
     @NotificationSharedListUserSettingDoc()
-    @Response('notification.listUserSetting')
+    @Response('notification.listUserSetting', {
+        schema: NotificationUserSettingResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -132,7 +142,7 @@ export class NotificationSharedController {
     async updateUserSetting(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body()
+        @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.notificationHttpService.updateUserSetting(userId, body);

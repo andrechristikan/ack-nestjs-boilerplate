@@ -29,7 +29,7 @@ export class AppValidationFilter implements ExceptionFilter {
             customLanguage: metadata.language,
         });
         const errors: IMessageValidationError[] =
-            this.messageService.setValidationMessage(exception.errors, {
+            this.messageService.setValidationMessage(exception.issues, {
                 customLanguage: metadata.language,
             });
 

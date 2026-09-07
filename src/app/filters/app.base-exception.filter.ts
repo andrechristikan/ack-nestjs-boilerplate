@@ -2,7 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { MessageService } from '@common/message/services/message.service';
-import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import * as Sentry from '@sentry/nestjs';

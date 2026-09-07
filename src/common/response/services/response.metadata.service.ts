@@ -10,7 +10,7 @@ import {
     RequestLanguageStoreKey,
     RequestVersionStoreKey,
 } from '@common/request/constants/request.constant';
-import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { IResponseMetadataService } from '@common/response/interfaces/response.metadata.service.interface';
 
 /**

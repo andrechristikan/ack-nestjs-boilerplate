@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -46,7 +46,7 @@ export class NotificationUserSettingRepository {
 
     async updateUserSetting(
         userId: string,
-        { channel, type, isActive }: NotificationUserSettingRequestDto,
+        { channel, type, isActive }: INotificationUserSettingUpdate,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<void> {
         await this.databaseService.client.$transaction([

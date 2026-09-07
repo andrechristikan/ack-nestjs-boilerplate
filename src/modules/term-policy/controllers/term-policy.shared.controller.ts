@@ -29,13 +29,17 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import {
     TermPolicySharedAcceptDoc,
     TermPolicySharedListAcceptedDoc,
 } from '@modules/term-policy/docs/term-policy.shared.doc';
-import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
+import {
+    TermPolicyAcceptRequestDto,
+    TermPolicyAcceptRequestSchema,
+} from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
+import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Prisma } from '@generated/prisma-client';
 
@@ -50,7 +54,9 @@ export class TermPolicySharedController {
     ) {}
 
     @TermPolicySharedListAcceptedDoc()
-    @ResponsePaging('termPolicy.listAccepted')
+    @ResponsePaging('termPolicy.listAccepted', {
+        schema: TermPolicyUserAcceptanceResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -63,7 +69,7 @@ export class TermPolicySharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<TermPolicyUserAcceptanceResponseDto>> {
+    ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
         return this.termPolicyAcceptanceHttpService.getListUserAccepted(
             userId,
             pagination
@@ -81,7 +87,8 @@ export class TermPolicySharedController {
     @Post('/accept')
     async accept(
         @UserCurrent() user: IUser,
-        @Body() body: TermPolicyAcceptRequestDto
+        @Body({ schema: TermPolicyAcceptRequestSchema })
+        body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyAcceptanceHttpService.userAccept(user, body);
     }

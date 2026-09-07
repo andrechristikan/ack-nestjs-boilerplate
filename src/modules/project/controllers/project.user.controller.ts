@@ -41,13 +41,29 @@ import {
     ProjectDefaultAvailableSearch,
     ProjectMemberDefaultAvailableOrderBy,
 } from '@modules/project/constants/project.list.constant';
-import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
-import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
-import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
-import { ProjectMemberResponseDto } from '@modules/project/dtos/response/project.member.response.dto';
-import { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
+import {
+    ProjectCreateRequestDto,
+    ProjectCreateRequestSchema,
+} from '@modules/project/dtos/request/project.create.request.dto';
+import {
+    ProjectMemberAssignRequestDto,
+    ProjectMemberAssignRequestSchema,
+} from '@modules/project/dtos/request/project.member-assign.request.dto';
+import {
+    ProjectMemberUpdateRoleRequestDto,
+    ProjectMemberUpdateRoleRequestSchema,
+} from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import {
+    ProjectUpdateSlugRequestDto,
+    ProjectUpdateSlugRequestSchema,
+} from '@modules/project/dtos/request/project.update-slug.request.dto';
+import {
+    ProjectUpdateRequestDto,
+    ProjectUpdateRequestSchema,
+} from '@modules/project/dtos/request/project.update.request.dto';
+import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
+import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
+import { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     ProjectCurrent,
     ProjectMemberCurrent,
@@ -90,7 +106,9 @@ export class ProjectUserController {
     ) {}
 
     @ProjectUserListDoc()
-    @ResponsePaging('project.list')
+    @ResponsePaging('project.list', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -108,7 +126,7 @@ export class ProjectUserController {
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
-    ): Promise<IResponsePagingReturn<ProjectResponseDto>> {
+    ): Promise<IResponsePagingReturn<Project>> {
         return this.projectHttpService.getListForMember(
             workspace.id,
             workspaceMember,
@@ -117,7 +135,9 @@ export class ProjectUserController {
     }
 
     @ProjectUserCreateDoc()
-    @Response('project.create')
+    @Response('project.create', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -130,8 +150,9 @@ export class ProjectUserController {
     async create(
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Body() body: ProjectCreateRequestDto
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+        @Body({ schema: ProjectCreateRequestSchema })
+        body: ProjectCreateRequestDto
+    ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.createProject(
             workspace.id,
             workspaceMember.userId,
@@ -140,7 +161,9 @@ export class ProjectUserController {
     }
 
     @ProjectUserGetDoc()
-    @Response('project.get')
+    @Response('project.get', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(
         EnumProjectMemberRole.admin,
@@ -158,12 +181,14 @@ export class ProjectUserController {
     @Get('/get/:projectId')
     async get(
         @ProjectCurrent() project: Project
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+    ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.getProject(project);
     }
 
     @ProjectUserUpdateDoc()
-    @Response('project.update')
+    @Response('project.update', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
     @ProjectProtected()
@@ -178,8 +203,9 @@ export class ProjectUserController {
     async update(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Body() body: ProjectUpdateRequestDto
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+        @Body({ schema: ProjectUpdateRequestSchema })
+        body: ProjectUpdateRequestDto
+    ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.updateProject(
             project,
             workspaceMember.userId,
@@ -188,7 +214,9 @@ export class ProjectUserController {
     }
 
     @ProjectUserUpdateSlugDoc()
-    @Response('project.updateSlug')
+    @Response('project.updateSlug', {
+        schema: ProjectResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
     @ProjectProtected()
@@ -203,8 +231,9 @@ export class ProjectUserController {
     async updateSlug(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Body() body: ProjectUpdateSlugRequestDto
-    ): Promise<IResponseReturn<ProjectResponseDto>> {
+        @Body({ schema: ProjectUpdateSlugRequestSchema })
+        body: ProjectUpdateSlugRequestDto
+    ): Promise<IResponseReturn<Project>> {
         return this.projectHttpService.updateProjectSlug(
             project,
             workspaceMember.userId,
@@ -235,7 +264,9 @@ export class ProjectUserController {
     }
 
     @ProjectMemberUserListDoc()
-    @ResponsePaging('project.member.list')
+    @ResponsePaging('project.member.list', {
+        schema: ProjectMemberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(
         EnumProjectMemberRole.admin,
@@ -257,7 +288,7 @@ export class ProjectUserController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
         @ProjectCurrent() project: Project
-    ): Promise<IResponsePagingReturn<ProjectMemberResponseDto>> {
+    ): Promise<IResponsePagingReturn<IProjectMember>> {
         return this.projectMemberHttpService.getMembersList(
             project,
             pagination
@@ -265,7 +296,9 @@ export class ProjectUserController {
     }
 
     @ProjectMemberUserAssignDoc()
-    @Response('project.member.assign')
+    @Response('project.member.assign', {
+        schema: ProjectMemberResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
     @ProjectProtected()
@@ -280,8 +313,9 @@ export class ProjectUserController {
     async memberAssign(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Body() body: ProjectMemberAssignRequestDto
-    ): Promise<IResponseReturn<ProjectMemberResponseDto>> {
+        @Body({ schema: ProjectMemberAssignRequestSchema })
+        body: ProjectMemberAssignRequestDto
+    ): Promise<IResponseReturn<IProjectMember>> {
         return this.projectMemberHttpService.assignMember(
             project,
             workspaceMember.userId,
@@ -311,7 +345,8 @@ export class ProjectUserController {
             RequestIsValidObjectIdPipe
         )
         projectMemberId: string,
-        @Body() body: ProjectMemberUpdateRoleRequestDto
+        @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
+        body: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
         await this.projectMemberHttpService.updateMemberRole(
             project,

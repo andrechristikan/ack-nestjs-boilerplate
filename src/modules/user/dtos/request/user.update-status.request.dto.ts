@@ -1,17 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
 import { EnumUserStatus } from '@generated/prisma-client';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 
-export class UserUpdateStatusRequestDto {
-    @ApiProperty({
-        required: true,
-        enum: EnumUserStatus,
+export const UserUpdateStatusRequestSchema = z.strictObject({
+    status: z.enum(EnumUserStatus).meta({
+        description: 'Account status to set on the user',
         default: EnumUserStatus.active,
         example: EnumUserStatus.active,
-        description: 'Account status to set on the user',
-    })
-    @IsString()
-    @IsEnum(EnumUserStatus)
-    @IsNotEmpty()
-    status: EnumUserStatus;
-}
+    }),
+});
+
+export type UserUpdateStatusRequestDto = z.infer<
+    typeof UserUpdateStatusRequestSchema
+>;

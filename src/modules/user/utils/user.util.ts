@@ -6,15 +6,9 @@ import { HelperNumberService } from '@common/helper/services/helper.number.servi
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserDto } from '@modules/user/dtos/user.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import {
-    IUser,
     IUserForgotPasswordCreate,
-    IUserMobileNumber,
-    IUserProfile,
+    IUserTwoFactorStatus,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -26,12 +20,9 @@ import {
     TwoFactor,
     User,
 } from '@generated/prisma-client';
-import { ResponseUtil } from '@common/response/utils/response.util';
 import { Duration } from 'luxon';
 import ms from 'ms';
 import { Profanity } from '@2toad/profanity';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 
 /** Username/verification/forgot-password token generation, response mapping, and profanity checks. */
 @Injectable()
@@ -65,8 +56,7 @@ export class UserUtil {
         private readonly helperNumberService: HelperNumberService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
-        private readonly fileService: FileService,
-        private readonly responseUtil: ResponseUtil
+        private readonly fileService: FileService
     ) {
         this.usernamePattern = this.configService.get<RegExp>(
             'user.usernamePattern'
@@ -153,33 +143,8 @@ export class UserUtil {
         return this.profanity.exists(str);
     }
 
-    mapList(users: IUser[]): UserListResponseDto[] {
-        return this.responseUtil.serialize(UserListResponseDto, users);
-    }
-
-    mapExport(users: IUser[]): UserExportResponseDto[] {
-        return this.responseUtil.serialize(UserExportResponseDto, users);
-    }
-
-    mapOne(user: User): UserDto {
-        return this.responseUtil.serialize(UserDto, user);
-    }
-
-    mapProfile(user: IUserProfile): UserProfileResponseDto {
-        return this.responseUtil.serialize(UserProfileResponseDto, user);
-    }
-
-    mapMobileNumber(
-        mobileNumber: IUserMobileNumber
-    ): UserMobileNumberResponseDto {
-        return this.responseUtil.serialize(
-            UserMobileNumberResponseDto,
-            mobileNumber
-        );
-    }
-
     /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
-    mapTwoFactor(twoFactor: TwoFactor): UserTwoFactorStatusResponseDto {
+    mapTwoFactor(twoFactor: TwoFactor): IUserTwoFactorStatus {
         return {
             isEnabled: twoFactor.enabled,
             isPendingConfirmation:
@@ -188,8 +153,8 @@ export class UserUtil {
                 !!twoFactor.iv &&
                 !twoFactor.confirmedAt,
             backupCodesRemaining: twoFactor.backupCodes.length,
-            confirmedAt: twoFactor.confirmedAt ?? undefined,
-            lastUsedAt: twoFactor.lastUsedAt ?? undefined,
+            confirmedAt: twoFactor.confirmedAt,
+            lastUsedAt: twoFactor.lastUsedAt,
         };
     }
 

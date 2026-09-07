@@ -1,6 +1,12 @@
 {
+    "listByRole": "Role policies fetched successfully.",
+    "create": "New policy created successfully.",
+    "update": "Policy updated successfully.",
+    "delete": "Policy deleted successfully.",
     "error": {
         "forbidden": "Sorry, you don't have the necessary permissions to perform this action.",
-        "predefinedNotFound": "Predefined abilities not setted."
+        "predefinedNotFound": "Predefined policies not setted.",
+        "notFound": "Sorry, we couldn't find the requested policy.",
+        "exist": "This role already grants a policy for that subject."
     }
 }

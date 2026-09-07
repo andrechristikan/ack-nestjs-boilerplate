@@ -17,3 +17,7 @@ export interface IApiKeyWithSecret {
     apiKey: ApiKey;
     secret: string;
 }
+
+export interface IApiKeyCreated extends ApiKey {
+    secret: string;
+}

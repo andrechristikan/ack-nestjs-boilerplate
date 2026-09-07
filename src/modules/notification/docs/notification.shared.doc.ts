@@ -10,9 +10,14 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import {
+    NotificationResponseDto,
+    NotificationResponseSchema,
+} from '@modules/notification/dtos/response/notification.response.dto';
+import {
+    NotificationUserSettingResponseDto,
+    NotificationUserSettingResponseSchema,
+} from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function NotificationSharedListDoc(): MethodDecorator {
@@ -26,7 +31,7 @@ export function NotificationSharedListDoc(): MethodDecorator {
         }),
         DocGuard({ termPolicy: true }),
         DocResponsePaging<NotificationResponseDto>('notification.list', {
-            dto: NotificationResponseDto,
+            schema: NotificationResponseSchema,
             availableOrderBy: NotificationDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })
@@ -46,7 +51,7 @@ export function NotificationSharedListUserSettingDoc(): MethodDecorator {
         DocResponse<NotificationUserSettingResponseDto>(
             'notification.listUserSetting',
             {
-                dto: NotificationUserSettingResponseDto,
+                schema: NotificationUserSettingResponseSchema,
             }
         )
     );
@@ -90,7 +95,6 @@ export function NotificationSharedUpdateUserSettingDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: NotificationUserSettingRequestDto,
         }),
         DocGuard({
             termPolicy: true,

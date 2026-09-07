@@ -7,12 +7,18 @@ import {
 } from '@modules/user/docs/user.system.doc';
 import {
     UserCheckEmailRequestDto,
+    UserCheckEmailRequestSchema,
     UserCheckUsernameRequestDto,
+    UserCheckUsernameRequestSchema,
 } from '@modules/user/dtos/request/user.check.request.dto';
 import {
-    UserCheckEmailResponseDto,
-    UserCheckUsernameResponseDto,
+    UserCheckEmailResponseSchema,
+    UserCheckUsernameResponseSchema,
 } from '@modules/user/dtos/response/user.check.response.dto';
+import {
+    IUserCheckEmail,
+    IUserCheckUsername,
+} from '@modules/user/interfaces/user.interface';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -26,24 +32,28 @@ export class UserSystemController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
     @UserSystemCheckUsernameDoc()
-    @Response('user.checkUsername')
+    @Response('user.checkUsername', {
+        schema: UserCheckUsernameResponseSchema,
+    })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/username/check')
     async checkUsername(
-        @Body() body: UserCheckUsernameRequestDto
-    ): Promise<IResponseReturn<UserCheckUsernameResponseDto>> {
+        @Body({ schema: UserCheckUsernameRequestSchema })
+        body: UserCheckUsernameRequestDto
+    ): Promise<IResponseReturn<IUserCheckUsername>> {
         return this.userHttpService.checkUsername(body);
     }
 
     @UserSystemCheckEmailDoc()
-    @Response('user.checkEmail')
+    @Response('user.checkEmail', { schema: UserCheckEmailResponseSchema })
     @ApiKeySystemProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/email/check')
     async checkEmail(
-        @Body() body: UserCheckEmailRequestDto
-    ): Promise<IResponseReturn<UserCheckEmailResponseDto>> {
+        @Body({ schema: UserCheckEmailRequestSchema })
+        body: UserCheckEmailRequestDto
+    ): Promise<IResponseReturn<IUserCheckEmail>> {
         return this.userHttpService.checkEmail(body);
     }
 }

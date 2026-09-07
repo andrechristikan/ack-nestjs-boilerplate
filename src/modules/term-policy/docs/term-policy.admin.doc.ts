@@ -1,4 +1,7 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import {
+    AwsS3PresignResponseDto,
+    AwsS3PresignResponseSchema,
+} from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -15,11 +18,10 @@ import {
     TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
-import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import {
+    TermPolicyResponseDto,
+    TermPolicyResponseSchema,
+} from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function TermPolicyAdminListDoc(): MethodDecorator {
@@ -40,7 +42,7 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
             termPolicy: true,
         }),
         DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
-            dto: TermPolicyResponseDto,
+            schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
         })
@@ -63,10 +65,9 @@ export function TermPolicyAdminCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyCreateRequestDto,
         }),
         DocResponse<TermPolicyResponseDto>('termPolicy.create', {
-            dto: TermPolicyResponseDto,
+            schema: TermPolicyResponseSchema,
             httpStatus: HttpStatus.CREATED,
         })
     );
@@ -90,7 +91,7 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
             params: TermPolicyDocParamsId,
         }),
         DocResponse<TermPolicyResponseDto>('termPolicy.create', {
-            dto: TermPolicyResponseDto,
+            schema: TermPolicyResponseSchema,
         })
     );
 }
@@ -111,12 +112,11 @@ export function TermPolicyAdminGenerateContentPresignDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyContentPresignRequestDto,
         }),
         DocResponse<AwsS3PresignResponseDto>(
             'termPolicy.generateContentPresign',
             {
-                dto: AwsS3PresignResponseDto,
+                schema: AwsS3PresignResponseSchema,
             }
         )
     );
@@ -138,7 +138,6 @@ export function TermPolicyAdminUpdateContentDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.updateContent')
@@ -161,7 +160,6 @@ export function TermPolicyAdminAddContentDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.addContent')
@@ -184,7 +182,6 @@ export function TermPolicyAdminRemoveContentDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyRemoveContentRequestDto,
             params: TermPolicyDocParamsId,
         }),
         DocResponse('termPolicy.removeContent')
@@ -210,7 +207,7 @@ export function TermPolicyAdminGetContentDoc(): MethodDecorator {
             params: TermPolicyDocParamsGetContent,
         }),
         DocResponse('termPolicy.getContent', {
-            dto: AwsS3PresignResponseDto,
+            schema: AwsS3PresignResponseSchema,
         })
     );
 }

@@ -1,31 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
 
 /**
- * One failed constraint on one request field.
+ * One failed validation issue on one request field.
  */
-export class MessageValidationErrorDto {
-    @ApiProperty({
-        type: String,
-        required: true,
-        description: 'Name of the class-validator constraint that failed',
-        example: 'isNotEmpty',
-    })
-    key: string;
-
-    @ApiProperty({
-        type: String,
-        required: true,
+export const MessageValidationErrorSchema = z.object({
+    key: z.string().meta({
+        description: 'Zod issue code of the failure',
+        example: 'tooSmall',
+    }),
+    property: z.string().meta({
         description:
-            'Dot-separated path of the request field that failed the constraint',
+            'Dot-separated path of the request field that failed validation',
         example: 'email',
-    })
-    property: string;
-
-    @ApiProperty({
-        type: String,
-        required: true,
+    }),
+    message: z.string().meta({
         description: 'Localized explanation of the failure',
-        example: 'email cannot be empty.',
-    })
-    message: string;
-}
+        example: 'email is shorter than the minimum length allowed.',
+    }),
+});
+
+export type MessageValidationErrorDto = z.infer<
+    typeof MessageValidationErrorSchema
+>;

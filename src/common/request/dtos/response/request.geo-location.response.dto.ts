@@ -1,41 +1,30 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-/** Response DTO representing resolved geolocation data derived from the client's IP address. */
-export class RequestGeoLocationResponseDto {
-    @ApiProperty({
+/** Response shape representing resolved geolocation data derived from the client's IP address. */
+export const RequestGeoLocationResponseSchema = z.object({
+    latitude: z.number().meta({
         description: 'Latitude of the geo-location',
         example: faker.location.latitude(),
-    })
-    @Expose()
-    latitude: number;
-
-    @ApiProperty({
+    }),
+    longitude: z.number().meta({
         description: 'Longitude of the geo-location',
         example: faker.location.longitude(),
-    })
-    @Expose()
-    longitude: number;
-
-    @ApiProperty({
+    }),
+    country: z.string().meta({
         description: 'Country code of the geo-location',
         example: faker.location.country(),
-    })
-    @Expose()
-    country: string;
-
-    @ApiProperty({
+    }),
+    region: z.string().meta({
         description: 'Region code of the geo-location',
         example: faker.location.state(),
-    })
-    @Expose()
-    region: string;
-
-    @ApiProperty({
+    }),
+    city: z.string().meta({
         description: 'City name of the geo-location',
         example: faker.location.city(),
-    })
-    @Expose()
-    city: string;
-}
+    }),
+});
+
+export type RequestGeoLocationResponseDto = z.infer<
+    typeof RequestGeoLocationResponseSchema
+>;

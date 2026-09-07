@@ -9,8 +9,14 @@ import {
     WorkspaceDocParamsSlug,
     WorkspaceInviteTokenDocParamsId,
 } from '@modules/workspace/constants/workspace.doc.constant';
-import { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
-import { WorkspacePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
+import {
+    WorkspaceInvitePreviewResponseDto,
+    WorkspaceInvitePreviewResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import {
+    WorkspacePreviewResponseDto,
+    WorkspacePreviewResponseSchema,
+} from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -29,7 +35,7 @@ export function WorkspacePublicInvitePreviewDoc(): MethodDecorator {
         DocResponse<WorkspaceInvitePreviewResponseDto>(
             'workspace.invite.preview',
             {
-                dto: WorkspaceInvitePreviewResponseDto,
+                schema: WorkspaceInvitePreviewResponseSchema,
             }
         )
     );
@@ -50,7 +56,7 @@ export function WorkspacePublicPreviewDoc(): MethodDecorator {
             messagePath: 'workspace.error.notFound',
         }),
         DocResponse<WorkspacePreviewResponseDto>('workspace.preview', {
-            dto: WorkspacePreviewResponseDto,
+            schema: WorkspacePreviewResponseSchema,
         })
     );
 }

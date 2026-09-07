@@ -1,26 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { z } from 'zod';
 
-export class WorkspaceUpdateRequestDto {
-    @ApiProperty({
+export const WorkspaceUpdateRequestSchema = z.strictObject({
+    name: z.string().max(150).optional().meta({
         description: 'Workspace name',
         example: 'Acme',
-        required: false,
-        maxLength: 150,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(150)
-    name?: string;
-
-    @ApiProperty({
+    }),
+    description: z.string().max(500).optional().meta({
         description: 'Workspace description',
         example: 'Our team workspace',
-        required: false,
-        maxLength: 500,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(500)
-    description?: string;
-}
+    }),
+});
+
+export type WorkspaceUpdateRequestDto = z.infer<
+    typeof WorkspaceUpdateRequestSchema
+>;

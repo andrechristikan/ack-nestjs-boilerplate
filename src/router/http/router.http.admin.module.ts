@@ -8,6 +8,8 @@ import { FeatureFlagAdminController } from '@modules/feature-flag/controllers/fe
 import { FeatureFlagHttpModule } from '@modules/feature-flag/feature-flag.http.module';
 import { PasswordHistoryAdminController } from '@modules/password-history/controllers/password-history.admin.controller';
 import { PasswordHistoryHttpModule } from '@modules/password-history/password-history.http.module';
+import { PolicyAdminController } from '@modules/policy/controllers/policy.admin.controller';
+import { PolicyHttpModule } from '@modules/policy/policy.http.module';
 import { ProjectAdminController } from '@modules/project/controllers/project.admin.controller';
 import { ProjectHttpModule } from '@modules/project/project.http.module';
 import { RoleAdminController } from '@modules/role/controllers/role.admin.controller';
@@ -23,7 +25,7 @@ import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
 import { Module } from '@nestjs/common';
 
 /**
- * Mounts administrative controllers: API key, role, user, password history,
+ * Mounts administrative controllers: API key, role, policy, user, password history,
  * activity log, session, term policy, feature flag, device, workspace, and
  * project (read-only).
  */
@@ -40,6 +42,7 @@ import { Module } from '@nestjs/common';
         DeviceAdminController,
         WorkspaceAdminController,
         ProjectAdminController,
+        PolicyAdminController,
     ],
     providers: [],
     exports: [],
@@ -55,6 +58,7 @@ import { Module } from '@nestjs/common';
         TermPolicyHttpModule,
         WorkspaceHttpModule,
         ProjectHttpModule,
+        PolicyHttpModule,
     ],
 })
 export class RouterHttpAdminModule {}

@@ -1,16 +1,17 @@
 import { ActivityLogRepositoryModule } from '@modules/activity-log/activity-log.repository.module';
-import { ActivityLogUtilModule } from '@modules/activity-log/activity-log.util.module';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { Global, Module } from '@nestjs/common';
 
 /**
- * Global so the activity log domain service is injectable wherever `@ActivityLog` is used.
+ * Global so the activity log domain service and util are injectable wherever `@ActivityLog`
+ * is used, including from another module's repository.
  */
 @Global()
 @Module({
     controllers: [],
-    providers: [ActivityLogService],
-    exports: [ActivityLogService],
-    imports: [ActivityLogRepositoryModule, ActivityLogUtilModule],
+    providers: [ActivityLogService, ActivityLogUtil],
+    exports: [ActivityLogService, ActivityLogUtil],
+    imports: [ActivityLogRepositoryModule],
 })
 export class ActivityLogModule {}

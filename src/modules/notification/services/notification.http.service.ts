@@ -3,35 +3,26 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
+import { Notification, Prisma } from '@generated/prisma-client';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { INotificationHttpService } from '@modules/notification/interfaces/notification.http.service.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class NotificationHttpService implements INotificationHttpService {
-    constructor(
-        private readonly notificationService: NotificationService,
-        private readonly notificationUtil: NotificationUtil
-    ) {}
+    constructor(private readonly notificationService: NotificationService) {}
 
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
+    ): Promise<IResponsePagingReturn<Notification>> {
         const { data, ...others } =
             await this.notificationService.getListCursor(userId, pagination);
 
-        const notifications: NotificationResponseDto[] =
-            this.notificationUtil.mapList(data);
-
         return {
-            data: notifications,
+            data,
             ...others,
         };
     }
@@ -39,15 +30,12 @@ export class NotificationHttpService implements INotificationHttpService {
     async getListUserSetting(
         userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        const userSettings =
+        const settings =
             await this.notificationService.getListUserSetting(userId);
-
-        const settings: NotificationUserSettingDto[] =
-            this.notificationUtil.mapUserSettingList(userSettings);
 
         return {
             data: {
-                settings: settings,
+                settings,
             },
         };
     }

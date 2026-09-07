@@ -1,7 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ResponseUtil } from '@common/response/utils/response.util';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import {
     ISession,
     ISessionCache,
@@ -19,8 +17,7 @@ export class SessionUtil {
     constructor(
         @Inject(SessionCacheProvider) private cacheManager: Cache,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
-        private readonly responseUtil: ResponseUtil
+        private readonly helperDateService: HelperDateService
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
     }
@@ -113,10 +110,6 @@ export class SessionUtil {
         }
 
         return;
-    }
-
-    mapList(sessions: ISession[]): SessionResponseDto[] {
-        return this.responseUtil.serialize(SessionResponseDto, sessions);
     }
 
     mapActivityLogMetadata(session: ISession): IActivityLogMetadata {

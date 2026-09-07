@@ -9,7 +9,6 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { TermContentDto } from '@modules/term-policy/dtos/term-policy.content.dto';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -18,6 +17,7 @@ import { ITermPolicyContentService } from '@modules/term-policy/interfaces/term-
 import {
     ITermPolicyContent,
     ITermPolicyContentPresign,
+    ITermPolicyContentUpload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -103,13 +103,13 @@ export class TermPolicyContentService implements ITermPolicyContentService {
 
     async updateContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContent,
+        { key, size, language }: ITermPolicyContentUpload,
         updatedBy: string
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         try {
-            const mappedContent: TermContentDto = {
+            const mappedContent: ITermPolicyContent = {
                 language,
                 ...this.awsS3Service.mapPresign(
                     { key, size },
@@ -120,7 +120,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
             };
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
-                termPolicy.contents as unknown as TermContentDto[],
+                termPolicy.contents as unknown as ITermPolicyContent[],
                 mappedContent,
                 updatedBy
             );
@@ -139,13 +139,13 @@ export class TermPolicyContentService implements ITermPolicyContentService {
 
     async addContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContent,
+        { key, size, language }: ITermPolicyContentUpload,
         updatedBy: string
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as TermContentDto[],
+            termPolicy.contents as unknown as ITermPolicyContent[],
             language
         );
         if (existingContent) {
@@ -153,7 +153,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         }
 
         try {
-            const mappedContent: TermContentDto = {
+            const mappedContent: ITermPolicyContent = {
                 language,
                 ...this.awsS3Service.mapPresign(
                     { key, size },
@@ -188,7 +188,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as TermContentDto[],
+            termPolicy.contents as unknown as ITermPolicyContent[],
             language
         );
         if (!existingContent) {
@@ -198,7 +198,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         try {
             const updated = await this.termPolicyRepository.removeContent(
                 termPolicyId,
-                termPolicy.contents as unknown as TermContentDto[],
+                termPolicy.contents as unknown as ITermPolicyContent[],
                 { language },
                 updatedBy
             );
@@ -226,7 +226,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as TermContentDto[],
+            termPolicy.contents as unknown as ITermPolicyContent[],
             language
         );
         if (!existContent) {

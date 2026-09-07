@@ -32,21 +32,7 @@ import { TerminusModule } from '@nestjs/terminus';
         HealthJwksIndicator,
         HealthQueueIndicator,
     ],
-    exports: [
-        HealthService,
-        HealthAwsS3BucketIndicator,
-        HealthAwsSESIndicator,
-        HealthDatabaseIndicator,
-        HealthInstanceIndicator,
-        HealthRedisIndicator,
-        HealthSentryIndicator,
-        HealthFirebaseIndicator,
-        HealthGoogleIndicator,
-        HealthAppleIndicator,
-        HealthJwksIndicator,
-        HealthQueueIndicator,
-        TerminusModule,
-    ],
+    exports: [HealthService],
     imports: [
         AwsModule,
         TerminusModule.forRoot({

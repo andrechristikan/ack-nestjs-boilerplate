@@ -1,83 +1,57 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-    Session,
 } from '@generated/prisma-client';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
-import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose, Transform, Type } from 'class-transformer';
+import { DeviceResponseSchema } from '@modules/device/dtos/response/device.response.dto';
+import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Base device-ownership shape: the row binding a device to the user who owns it.
+ */
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    deviceId: z.string().meta({
         description: 'Device ownership ID',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    deviceId: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    device: DeviceResponseSchema.meta({
         description: 'Device information',
-        type: DeviceResponseDto,
         example: {
             id: faker.database.mongodbObjectId(),
             createdAt: faker.date.recent(),
             createdBy: faker.database.mongodbObjectId(),
             updatedAt: faker.date.recent(),
             updatedBy: faker.database.mongodbObjectId(),
-            deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
             name: faker.commerce.productName(),
             platform: EnumDevicePlatform.android,
-            lastActiveAt: faker.date.recent().toISOString(),
+            lastActiveAt: faker.date.recent(),
             notificationProvider: EnumDeviceNotificationProvider.fcm,
         },
-    })
-    @Expose()
-    @Type(() => DeviceResponseDto)
-    device: DeviceResponseDto;
-
-    @ApiProperty({
-        required: true,
+    }),
+    userId: z.string().meta({
         description: 'User ID who owns the device',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    revokedAt: z.date().nullable().meta({
         description: 'Date the device ownership was revoked',
         example: faker.date.recent(),
-    })
-    @Expose()
-    revokedAt: Date | null;
-
-    @ApiProperty({
-        required: true,
+    }),
+    isRevoked: z.boolean().meta({
         description: 'Indicates if the device ownership is revoked',
         example: true,
-    })
-    @Expose()
-    isRevoked: boolean;
-
-    @ApiProperty({
-        required: false,
+    }),
+    revokedById: z.string().nullable().meta({
         description: 'User ID who revoked the device ownership',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    revokedById: string | null;
-
-    @ApiProperty({
-        required: false,
+    }),
+    revokedBy: UserRefResponseSchema.nullable().meta({
         description: 'User who revoked the device ownership',
-        type: UserRefResponseDto,
         example: {
             id: faker.database.mongodbObjectId(),
             createdAt: faker.date.recent(),
@@ -99,36 +73,17 @@ export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
                 size: 1024,
             },
         },
-    })
-    @Expose()
-    @Type(() => UserRefResponseDto)
-    revokedBy: UserRefResponseDto | null;
-
-    @ApiProperty({
-        required: true,
+    }),
+    activeSessionCount: z.number().meta({
         description: 'Session count for the device',
         example: 5,
-    })
-    @Transform(({ obj }) => obj._count?.sessions ?? 0)
-    @Expose()
-    activeSessionCount: number;
-
-    @ApiProperty({
-        required: true,
+    }),
+    isCurrentDevice: z.boolean().meta({
         description: 'Indicates if this is the current active device',
         example: true,
-    })
-    @Transform(({ obj }) => obj.sessions?.length > 0)
-    @Expose()
-    isCurrentDevice: boolean;
+    }),
+});
 
-    @Exclude()
-    @ApiHideProperty()
-    _count: {
-        sessions: number;
-    };
-
-    @Exclude()
-    @ApiHideProperty()
-    sessions?: Session[];
-}
+export type DeviceOwnershipResponseDto = z.infer<
+    typeof DeviceOwnershipResponseSchema
+>;

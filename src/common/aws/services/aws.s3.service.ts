@@ -92,10 +92,8 @@ import {
 } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import {
-    AwsS3PresignPartRequestDto,
-    AwsS3PresignRequestDto,
-} from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
+import { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
 
 @Injectable()

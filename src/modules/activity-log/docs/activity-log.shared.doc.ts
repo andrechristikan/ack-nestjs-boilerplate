@@ -7,7 +7,10 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import {
+    ActivityLogResponseDto,
+    ActivityLogResponseSchema,
+} from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
@@ -22,7 +25,7 @@ export function ActivityLogSharedListSelfDoc(): MethodDecorator {
         }),
         DocGuard({ termPolicy: true }),
         DocResponsePaging<ActivityLogResponseDto>('activityLog.listSelf', {
-            dto: ActivityLogResponseDto,
+            schema: ActivityLogResponseSchema,
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
         })
@@ -50,7 +53,7 @@ export function ActivityLogSharedListSelfByWorkspaceDoc(): MethodDecorator {
         DocResponsePaging<ActivityLogResponseDto>(
             'activityLog.listSelfByWorkspace',
             {
-                dto: ActivityLogResponseDto,
+                schema: ActivityLogResponseSchema,
                 availableOrderBy: ActivityLogDefaultAvailableOrderBy,
                 type: EnumPaginationType.cursor,
             }

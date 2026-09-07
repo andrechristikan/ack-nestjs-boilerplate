@@ -13,6 +13,7 @@ import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { ApiKeyStartAtNotFutureException } from '@modules/api-key/exceptions/api-key.start-at-not-future.exception';
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
 import { ApiKeyXApiKeyInvalidException } from '@modules/api-key/exceptions/api-key.x-api-key-invalid.exception';
 import { ApiKeyXApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.x-api-key-not-found.exception';
@@ -49,6 +50,14 @@ export class ApiKeyService implements IApiKeyService {
         return;
     }
 
+    private validateStartAtIsFuture(startAt: Date): void {
+        if (startAt <= this.helperDateService.create()) {
+            throw new ApiKeyStartAtNotFutureException();
+        }
+
+        return;
+    }
+
     private storeActivityLogMetadata(apiKey: ApiKey): void {
         this.requestStoreService.merge<IActivityLogMetadata>(
             ActivityLogMetadataStoreKey,
@@ -75,6 +84,10 @@ export class ApiKeyService implements IApiKeyService {
         endAt,
         ...others
     }: IApiKeyCreate): Promise<IApiKeyWithSecret> {
+        if (startAt) {
+            this.validateStartAtIsFuture(startAt);
+        }
+
         const { key, secret, hash } = this.apiKeyUtil.generateCredential();
         const created = await this.apiKeyRepository.create(
             {
@@ -151,6 +164,8 @@ export class ApiKeyService implements IApiKeyService {
         startAt: Date,
         endAt: Date
     ): Promise<ApiKey> {
+        this.validateStartAtIsFuture(startAt);
+
         const apiKey = await this.apiKeyRepository.findOneById(id);
         this.validateApiKey(apiKey, true);
 

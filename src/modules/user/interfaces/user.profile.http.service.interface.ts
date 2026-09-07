@@ -1,4 +1,4 @@
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
@@ -7,12 +7,10 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { IUserProfile } from '@modules/user/interfaces/user.interface';
 
 export interface IUserProfileHttpService {
-    getProfile(
-        userId: string
-    ): Promise<IResponseReturn<UserProfileResponseDto>>;
+    getProfile(userId: string): Promise<IResponseReturn<IUserProfile>>;
     updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
@@ -20,7 +18,7 @@ export interface IUserProfileHttpService {
     generatePhotoProfilePresign(
         userId: string,
         { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>>;
+    ): Promise<IResponseReturn<IAwsS3Presign>>;
     updatePhotoProfile(
         userId: string,
         { photoKey, size }: UserUpdateProfilePhotoRequestDto

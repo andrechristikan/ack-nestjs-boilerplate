@@ -6,12 +6,11 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Workspace } from '@generated/prisma-client';
+import { Prisma, Workspace, WorkspaceInvite } from '@generated/prisma-client';
 import { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
-import { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import { IWorkspaceInviteHttpService } from '@modules/workspace/interfaces/workspace.invite.http.service.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -28,7 +27,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInviteResponseDto>> {
+    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
         const { data, ...others } =
             await this.workspaceInviteService.getInvitesList(
                 workspaceId,
@@ -37,7 +36,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
             );
 
         return {
-            data: this.workspaceUtil.mapInviteList(data),
+            data,
             ...others,
         };
     }
@@ -52,14 +51,14 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
             projectRole,
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+    ): Promise<IResponseReturn<WorkspaceInvite>> {
         const invite = await this.workspaceInviteService.createInvite(
             workspace,
             actorId,
             { email, workspaceRole, projectId, projectRole, expiryDuration }
         );
 
-        return { data: this.workspaceUtil.mapInvite(invite) };
+        return { data: invite };
     }
 
     async resendInvite(
@@ -67,7 +66,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+    ): Promise<IResponseReturn<WorkspaceInvite>> {
         const invite = await this.workspaceInviteService.resendInvite(
             workspace,
             actorId,
@@ -75,7 +74,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
             expiryDuration
         );
 
-        return { data: this.workspaceUtil.mapInvite(invite) };
+        return { data: invite };
     }
 
     async revokeInvite(

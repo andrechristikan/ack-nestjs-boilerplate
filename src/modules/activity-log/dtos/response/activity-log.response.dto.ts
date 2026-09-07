@@ -1,25 +1,26 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { RequestGeoLocationResponseDto } from '@common/request/dtos/response/request.geo-location.response.dto';
-import { RequestUserAgentResponseDto } from '@common/request/dtos/response/request.user-agent.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { UserRefResponseDto } from '@modules/user/dtos/response/user.ref.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
+import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
+import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { EnumActivityLogAction } from '@generated/prisma-client';
-import { Expose, Type } from 'class-transformer';
+import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-export class ActivityLogResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base activity-log shape: one recorded action with the actor embedded.
+ */
+export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
+    updatedAt: true,
+    updatedBy: true,
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    userId: z.string().meta({
         description: 'Identifier of the user who performed the action',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        type: UserRefResponseDto,
+        example: faker.database.mongodbObjectId(),
+    }),
+    user: UserRefResponseSchema.meta({
         description: 'Embedded user who performed the action',
         example: {
             id: faker.database.mongodbObjectId(),
@@ -42,39 +43,20 @@ export class ActivityLogResponseDto extends DatabaseResponseDto {
                 size: 1024,
             },
         },
-    })
-    @Expose()
-    @Type(() => UserRefResponseDto)
-    user: UserRefResponseDto;
-
-    @ApiProperty({
-        required: true,
-        example: EnumActivityLogAction.userLoginCredential,
-        enum: EnumActivityLogAction,
+    }),
+    action: z.enum(EnumActivityLogAction).meta({
         description: 'Action recorded in the activity log',
-    })
-    @Expose()
-    action: EnumActivityLogAction;
-
-    @ApiProperty({
-        required: true,
-        example: 'User login with credential',
+        example: EnumActivityLogAction.userLoginCredential,
+    }),
+    description: z.string().meta({
         description: 'Description of the activity log',
-    })
-    @Expose()
-    description: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.internet.ipv4(),
+        example: 'User login with credential',
+    }),
+    ipAddress: z.string().nullable().meta({
         description: 'IP address of the user performing the action',
-    })
-    @Expose()
-    ipAddress: string;
-
-    @ApiProperty({
-        required: true,
-        type: RequestUserAgentResponseDto,
+        example: faker.internet.ipv4(),
+    }),
+    userAgent: RequestUserAgentResponseSchema.meta({
         description: 'Parsed user agent of the request that produced the log',
         example: {
             ua: faker.internet.userAgent(),
@@ -101,14 +83,8 @@ export class ActivityLogResponseDto extends DatabaseResponseDto {
                 version: '16.3.1',
             },
         },
-    })
-    @Expose()
-    @Type(() => RequestUserAgentResponseDto)
-    userAgent: RequestUserAgentResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestGeoLocationResponseDto,
+    }),
+    geoLocation: RequestGeoLocationResponseSchema.nullable().meta({
         description: 'Geo-location of the request that produced the log',
         example: {
             latitude: faker.location.latitude(),
@@ -117,16 +93,11 @@ export class ActivityLogResponseDto extends DatabaseResponseDto {
             region: faker.location.state(),
             city: faker.location.city(),
         },
-    })
-    @Expose()
-    @Type(() => RequestGeoLocationResponseDto)
-    geoLocation?: RequestGeoLocationResponseDto;
-
-    @ApiProperty({
-        required: false,
-        example: { exampleKey: 'exampleValue' },
+    }),
+    metadata: z.unknown().meta({
         description: 'Additional metadata related to the activity log',
-    })
-    @Expose()
-    metadata?: unknown;
-}
+        example: { exampleKey: 'exampleValue' },
+    }),
+});
+
+export type ActivityLogResponseDto = z.infer<typeof ActivityLogResponseSchema>;

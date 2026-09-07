@@ -1,7 +1,9 @@
 import { AwsModule } from '@common/aws/aws.module';
 import { DeviceRepositoryModule } from '@modules/device/device.repository.module';
 import { NotificationRepositoryModule } from '@modules/notification/notification.repository.module';
-import { NotificationUtilModule } from '@modules/notification/notification.util.module';
+import { NotificationEmailUtil } from '@modules/notification/utils/notification.email.util';
+import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationAccountService } from '@modules/notification/services/notification.account.service';
 import { NotificationEmailAccountService } from '@modules/notification/services/notification.email.account.service';
 import { NotificationEmailSecurityService } from '@modules/notification/services/notification.email.security.service';
@@ -19,7 +21,7 @@ import { NotificationTemplateWorkspaceService } from '@modules/notification/serv
 import { NotificationTermPolicyService } from '@modules/notification/services/notification.term-policy.service';
 import { NotificationWorkspaceService } from '@modules/notification/services/notification.workspace.service';
 import { UserRepositoryModule } from '@modules/user/user.repository.module';
-import { UserUtilModule } from '@modules/user/user.util.module';
+import { UserModule } from '@modules/user/user.module';
 import { Global, Module } from '@nestjs/common';
 
 @Global()
@@ -42,6 +44,9 @@ import { Global, Module } from '@nestjs/common';
         NotificationPushSecurityService,
         NotificationPushWorkspaceService,
         NotificationPushMaintenanceService,
+        NotificationUtil,
+        NotificationEmailUtil,
+        NotificationPushUtil,
     ],
     exports: [
         NotificationService,
@@ -60,12 +65,14 @@ import { Global, Module } from '@nestjs/common';
         NotificationPushSecurityService,
         NotificationPushWorkspaceService,
         NotificationPushMaintenanceService,
+        NotificationUtil,
+        NotificationEmailUtil,
+        NotificationPushUtil,
     ],
     imports: [
         NotificationRepositoryModule,
-        NotificationUtilModule,
         UserRepositoryModule,
-        UserUtilModule,
+        UserModule,
         DeviceRepositoryModule,
         AwsModule,
     ],

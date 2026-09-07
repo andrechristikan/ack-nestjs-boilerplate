@@ -1,72 +1,48 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
 } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-export class WorkspaceJoinRequestResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
+/**
+ * Base workspace-join-request shape: the stored join request row and its review outcome.
+ */
+export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    workspaceId: z.string().meta({
         description: 'Identifier of the workspace the join request targets',
-    })
-    @Expose()
-    workspaceId: string;
-
-    @ApiProperty({
-        required: true,
         example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
         description: 'Identifier of the user who submitted the join request',
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        example: EnumWorkspaceJoinRequestStatus.pending,
-        enum: EnumWorkspaceJoinRequestStatus,
-        description: 'Current status of the join request',
-    })
-    @Expose()
-    status: EnumWorkspaceJoinRequestStatus;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: faker.lorem.sentence(),
-        description: 'Optional message from the requester',
-    })
-    @Expose()
-    message: string | null;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: EnumWorkspaceJoinRejectReason.wrongWorkspace,
-        enum: EnumWorkspaceJoinRejectReason,
-        description: 'Coded reason when the join request was rejected',
-    })
-    @Expose()
-    rejectReasonCode: EnumWorkspaceJoinRejectReason | null;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
         example: faker.database.mongodbObjectId(),
+    }),
+    status: z.enum(EnumWorkspaceJoinRequestStatus).meta({
+        description: 'Current status of the join request',
+        example: EnumWorkspaceJoinRequestStatus.pending,
+    }),
+    message: z.string().nullable().meta({
+        description: 'Optional message from the requester',
+        example: faker.lorem.sentence(),
+    }),
+    rejectReasonCode: z.enum(EnumWorkspaceJoinRejectReason).nullable().meta({
+        description: 'Coded reason when the join request was rejected',
+        example: EnumWorkspaceJoinRejectReason.wrongWorkspace,
+    }),
+    reviewedByUserId: z.string().nullable().meta({
         description: 'Identifier of the user who reviewed the join request',
-    })
-    @Expose()
-    reviewedByUserId: string | null;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-        example: faker.date.recent(),
+        example: faker.database.mongodbObjectId(),
+    }),
+    reviewedAt: z.date().nullable().meta({
         description: 'When the join request was reviewed',
-    })
-    @Expose()
-    reviewedAt: Date | null;
-}
+        example: faker.date.recent(),
+    }),
+});
+
+export type WorkspaceJoinRequestResponseDto = z.infer<
+    typeof WorkspaceJoinRequestResponseSchema
+>;

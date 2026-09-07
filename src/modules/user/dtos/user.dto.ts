@@ -1,10 +1,8 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { AwsS3ResponseSchema } from '@common/aws/dtos/response/aws.s3.response.dto';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
-    EnumRoleType,
-    EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -12,254 +10,102 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { AwsS3ResponseDto } from '@common/aws/dtos/response/aws.s3.response.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
-import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
-import { UserTwoFactorDto } from '@modules/user/dtos/user.two-factor.dto';
+import { RoleSchema } from '@modules/role/dtos/role.dto';
+import { UserTermPolicySchema } from '@modules/user/dtos/user.term-policy.dto';
+import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
-export class UserDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: false,
-        maxLength: 100,
-        minLength: 1,
+/**
+ * Base user shape: the stored user row with its role, term-policy flags, photo and two-factor state.
+ */
+export const UserSchema = DatabaseResponseSchema.extend({
+    name: z.string().min(1).max(100).nullable().meta({
         description: 'Display name of the user',
         example: faker.person.fullName(),
-    })
-    @Expose()
-    name?: string;
-
-    @ApiProperty({
-        required: true,
-        maxLength: 50,
-        minLength: 3,
+    }),
+    username: z.string().meta({
         description: 'Unique username of the user',
         example: faker.internet.username().toLowerCase(),
-    })
-    @Expose()
-    username: Lowercase<string>;
-
-    @ApiProperty({
-        required: true,
-        example: true,
+    }),
+    isVerified: z.boolean().meta({
         description: 'Whether the user email is verified',
-    })
-    @Expose()
-    isVerified: boolean;
-
-    @ApiProperty({
-        required: false,
-        example: faker.date.past(),
+        example: true,
+    }),
+    verifiedAt: z.date().nullable().meta({
         description: 'When the user email was verified',
-    })
-    @Expose()
-    verifiedAt?: Date;
-
-    @ApiProperty({
-        required: true,
-        example: faker.internet.email(),
-        maxLength: 100,
-        description: 'Email address of the user',
-    })
-    @Expose()
-    email: Lowercase<string>;
-
-    @ApiProperty({
-        required: true,
-        example: faker.database.mongodbObjectId(),
-        description: 'Identifier of the role assigned to the user',
-    })
-    @Expose()
-    roleId: string;
-
-    @ApiProperty({
-        required: true,
-        type: RoleDto,
-        description: 'Role assigned to the user',
-        example: {
-            id: faker.database.mongodbObjectId(),
-            createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
-            updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
-            deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
-            name: faker.person.jobTitle(),
-            description: faker.lorem.sentence(),
-            type: EnumRoleType.admin,
-            abilities: [],
-        },
-    })
-    @Expose()
-    @Type(() => RoleDto)
-    role: RoleDto;
-
-    password?: string;
-
-    @ApiProperty({
-        required: false,
-        example: faker.date.future(),
-        description: 'When the current password expires',
-    })
-    @Expose()
-    passwordExpired?: Date;
-
-    @ApiProperty({
-        required: false,
         example: faker.date.past(),
-        description: 'When the current password was created',
-    })
-    @Expose()
-    passwordCreated?: Date;
-
-    @ApiProperty({
-        required: false,
-        example: 0,
-        minimum: 0,
-        description: 'Count of consecutive failed password attempts',
-    })
-    @Expose()
-    passwordAttempt?: number;
-
-    @ApiProperty({
-        required: true,
-        example: faker.date.recent(),
-        description: 'When the user signed up',
-    })
-    @Expose()
-    signUpDate: Date;
-
-    @ApiProperty({
-        required: true,
-        example: EnumUserSignUpFrom.admin,
-        enum: EnumUserSignUpFrom,
-        description: 'Channel the user signed up from',
-    })
-    @Expose()
-    signUpFrom: EnumUserSignUpFrom;
-
-    @ApiProperty({
-        required: true,
-        example: EnumUserSignUpWith.credential,
-        enum: EnumUserSignUpWith,
-        description: 'Credential method the user signed up with',
-    })
-    @Expose()
-    signUpWith: EnumUserSignUpWith;
-
-    @ApiProperty({
-        required: true,
-        example: EnumUserStatus.active,
-        enum: EnumUserStatus,
-        description: 'Account status of the user',
-    })
-    @Expose()
-    status: EnumUserStatus;
-
-    @ApiProperty({
-        required: true,
+    }),
+    email: z.string().max(100).meta({
+        description: 'Email address of the user',
+        example: faker.internet.email(),
+    }),
+    roleId: z.string().meta({
+        description: 'Identifier of the role assigned to the user',
         example: faker.database.mongodbObjectId(),
+    }),
+    role: RoleSchema.meta({
+        description: 'Role assigned to the user',
+    }),
+    passwordExpired: z.date().nullable().meta({
+        description: 'When the current password expires',
+        example: faker.date.future(),
+    }),
+    passwordCreated: z.date().nullable().meta({
+        description: 'When the current password was created',
+        example: faker.date.past(),
+    }),
+    passwordAttempt: z.number().min(0).nullable().meta({
+        description: 'Count of consecutive failed password attempts',
+        example: 0,
+    }),
+    signUpAt: z.date().meta({
+        description: 'When the user signed up',
+        example: faker.date.recent(),
+    }),
+    signUpFrom: z.enum(EnumUserSignUpFrom).meta({
+        description: 'Channel the user signed up from',
+        example: EnumUserSignUpFrom.admin,
+    }),
+    signUpWith: z.enum(EnumUserSignUpWith).meta({
+        description: 'Credential method the user signed up with',
+        example: EnumUserSignUpWith.credential,
+    }),
+    status: z.enum(EnumUserStatus).meta({
+        description: 'Account status of the user',
+        example: EnumUserStatus.active,
+    }),
+    countryId: z.string().meta({
         description: 'Identifier of the user country',
-    })
-    @Expose()
-    countryId: string;
-
-    @ApiProperty({
-        example: EnumUserGender.male,
-        enum: EnumUserGender,
-        required: false,
+        example: faker.database.mongodbObjectId(),
+    }),
+    gender: z.enum(EnumUserGender).nullable().meta({
         description: 'Gender of the user',
-    })
-    @Expose()
-    gender?: EnumUserGender;
-
-    @ApiProperty({
-        required: false,
+        example: EnumUserGender.male,
+    }),
+    lastLoginAt: z.date().nullable().meta({
         description: 'Last login time of user',
         example: faker.date.recent(),
-    })
-    @Expose()
-    lastLoginAt?: Date;
-
-    @ApiProperty({
-        required: false,
+    }),
+    lastIPAddress: z.string().nullable().meta({
         description: 'Last IP Address of user',
         example: faker.internet.ipv4(),
-    })
-    @Expose()
-    lastIPAddress?: string;
-
-    @ApiProperty({
-        required: false,
-        enum: EnumUserLoginFrom,
-        example: EnumUserLoginFrom.website,
+    }),
+    lastLoginFrom: z.enum(EnumUserLoginFrom).nullable().meta({
         description: 'Channel of the last login',
-    })
-    @Expose()
-    lastLoginFrom?: EnumUserLoginFrom;
-
-    @ApiProperty({
-        required: false,
-        enum: EnumUserLoginWith,
-        example: EnumUserLoginWith.credential,
+        example: EnumUserLoginFrom.website,
+    }),
+    lastLoginWith: z.enum(EnumUserLoginWith).nullable().meta({
         description: 'Credential method of the last login',
-    })
-    @Expose()
-    lastLoginWith?: EnumUserLoginWith;
-
-    @ApiProperty({
-        required: true,
-        type: UserTermPolicyDto,
+        example: EnumUserLoginWith.credential,
+    }),
+    termPolicy: UserTermPolicySchema.meta({
         description: 'Term-policy acceptance flags for the user',
-        example: {
-            [EnumTermPolicyType.termsOfService]: true,
-            [EnumTermPolicyType.privacy]: true,
-            [EnumTermPolicyType.cookies]: true,
-            [EnumTermPolicyType.marketing]: false,
-        },
-    })
-    @Expose()
-    @Type(() => UserTermPolicyDto)
-    termPolicy: UserTermPolicyDto;
-
-    @ApiProperty({
-        required: false,
-        type: AwsS3ResponseDto,
+    }),
+    photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',
-        example: {
-            bucket: faker.string.alpha({ length: 10, casing: 'upper' }),
-            key: faker.system.filePath(),
-            cdnUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
-            completedUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
-            mime: 'image/jpeg',
-            extension: 'jpg',
-            access: EnumAwsS3Accessibility.public,
-            size: 1024,
-        },
-    })
-    @Expose()
-    @Type(() => AwsS3ResponseDto)
-    photo?: AwsS3ResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: UserTwoFactorDto,
+    }),
+    twoFactor: UserTwoFactorSchema.nullable().meta({
         description: 'Two-factor authentication state of the user',
-        example: {
-            id: faker.database.mongodbObjectId(),
-            createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
-            updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
-            deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
-            userId: faker.database.mongodbObjectId(),
-            enabled: false,
-            requiredSetup: false,
-            confirmedAt: faker.date.past(),
-        },
-    })
-    @Expose()
-    @Type(() => UserTwoFactorDto)
-    twoFactor: UserTwoFactorDto;
-}
+    }),
+});
+
+export type UserDto = z.infer<typeof UserSchema>;

@@ -52,7 +52,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -94,7 +94,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -146,7 +146,7 @@ export class UserTwoFactorRepository {
                     },
                 },
                 include: {
-                    role: true,
+                    role: { include: { policies: true } },
                     twoFactor: true,
                 },
             });
@@ -204,7 +204,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -243,7 +243,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -297,7 +297,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });
@@ -316,7 +316,7 @@ export class UserTwoFactorRepository {
                 },
             },
             include: {
-                role: true,
+                role: { include: { policies: true } },
                 twoFactor: true,
             },
         });

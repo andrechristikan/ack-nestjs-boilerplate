@@ -3,7 +3,6 @@ import {
     ApiBearerAuth,
     ApiBody,
     ApiConsumes,
-    ApiExtraModels,
     ApiHeaders,
     ApiOperation,
     ApiParam,
@@ -11,9 +10,10 @@ import {
     ApiQuery,
     ApiResponse,
     ApiSecurity,
-    generateSchema,
-    getSchemaPath,
+    SchemaObject,
 } from '@nestjs/swagger';
+import { createSchema } from 'zod-openapi';
+import { z } from 'zod';
 import {
     IDocAuthOptions,
     IDocDefaultOptions,
@@ -26,8 +26,8 @@ import {
     IDocResponseOptions,
     IDocResponsePagingOptions,
 } from '@common/doc/interfaces/doc.interface';
-import { ResponseDto } from '@common/response/dtos/response.dto';
-import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
+import { ResponseSchema } from '@common/response/dtos/response.dto';
+import { ResponsePagingSchema } from '@common/response/dtos/response.paging.dto';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
@@ -51,72 +51,39 @@ import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { faker } from '@faker-js/faker';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 
-// Derived from the public generateSchema return type: SchemaObject is not part
-// of @nestjs/swagger's public exports and lives in dist internals.
-type SchemaObject = ReturnType<typeof generateSchema>['schema'];
+function createEnvelopeSchemaObject(
+    envelope: z.ZodObject,
+    messagePath: string,
+    statusCode: number
+): SchemaObject {
+    const documented = envelope.extend({
+        message: envelope.shape.message.meta({ example: messagePath }),
+        statusCode: envelope.shape.statusCode.meta({ example: statusCode }),
+    });
+
+    return createSchema(documented, { io: 'output' }).schema as SchemaObject;
+}
 
 function createSchemaObject(doc: IDocOfOptions): SchemaObject {
-    const schema: SchemaObject = {
-        allOf: [{ $ref: getSchemaPath(ResponseDto) }],
-        properties: {
-            message: {
-                example: doc.messagePath,
-            },
-            statusCode: {
-                type: 'number',
-                example: doc.statusCode ?? HttpStatus.OK,
-            },
-        },
-    };
-
-    if (doc.dto) {
-        schema.properties = {
-            ...schema.properties,
-            data: {
-                $ref: getSchemaPath(doc.dto),
-            },
-        };
-    }
-
-    return schema;
+    return createEnvelopeSchemaObject(
+        doc.schema
+            ? ResponseSchema.extend({ data: doc.schema })
+            : ResponseSchema,
+        doc.messagePath,
+        doc.statusCode ?? HttpStatus.OK
+    );
 }
 
 /**
  * Documents a single response with the standard envelope (message, statusCode, optional data).
  */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
-    const docs: MethodDecorator[] = [];
-    const schema: SchemaObject = {
-        allOf: [{ $ref: getSchemaPath(ResponseDto) }],
-        properties: {
-            message: {
-                example: options.messagePath,
-            },
-            statusCode: {
-                type: 'number',
-                example: options.statusCode,
-            },
-        },
-    };
-
-    if (options.dto) {
-        docs.push(ApiExtraModels(options.dto));
-        schema.properties = {
-            ...schema.properties,
-            data: {
-                $ref: getSchemaPath(options.dto),
-            },
-        };
-    }
-
     return applyDecorators(
-        ApiExtraModels(ResponseDto),
         ApiResponse({
             description: options.httpStatus.toString(),
             status: options.httpStatus,
-            schema,
-        }),
-        ...docs
+            schema: createSchemaObject(options),
+        })
     );
 }
 
@@ -127,29 +94,16 @@ export function DocOneOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs: MethodDecorator[] = [];
-    const oneOf: SchemaObject[] = [];
-
-    for (const doc of documents) {
-        const oneOfSchema = createSchemaObject(doc);
-
-        if (doc.dto) {
-            docs.push(ApiExtraModels(doc.dto));
-        }
-
-        oneOf.push(oneOfSchema);
-    }
+    const oneOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
 
     return applyDecorators(
-        ApiExtraModels(ResponseDto),
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 oneOf,
             },
-        }),
-        ...docs
+        })
     );
 }
 
@@ -160,29 +114,16 @@ export function DocAnyOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs: MethodDecorator[] = [];
-    const anyOf: SchemaObject[] = [];
-
-    for (const doc of documents) {
-        const anyOfSchema = createSchemaObject(doc);
-
-        if (doc.dto) {
-            docs.push(ApiExtraModels(doc.dto));
-        }
-
-        anyOf.push(anyOfSchema);
-    }
+    const anyOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
 
     return applyDecorators(
-        ApiExtraModels(ResponseDto),
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 anyOf,
             },
-        }),
-        ...docs
+        })
     );
 }
 
@@ -193,29 +134,16 @@ export function DocAllOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
-    const docs: MethodDecorator[] = [];
-    const allOf: SchemaObject[] = [];
-
-    for (const doc of documents) {
-        const allOfSchema = createSchemaObject(doc);
-
-        if (doc.dto) {
-            docs.push(ApiExtraModels(doc.dto));
-        }
-
-        allOf.push(allOfSchema);
-    }
+    const allOf: SchemaObject[] = documents.map(doc => createSchemaObject(doc));
 
     return applyDecorators(
-        ApiExtraModels(ResponseDto),
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 allOf,
             },
-        }),
-        ...docs
+        })
     );
 }
 
@@ -261,7 +189,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 }
 
 /**
- * Documents request body, params, and queries. `ApiConsumes` is added only when `bodyType`
+ * Documents params and queries. `ApiConsumes` is added only when `bodyType`
  * maps to a known MIME type; `none` or omitted skips it.
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
@@ -284,10 +212,6 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 
     if (options?.queries?.length) {
         docs.push(...options.queries.map(query => ApiQuery(query)));
-    }
-
-    if (options?.dto) {
-        docs.push(ApiBody({ type: options?.dto }));
     }
 
     return applyDecorators(...docs);
@@ -313,8 +237,14 @@ export function DocRequestFile(
         docs.push(...options.queries.map(query => ApiQuery(query)));
     }
 
-    if (options?.dto) {
-        docs.push(ApiBody({ type: options?.dto }));
+    if (options?.schema) {
+        docs.push(
+            ApiBody({
+                schema: createSchema(options.schema, {
+                    io: 'input',
+                }).schema as SchemaObject,
+            })
+        );
     }
 
     return applyDecorators(ApiConsumes('multipart/form-data'), ...docs);
@@ -430,20 +360,20 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
 }
 
 /**
- * Documents a standard JSON success response with an i18n message and optional DTO.
+ * Documents a standard JSON success response with an i18n message and optional data schema.
  */
 export function DocResponse<T = void>(
     messagePath: string,
     options?: IDocResponseOptions<T>
 ): MethodDecorator {
-    const docs: IDocDefaultOptions = {
+    const docs: IDocDefaultOptions<T> = {
         httpStatus: options?.httpStatus ?? HttpStatus.OK,
         messagePath,
         statusCode: options?.statusCode ?? options?.httpStatus ?? HttpStatus.OK,
     };
 
-    if (options?.dto) {
-        docs.dto = options?.dto;
+    if (options?.schema) {
+        docs.schema = options.schema;
     }
 
     return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
@@ -460,33 +390,20 @@ export function DocResponsePaging<T>(
 ): MethodDecorator {
     const docs: MethodDecorator[] = [
         ApiProduces('application/json'),
-        ApiExtraModels(ResponsePagingDto),
-        ApiExtraModels(options.dto),
         ApiResponse({
             description:
                 options.httpStatus?.toString() ?? HttpStatus.OK.toString(),
             status: options.httpStatus ?? HttpStatus.OK,
-            schema: {
-                allOf: [{ $ref: getSchemaPath(ResponsePagingDto) }],
-                properties: {
-                    message: {
-                        example: messagePath,
-                    },
-                    statusCode: {
-                        type: 'number',
-                        example:
-                            options.statusCode ??
-                            options.httpStatus ??
-                            HttpStatus.OK,
-                    },
-                    data: {
-                        type: 'array',
-                        items: {
-                            $ref: getSchemaPath(options.dto),
-                        },
-                    },
-                },
-            },
+            schema: createEnvelopeSchemaObject(
+                ResponsePagingSchema.extend({
+                    data: z.array(options.schema).meta({
+                        description: 'Page of result items',
+                        example: [],
+                    }),
+                }),
+                messagePath,
+                options.statusCode ?? options.httpStatus ?? HttpStatus.OK
+            ),
         }),
         ...Object.values(DocPaginationSharedErrorResponses),
         ...(options.type === EnumPaginationType.cursor

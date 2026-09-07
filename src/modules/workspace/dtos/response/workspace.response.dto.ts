@@ -1,38 +1,29 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { z } from 'zod';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-export class WorkspaceResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Base workspace shape: the stored workspace row.
+ */
+export const WorkspaceResponseSchema = DatabaseResponseSchema.omit({
+    deletedBy: true,
+}).extend({
+    name: z.string().meta({
         description: 'Workspace name',
         example: 'Acme',
-    })
-    @Expose()
-    name: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    slug: z.string().meta({
         description: 'Workspace slug',
         example: 'acme-team',
-    })
-    @Expose()
-    slug: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    description: z.string().nullable().meta({
         description: 'Workspace description',
         example: 'Our team workspace',
-        nullable: true,
-    })
-    @Expose()
-    description: string | null;
-
-    @ApiProperty({
-        required: true,
-        description: 'Whether the workspace is publicly discoverable for join requests',
+    }),
+    isPublic: z.boolean().meta({
+        description:
+            'Whether the workspace is publicly discoverable for join requests',
         example: false,
-    })
-    @Expose()
-    isPublic: boolean;
-}
+    }),
+});
+
+export type WorkspaceResponseDto = z.infer<typeof WorkspaceResponseSchema>;

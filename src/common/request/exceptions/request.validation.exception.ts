@@ -1,21 +1,21 @@
 import { HttpStatus } from '@nestjs/common';
-import { ValidationError } from 'class-validator';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
- * Carries class-validator errors to the global filter as a 422.
+ * Carries Standard Schema validation issues to the global filter as a 422.
  */
 export class RequestValidationException extends AppBaseException {
     readonly module = 'request';
     readonly statusCode = EnumRequestStatusCodeError.validation;
     readonly statusCodeKey = EnumRequestStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-    readonly errors: ValidationError[];
+    readonly issues: readonly StandardSchemaV1.Issue[];
 
-    constructor(errors: ValidationError[]) {
+    constructor(issues: readonly StandardSchemaV1.Issue[]) {
         super('request.error.validation');
 
-        this.errors = errors;
+        this.issues = issues;
     }
 }

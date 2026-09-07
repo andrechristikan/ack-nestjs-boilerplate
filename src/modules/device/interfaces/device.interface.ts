@@ -26,6 +26,11 @@ export interface IDeviceOwnershipWithSession extends IDeviceOwnership {
     sessions: Session[];
 }
 
+export interface IDeviceOwnershipDetail extends IDeviceOwnership {
+    activeSessionCount: number;
+    isCurrentDevice: boolean;
+}
+
 export interface IDeviceRefresh {
     name?: string;
     platform?: EnumDevicePlatform;

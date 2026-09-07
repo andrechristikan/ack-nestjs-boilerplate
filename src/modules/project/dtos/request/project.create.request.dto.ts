@@ -1,26 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { z } from 'zod';
 
-export class ProjectCreateRequestDto {
-    @ApiProperty({
+export const ProjectCreateRequestSchema = z.strictObject({
+    name: z.string().min(1).max(150).meta({
         description: 'Project name',
         example: 'Website Revamp',
-        required: true,
-        maxLength: 150,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MaxLength(150)
-    name: string;
-
-    @ApiProperty({
+    }),
+    description: z.string().max(500).optional().meta({
         description: 'Project description',
         example: 'Marketing site redesign',
-        required: false,
-        maxLength: 500,
-    })
-    @IsString()
-    @IsOptional()
-    @MaxLength(500)
-    description?: string;
-}
+    }),
+});
+
+export type ProjectCreateRequestDto = z.infer<
+    typeof ProjectCreateRequestSchema
+>;

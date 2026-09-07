@@ -11,7 +11,8 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistorySharedListDoc } from '@modules/password-history/docs/password-history.shared.doc';
-import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
+import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
+import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -29,7 +30,9 @@ export class PasswordHistorySharedController {
     ) {}
 
     @PasswordHistorySharedListDoc()
-    @ResponsePaging('passwordHistory.list')
+    @ResponsePaging('passwordHistory.list', {
+        schema: PasswordHistoryResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -42,7 +45,7 @@ export class PasswordHistorySharedController {
         })
         pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
+    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.passwordHistoryHttpService.getListCursor(
             userId,
             pagination

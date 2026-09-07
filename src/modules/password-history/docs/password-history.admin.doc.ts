@@ -8,7 +8,10 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
-import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
+import {
+    PasswordHistoryResponseDto,
+    PasswordHistoryResponseSchema,
+} from '@modules/password-history/dtos/response/password-history.response.dto';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 
 export function PasswordHistoryAdminListDoc(): MethodDecorator {
@@ -25,7 +28,7 @@ export function PasswordHistoryAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
-            dto: PasswordHistoryResponseDto,
+            schema: PasswordHistoryResponseSchema,
             type: EnumPaginationType.offset,
             availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
         })

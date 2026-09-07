@@ -1,9 +1,11 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { PickType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
 /**
- * Response DTO exposing only the document `id`, for create/mutation results.
+ * Response shape exposing only the document `id`, for create/mutation results.
  */
-export class DatabaseIdResponseDto extends PickType(DatabaseResponseDto, [
-    'id',
-] as const) {}
+export const DatabaseIdResponseSchema = DatabaseResponseSchema.pick({
+    id: true,
+});
+
+export type DatabaseIdResponseDto = z.infer<typeof DatabaseIdResponseSchema>;
