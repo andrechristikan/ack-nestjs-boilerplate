@@ -39,7 +39,6 @@ The Term Policy module manages legal agreements and user consent within the appl
 - [TermPolicyAcceptanceProtected](#termpolicyacceptanceprotected)
   - [Basic Usage](#basic-usage)
   - [How It Works](#how-it-works)
-  - [Default Behavior](#default-behavior)
   - [Important Notes](#important-notes)
 - [Migration & Seeding](#migration--seeding)
 - [Contribution](#contribution)

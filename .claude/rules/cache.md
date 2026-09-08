@@ -43,8 +43,10 @@ Caching is decorator-driven on the route:
   validates what comes back out of it against the route's schema; a value JSON cannot reproduce
   is rejected on every cache hit. A cached route that carries a date declares it as a string or a
   number.
-- **The TTL default is config, not a literal.** `redis.cache.ttlInMs` is the app-wide default;
-  a per-route `ttl` still comes from a config key, in milliseconds (`rules/config.md`).
+- **The TTL default is config, not a literal.** `redis.cache.ttlInMs` is the app-wide default,
+  and a per-route `ttl` comes from a config key of its own. cache-manager takes milliseconds, so
+  both keys carry the `InMs` suffix and the route passes the value straight through
+  (`rules/config.md`).
 - **Never cache a response that varies by caller without the caller in the key.** A cached
   route whose body depends on `request.user`, on the workspace header, or on a role will serve
   one caller's data to another. If the key cannot express the variation, the route is not

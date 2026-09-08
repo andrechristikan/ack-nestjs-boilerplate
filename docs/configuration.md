@@ -60,6 +60,7 @@ The configuration modules are imported and registered in `src/configs/index.ts` 
             cache: true,
             envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
             expandVariables: false,
+            validationSchema: AppEnvSchema,
         }),
         // ... other modules
     ],
@@ -161,7 +162,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm (ES256, ES512, etc.)
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
+    expirationTimeInSeconds: number; // Token expiration in seconds, parsed from the `ms()` string in the env var
   };
   refreshToken: {
     jwksUri: string;              // JWKS URI for refresh token
@@ -169,7 +170,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
+    expirationTimeInSeconds: number; // Token expiration in seconds, parsed from the `ms()` string in the env var
   };
   audience: string;               // JWT audience claim
   issuer: string;                 // JWT issuer claim
@@ -186,7 +187,7 @@ password: {
   saltLength: number;             // Salt length for password hashing
   expiredInMs: number;            // Password expiration time (ms)
   expiredTemporaryInMs: number;   // Temporary password expiration (ms)
-  periodInMs: number;             // Password renewal period (ms)
+  periodInDays: number;           // Password renewal period in days (`ms('90d') / ms('1d')`)
 }
 ```
 
@@ -197,7 +198,7 @@ twoFactor: {
   strategy: OTPStrategy;          // OTP strategy (default: 'totp')
   algorithm: HashAlgorithm;       // Hash algorithm for OTP (default: 'sha1')
   digits: number;                 // Number of digits in OTP
-  periodInMs: number;             // OTP validity window (ms); otplib receives seconds
+  periodInSeconds: number;        // OTP validity window in seconds (`ms('30s') / 1000`)
   window: number;                 // Allowed window for OTP validation
   secretLength: number;           // Length of OTP secret
   challengeTtlInMs: number;       // Challenge TTL in milliseconds
@@ -816,7 +817,7 @@ clientEmail: string | null      // Firebase service account client email
 
 **`privateKey`** - Firebase service account private key
 ```typescript
-privateKey: string | null       // Service account private key (PEM); escaped `\n` sequences are converted to real newlines at load
+privateKey: string | null       // Service account private key (PEM), verbatim from the env var; `FirebaseUtil.normalizePrivateKey` turns escaped `\n` sequences into real newlines when `FirebaseService` reads it
 ```
 
 > [!NOTE]
@@ -835,8 +836,8 @@ This configuration holds the BullMQ default job options applied by `queue.regist
 ```typescript
 job: {
   attempts: number;                    // Retry attempts per job (default: 3)
-  removeOnComplete: number;            // Completed jobs retained (default: 50)
-  removeOnFail: number;                // Failed jobs retained (default: 100)
+  removeOnCompleteAgeInSeconds: number; // How long a completed job is kept (`ms('7d') / 1000`)
+  removeOnFailAgeInSeconds: number;    // How long a failed job is kept (`ms('14d') / 1000`)
   emailBackoffDelayInMs: number;       // Email queue exponential backoff delay (ms('10s'))
   pushBackoffDelayInMs: number;        // Push queue exponential backoff delay (ms('5s'))
   notificationBackoffDelayInMs: number; // Notification queue exponential backoff delay (ms('3s'))
@@ -878,9 +879,14 @@ diskPath: string                     // Filesystem path checked for storage (def
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds push-notification cleanup settings, consumed by `NotificationPushUtil` when it schedules the sweep and by `NotificationPushMaintenanceService` when it runs one.
+This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceService` when it runs a sweep.
 
 #### Configuration Keys:
+
+**`dedupTtlInMs`** - Default deduplication TTL
+```typescript
+dedupTtlInMs: number            // BullMQ deduplication TTL for a notification job (ms('1s'))
+```
 
 **`push`** - Push cleanup settings
 ```typescript

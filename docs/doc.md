@@ -17,7 +17,7 @@ Features:
 
 ## Related Documents
 
-- [Request Validation Documentation][ref-doc-request-validation] - For DTO validation and request documentation
+- [Request Validation Documentation][ref-doc-request-validation] - For the request schemas the OpenAPI document is generated from
 - [Response Documentation][ref-doc-response] - For response structure and formatting
 - [Authentication Documentation][ref-doc-authentication] - For authentication decorator usage
 - [Authorization Documentation][ref-doc-authorization] - For authorization guard documentation
@@ -40,8 +40,8 @@ Features:
   - [DocOneOf](#doconeof)
   - [DocAnyOf](#docanyof)
   - [DocAllOf](#docallof)
-- [DTO Documentation](#dto-documentation)
-  - [ApiProperty](#apiproperty)
+- [Schema Documentation](#schema-documentation)
+  - [.meta()](#meta)
 - [Usage](#usage)
   - [Complete Admin Endpoint](#complete-admin-endpoint)
   - [Complete Public Endpoint](#complete-public-endpoint)
@@ -99,7 +99,6 @@ Documents request specifications including body, parameters, and queries.
   - `params?: ApiParamOptions[]` - URL parameters
   - `queries?: ApiQueryOptions[]` - Query parameters
   - `bodyType?: EnumDocRequestBodyType` - Request body content type
-  - `dto?: ClassConstructor<T>` - Request DTO class
 
 **Body Types:**
 
@@ -135,8 +134,7 @@ enum EnumDocRequestBodyType {
             type: 'string'
         }
     ],
-    bodyType: EnumDocRequestBodyType.json,
-    dto: UpdateUserDto
+    bodyType: EnumDocRequestBodyType.json
 })
 @Put('/:id')
 async updateUser() {
@@ -150,7 +148,7 @@ Documents file upload endpoints with multipart/form-data.
 
 **Parameters:**
 
-- `options?: IDocRequestFileOptions` - Same as `DocRequest` but excludes `bodyType`
+- `options?: IDocRequestFileOptions` - `params` and `queries` as on `DocRequest`, plus `schema?: z.ZodType<T>` for the multipart body; no `bodyType`
 
 **Auto-includes:**
 
@@ -171,7 +169,7 @@ Documents file upload endpoints with multipart/form-data.
             type: 'string'
         }
     ],
-    dto: UserUploadDto
+    schema: FileUploadSingleRequestSchema
 })
 @Post('/upload')
 async uploadFile() {
@@ -189,7 +187,7 @@ Documents standard response with message and optional data.
 - `options?: IDocResponseOptions<T>`
   - `statusCode?: number` - Custom status code
   - `httpStatus?: HttpStatus` - HTTP status (default: 200)
-  - `dto?: ClassConstructor<T>` - Response DTO class
+  - `schema?: z.ZodType<T>` - The zod schema the `data` field is documented from
 
 **Auto-includes:**
 
@@ -200,7 +198,7 @@ Documents standard response with message and optional data.
 
 ```typescript
 @DocResponse<UserProfileResponseDto>('user.get', {
-    dto: UserProfileResponseDto
+    schema: UserProfileResponseSchema
 })
 @Get('/:id')
 async getUser() {
@@ -224,7 +222,7 @@ Documents paginated response with automatic pagination parameters.
 
 - `messagePath: string` - i18n message path
 - `options: IDocResponsePagingOptions<T>`
-  - `dto: ClassConstructor<T>` - Response DTO class (required)
+  - `schema: z.ZodType<T>` - The zod schema of ONE item of the page (required)
   - `type: EnumPaginationType` - Pagination type: `offset` or `cursor` (required, no default)
   - `statusCode?: number` - Custom status code
   - `httpStatus?: HttpStatus` - HTTP status
@@ -257,7 +255,7 @@ Documents paginated response with automatic pagination parameters.
 ```typescript
 // Offset pagination
 @DocResponsePaging<UserListResponseDto>('user.list', {
-    dto: UserListResponseDto,
+    schema: UserListResponseSchema,
     availableSearch: UserDefaultAvailableSearch,
     availableOrderBy: UserDefaultAvailableOrderBy,
     type: EnumPaginationType.offset,
@@ -269,7 +267,7 @@ async getUsers() {
 
 // Cursor pagination
 @DocResponsePaging<SessionResponseDto>('session.list', {
-    dto: SessionResponseDto,
+    schema: SessionResponseSchema,
     type: EnumPaginationType.cursor,
     availableOrderBy: SessionCursorAvailableOrderBy,
 })
@@ -387,7 +385,7 @@ Creates standard response schema with message, statusCode, and optional data.
   - `httpStatus: HttpStatus` - HTTP status (required)
   - `messagePath: string` - i18n message path (required)
   - `statusCode: number` - Custom status code (required)
-  - `dto?: ClassConstructor<T>` - Response DTO class
+  - `schema?: z.ZodType<T>` - The zod schema the `data` field is documented from
 
 **Usage:**
 
@@ -396,7 +394,7 @@ Creates standard response schema with message, statusCode, and optional data.
     httpStatus: HttpStatus.CREATED,
     messagePath: 'resource.created',
     statusCode: HttpStatus.CREATED,
-    dto: CreatedResourceDto
+    schema: DatabaseIdResponseSchema
 })
 @Post('/resource')
 async createResource() {
@@ -414,7 +412,7 @@ Documents endpoint that returns **one of** several possible response types using
 - `...documents: IDocOfOptions[]` - One or more possible response schemas
   - `statusCode: number` - Status code
   - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
+  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
 
 **Basic Usage:**
 
@@ -447,7 +445,7 @@ Documents endpoint that can match **any combination** of provided schemas using 
 - `...documents: IDocOfOptions[]` - Possible response schemas
   - `statusCode: number` - Status code
   - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
+  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
 
 **Basic Usage:**
 
@@ -457,12 +455,12 @@ DocAnyOf(
     {
         statusCode: HttpStatus.OK,
         messagePath: 'user.partial',
-        dto: UserPartialDto,
+        schema: UserPartialSchema,
     },
     {
         statusCode: HttpStatus.OK,
         messagePath: 'user.full',
-        dto: UserFullDto,
+        schema: UserFullSchema,
     }
 )
 ```
@@ -477,7 +475,7 @@ Documents endpoint that must satisfy **all** provided schema definitions using O
 - `...documents: IDocOfOptions[]` - Required response schemas (all must be satisfied)
   - `statusCode: number` - Status code
   - `messagePath: string` - Message path for i18n
-  - `dto?: ClassConstructor` - Optional DTO class
+  - `schema?: z.ZodType<T>` - Optional zod schema for the `data` field
 
 **Basic Usage:**
 
@@ -487,12 +485,12 @@ DocAllOf(
     {
         statusCode: HttpStatus.OK,
         messagePath: 'user.base',
-        dto: UserBaseDto,
+        schema: UserBaseSchema,
     },
     {
         statusCode: HttpStatus.OK,
         messagePath: 'user.extended',
-        dto: UserExtendedDto,
+        schema: UserExtendedSchema,
     }
 )
 ```
@@ -519,83 +517,73 @@ There are two ways to obtain the Swagger JSON file, both available outside produ
 
 Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
 
-## DTO Documentation
+## Schema Documentation
 
-All decorators from `@nestjs/swagger` are fully supported in this module. This section provides an example using `@ApiProperty`, one of the most commonly used decorators for DTO documentation.
+A DTO here is a zod schema plus the type inferred from it, and the OpenAPI schema object is produced from that same schema by [zod-openapi][ref-zod-openapi]. There is no separate annotation layer: the doc decorators call `createSchema(schema)` and hand the result to `@nestjs/swagger`.
 
-### ApiProperty
+### .meta()
 
-The `@ApiProperty` decorator from `@nestjs/swagger` documents DTO properties. It supports all standard Swagger/OpenAPI property options.
+Per-field OpenAPI metadata lives in `.meta()` on the field.
 
-**Parameters:**
-
-For complete options reference, see [NestJS Swagger Types documentation][ref-nestjs-swagger-types].
-
-Common options:
+**Common keys:**
 - `description?: string` - Property description
-- `example?: any` - Example value
-- `required?: boolean` - Mark as required
-- `type?: Type | string` - Property type
-- `enum?: any[]` - Enum values
-- `minimum?: number` - Minimum value
-- `maximum?: number` - Maximum value
-- `minLength?: number` - Minimum string length
-- `maxLength?: number` - Maximum string length
-- `pattern?: string` - Regex pattern
-- `default?: any` - Default value
-- `nullable?: boolean` - Allow null
-- `readOnly?: boolean` - Read-only property
-- `writeOnly?: boolean` - Write-only property
+- `example?: unknown` - Example value
+- `deprecated?: boolean` - Mark the property deprecated
+
+Everything else the OpenAPI schema carries comes from the zod type itself: `.min()` / `.max()` become `minLength` / `maxLength` or `minimum` / `maximum`, `.regex()` becomes `pattern`, `z.enum()` becomes `enum`, `.optional()` keeps the field out of `required`, `.nullable()` sets the nullable type, and `.default()` becomes `default`.
 
 **Usage:**
 
 ```typescript
-export class UserChangePasswordRequestDto extends PartialType(
-    OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
-) {
-    @ApiProperty({
-        description: "new string password, newPassword can't same with oldPassword",
-        example: 'aBcDe@Fgh!123',
-        required: true,
-        minLength: 8,
-        maxLength: 50,
-    })
-    @IsNotEmpty()
-    @IsString()
-    @IsPassword()
-    @MinLength(8)
-    @MaxLength(50)
-    newPassword: string;
+export const UserChangePasswordRequestSchema =
+    UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
+        .partial()
+        .extend({
+            newPassword: z
+                .string()
+                .min(8)
+                .max(50)
+                .regex(RequestPasswordStrengthRegex, {
+                    error: () => 'request.error.isPassword.strong',
+                })
+                .meta({
+                    description:
+                        "new string password, newPassword can't same with oldPassword",
+                    example: 'aBcDe@Fgh!123',
+                }),
+            oldPassword: z.string().min(1).meta({
+                description: 'old string password',
+                example: 'xYzAb@Cde!456',
+            }),
+        });
 
-    @ApiProperty({
-        description: 'old string password',
-        example: 'xYzAb@Cde!456',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    oldPassword: string;
-}
+export type UserChangePasswordRequestDto = z.infer<
+    typeof UserChangePasswordRequestSchema
+>;
 ```
 
-**With Inheritance:**
+**With Composition:**
+
+A derived schema inherits the `.meta()` of every field it keeps, so only the new field needs annotating:
 
 ```typescript
-export class UserForgotPasswordResetRequestDto extends IntersectionType(
-    PickType(UserChangePasswordRequestDto, ['newPassword'] as const),
-    PartialType(
-        OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
-    )
-) {
-    @ApiProperty({
-        required: true,
-        description: 'Forgot password token',
-        example: 'AbCdEfGhIjKlMnOpQrSt',
-    })
-    @IsString()
-    @IsNotEmpty()
-    token: string;
-}
+export const UserForgotPasswordResetRequestSchema =
+    UserChangePasswordRequestSchema.pick({ newPassword: true })
+        .extend(
+            UserLoginVerifyTwoFactorRequestSchema.omit({
+                challengeToken: true,
+            }).partial().shape
+        )
+        .extend({
+            token: z.string().min(1).meta({
+                description: 'Forgot password token',
+                example: faker.string.alphanumeric(20),
+            }),
+        });
+
+export type UserForgotPasswordResetRequestDto = z.infer<
+    typeof UserForgotPasswordResetRequestSchema
+>;
 ```
 
 ## Usage
@@ -617,7 +605,7 @@ export function UserAdminGetDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
-            dto: UserProfileResponseDto,
+            schema: UserProfileResponseSchema,
         })
     );
 }
@@ -639,7 +627,6 @@ export function UserPublicSignUpDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserSignUpRequestDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -652,7 +639,9 @@ export function UserPublicSignUpDoc(): MethodDecorator {
 
 @UserPublicSignUpDoc()
 @Post('/sign-up')
-async signUp(@Body() dto: UserSignUpRequestDto) {
+async signUp(
+    @Body({ schema: UserSignUpRequestSchema }) body: UserSignUpRequestDto
+) {
     // implementation
 }
 ```
@@ -674,7 +663,7 @@ export function UserAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
-            dto: UserListResponseDto,
+            schema: UserListResponseSchema,
             availableSearch: UserDefaultAvailableSearch,
             availableOrderBy: UserDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -711,7 +700,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequestFile({
-            dto: FileUploadSingleRequestDto,
+            schema: FileUploadSingleRequestSchema,
         }),
         DocResponse('user.uploadPhotoProfile')
     );
@@ -741,7 +730,7 @@ For more information about NestJS Swagger integration, see the [official NestJS 
 <!-- REFERENCES -->
 
 [ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-types]: https://docs.nestjs.com/openapi/types-and-parameters
+[ref-zod-openapi]: https://github.com/samchungy/zod-openapi
 
 [ref-doc-request-validation]: request-validation.md
 [ref-doc-response]: response.md

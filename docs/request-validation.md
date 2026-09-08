@@ -4,13 +4,14 @@ This documentation explains the features and usage of **Request Module**: Locate
 
 ## Overview
 
-Request validation uses NestJS's built-in [ValidationPipe][ref-nestjs-validation-pipe] with [class-validator][ref-class-validator] decorators to validate request body, query parameters, and path parameters.
+Every request shape is a [zod][ref-zod] schema. Schemas reach the framework through the [Standard Schema][ref-standard-schema] interface, so NestJS validates a request body against the schema bound to the parameter, and the same schema also produces the OpenAPI document through [zod-openapi][ref-zod-openapi].
 
 ## Related Documents
 
 - [Message Documentation][ref-doc-message] - For internationalization and error message translation
 - [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation integration with DTOs
+- [Doc Documentation][ref-doc-doc] - For API documentation generated from the same schemas
+- [Response Documentation][ref-doc-response] - For the outbound half, where a response schema serializes the payload
 - [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
 
 ## Table of Contents
@@ -20,62 +21,47 @@ Request validation uses NestJS's built-in [ValidationPipe][ref-nestjs-validation
 - [Request Module](#request-module)
 - [Usage](#usage)
   - [Request Body Validation](#request-body-validation)
-  - [Query Parameters Validation](#query-parameters-validation)
   - [Path Parameters Validation](#path-parameters-validation)
-- [DTO with Doc](#dto-with-doc)
-- [Extending DTOs](#extending-dtos)
-  - [Direct](#direct)
-  - [PartialType](#partialtype)
-  - [OmitType](#omittype)
-  - [IntersectionType](#intersectiontype)
-- [Custom Validators](#custom-validators)
-  - [Available Custom Validators](#available-custom-validators)
-  - [Creating Custom Validator](#creating-custom-validator)
+  - [Query Parameters](#query-parameters)
+- [Schema Shape](#schema-shape)
+- [Composing Schemas](#composing-schemas)
+- [Shared Validations](#shared-validations)
 - [Validation Pipes](#validation-pipes)
+- [CSV Import Validation](#csv-import-validation)
+- [Environment Variables](#environment-variables)
 - [Error Message Mapping](#error-message-mapping)
 - [Error Message Translation](#error-message-translation)
 
 ## Request Module
 
-The validation system is configured globally in `RequestModule`:
+`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts`) extends the framework's `StandardSchemaValidationPipe` and is registered once as an `APP_PIPE` inside `RequestModule.forRoot()`:
 
 ```typescript
-new ValidationPipe({
-  transform: true,
-  skipMissingProperties: false,
-  skipNullProperties: false,
-  skipUndefinedProperties: false,
-  forbidUnknownValues: true,
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  transformOptions: {
-      excludeExtraneousValues: false,
-  },
-  validationError: {
-      target: false,
-      value: true,
-  },
-  errorHttpStatusCode:
-      HttpStatus.UNPROCESSABLE_ENTITY,
-  exceptionFactory: async (
-      errors: ValidationError[]
-  ) => new RequestValidationException(errors),
-})
+{
+  provide: APP_PIPE,
+  useFactory: () =>
+    new RequestSchemaValidationPipe({
+      exceptionFactory: (issues: readonly StandardSchemaV1.Issue[]) =>
+        new RequestValidationException(issues),
+    }),
+}
 ```
+
+The subclass adds one rule on top of the framework pipe: a `body` argument arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked. Binding a body is therefore always `@Body({ schema: <Module><Action>RequestSchema })`. The constraint when writing one: `rules/validation.md`.
 
 **Processing flow**:
 ```
 Request received
     ↓
-ValidationPipe validates DTO
+RequestSchemaValidationPipe validates the argument against its schema
     ↓
-Valid? → Continue to controller
+Valid? → parsed and transformed value reaches the controller
     ↓ No
-RequestValidationException thrown
+RequestValidationException carries the Standard Schema issues
     ↓
-AppValidationFilter catches exception
+AppValidationFilter catches the exception
     ↓
-MessageService formats errors with i18n
+MessageService localizes each issue
     ↓
 Standardized error response (HTTP 422)
 ```
@@ -84,455 +70,259 @@ Standardized error response (HTTP 422)
 
 ### Request Body Validation
 
-Apply DTO as type parameter in `@Body()` decorator:
+The schema is bound on `@Body()`; the parameter is typed with the inferred DTO type:
 
 ```typescript
 @Controller('users')
-export class UserController {
-  @Post()
-  create(@Body() body: CreateUserDto) {
-    // body is validated and transformed
-    return this.userService.create(body);
+export class UserAdminController {
+  @Post('/create')
+  create(
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+  ) {
+    return this.userHttpService.create(body);
   }
 }
 ```
 
-**DTO example**:
+**Schema example** (`src/modules/user/dtos/request/user.claim-username.request.dto.ts`):
 
 ```typescript
-export class CreateUserDto {
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
+export const UserClaimUsernameRequestSchema = z.strictObject({
+    username: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .min(3)
+        .max(50)
+        .regex(/^[a-zA-Z0-9]+$/)
+        .meta({
+            description: 'username to claim',
+            example: 'john_doe123',
+        })
+        .transform(value => value as Lowercase<string>),
+});
 
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(50)
-  password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-}
+export type UserClaimUsernameRequestDto = z.infer<
+    typeof UserClaimUsernameRequestSchema
+>;
 ```
 
-### Query Parameters Validation
-
-```typescript
-@Controller('users')
-export class UserController {
-  @Get()
-  list(@Query() query: UserListDto) {
-    return this.userService.findAll(query);
-  }
-}
-```
-
-**DTO example**:
-
-```typescript
-export class UserListDto {
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  @Min(10)
-  @Max(100)
-  perPage?: number = 20;
-}
-```
+Each request schema lives in `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check can never drift apart.
 
 ### Path Parameters Validation
 
+A path param is validated by pipes on the param itself, not by a schema:
+
 ```typescript
-@Controller('users')
-export class UserController {
-  @Get(':userId')
-  findOne(@Param() param: UserParamDto) {
-    return this.userService.findById(param.userId);
-  }
+@Get('/get/:user')
+findOne(
+  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
+) {
+  return this.userHttpService.get(user);
 }
 ```
 
-**DTO example**:
+### Query Parameters
+
+Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a pipe:
 
 ```typescript
-export class UserParamDto {
-  @IsMongoId()
-  @IsNotEmpty()
-  userId: string;
-}
-```
-
-## DTO with Doc
-
-Combine [class-validator][ref-class-validator] decorators with `@ApiProperty` from [@nestjs/swagger][ref-nestjs-swagger]:
-
-```typescript
-export class CreateUserDto {
-  @ApiProperty({
-    description: 'User email address',
-    example: faker.internet.email(),
-    required: true,
+@Get('/list')
+async list(
+  @PaginationOffsetQuery({
+    availableSearch: ProjectDefaultAvailableSearch,
+    availableOrderBy: ProjectDefaultAvailableOrderBy,
   })
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @ApiProperty({
-    description: 'User password',
-    example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string.alphanumeric(5).toUpperCase()}@@!123`,
-    required: true,
-    minLength: 8,
-    maxLength: 50,
-  })
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(50)
-  password: string;
-
-  @ApiProperty({
-    description: 'User full name',
-    example: faker.person.fullName(),
-    required: true,
-  })
-  @IsString()
-  @IsNotEmpty()
-  name: string;
+  pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+  @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+  workspaceId?: string
+) {
+  return this.projectHttpService.getListForAdmin(pagination, workspaceId);
 }
 ```
 
-See [Doc Documentation][ref-doc-doc] for complete guide with API documentation.
+## Schema Shape
 
-## Extending DTOs
+- **A root request schema is `z.strictObject`**, so an unknown key is a validation error rather than a silently dropped one.
+- **Constraints live on the field**: `.min()`, `.max()`, `.regex()`, `z.enum()`. A field typed `z.string()` alone is unvalidated wire input.
+- **Normalization runs at the boundary**: `.trim()`, `.toLowerCase()`, and `.transform()` on the schema mean every caller downstream sees one canonical value.
+- **`.meta({ description, example })`** on every field is what the OpenAPI document is generated from. See [Doc][ref-doc-doc].
+- **`.optional()`** marks an optional field. Request DTOs are the one layer where `undefined` is legal.
 
-Use type helpers from [@nestjs/swagger][ref-nestjs-swagger] to maintain `@ApiProperty` validity when extending DTOs. See [@nestjs/swagger documentation][ref-nestjs-swagger-mapped-types] for details.
-
-### Direct
-
-```typescript
-export class UpdateUserDto extends CreateUserDto {
-  @ApiProperty({
-    description: 'User status',
-    example: 'active',
-  })
-  @IsString()
-  @IsOptional()
-  status?: string;
-}
-```
-
-### PartialType
-
-Makes all properties optional:
+An issue message can be a message path, which the i18n layer resolves later:
 
 ```typescript
-export class UpdateUserDto extends PartialType(CreateUserDto) {}
+newPassword: z
+    .string()
+    .min(8)
+    .max(50)
+    .regex(RequestPasswordStrengthRegex, {
+        error: () => 'request.error.isPassword.strong',
+    })
 ```
 
-### OmitType
+`RequestPasswordStrengthRegex` (`src/common/request/constants/request.constant.ts`) asserts at least one uppercase letter, one lowercase letter, and one digit; length is checked by `.min()` / `.max()` beside it.
 
-Excludes specific properties:
+## Composing Schemas
+
+Zod's own combinators build one schema from another. `.extend()`, `.omit()`, `.pick()`, and `.partial()` all preserve the strictness of the base, so only the root spells out `z.strictObject`.
+
+**Extend**, to add fields to a base:
 
 ```typescript
-export class UpdateUserDto extends OmitType(CreateUserDto, ['password'] as const) {}
+export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
+    email: z.string().trim().toLowerCase().max(100),
+    roleId: z.string().regex(/^[0-9a-fA-F]{24}$/),
+    countryId: z.string().regex(/^[0-9a-fA-F]{24}$/),
+});
 ```
 
-### IntersectionType
-
-Combines multiple DTOs:
+**Pick**, to take a subset:
 
 ```typescript
-export class UserWithProfileDto extends IntersectionType(
-  CreateUserDto,
-  ProfileDto
-) {}
+export const UserImportRequestSchema = UserCreateRequestSchema.pick({
+    email: true,
+    name: true,
+    username: true,
+});
 ```
 
-## Custom Validators
-
-### Available Custom Validators
-
-Located in `src/common/request/validations/*`:
-
-**IsCustomEmail**
-Enhanced email validation with detailed error messages:
+**Omit and partial**, to drop a field and relax the rest before adding new ones:
 
 ```typescript
-export class CreateUserDto {
-  @IsCustomEmail()
-  @IsNotEmpty()
-  email: string;
-}
+export const UserChangePasswordRequestSchema =
+    UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
+        .partial()
+        .extend({
+            newPassword: z.string().min(8).max(50),
+            oldPassword: z.string().min(1),
+        });
 ```
 
-**IsPassword**
-Strong password validation:
+## Shared Validations
+
+Checks too detailed for a chained method live as plain functions in `src/common/request/validations/` and are called from `.superRefine()`.
+
+**`validateEmail`** (`request.custom-email.validation.ts`) walks an address part by part (`@` count, domain length, domain labels, TLD, local part) and returns the i18n path of the first rule it fails, so the client is told which rule broke rather than that the address is invalid:
 
 ```typescript
-export class ChangePasswordDto {
-  @IsPassword()
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(50)
-  newPassword: string;
-}
+email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(100)
+    .superRefine((value, ctx) => {
+        const validation = validateEmail(value);
+        if (!validation.validated) {
+            ctx.addIssue({
+                code: 'custom',
+                message: validation.messagePath,
+            });
+        }
+    })
 ```
 
-**IsAfterNow**
-Validates date is after current time:
-
-```typescript
-export class CreateEventDto {
-  @IsAfterNow()
-  @IsNotEmpty()
-  startDate: Date;
-}
-```
-
-**GreaterThanOtherProperty**
-Validates field is greater than another field:
-
-```typescript
-export class CreateRangeDto {
-  @IsNumber()
-  minValue: number;
-
-  @GreaterThanOtherProperty('minValue')
-  @IsNumber()
-  maxValue: number;
-}
-```
-
-**GreaterThanEqualOtherProperty**
-Validates field is greater than or equal to another field:
-
-```typescript
-export class CreateRangeDto {
-  @IsNumber()
-  minValue: number;
-
-  @GreaterThanEqualOtherProperty('minValue')
-  @IsNumber()
-  maxValue: number;
-}
-```
-
-**LessThanOtherProperty**
-Validates field is less than another field:
-```typescript
-export class CreateDiscountDto {
-  @IsNumber()
-  maxDiscount: number;
-
-  @LessThanOtherProperty('maxDiscount')
-  @IsNumber()
-  minDiscount: number;
-}
-```
-
-**LessThanEqualOtherProperty**
-Validates field is less than or equal to another field:
-
-```typescript
-export class CreateDiscountDto {
-  @IsNumber()
-  maxDiscount: number;
-
-  @LessThanEqualOtherProperty('maxDiscount')
-  @IsNumber()
-  minDiscount: number;
-}
-```
-
-### Creating Custom Validator
-
-For module-specific validators, create in module's `/validations` folder. For global validators, add to `src/common/request/validations`:
-
-```typescript
-@ValidatorConstraint({ async: false })
-@Injectable()
-export class IsStrongPasswordConstraint implements ValidatorConstraintInterface {
-  validate(value: string, args: ValidationArguments): boolean {
-    // Validation logic
-    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value);
-  }
-
-  defaultMessage(args: ValidationArguments): string {
-    return 'request.error.passwordWeak';
-  }
-}
-
-export function IsStrongPassword(validationOptions?: ValidationOptions) {
-  return function (object: unknown, propertyName: string): void {
-    registerDecorator({
-      name: 'IsStrongPassword',
-      target: object.constructor,
-      propertyName: propertyName,
-      options: validationOptions,
-      constraints: [],
-      validator: IsStrongPasswordConstraint,
-    });
-  };
-}
-```
-
-**Register in `RequestModule`**:
-
-Add the constraint to the `providers` array inside `RequestModule.forRoot()`:
-
-```typescript
-static forRoot(): DynamicModule {
-  return {
-    module: RequestModule,
-    providers: [
-      // ... existing constraints
-      IsStrongPasswordConstraint,
-    ],
-    // ...
-  };
-}
-```
+A module-specific check goes in that module's `validations/` folder instead.
 
 ## Validation Pipes
 
-Pipes validate single fields for body, param, or query. For multiple fields, use DTO with class-validator.
+Pipes validate a single param, body field, or query value. A multi-field payload uses a schema.
 
 **RequestRequiredPipe**
-Validates required parameters:
+Throws `RequestParamRequiredException` when the value is missing or empty:
 
 ```typescript
-@Controller('users')
-export class UserController {
-  @Get(':userId')
-  findOne(@Param('userId', RequestRequiredPipe) userId: string) {
-    return this.userService.findById(userId);
-  }
+@Get('/get/:user')
+findOne(@Param('user', RequestRequiredPipe) user: string) {
+  return this.userHttpService.get(user);
 }
 ```
 
 **RequestIsValidObjectIdPipe**
-Validates MongoDB ObjectId, throwing `RequestIsMongoIdException` otherwise. Instantiate it with `{ optional: true }` to let an absent value pass through as `undefined`:
+Validates a MongoDB ObjectId, throwing `RequestIsMongoIdException` otherwise. Instantiate it with `{ optional: true }` to let an absent value pass through as `undefined`:
 
 ```typescript
-@Get(':userId')
-findOne(@Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe) userId: string) {
-  return this.userService.findById(userId);
+@Get('/get/:user')
+findOne(
+  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
+) {
+  return this.userHttpService.get(user);
 }
 ```
 
 **File validation pipes**
-`FileExtensionPipe` validates the upload extension. A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe` validates every row against the import DTO, caps the row count at the `file.maxDataImport` config value (100, overridable per pipe via `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, and collects all per-row failures into a `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+`FileExtensionPipe` validates the upload extension. See [File Upload][ref-doc-file-upload].
+
+## CSV Import Validation
+
+A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
+
+```typescript
+@UploadedFile(
+  RequestRequiredPipe,
+  FileExtensionPipe([EnumFileExtensionDocument.csv]),
+  FileCsvParsePipe,
+  FileCsvValidationPipe(UserImportRequestSchema, {
+    maxDataImportConfigKey: 'user.maxDataImport',
+  })
+)
+data: UserImportRequestDto[]
+```
+
+The pipe caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, rejects an empty file with `FileRequiredExtractFirstException`, and collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+
+## Environment Variables
+
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is exactly `'true'` or `'false'`; every other spelling fails the boot. See [Environment][ref-doc-environment].
 
 ## Error Message Mapping
 
-When validation fails, `MessageService` processes errors through `setValidationMessage()`:
-
-**Process**:
-1. Read the constraint keys off each `ValidationError.constraints`
-2. Handle nested validation errors by traversing children with `processNestedValidationError()`
-3. Reconstruct full property path for nested objects (e.g., `address.street`)
-4. Create localized message for each constraint with fallback mechanism
-5. Format into `IMessageValidationError[]`
-
-**Implementation** (from `MessageService`):
-
-```typescript
-setValidationMessage(
-  errors: ValidationError[],
-  options?: IMessageErrorOptions
-): IMessageValidationError[] {
-  const messages: IMessageValidationError[] = [];
-
-  for (const error of errors) {
-    let property = error.property;
-    let constraints: Record<string, string> = error.constraints;
-    let constraintKeys = constraints ? Object.keys(constraints) : [];
-
-    // Handle nested errors if no direct constraints found
-    if (constraintKeys.length === 0) {
-      const nestedResult = this.processNestedValidationError(error);
-      property = nestedResult.property;  // Full path: address.street
-      constraints = nestedResult.constraints;
-      constraintKeys = Object.keys(nestedResult.constraints);
-    }
-
-    // Create localized message for each constraint
-    for (const constraintKey of constraintKeys) {
-      messages.push(
-        this.createValidationMessage(
-          constraintKey,
-          constraints[constraintKey],
-          error.value,
-          property,
-          options
-        )
-      );
-    }
-  }
-
-  return messages;
-}
-```
-
-**Message Resolution Strategy**:
-1. **Primary**: Tries to resolve from `request.error.{constraint}` path
-2. **Fallback**: If translation not found (message equals path), uses raw message from class-validator
-
-**Error structure**:
+`RequestValidationException` carries the raw `StandardSchemaV1.Issue[]`, and `MessageService.setValidationMessage()` turns each one into an `IMessageValidationError`:
 
 ```typescript
 interface IMessageValidationError {
-  key: string;        // Constraint name (e.g., 'isEmail')
-  property: string;   // Property path (e.g., 'user.email')
-  message: string;    // Localized message
+  key: string;        // camelCase issue code, e.g. 'invalidFormat'
+  property: string;   // dotted property path, e.g. 'address.street'
+  message: string;    // localized message
 }
 ```
 
+**Per issue**:
+
+1. `key` is the issue's `code` in camelCase (`too_small` becomes `tooSmall`). An issue with no string `code` falls back to `custom`.
+2. `property` is the issue `path` joined with dots, so a nested field reads `address.street`. An empty path becomes `Unknown`.
+3. `message` is resolved by translating `issue.message` first. When that path exists in the language file, its translation is used, which is how a schema raising `'request.error.isPassword.strong'` speaks for itself. When the translation comes back unchanged, the message is looked up under `request.error.{key}` instead, so a plain zod issue still gets a localized sentence.
+4. Both lookups interpolate `{property}` with the last segment of the path.
+
 ## Error Message Translation
 
-Error messages are translated using [nestjs-i18n][ref-nestjs-i18n] through [Message System][ref-doc-message].
+Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Message System][ref-doc-message].
 
-**Message path pattern**: `request.error.{constraintName}`
+**Message path pattern**: `request.error.{key}`
 
-**Example message file** (`en/request.json`):
+**Message file** (`src/languages/en/request.json`), one entry per zod issue code plus the nested groups a shared validation points at:
+
 ```json
 {
   "error": {
-    "isEmail": "{property} should be a valid email address.",
-    "isNotEmpty": "{property} cannot be empty.",
-    "minLength": "{property} is shorter than the minimum length allowed.",
+    "invalidType": "{property} is not of the expected type.",
+    "tooSmall": "{property} is shorter than the minimum allowed.",
+    "tooBig": "{property} is longer than the maximum allowed.",
+    "invalidFormat": "{property} does not match the expected format.",
+    "invalidValue": "{property} is not one of the allowed values.",
+    "unrecognizedKeys": "The request contains fields that are not allowed.",
+    "custom": "{property} failed a validation rule.",
     "isPassword": {
-      "required": "{property} password is required.",
       "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
+    },
+    "email": {
+      "invalid": "{property} should be a valid email address."
     }
   }
 }
 ```
 
-**Custom validator message** (from `IsCustomEmailConstraint`):
-
-```typescript
-defaultMessage(validationArguments?: ValidationArguments): string {
-  if (!validationArguments?.value) {
-    return 'request.error.email.required';
-  }
-
-  const validationResult = this.helperStringService.checkEmail(
-    validationArguments.value
-  );
-  return validationResult.messagePath ?? 'request.error.email.invalid';
-}
-```
-
-**Final response** (handled by `AppValidationFilter`):
+**Final response** (built by `AppValidationFilter`):
 ```json
 {
   "statusCode": 50300,
@@ -541,14 +331,14 @@ defaultMessage(validationArguments?: ValidationArguments): string {
   "message": "There are validation errors.",
   "errors": [
     {
-      "key": "isEmail",
+      "key": "custom",
       "property": "email",
       "message": "email should be a valid email address."
     },
     {
-      "key": "minLength",
+      "key": "tooSmall",
       "property": "password",
-      "message": "password is shorter than the minimum length allowed."
+      "message": "password is shorter than the minimum allowed."
     }
   ],
   "metadata": {
@@ -563,20 +353,20 @@ defaultMessage(validationArguments?: ValidationArguments): string {
 }
 ```
 
-See [Handling Error][ref-doc-handling-error] for complete error handling flow.
-
-
+See [Handling Error][ref-doc-handling-error] for the complete error handling flow.
 
 
 <!-- REFERENCES -->
 
-[ref-nestjs-validation-pipe]: https://docs.nestjs.com/techniques/validation
-[ref-class-validator]: https://github.com/typestack/class-validator
-[ref-nestjs-swagger]: https://docs.nestjs.com/openapi/introduction
-[ref-nestjs-swagger-mapped-types]: https://docs.nestjs.com/openapi/mapped-types
+[ref-zod]: https://zod.dev
+[ref-zod-openapi]: https://github.com/samchungy/zod-openapi
+[ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
 
 [ref-doc-message]: message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md
+[ref-doc-response]: response.md
+[ref-doc-pagination]: pagination.md
+[ref-doc-environment]: environment.md

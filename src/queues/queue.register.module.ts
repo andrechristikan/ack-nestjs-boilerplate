@@ -23,21 +23,24 @@ export class QueueRegisterModule {
                 inject: [ConfigService],
                 useFactory: (configService: ConfigService) => ({
                     defaultJobOptions: {
-                        attempts: configService.get<number>(
-                            'queue.job.attempts'
-                        ),
+                        attempts:
+                            configService.get<number>('queue.job.attempts'),
                         backoff: {
                             type: 'exponential',
                             delay: configService.get<number>(
                                 'queue.job.emailBackoffDelayInMs'
                             ),
                         },
-                        removeOnComplete: configService.get<number>(
-                            'queue.job.removeOnComplete'
-                        ),
-                        removeOnFail: configService.get<number>(
-                            'queue.job.removeOnFail'
-                        ),
+                        removeOnComplete: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnCompleteAgeInSeconds'
+                            )!,
+                        },
+                        removeOnFail: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnFailAgeInSeconds'
+                            )!,
+                        },
                     },
                 }),
             }),
@@ -48,21 +51,24 @@ export class QueueRegisterModule {
                 inject: [ConfigService],
                 useFactory: (configService: ConfigService) => ({
                     defaultJobOptions: {
-                        attempts: configService.get<number>(
-                            'queue.job.attempts'
-                        ),
+                        attempts:
+                            configService.get<number>('queue.job.attempts'),
                         backoff: {
                             type: 'exponential',
                             delay: configService.get<number>(
                                 'queue.job.pushBackoffDelayInMs'
                             ),
                         },
-                        removeOnComplete: configService.get<number>(
-                            'queue.job.removeOnComplete'
-                        ),
-                        removeOnFail: configService.get<number>(
-                            'queue.job.removeOnFail'
-                        ),
+                        removeOnComplete: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnCompleteAgeInSeconds'
+                            )!,
+                        },
+                        removeOnFail: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnFailAgeInSeconds'
+                            )!,
+                        },
                     },
                 }),
             }),
@@ -73,21 +79,24 @@ export class QueueRegisterModule {
                 inject: [ConfigService],
                 useFactory: (configService: ConfigService) => ({
                     defaultJobOptions: {
-                        attempts: configService.get<number>(
-                            'queue.job.attempts'
-                        ),
+                        attempts:
+                            configService.get<number>('queue.job.attempts'),
                         backoff: {
                             type: 'exponential',
                             delay: configService.get<number>(
                                 'queue.job.notificationBackoffDelayInMs'
                             ),
                         },
-                        removeOnComplete: configService.get<number>(
-                            'queue.job.removeOnComplete'
-                        ),
-                        removeOnFail: configService.get<number>(
-                            'queue.job.removeOnFail'
-                        ),
+                        removeOnComplete: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnCompleteAgeInSeconds'
+                            )!,
+                        },
+                        removeOnFail: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnFailAgeInSeconds'
+                            )!,
+                        },
                     },
                 }),
             }),
@@ -98,21 +107,24 @@ export class QueueRegisterModule {
                 inject: [ConfigService],
                 useFactory: (configService: ConfigService) => ({
                     defaultJobOptions: {
-                        attempts: configService.get<number>(
-                            'queue.job.attempts'
-                        ),
+                        attempts:
+                            configService.get<number>('queue.job.attempts'),
                         backoff: {
                             type: 'exponential',
                             delay: configService.get<number>(
                                 'queue.job.workspaceBackoffDelayInMs'
                             ),
                         },
-                        removeOnComplete: configService.get<number>(
-                            'queue.job.removeOnComplete'
-                        ),
-                        removeOnFail: configService.get<number>(
-                            'queue.job.removeOnFail'
-                        ),
+                        removeOnComplete: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnCompleteAgeInSeconds'
+                            )!,
+                        },
+                        removeOnFail: {
+                            age: configService.get<number>(
+                                'queue.job.removeOnFailAgeInSeconds'
+                            )!,
+                        },
                     },
                 }),
             }),
@@ -143,15 +155,18 @@ export class QueueRegisterModule {
                                     'queue.job.notificationBackoffDelayInMs'
                                 ),
                             },
-                            attempts: configService.get<number>(
-                                'queue.job.attempts'
-                            ),
-                            removeOnComplete: configService.get<number>(
-                                'queue.job.removeOnComplete'
-                            ),
-                            removeOnFail: configService.get<number>(
-                                'queue.job.removeOnFail'
-                            ),
+                            attempts:
+                                configService.get<number>('queue.job.attempts'),
+                            removeOnComplete: {
+                                age: configService.get<number>(
+                                    'queue.job.removeOnCompleteAgeInSeconds'
+                                )!,
+                            },
+                            removeOnFail: {
+                                age: configService.get<number>(
+                                    'queue.job.removeOnFailAgeInSeconds'
+                                )!,
+                            },
                         },
                     }),
                 }),
@@ -175,15 +190,18 @@ export class QueueRegisterModule {
                                     'queue.job.notificationBackoffDelayInMs'
                                 ),
                             },
-                            attempts: configService.get<number>(
-                                'queue.job.attempts'
-                            ),
-                            removeOnComplete: configService.get<number>(
-                                'queue.job.removeOnComplete'
-                            ),
-                            removeOnFail: configService.get<number>(
-                                'queue.job.removeOnFail'
-                            ),
+                            attempts:
+                                configService.get<number>('queue.job.attempts'),
+                            removeOnComplete: {
+                                age: configService.get<number>(
+                                    'queue.job.removeOnCompleteAgeInSeconds'
+                                )!,
+                            },
+                            removeOnFail: {
+                                age: configService.get<number>(
+                                    'queue.job.removeOnFailAgeInSeconds'
+                                )!,
+                            },
                         },
                     }),
                 }),

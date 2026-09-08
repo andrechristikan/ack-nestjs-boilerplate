@@ -2,6 +2,10 @@ import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    HealthCacheControlHeaderName,
+    HealthCacheControlHeaderValue,
+} from '@modules/health/constants/health.constant';
+import {
     HealthSystemCheckAwsDoc,
     HealthSystemCheckDatabaseDoc,
     HealthSystemCheckInstanceDoc,
@@ -24,9 +28,8 @@ import {
     HealthThirdPartyResponseSchema,
 } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
-import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { HealthCheck } from '@nestjs/terminus';
 
 @ApiTags('modules.system.health')
 @Controller({
@@ -38,7 +41,7 @@ export class HealthSystemController {
 
     @HealthSystemCheckAwsDoc()
     @Response('health.checkAws', { schema: HealthAwsResponseSchema })
-    @HealthCheck()
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/aws')
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
@@ -47,7 +50,7 @@ export class HealthSystemController {
 
     @HealthSystemCheckDatabaseDoc()
     @Response('health.checkDatabase', { schema: HealthDatabaseResponseSchema })
-    @HealthCheck()
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/database')
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
@@ -58,7 +61,7 @@ export class HealthSystemController {
     @Response('health.checkThirdParty', {
         schema: HealthThirdPartyResponseSchema,
     })
-    @HealthCheck()
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/third-party')
     async checkThirdParty(): Promise<
@@ -69,7 +72,7 @@ export class HealthSystemController {
 
     @HealthSystemCheckInstanceDoc()
     @Response('health.checkInstance', { schema: HealthInstanceResponseSchema })
-    @HealthCheck()
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/instance')
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {

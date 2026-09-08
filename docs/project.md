@@ -97,7 +97,7 @@ Note the path shape on the member routes: `:projectId` leads the target segment,
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@PolicyAbilityProtected({ subject: project, action: [read] })`. These routes are **not** feature-flagged, do not read `x-workspace-id`, and are read-only.
+Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@PolicyProtected({ subject: project, action: [read] })`. These routes are **not** feature-flagged, do not read `x-workspace-id`, and are read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -106,7 +106,7 @@ Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@Policy
 
 ## Access Control
 
-The guards run in this order, first to last: `ApiKeyGuard` → JWT → `FeatureFlagGuard` → `UserGuard` → `WorkspaceGuard` → `WorkspaceMemberGuard` → `ProjectGuard` → `ProjectRoleGuard` (or `ProjectMemberGuard`) → `TermPolicyGuard`. Each guard reads what the previous one stored and never re-fetches.
+The guards run in this order, first to last: `ApiKeyXApiKeyGuard` → JWT → `FeatureFlagGuard` → `UserGuard` → `WorkspaceGuard` → `WorkspaceMemberGuard` → `ProjectGuard` → `ProjectRoleGuard` (or `ProjectMemberGuard`) → `TermPolicyGuard`. Each guard reads what the previous one stored and never re-fetches.
 
 - **`ProjectGuard`** reads the `projectId` route param and the workspace `WorkspaceGuard` resolved, then loads the project **constrained to that workspace and to non-deleted rows**. A missing param, a soft-deleted project, and a project belonging to a different workspace all collapse into the same `ProjectNotFoundException` (404, `51700`). Cross-workspace probing therefore cannot distinguish "not yours" from "does not exist".
 - **`@ProjectMemberProtected()`** with no arguments demands a real `ProjectMember` row and has no owner bypass.
@@ -139,7 +139,7 @@ Because the role form does not bind `ProjectMemberGuard`, `@ProjectMemberCurrent
 
 ### The `/admin` scope takes none of this
 
-Admin routes carry no project or workspace guard. They take the project id from the path and are gated by `@RoleProtected()` + `@PolicyAbilityProtected()` instead.
+Admin routes carry no project or workspace guard. They take the project id from the path and are gated by `@RoleProtected()` + `@PolicyProtected()` instead.
 
 ## Slug
 

@@ -11,6 +11,7 @@ import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.in
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import { HealthService } from '@modules/health/services/health.service';
+import { HealthUtil } from '@modules/health/utils/health.util';
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 
@@ -20,6 +21,7 @@ import { TerminusModule } from '@nestjs/terminus';
 @Module({
     providers: [
         HealthService,
+        HealthUtil,
         HealthAwsS3BucketIndicator,
         HealthAwsSESIndicator,
         HealthDatabaseIndicator,
@@ -32,7 +34,7 @@ import { TerminusModule } from '@nestjs/terminus';
         HealthJwksIndicator,
         HealthQueueIndicator,
     ],
-    exports: [HealthService],
+    exports: [HealthService, HealthUtil],
     imports: [
         AwsModule,
         TerminusModule.forRoot({

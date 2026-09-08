@@ -163,18 +163,18 @@ Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
 
 ### FileCsvValidationPipe
 
-Transforms and validates CSV data using DTO classes with class-validator decorators. This pipe applies validation rules to each row of imported data and provides detailed error messages.
+Validates every parsed CSV row against a zod request schema and reports the failures row by row.
 
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
 2. Rejects an empty row set, and a row set larger than the configured row cap
-3. Transforms each row into the specified DTO class
-4. Validates using class-validator with `whitelist: true` and `forbidNonWhitelisted: true`, so an unknown column fails the row
-5. Collects all validation errors with row context, never failing fast on the first bad row
+3. Runs each row through the schema, keeping the parsed output
+4. A request schema is `z.strictObject`, so an unknown column fails the row
+5. Collects all validation issues with row context, never failing fast on the first bad row
 6. Throws `FileImportException` if any row failed
 
 **Parameters:**
-- DTO class for row validation
+- The zod schema each row is validated against
 - `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`, which is `100`)
 
 The pipe factory runs at decoration time, before config is resolved, so it takes the config KEY and reads the value in the constructor. The user import passes `'user.maxDataImport'`, which is `50`.
@@ -207,8 +207,8 @@ flowchart TD
     
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
     I -->|Rows > configured row cap| I3[Throw FileExceedMaxDataImportException]
-    I -->|Within Cap| J[Transform Each Row to DTO Class]
-    J --> K[Validate with class-validator]
+    I -->|Within Cap| J[Run Each Row Through the Schema]
+    J --> K[Collect the Standard Schema issues]
     
     K -->|Validation Errors| L[Collect Errors with Row Context]
     L --> M[Throw FileImportException]
@@ -277,7 +277,7 @@ const extension = this.fileService.extractExtensionFromFilename(
   file.originalname
 ) as EnumFileExtensionImage;
 
-const key: string = this.userUtil.createRandomFilenamePhotoProfileWithPath(
+const key: string = this.createRandomFilenamePhotoProfileWithPath(
   userId,
   { extension }
 );
@@ -330,21 +330,23 @@ Import and validate data from CSV files. The live example is `POST /admin/user/i
 
 The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
 
-The row DTO is an ordinary request DTO. `UserImportRequestDto` picks `email`, `name` and `username` off `UserCreateRequestDto`, so the import reuses the same validators as user creation:
+The row shape is an ordinary request schema. `UserImportRequestSchema` picks `email`, `name` and `username` off `UserCreateRequestSchema`, so the import reuses the same field constraints as user creation:
 
 ```typescript
-export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
-  'email',
-  'name',
-  'username',
-]) {}
+export const UserImportRequestSchema = UserCreateRequestSchema.pick({
+    email: true,
+    name: true,
+    username: true,
+});
+
+export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 ```
 
 ```typescript
 @UserAdminImportDoc()
 @Response('user.import')
 @TermPolicyAcceptanceProtected()
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read, EnumPolicyAction.create],
 })
@@ -364,7 +366,7 @@ async import(
     RequestRequiredPipe,
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
-    FileCsvValidationPipe(UserImportRequestDto, {
+    FileCsvValidationPipe(UserImportRequestSchema, {
       maxDataImportConfigKey: 'user.maxDataImport',
     })
   )
@@ -376,7 +378,7 @@ async import(
 
 The row cap on this route is `user.maxDataImport`, which is `50`.
 
-`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no DTO validation applied.
+`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no schema validation applied.
 
 ### Multiple Field Upload
 
@@ -458,8 +460,8 @@ Thrown during CSV validation with detailed error context. This exception provide
   errors: Array<{
     row: number;            // Row index (0-based)
     errors: Array<{
-      key: string;          // Constraint name (e.g. 'isEmail', 'min')
-      property: string;     // DTO property name
+      key: string;          // camelCase zod issue code (e.g. 'invalidFormat', 'tooSmall')
+      property: string;     // dotted property path
       message: string;      // Translated error message
     }>;
   }>;
@@ -475,7 +477,7 @@ Thrown during CSV validation with detailed error context. This exception provide
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
 | Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
 | Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds the configured row cap |
-| Validation Failed | 50300 | 422 | `file.error.validationDto` | DTO validation failed with details |
+| Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 
 Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.
 
@@ -501,14 +503,14 @@ Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Fail
       "row": 0,
       "errors": [
         {
-          "key": "isEmail",
+          "key": "custom",
           "property": "email",
-          "message": "email must be a valid email address"
+          "message": "email should be a valid email address."
         },
         {
-          "key": "min",
-          "property": "age",
-          "message": "age must not be less than 18"
+          "key": "tooSmall",
+          "property": "username",
+          "message": "username is shorter than the minimum allowed."
         }
       ]
     }
@@ -522,22 +524,22 @@ File validation errors are automatically translated using the i18n system. The `
 
 **How It Works:**
 
-1. Validation errors are captured from class-validator
-2. Errors are passed to `MessageService.setValidationImportMessage()`
-3. Each constraint is translated using i18n keys: `request.error.{constraint}`
-4. When that key does not resolve, the raw class-validator message is used instead
+1. The schema's issues are collected per row
+2. They are passed to `MessageService.setValidationImportMessage()`
+3. The issue message is translated first, so a schema raising a message path speaks for itself; otherwise the camelCase issue code is looked up under `request.error.{key}`
+4. `{property}` is interpolated with the last segment of the issue path
 5. Localized messages are returned in the error response, each carrying `key`, `property`, and `message`
 
 **Custom Error Messages:**
 
-Add custom validation messages in `src/languages/<lang>/request.json` for any class-validator constraint:
+Add messages in `src/languages/<lang>/request.json`, one entry per zod issue code:
 
 ```json
 {
   "error": {
-    "min": "{property} must not be less than {value}",
-    "max": "{property} must not be greater than {value}",
-    "isEmail": "{property} must be a valid email address"
+    "tooSmall": "{property} is shorter than the minimum allowed.",
+    "tooBig": "{property} is longer than the maximum allowed.",
+    "invalidFormat": "{property} does not match the expected format."
   }
 }
 ```

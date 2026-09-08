@@ -9,7 +9,7 @@ export class AuthTwoFactorUtil {
     private readonly algorithm: HashAlgorithm;
     private readonly issuer: string;
     private readonly digits: number;
-    private readonly periodInMs: number;
+    private readonly periodInSeconds: number;
 
     constructor(private readonly configService: ConfigService) {
         this.strategy = this.configService.get<OTPStrategy>(
@@ -20,8 +20,8 @@ export class AuthTwoFactorUtil {
         )!;
         this.issuer = this.configService.get<string>('auth.twoFactor.issuer')!;
         this.digits = this.configService.get<number>('auth.twoFactor.digits')!;
-        this.periodInMs = this.configService.get<number>(
-            'auth.twoFactor.periodInMs'
+        this.periodInSeconds = this.configService.get<number>(
+            'auth.twoFactor.periodInSeconds'
         )!;
     }
 
@@ -32,7 +32,7 @@ export class AuthTwoFactorUtil {
             label: `${this.issuer}:${email}`,
             secret,
             digits: this.digits,
-            period: this.periodInMs / 1000,
+            period: this.periodInSeconds,
             strategy: this.strategy,
             algorithm: this.algorithm,
         });

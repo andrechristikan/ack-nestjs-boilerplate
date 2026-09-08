@@ -70,7 +70,9 @@ that touches them:
 - **A new i18n key added to `en` only**, or written flat instead of nested.
 - **A mutable field in a CURSOR route's `availableOrderBy`** — rows move mid-scroll.
 - **A `statusCodeKey` hardcoded** rather than reverse-looked-up on the same member.
-- **A time value in config that is not `InMs` + `ms('…')`**, or a `/1000` inside a config file.
+- **A duration config key whose suffix does not name its consumer's unit**, a value not built
+  from an `ms('…')` literal, or a unit conversion at a call site — a duration COMPUTED at request
+  time is not one, it has no key to name.
 - **A rename with no operational step named** — a queue name, job name, job payload field, JWT
   payload field, cursor payload field, or i18n key path (`rules/naming.md`).
 

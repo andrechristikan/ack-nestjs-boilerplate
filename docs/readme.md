@@ -18,7 +18,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a
 |---|---|
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
-| Config | All configuration via environment variables, validated at startup via `AppEnvDto` |
+| Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
 | Backing Services | MongoDB, Redis, AWS S3/SES, Firebase — treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
 | Processes | Stateless app processes — session and cache state stored in Redis, not in-memory |
@@ -62,10 +62,10 @@ Essential systems that power every feature in the project.
 
 5. [Database][ref-doc-database] — Prisma + MongoDB replica set, transactions, and the Database Module
 6. [Authentication][ref-doc-authentication] — JWT (ES256/ES512), session lifecycle, API key auth
-7. [Authorization][ref-doc-authorization] — `UserProtected`, `RoleProtected`, `PolicyAbilityProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
+7. [Authorization][ref-doc-authorization] — `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
 8. [Device][ref-doc-device] — Device fingerprinting, `DeviceOwnership`, max 1 session per device
 9. [Response][ref-doc-response] — Standardized response decorators, pagination response, file download
-10. [Request Validation][ref-doc-request-validation] — `ValidationPipe`, `class-validator`, body/query/path validation
+10. [Request Validation][ref-doc-request-validation] — `RequestSchemaValidationPipe`, zod request schemas, body and path validation
 11. [Handling Error][ref-doc-handling-error] — Exception filters, standardized HTTP error responses, i18n errors
 12. [Status Codes][ref-doc-status-codes] — Full catalog of application statusCode values by module
 13. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`

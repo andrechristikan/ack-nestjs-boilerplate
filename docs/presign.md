@@ -63,39 +63,27 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 
 ### Implementation
 
-**Step 1 - Request DTOs:**
+**Step 1 - Request schemas:**
 
-Both DTOs take `size` from `AwsS3PresignRequestDto`, which validates it with `@IsNumber({ allowInfinity: false, allowNaN: false, maxDecimalPlaces: 0 })`, `@IsInt()`, and `@IsNotEmpty()`.
+Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`.
 
 ```typescript
-export class UserGeneratePhotoProfileRequestDto extends PickType(
-  AwsS3PresignRequestDto,
-  ['size']
-) {
-  @ApiProperty({
-    type: 'string',
-    enum: EnumFileExtensionImage,
-    default: EnumFileExtensionImage.jpg,
-  })
-  @IsString()
-  @IsEnum(EnumFileExtensionImage)
-  @IsNotEmpty()
-  extension: EnumFileExtensionImage;
-}
+export const UserGeneratePhotoProfileRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        extension: z.enum(EnumFileExtensionImage).meta({
+            description: 'Image file extension of the profile photo',
+            default: EnumFileExtensionImage.jpg,
+            example: EnumFileExtensionImage.jpg,
+        }),
+    });
 
-export class UserUpdateProfilePhotoRequestDto extends PickType(
-  AwsS3PresignRequestDto,
-  ['size']
-) {
-  @ApiProperty({
-    required: true,
-    description: 'photo path key',
-    example: 'user/profile/unique-photo-key.jpg',
-  })
-  @IsString()
-  @IsNotEmpty()
-  photoKey: string;
-}
+export const UserUpdateProfilePhotoRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        photoKey: z.string().min(1).meta({
+            description: 'photo path key',
+            example: 'user/profile/unique-photo-key.jpg',
+        }),
+    });
 ```
 
 **Step 2 - Controller Endpoints:**
@@ -115,7 +103,9 @@ export class UserSharedController {
   ) {}
 
   @UserSharedGeneratePhotoProfilePresignDoc()
-  @Response('user.generatePhotoProfilePresign')
+  @Response('user.generatePhotoProfilePresign', {
+    schema: AwsS3PresignResponseSchema,
+  })
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
@@ -125,8 +115,9 @@ export class UserSharedController {
   @Post('/profile/photo/presign/generate')
   async generatePhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
+    @Body({ schema: UserGeneratePhotoProfileRequestSchema })
+    body: UserGeneratePhotoProfileRequestDto
+  ): Promise<IResponseReturn<IAwsS3Presign>> {
     return this.userProfileHttpService.generatePhotoProfilePresign(
       userId,
       body
@@ -143,7 +134,8 @@ export class UserSharedController {
   @Put('/profile/photo/update')
   async updatePhotoProfile(
     @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserUpdateProfilePhotoRequestDto
+    @Body({ schema: UserUpdateProfilePhotoRequestSchema })
+    body: UserUpdateProfilePhotoRequestDto
   ): Promise<void> {
     await this.userProfileHttpService.updatePhotoProfile(userId, body);
   }
@@ -161,10 +153,9 @@ export class UserProfileService {
     userId: string,
     { extension, size }: IUserGeneratePhotoProfile
   ): Promise<IAwsS3Presign> {
-    const key: string =
-      this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-        extension,
-      });
+    const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
+      extension,
+    });
 
     const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
       { key, size },
@@ -274,33 +265,33 @@ interface IAwsS3PresignPutItemOptions {
 
 ### Response Structure
 
-`AwsS3PresignResponseDto` exposes exactly five fields, each carrying `@Expose()`:
+`AwsS3PresignResponseSchema` declares exactly five fields, and the response interceptor strips anything else:
 
 ```typescript
-class AwsS3PresignResponseDto {
-  key: string;           // S3 object key (save this for later reference)
-  mime: string;          // MIME type (use this as Content-Type header)
-  extension: string;     // File extension
-  presignUrl: string;    // The presigned URL for upload
-  expiredIn: number;     // URL lifetime in seconds
-}
+export const AwsS3PresignResponseSchema = z.object({
+  key: z.string(),          // S3 object key (save this for later reference)
+  mime: z.string(),         // MIME type (use this as Content-Type header)
+  extension: z.string(),    // File extension
+  presignUrl: z.string(),   // The presigned URL for upload
+  expiredIn: z.number(),    // URL lifetime in seconds
+});
 ```
 
-`AwsS3PresignPartResponseDto` extends it with `partNumber` and `size`, both also `@Expose()`d.
+`AwsS3PresignPartResponseSchema` extends it with `partNumber` and `size`.
 
 ### Flow Diagram
 ```mermaid
 sequenceDiagram
     participant Client
     participant Backend
-    participant UserUtil
+    participant UserProfileService
     participant AwsS3Service
     participant S3 as AWS S3
     participant Repository as Database
 
     Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
-    Backend->>UserUtil: createRandomFilenamePhotoProfileWithPath()
-    UserUtil-->>Backend: unique S3 key
+    Backend->>UserProfileService: createRandomFilenamePhotoProfileWithPath()
+    UserProfileService-->>Backend: unique S3 key
     
     Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true})
     Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
@@ -339,7 +330,7 @@ sequenceDiagram
 
 1. **Generate Presigned URL Stage:**
    - Client requests presigned URL with file metadata (extension, size)
-   - Backend generates a unique S3 key through `UserUtil`, which delegates to `FileService.createRandomFilename`
+   - Backend generates a unique S3 key through `UserProfileService.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
    - `AwsS3Service` creates time-limited presigned URL with encryption enabled
    - Backend returns presigned URL data to client
 
@@ -365,7 +356,7 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 @TermPolicyAdminGenerateContentPresignDoc()
 @Response('termPolicy.generateContentPresign')
 @TermPolicyAcceptanceProtected()
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.termPolicy,
   action: [
     EnumPolicyAction.read,
@@ -381,7 +372,8 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 @HttpCode(HttpStatus.OK)
 @Post('/content/presign/generate')
 async generate(
-  @Body() body: TermPolicyContentPresignRequestDto
+  @Body({ schema: TermPolicyContentPresignRequestSchema })
+  body: TermPolicyContentPresignRequestDto
 ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
   return this.termPolicyContentHttpService.generateContentPresignByAdmin(
     body
@@ -389,7 +381,7 @@ async generate(
 }
 ```
 
-- `TermPolicyContentPresignRequestDto` carries `type` (from `TermPolicyAcceptRequestDto`), `size` (picked from `AwsS3PresignRequestDto`), `language` (`EnumMessageLanguage`), and `version` (integer).
+- `TermPolicyContentPresignRequestSchema` carries `type` (from `TermPolicyAcceptRequestSchema`), `size` (picked from `AwsS3PresignRequestSchema`), `language` (`EnumMessageLanguage`), and `version` (integer).
 - `TermPolicyContentService.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
 - The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.

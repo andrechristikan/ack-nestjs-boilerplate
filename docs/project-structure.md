@@ -91,7 +91,7 @@ The languages folder provides internationalization (i18n) resources for multi-la
 The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, users, and workspaces (the seven commands bundled into `pnpm migration:seed`)
+- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
 - Ships three on-demand commands that are not part of `pnpm migration:seed`: `aws-s3-config`, `template-email-notification`, and `template-termPolicy`
 
 ## Queues
@@ -172,9 +172,9 @@ Each layer of a feature gets its own Nest module file at the root of the feature
 
 ```
 modules/<feature>
-  ├── <feature>.util.module.ts        # utils
   ├── <feature>.repository.module.ts  # repositories
-  ├── <feature>.module.ts             # domain services (the only one another feature consumes)
+  ├── <feature>.module.ts             # domain services, utils and queue classes
+  │                                   #   (the only one another feature consumes)
   ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
   └── <feature>.processor.module.ts   # processors and their processor services
 ```
@@ -206,8 +206,8 @@ module
   ├── indicators
   ├── interceptors
   ├── processors
-  ├── templates
-  └── validations
+  ├── queues
+  └── templates
 ```
 
 This structure ensures each feature is isolated, testable, and easy to maintain.
@@ -253,6 +253,9 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 ### Processors
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
+### Queues
+The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.module.ts`.
+
 ### Repositories
 Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for services.
 
@@ -263,10 +266,7 @@ Business logic and core functionality of the module. Services interact with repo
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
-Utility functions and helpers specific to the module, such as formatting, calculations, or domain-specific operations.
-
-### Validations
-Validation logic for DTOs and other data structures, often using class-validator or custom validation rules.
+Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a service.
 
 
 ## Other Modules

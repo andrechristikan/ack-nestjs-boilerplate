@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Queue Module**: Located 
 
 Queue module for background job processing using [BullMQ][ref-bullmq] and [Redis][ref-redis]. This module implements a DRY design pattern with singleton Redis connections for efficient resource management.
 
-All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, removeOn*) live in `src/configs/queue.config.ts`. The BullMQ framework layer (enums, decorator, base class, queue registration) lives in `src/queues`; the processors themselves live in their owning feature module and are mounted by the router.
+All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, retention age) live in `src/configs/queue.config.ts`. The BullMQ framework layer (enums, decorator, base class, queue registration) lives in `src/queues`; the enqueue classes and the processors live in their owning feature module, and the router mounts the processors.
 
 ## Related Documents
 
@@ -46,7 +46,7 @@ queue: {
 };
 ```
 
-Job defaults (attempts, backoff delays, removeOnComplete / removeOnFail) are in `src/configs/queue.config.ts` and applied from `src/queues/queue.register.module.ts`.
+Job defaults (attempts, backoff delays, completed and failed retention age) are in `src/configs/queue.config.ts` and applied from `src/queues/queue.register.module.ts`.
 
 Environment variables:
 - `QUEUE_REDIS_URL`: Redis connection URL (default: `redis://localhost:6379/1`). Queues live on Redis database `1`; the cache uses database `0` through `CACHE_REDIS_URL`
@@ -62,6 +62,8 @@ The queue system consists of:
 3. **Queue Processor Decorator** (`src/queues/decorators/queue.decorator.ts`): Custom decorator for processor registration
 4. **Queue Constants** (`src/queues/constants/queue.constant.ts`): `QueueConfigKey` and `QueueProcessorConfigKey`
 5. **Queue Enums, Exception, Interface** (`src/queues/enums/queue.enum.ts`, `exceptions/queue.exception.ts`, `interfaces/queue.interface.ts`): `EnumQueue` and `EnumQueuePriority`, `QueueException`, `IQueueResponse`
+
+**An enqueue lives in a queue class, never in a util or a service.** `<feature>/queues/<feature>[.<concern>].queue.ts` holds an `@Injectable()` class that injects the BullMQ `Queue` with `@InjectQueue`, and the feature's `<feature>.module.ts` both provides and exports it: `NotificationQueue`, `NotificationEmailQueue` and `NotificationPushQueue` from `NotificationModule`, `WorkspaceQueue` from `WorkspaceModule`. A caller in another module injects the exported class rather than the `Queue` itself.
 
 Processors are not registered inside `src/queues`. Each one is a provider of its own feature's `<feature>.processor.module.ts` (`NotificationProcessorModule`, `WorkspaceProcessorModule`), and `RouterProcessorModule` (`src/router/processor/router.processor.module.ts`) imports every one of them. `RouterModule` imports `RouterProcessorModule` alongside the five HTTP route modules, so booting the API boots the workers in the same process.
 
@@ -85,15 +87,22 @@ Queue priorities defined in `EnumQueuePriority`:
 
 ### Adding Jobs to Queue
 
-Inject the queue into your service:
+The queue class is the only place that holds a BullMQ `Queue`, and it exposes one method per job it enqueues:
 
 ```typescript
 @Injectable()
-export class NotificationPushUtil {
+export class NotificationPushQueue {
+    private readonly dedupTtlInMs: number;
+
     constructor(
         @InjectQueue(EnumQueue.notificationPush)
-        private readonly notificationPushQueue: Queue
-    ) {}
+        private readonly notificationPushQueue: Queue,
+        private readonly configService: ConfigService
+    ) {
+        this.dedupTtlInMs = this.configService.get<number>(
+            'notification.dedupTtlInMs'
+        )!;
+    }
 
     async sendNewDeviceLogin(
         sendPayload: INotificationSendPushPayload,
@@ -112,7 +121,7 @@ export class NotificationPushUtil {
                 priority: EnumQueuePriority.high,
                 deduplication: {
                     id: `${EnumNotificationPushProcess.newDeviceLogin}-${sendPayload.userId}`,
-                    ttl: 1000,
+                    ttl: this.dedupTtlInMs,
                 },
             }
         );
@@ -120,9 +129,15 @@ export class NotificationPushUtil {
 }
 ```
 
+A domain service that needs the job injects the queue class and calls that method:
+
+```typescript
+await this.notificationPushQueue.sendNewDeviceLogin(sendPayload, data);
+```
+
 ### Job Options
 
-Default job options come from `queue.config.ts` (interface `IConfigQueue`) and are applied by `queue.register.module.ts`. Every queue shares `attempts: 3`, `removeOnComplete: 50`, and `removeOnFail: 100`, but differs in the exponential backoff `delay`:
+Default job options come from `queue.config.ts` (interface `IConfigQueue`) and are applied by `queue.register.module.ts`. Retention is age-based: every queue shares `attempts: 3`, keeps a completed job for `removeOnCompleteAgeInSeconds` (7 days) and a failed one for `removeOnFailAgeInSeconds` (14 days), and they differ only in the exponential backoff `delay`:
 
 | Queue | backoff delay |
 |-------|---------------|
@@ -140,8 +155,8 @@ For example, the `notificationEmail` queue:
         type: 'exponential',
         delay: 10000,
     },
-    removeOnComplete: 50,
-    removeOnFail: 100,
+    removeOnComplete: { age: 604800 },
+    removeOnFail: { age: 1209600 },
 }
 ```
 
@@ -190,17 +205,39 @@ static forRoot(): DynamicModule {
                             'queue.job.yourQueueBackoffDelayInMs'
                         ),
                     },
-                    removeOnComplete: configService.get<number>(
-                        'queue.job.removeOnComplete'
-                    ),
-                    removeOnFail: configService.get<number>(
-                        'queue.job.removeOnFail'
-                    ),
+                    removeOnComplete: {
+                        age: configService.get<number>(
+                            'queue.job.removeOnCompleteAgeInSeconds'
+                        )!,
+                    },
+                    removeOnFail: {
+                        age: configService.get<number>(
+                            'queue.job.removeOnFailAgeInSeconds'
+                        )!,
+                    },
                 },
             }),
         }),
     ];
     // ...
+}
+```
+
+4. Add the enqueue class in `src/modules/<feature>/queues/`, and provide plus export it from the feature's `<feature>.module.ts`:
+
+```typescript
+@Injectable()
+export class YourFeatureQueue {
+    constructor(
+        @InjectQueue(EnumQueue.yourQueue)
+        private readonly yourQueue: Queue
+    ) {}
+
+    async sendSomething(data: IYourQueuePayload): Promise<void> {
+        await this.yourQueue.add(EnumYourProcess.something, data, {
+            priority: EnumQueuePriority.medium,
+        });
+    }
 }
 ```
 
@@ -274,7 +311,7 @@ export class NotificationProcessorModule {}
 export class RouterProcessorModule {}
 ```
 
-A processor module imports whatever its processor services depend on: `WorkspaceProcessorModule` imports `WorkspaceModule` and `WorkspaceUtilModule`, while `NotificationProcessorModule` needs no imports because everything it injects is global.
+A processor module imports whatever its processor services depend on: `WorkspaceProcessorModule` imports `WorkspaceModule`, while `NotificationProcessorModule` needs no imports because everything it injects is global.
 
 ## QueueProcessorBase
 

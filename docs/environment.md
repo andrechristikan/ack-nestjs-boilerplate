@@ -6,7 +6,7 @@ This documentation explains **Environment**: Located at `.env.example`
 
 This document provides a comprehensive guide to configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
 
-All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted before the application starts.
+All environment variables are validated against the `AppEnvSchema` zod schema to ensure required variables are present and properly formatted before the application starts.
 
 ## Related Documents
 
@@ -41,33 +41,22 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 
 ## Environment Validation
 
-Environment variables are validated using the `AppEnvDto` class with `class-validator` decorators. This validation occurs in `src/main.ts` during application bootstrap:
+`process.env` is validated against a zod schema handed to `ConfigModule.forRoot()` in `src/common/common.module.ts`, so the check runs while the module graph is being built, before any provider resolves a config value:
 
 ```typescript
-const classEnv = plainToInstance(AppEnvDto, process.env);
-const errors = await validate(classEnv, {
-    skipMissingProperties: false,
-    skipNullProperties: false,
-    skipUndefinedProperties: false,
-    validationError: {
-        target: false,
-        value: true,
-    },
-});
-if (errors.length > 0) {
-    const messageService = app.get(MessageService);
-    const errorsMessage = messageService.setValidationMessage(errors);
-
-    logger.error(errorsMessage, 'Env Variable Invalid');
-
-    throw new Error('Env Variable Invalid', {
-        cause: errorsMessage,
-    });
-}
+ConfigModule.forRoot({
+    load: configs,
+    isGlobal: true,
+    cache: true,
+    envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
+    expandVariables: false,
+    validationSchema: AppEnvSchema,
+}),
 ```
 
-The `AppEnvDto` class is located at `src/app/dtos/app.env.dto.ts`.
-If validation fails, the application will not start and will display detailed error messages showing which environment variables are missing or invalid. The thrown error is caught by the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`. Shutdown hooks are already registered by the time validation runs, so that forced exit is what keeps a failed boot from hanging on the signal listeners.
+`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `z.stringbool` accepting exactly `'true'` or `'false'`, a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
+
+If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
 ## Example Configuration
 
@@ -175,7 +164,7 @@ SENTRY_DSN=
 
 ## Environment Variables
 
-All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
+All environment variables are validated against `AppEnvSchema` to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
 
 ### Application Settings
 
@@ -204,13 +193,13 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (enforced by `@MinLength(32)` / `@MaxLength(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
 ```
 
 **`NODE_ENV`** *(optional)*  
-Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`: `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset. It is not part of `AppEnvDto`, and `src/main.ts` overwrites it with `app.env` once the config is loaded.
+Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`: `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset. It is not part of `AppEnvSchema`, and `src/main.ts` overwrites it with `app.env` once the config is loaded.
 ```bash
 NODE_ENV=local
 ```

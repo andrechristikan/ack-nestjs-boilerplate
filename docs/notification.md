@@ -8,7 +8,7 @@ The notification module provides a comprehensive multi-channel notification syst
 
 Key features:
 - **Multi-Channel Delivery**: `email`, `push`, `inApp`, and `silent` channels
-- **Queue-Based Processing**: Three separate BullMQ queues for orchestration, email, and push
+- **Queue-Based Processing**: Three separate BullMQ queues for orchestration, email, and push, each fed by its own `@Injectable()` queue class in `src/modules/notification/queues/`
 - **User Preference Control**: Per type+channel opt-in/out settings for each user
 - **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES by the four template services, one per domain: `NotificationTemplateAccountService`, `NotificationTemplateSecurityService`, `NotificationTemplateTermPolicyService`, `NotificationTemplateWorkspaceService`
 - **Firebase FCM Push**: Multicast delivery with batch chunking, rate limiting, and stale token cleanup
@@ -82,9 +82,9 @@ A notification can target multiple channels simultaneously. Which channels an ev
 The notification module uses **three dedicated BullMQ queues**, each with its own processor:
 
 ```
-NotificationUtil        → EnumQueue.notification       → NotificationProcessor
-NotificationEmailUtil   → EnumQueue.notificationEmail  → NotificationEmailProcessor
-NotificationPushUtil    → EnumQueue.notificationPush   → NotificationPushProcessor
+NotificationQueue       → EnumQueue.notification       → NotificationProcessor
+NotificationEmailQueue  → EnumQueue.notificationEmail  → NotificationEmailProcessor
+NotificationPushQueue   → EnumQueue.notificationPush   → NotificationPushProcessor
 ```
 
 ### Orchestration Queue
@@ -99,7 +99,7 @@ Handles the main event orchestration. `NotificationProcessor` dispatches a consu
 
 Step 3 is deliberately not sequential: the id is generated before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user actually has at least one device token.
 
-Jobs reach this queue through `NotificationUtil`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request, the invite `reference` for an invite, and the policy type and version for a publication. The TTL is 1 second, so two different events for the same user never collapse into one.
+Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request, the invite `reference` for an invite, and the policy type and version for a publication. The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
 
 **Supported processes (`EnumNotificationProcess`):**
 
@@ -133,7 +133,7 @@ Rate-limited to match the AWS SES sending quota (`AwsSESRateLimitPerDuration` pe
 
 `NotificationEmailProcessorService` routes each job to the email channel service that owns it: `NotificationEmailAccountService`, `NotificationEmailSecurityService`, `NotificationEmailTermPolicyService`, or `NotificationEmailWorkspaceService`. That service calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event, with `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) merged automatically.
 
-Jobs reach this queue through `NotificationEmailUtil`, deduplicated through BullMQ's `deduplication` option on the same identifiers the orchestration queue uses: the target user for the account and security events, the invite `reference` for the two invite emails, the workspace and the target user for a join request, and the policy type and version for a publication. Most templates use a 1-second TTL; a template carrying a time-limited link (`verificationEmail`, `forgotPassword`, `verifiedMobileNumber`) uses a TTL matching that link's expiry or resend window instead.
+Jobs reach this queue through `NotificationEmailQueue`, deduplicated through BullMQ's `deduplication` option on the same identifiers the orchestration queue uses: the target user for the account and security events, the invite `reference` for the two invite emails, the workspace and the target user for a join request, and the policy type and version for a publication. Most templates use `notification.dedupTtlInMs` (1 second); a template carrying a time-limited link uses the config value matching that link's expiry or resend window instead: `verification.expiredInMs` for `verificationEmail`, `verification.resendInMs` for `verifiedMobileNumber`, and `forgotPassword.resendInMs` for `forgotPassword`.
 
 ### Push Queue
 
@@ -158,7 +158,7 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 | `cleanupTokens` | Remove reported invalid FCM tokens |
 | `cleanupStaleTokens` | Clean up tokens inactive for ≥ 30 days |
 
-On `onModuleInit`, `NotificationPushProcessorService` calls `NotificationPushUtil.sendCleanupStaleTokens()`, which registers a recurring `cleanupStaleTokens` job via BullMQ `upsertJobScheduler` (cron `0 0 * * *` from `notification.push.cleanupStaleTokensCron`, in the app's configured timezone). The scheduler carries no `immediately` option, so the first sweep waits for the first cron tick.
+On `onModuleInit`, `NotificationPushProcessorService` calls `NotificationPushQueue.sendCleanupStaleTokens()`, which registers a recurring `cleanupStaleTokens` job via BullMQ `upsertJobScheduler` (cron `0 0 * * *` from `notification.push.cleanupStaleTokensCron`, in the app's configured timezone). The scheduler carries no `immediately` option, so the first sweep waits for the first cron tick.
 
 ## Push Notifications
 
@@ -173,7 +173,7 @@ For push token registration, revocation, and session-linking details, see the [D
 After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens` — tokens that FCM identified as invalid (codes in `FirebaseInvalidTokenCodes`). These are:
 
 1. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field)
-2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushUtil.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceService.processCleanupTokens()`
+2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceService.processCleanupTokens()`
 
 Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceService` reads that config value and passes it to `DeviceOwnershipRepository.cleanupStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every device past the threshold.
 

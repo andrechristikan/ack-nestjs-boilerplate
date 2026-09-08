@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import ms from 'ms';
 import {
     IAuthPassword,
     IAuthPasswordOptions,
@@ -18,7 +17,7 @@ export class AuthPasswordService implements IAuthPasswordService {
     private readonly passwordExpiredInMs: number;
     private readonly passwordExpiredTemporaryInMs: number;
     private readonly passwordSaltLength: number;
-    private readonly passwordPeriodInMs: number;
+    private readonly passwordPeriodInDays: number;
     private readonly passwordAttempt: boolean;
     private readonly passwordMaxAttempt: number;
 
@@ -38,8 +37,8 @@ export class AuthPasswordService implements IAuthPasswordService {
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
         )!;
-        this.passwordPeriodInMs = this.configService.get<number>(
-            'auth.password.periodInMs'
+        this.passwordPeriodInDays = this.configService.get<number>(
+            'auth.password.periodInDays'
         )!;
         this.passwordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
@@ -85,7 +84,7 @@ export class AuthPasswordService implements IAuthPasswordService {
         const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
             this.helperDateService.createDuration({
-                milliseconds: this.passwordPeriodInMs,
+                days: this.passwordPeriodInDays,
             })
         );
         const passwordEncrypted: string = this.encryptPassword(
@@ -148,6 +147,6 @@ export class AuthPasswordService implements IAuthPasswordService {
     }
 
     getPasswordPeriodInDays(): number {
-        return Math.floor(this.passwordPeriodInMs / ms('1d'));
+        return this.passwordPeriodInDays;
     }
 }

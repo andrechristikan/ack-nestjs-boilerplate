@@ -42,7 +42,7 @@ A Device represents a physical or virtual client. It is identified by a globally
 - `notificationToken` — FCM/APNs push token (optional, used for push notifications). Set on login and via `POST /shared/user/device/refresh`, cleared on device removal, by the stale-token cleanup cron, and by the invalid-token cleanup job that runs after a push provider rejects a token
 - `notificationProvider` — Derived automatically from `platform`. See `EnumDeviceNotificationProvider` below
 
-`fingerprint` and `notificationToken` carry `@Exclude()` and `@ApiHideProperty()` on `DeviceResponseDto`, so neither reaches a response payload nor the OpenAPI schema.
+`DeviceResponseSchema` declares neither `fingerprint` nor `notificationToken`, so neither reaches a response payload nor the OpenAPI schema.
 
 ### Enums
 
@@ -160,13 +160,13 @@ Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints
 
 ```typescript
 // Admin list devices
-@PolicyAbilityProtected(
+@PolicyProtected(
     { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
     { subject: EnumPolicySubject.device, action: [EnumPolicyAction.read] }
 )
 
 // Admin remove device
-@PolicyAbilityProtected(
+@PolicyProtected(
     { subject: EnumPolicySubject.user, action: [EnumPolicyAction.read] },
     { subject: EnumPolicySubject.device, action: [EnumPolicyAction.read, EnumPolicyAction.delete] }
 )

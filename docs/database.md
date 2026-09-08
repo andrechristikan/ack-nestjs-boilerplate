@@ -35,7 +35,6 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [UserAgent](#useragent)
 	- [UserTermPolicy](#usertermpolicy)
 	- [UserPhoto](#userphoto)
-	- [RoleAbility](#roleability)
 	- [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
 	- [Client Access Surface](#client-access-surface)
@@ -46,7 +45,7 @@ This documentation explains the database architecture and features in ACK NestJS
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
 	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
-	- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
+	- [Database provider](#database-provider)
 
 
 ## Prerequisites
@@ -98,8 +97,8 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 
 **Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
 
-- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `user` needs both `role` and `country`, and `workspace` needs the seeded users.
-- `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `role` → `termPolicy`, removing the referrer before anything it references.
+- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `policy` needs `role`, `user` needs both `role` and `country`, and `workspace` needs the seeded users.
+- `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy`, removing the referrer before anything it references.
 - Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
 - Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
 
@@ -117,7 +116,8 @@ Run the command:
 - `apiKey`: Inserts default and system API keys for authentication and service access.
 - `country`: Inserts country data (name, codes, phone code, continent, timezone).
 - `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
-- `role`: Inserts user roles (superadmin, admin, user) with abilities and permissions.
+- `role`: Inserts user roles (superadmin, admin, user).
+- `policy`: Inserts the policy rows attached to each seeded role.
 - `termPolicy`: Inserts term policy documents (cookies, marketing, privacy, terms of service) with version and content.
 - `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
 - `workspace`: Inserts one default personal workspace per seeded user, with that user as owner member. Requires the `user` seed to have run first, and skips any user who already owns a workspace.
@@ -211,7 +211,7 @@ Two API keys are created for authentication and service access. They are seeded 
 | Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
 | Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
 
-The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyUtil.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
+The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyCredentialService.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
 
 **API Key Prefix Convention:**
 
@@ -233,13 +233,13 @@ This prefix is automatically added based on the `APP_ENV` environment variable w
 
 Three user roles are created with different permission levels:
 
-| Role | Type | Description | Abilities |
-|------|------|-------------|-----------|
-| superadmin | `superAdmin` | Super Admin Role | Full system access (unrestricted) |
+| Role | Type | Description | Seeded policies |
+|------|------|-------------|-----------------|
+| superadmin | `superAdmin` | Super Admin Role | None: `superAdmin` bypasses the policy check entirely |
 | admin | `admin` | Admin Role | Every policy action on every policy subject |
-| user | `user` | User Role | Limited access (no special abilities) |
+| user | `user` | User Role | None |
 
-**Admin Role Abilities**: The admin role carries every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`) on every member of `EnumPolicySubject`.
+**Admin role policies**: the `policy` seed writes one row per `EnumPolicySubject`, each carrying every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`). It reads the roles by name first and aborts without writing when one is missing, and each row is an upsert on `(roleId, subject)`, so re-running it is safe.
 
 ### Users
 
@@ -301,7 +301,8 @@ Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@ma
 | Model | Collection | Purpose |
 |---|---|---|
 | `ApiKey` | `ApiKeys` | API key credentials for machine access |
-| `Role` | `Roles` | Roles and their CASL abilities |
+| `Role` | `Roles` | Roles |
+| `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
 | `Country` | `Countries` | Country reference data |
 | `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
 | `User` | `Users` | User accounts |
@@ -479,29 +480,6 @@ type UserPhoto {
 
 ---
 
-### RoleAbility
-
-Represents a single CASL ability entry embedded in a `Role`. Each entry defines which actions are allowed on a given policy subject.
-
-```prisma
-type RoleAbility {
-  action  String[]
-  subject String
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `action` | `String[]` | List of allowed actions (e.g. `["read", "create"]`) |
-| `subject` | `String` | Policy subject (e.g. `"user"`, `"apiKey"`) |
-
-**Used in:**
-- `Role.abilities`
-
-See [Authorization Documentation][ref-doc-authorization] for how abilities are evaluated at runtime.
-
----
-
 ### TermPolicyContent
 
 Represents a localized content file for a term policy document, stored in AWS S3.
@@ -598,7 +576,7 @@ The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: t
 |---|---|---|
 | `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | the private `createWithSlug` transaction: workspace, owner membership, activity log |
 | `ProjectService.drawSlugCandidates()` | `ProjectRepository.createInWorkspace` | the private `createWithSlug` transaction: project plus activity log |
-| `UserOnboardingUtil.buildPersonalWorkspaceContexts()` | `UserOnboardingRepository.createWithWorkspace` / `createManyWithWorkspace` | the whole onboarding transaction |
+| `UserOnboardingService.buildPersonalWorkspaceContexts()` | `UserOnboardingRepository.createWithWorkspace` / `createManyWithWorkspace` | the whole onboarding transaction |
 
 Three rules hold across all of them:
 
@@ -669,4 +647,3 @@ For setup and seeding on MongoDB, see the sections above.
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-authorization]: authorization.md

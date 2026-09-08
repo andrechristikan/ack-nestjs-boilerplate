@@ -87,6 +87,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `policy.json` | Policy messages |
 | `project.json` | Project messages |
 | `request.json` | Request validation messages |
+| `response.json` | Response serialization error messages |
 | `role.json` | Role messages |
 | `session.json` | Session messages |
 | `termPolicy.json` | Terms & policy messages |
@@ -225,10 +226,10 @@ throw new UserVerificationEmailResendLimitExceededException(resendIn);
 The `@Response` decorator translates success message paths. See [Response Documentation][ref-doc-response] for details.
 
 ```typescript
-@Response('user.create')
+@Response('user.create', { schema: DatabaseIdResponseSchema })
 @Post('/create')
 async create(
-    @Body() body: UserCreateRequestDto,
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
     @AuthJwtPayload('userId') createdBy: string
 ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
     return this.userHttpService.createByAdmin(body, createdBy);
@@ -265,12 +266,13 @@ async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
 
 ### Validation Pipe
 
-Validation errors are automatically translated by `MessageService`. The service handles both flat and nested validation errors by traversing the error tree and extracting constraints at each level. See [Request Validation Documentation][ref-doc-request-validation] for details.
+Validation issues are translated by `MessageService.setValidationMessage()`, which turns each Standard Schema issue into a `{ key, property, message }` entry. See [Request Validation Documentation][ref-doc-request-validation] for details.
 
 **Message Resolution Strategy:**
 
-1. **Primary**: Tries to resolve message from `request.error.{constraint}` path
-2. **Fallback**: If translation not found, uses the raw message from class-validator
+1. **Primary**: The issue's own `message` is translated, so a schema raising a message path (`request.error.isPassword.strong`) speaks for itself
+2. **Fallback**: When that translation comes back unchanged, the camelCase issue code is looked up under `request.error.{key}`
+3. `{property}` is interpolated with the last segment of the issue path
 
 **Example message file:**
 
@@ -278,36 +280,36 @@ Validation errors are automatically translated by `MessageService`. The service 
 // src/languages/en/request.json
 {
     "error": {
-        "isNotEmpty": "{property} cannot be empty.",
-        "isEmail": "{property} should be a valid email address.",
-        "minLength": "{property} is shorter than the minimum length allowed."
+        "invalidType": "{property} is not of the expected type.",
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "invalidFormat": "{property} does not match the expected format."
     }
 }
 ```
 
-**Nested Validation:**
+**Nested Properties:**
 
-For nested objects, the service return the full property path by traversing child errors:
+The `property` is the issue path joined with dots, so a field inside a nested object reads as its full path:
 
 ```typescript
-// Input DTO with nested validation
-class AddressDto {
-    @IsNotEmpty()
-    street: string;
-}
+// Schema with a nested object
+const AddressSchema = z.strictObject({
+    street: z.string().min(1),
+});
 
-class UserDto {
-    @ValidateNested()
-    address: AddressDto;
-}
+const UserSchema = z.strictObject({
+    address: AddressSchema,
+});
 
 // Validation error output:
 {
-    "key": "isNotEmpty",
+    "key": "tooSmall",
     "property": "address.street",
-    "message": "street cannot be empty."
+    "message": "street is shorter than the minimum allowed."
 }
 ```
+
+An issue with an empty path renders `Unknown`, and an issue carrying no string `code` falls back to the key `custom`.
 
 **Standard validation response:**
 
@@ -320,12 +322,12 @@ class UserDto {
     "message": "There are validation errors.",
     "errors": [
         {
-            "key": "isNotEmpty",
-            "property": "email",
-            "message": "email cannot be empty."
+            "key": "tooSmall",
+            "property": "username",
+            "message": "username is shorter than the minimum allowed."
         },
         {
-            "key": "isEmail",
+            "key": "custom",
             "property": "email",
             "message": "email should be a valid email address."
         }

@@ -119,7 +119,7 @@ Every limit lives in `request.config.ts`. A decorator carries a switch or a tier
 
 Being a global guard also puts the `route` limiter ahead of controller-level and route-level guards, which run later. A route tier therefore rejects before `@ApiKeyProtected()`, `@FeatureFlagProtected()`, and the social-login guards do any work: `POST /login/social/google` and `/login/social/apple` carry the `strict` tier, so the limiter gates the outbound provider verification instead of following it.
 
-Both opt-in limiters run through `RequestThrottleUtil.evaluate()` (`src/common/request/utils/request.throttle.util.ts`), the single place that counts the hit, fails open, sets `Retry-After`, raises `ThrottlerException`, and writes the `X-RateLimit-*` trio. Their responses are therefore identical in shape.
+Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/common/request/services/request.throttle.service.ts`), the single place that counts the hit, fails open, sets `Retry-After`, raises `ThrottlerException`, and writes the `X-RateLimit-*` trio. Their responses are therefore identical in shape.
 
 Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`. `user: true` on a request with no authenticated user is a silent no-op, so the `public` and `system` scopes, which never populate `req.user`, deliberately omit the switch. A JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so.
 
@@ -354,7 +354,7 @@ Prevents long-running requests.
 
 **Implementation:** `RequestTimeoutInterceptor`
 
-**Global Registration:** provided as an `APP_INTERCEPTOR` by `RequestModule.forRoot()`, alongside `RequestActorInterceptor` and the global `ValidationPipe`.
+**Global Registration:** provided as an `APP_INTERCEPTOR` by `RequestModule.forRoot()`, alongside `RequestActorInterceptor` and the global `RequestSchemaValidationPipe`.
 ```typescript
 {
   provide: APP_INTERCEPTOR,
@@ -375,7 +375,7 @@ async operation() {}
 
 ## Request Store
 
-Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, filters, and feature utils read it via `get<T>(key)`. Repositories never read the store; the caller reads the request log and threads it to the repository as the last method parameter (`requestLog: IRequestLog`).
+Per-request ambient metadata is carried in the generic `RequestStoreService` (`src/common/request`), backed by `nestjs-cls` (AsyncLocalStorage). Services, interceptors, and filters read it via `get<T>(key)`. Repositories never read the store; the caller reads the request log and threads it to the repository as the last method parameter (`requestLog: IRequestLog`).
 
 **Keys (`request.constant.ts`):**
 
@@ -391,7 +391,7 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 
 Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogInterceptor` reads `get<IRequestLog>(RequestLogStoreKey)!` directly; audit services read the same key and pass the `IRequestLog` to their repository, and the workspace and project features wrap the read in a util (`WorkspaceUtil.getCurrentRequestLog()`, `ProjectUtil.getCurrentRequestLog()`). Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogService.create()` reads `get<IRequestLog>(RequestLogStoreKey)!` before writing the row, and every audit-writing domain service reads the same key and threads the `IRequestLog` to its repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
 

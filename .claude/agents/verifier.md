@@ -55,10 +55,11 @@ for _ in 1 2; do
     sleep 5
 done
 ROOT=$(git rev-parse --show-toplevel)               # NEVER hardcode the directory name
-pkill -f "$ROOT/node_modules/.bin/nest"
-pkill -f "$ROOT/node_modules/@nestjs"
-pkill -f "$ROOT/node_modules/.bin/tsc"              # the concurrent type-check watcher
-pkill -f "$ROOT/dist/main"
+pkill -f "$ROOT/dist/main"                          # the listener holding port 3000
+pkill -f "$ROOT/node_modules/.bin/../@nestjs"       # the nest CLI watcher
+pkill -f "$ROOT/node_modules/.bin/../typescript"    # the concurrent type-check watcher
+pkill -f "$ROOT/node_modules/.bin/../concurrently"  # the wrapper that respawns both
+lsof -nP -iTCP:3000 -sTCP:LISTEN                    # must be empty again; kill by PID if not
 
 if grep -q 'App Name:' /tmp/boot.log; then
     echo 'BOOT OK'
@@ -85,11 +86,28 @@ nothing except them and hides the real failure underneath.
 **Killing it.** `pkill -f 'nest start'` kills the CLI wrapper ONLY. The compiled `dist/main` and
 the concurrent `tsc --noEmit --watch` survive as orphans holding hundreds of MB each, and
 `dist/main` keeps port 3000, so the NEXT boot check reports a failure that is really a port
-collision. A `--watch` run left alive respawns `dist/main` on every file change. The kill
-patterns derive the repo root and NEVER hardcode the directory name: a literal
-`ack-nestjs-boilerplate/` matches nothing in a checkout named `ack-nestjs-boilerplate2/`, and
-`pkill` exits non-zero for "no match" exactly as it does for "nothing to kill", so the check
-reads clean while leaving every orphan alive.
+collision. A `--watch` run left alive respawns `dist/main` on every file change.
+
+**Match the command line the process actually carries.** pnpm resolves every binary through
+`node_modules/.bin/../<package>/…`, so the four processes read as
+`.bin/../@nestjs/cli/bin/nest.js`, `.bin/../typescript/bin/tsc`,
+`.bin/../concurrently/dist/bin/index.js`, and `--enable-source-maps <ROOT>/dist/main`. A pattern
+built from the tidy path a reader expects — `node_modules/@nestjs`, `node_modules/.bin/nest` —
+matches nothing. The patterns derive the repo root and NEVER hardcode the directory name: a
+literal `ack-nestjs-boilerplate/` matches nothing in a checkout named
+`ack-nestjs-boilerplate2/`. `pkill` exits non-zero for "no match" exactly as it does for
+"nothing to kill", so a wrong pattern reads clean while leaving every orphan alive — the
+`lsof` line after the kills is what proves the port came back.
+
+**`pkill` may match and still kill nothing.** In a sandboxed shell it exits 0, prints nothing,
+and leaves every process running. Never read its exit code as proof. The `lsof` line is the
+proof, and when the port is still held, read the PIDs from `lsof` and `ps -Ao pid,command`,
+then `kill -9` them by number — the whole chain, because `concurrently` respawns `dist/main`
+while it lives.
+
+**Kill only what THIS check started.** A process already listening on 3000 before the check
+belongs to someone else. The port line at the top is what tells the two apart; a boot check
+that finds 3000 occupied stops and reports it rather than clearing the way for itself.
 
 Three ways this check lies, each producing a "finding" that is not real:
 

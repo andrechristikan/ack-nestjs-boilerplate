@@ -24,7 +24,7 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
     private readonly strategy: OTPStrategy;
     private readonly algorithm: HashAlgorithm;
     private readonly digits: number;
-    private readonly periodInMs: number;
+    private readonly periodInSeconds: number;
     private readonly window: number;
     private readonly secretLength: number;
     private readonly backupCodesCount: number;
@@ -46,8 +46,8 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
             'auth.twoFactor.algorithm'
         )!;
         this.digits = this.configService.get<number>('auth.twoFactor.digits')!;
-        this.periodInMs = this.configService.get<number>(
-            'auth.twoFactor.periodInMs'
+        this.periodInSeconds = this.configService.get<number>(
+            'auth.twoFactor.periodInSeconds'
         )!;
         this.window = this.configService.get<number>('auth.twoFactor.window')!;
         this.secretLength = this.configService.get<number>(
@@ -81,8 +81,8 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
             algorithm: this.algorithm,
             strategy: this.strategy,
             digits: this.digits,
-            period: this.periodInMs / 1000,
-            epochTolerance: [this.window * (this.periodInMs / 1000), 0],
+            period: this.periodInSeconds,
+            epochTolerance: [this.window * this.periodInSeconds, 0],
         });
 
         return verified.valid;

@@ -203,8 +203,6 @@ A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by 
 
 **Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 
-**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308. The redirect returns before Sentry reporting and before the error envelope is built.
-
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
 **statusCodeKey and module**: Taken from the `HttpException` response object when it carries those fields; otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`
@@ -239,7 +237,7 @@ A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by 
 
 **Catches**: `@Catch(RequestValidationException)` - request validation errors
 
-**Use case**: Request body, query parameters, and path parameters validation failures using [class-validator][ref-class-validator]
+**Use case**: Request body, query parameters, and path parameters that fail their route's zod schema
 
 **Behavior**:
 - Formats field-specific validation errors
@@ -255,9 +253,9 @@ A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by 
   "message": "There are validation errors.",
   "errors": [
     {
-      "key": "isEmail",
+      "key": "invalidFormat",
       "property": "email",
-      "message": "email should be a valid email address."
+      "message": "email does not match the expected format."
     }
   ],
   "metadata": { ... }
@@ -272,7 +270,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 **Catches**: `@Catch(FileImportException)` - file import validation errors
 
-**Use case**: CSV file import validation failures using [class-validator][ref-class-validator]
+**Use case**: CSV file import rows that fail their zod schema
 
 **Behavior**:
 - Formats row-level validation errors
@@ -291,9 +289,9 @@ See [Request Validation][ref-doc-request-validation] for details.
       "row": 2,
       "errors": [
         {
-          "key": "isEmail",
+          "key": "invalidFormat",
           "property": "email",
-          "message": "email should be a valid email address."
+          "message": "email does not match the expected format."
         }
       ]
     }
@@ -373,7 +371,6 @@ export class ExampleSomethingException extends AppBaseException {
 
 <!-- REFERENCES -->
 
-[ref-class-validator]: https://github.com/typestack/class-validator
 [ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters
 
 [ref-doc-response]: response.md

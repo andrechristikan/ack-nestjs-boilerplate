@@ -13,15 +13,15 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50000` | `app` | `50000` | 1 |
 | `50100` | `file` | `50100`–`50103` | 4 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
-| `50300` | `request` | `50300`–`50303` | 4 |
+| `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
-| `50700` | `api-key` | `50700`–`50707` | 8 |
+| `50700` | `api-key` | `50700`–`50708` | 9 |
 | `50800` | `auth` | `50800`–`50814` | 15 |
 | `50900` | `country` | `50900`–`50902` | 3 |
-| `51000` | `user` | `51000`–`51026` | 27 |
-| `51100` | `policy` | `51100`–`51101` | 2 |
+| `51000` | `user` | `51000`–`51027` | 28 |
+| `51100` | `policy` | `51100`–`51103` | 4 |
 | `51200` | `notification` | `51200`–`51203` | 4 |
 | `51300` | `device` | `51300` | 1 |
 | `51400` | `aws` | `51400` | 1 |
@@ -29,8 +29,9 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51600` | `workspace` | `51600`–`51620` | 21 |
 | `51700` | `project` | `51700`–`51707` | 8 |
 | `51800` | `database` | `51800` | 1 |
+| `51900` | `response` | `51900`–`51902` | 3 |
 
-Next free hundred: `51900` (verify by scanning enums before claiming).
+Next free hundred: `52000` (verify by scanning enums before claiming).
 
 ## `app`
 
@@ -76,6 +77,7 @@ Next free hundred: `51900` (verify by scanning enums before claiming).
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
 | `paramRequired` | `50302` | `paramRequired` | 400 (`BAD_REQUEST`) | `request.error.paramRequired` | Required parameter is missing. |
 | `envForbidden` | `50303` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `schemaMissing` | `50304` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
@@ -128,6 +130,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `expired` | `50705` | `expired` | 400 (`BAD_REQUEST`) | `apiKey.error.expired` | This API key has expired. Would you like to create a new one? |
 | `notFound` | `50706` | `notFound` | 404 (`NOT_FOUND`) | `apiKey.error.notFound` | We couldn't locate this API key. Please check and try again. |
 | `inactive` | `50707` | `inactive` | 400 (`BAD_REQUEST`) | `apiKey.error.inactive` | This API key is currently inactive. |
+| `startAtNotFuture` | `50708` | `startAtNotFuture` | 400 (`BAD_REQUEST`) | `apiKey.error.startAtNotFuture` | The start date must be in the future. |
 
 ## `auth`
 
@@ -188,6 +191,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `notFoundForbidden` | `51024` | `notFoundForbidden` | 403 (`FORBIDDEN`) | `user.error.notFound` | Sorry, we couldn't find the user you requested. |
 | `importEmailExist` | `51025` | `importEmailExist` | 409 (`CONFLICT`) | `user.error.importEmailExist` | There are existing users with the provided email addresses. Email: {emails} |
 | `importUsernameExist` | `51026` | `importUsernameExist` | 409 (`CONFLICT`) | `user.error.importUsernameExist` | There are existing users with the provided usernames. Username: {usernames} |
+| `notAuthenticated` | `51027` | `notAuthenticated` | 401 (`UNAUTHORIZED`) | `user.error.notAuthenticated` | This request does not carry an authenticated user. |
 
 ## `policy`
 
@@ -195,6 +199,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 |---|---|---|---|---|---|
 | `forbidden` | `51100` | `forbidden` | 403 (`FORBIDDEN`) | `policy.error.forbidden` | Sorry, you don't have the necessary permissions to perform this action. |
 | `predefinedNotFound` | `51101` | `predefinedNotFound` | 500 (`INTERNAL_SERVER_ERROR`) | `policy.error.predefinedNotFound` | Predefined abilities not setted. |
+| `notFound` | `51102` | `notFound` | 404 (`NOT_FOUND`) | `policy.error.notFound` | Sorry, we couldn't find the requested policy. |
+| `exist` | `51103` | `exist` | 409 (`CONFLICT`) | `policy.error.exist` | This role already grants a policy for that subject. |
 
 ## `notification`
 
@@ -275,6 +281,14 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `uniqueValueGenerationFailed` | `51800` | `uniqueValueGenerationFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `database.error.uniqueValueGenerationFailed` | We couldn't complete this action. Please try again. |
+
+## `response`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `serialization` | `51900` | `serialization` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.serialization` | The server produced a response that does not match the schema it declares. |
+| `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
+| `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
 
 ## Related documents
 

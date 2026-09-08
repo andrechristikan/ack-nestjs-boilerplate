@@ -108,22 +108,28 @@ export class AuthController {
 
 ### With Service
 
+`FeatureFlagCacheService` is the cache-through reader, exported by `FeatureFlagModule`:
+
 ```typescript
 @Injectable()
 export class YourService {
   constructor(
-    private readonly featureFlagUtil: FeatureFlagUtil
+    private readonly featureFlagCacheService: FeatureFlagCacheService
   ) {}
 
   async example() {
     // Get feature flag with cache
-    const flag = await this.featureFlagUtil.getByKeyAndCache('loginWithGoogle');
-    
+    const flag =
+      await this.featureFlagCacheService.getByKeyAndCache('loginWithGoogle');
+
     // Get metadata only
-    const metadata = await this.featureFlagUtil.getMetadataByKeyAndCache('changePassword');
+    const metadata =
+      await this.featureFlagCacheService.getMetadataByKeyAndCache('changePassword');
   }
 }
 ```
+
+`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain service applies on update.
 
 ## Metadata
 
@@ -161,7 +167,7 @@ await this.featureFlagService.validateFeatureFlagMetadata(
 );
 ```
 
-It throws `predefinedKeyNotFound` (500) when the flag row is missing, `serviceUnavailable` (503) when the flag is disabled, `predefinedKeyTypeInvalid` (500) when the metadata value is not a boolean, and `serviceUnavailable` (503) when the boolean is `false`. A gate value **must** be boolean.
+It throws `predefinedKeyNotFound` (500) when the flag row is missing, `serviceUnavailable` (503) when the flag is disabled, `predefinedKeyTypeInvalid` (500) when the metadata value is not a boolean, and `serviceUnavailable` (503) when the boolean is `false`.
 
 Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
 

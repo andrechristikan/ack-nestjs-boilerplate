@@ -34,6 +34,25 @@ unfamiliar orientation or the graph looks stale for the surface in hand.
   `ls src/modules/<feature>/`)
 - Diff and git commands that name the surface (`git diff -- <scoped-path>`)
 
+## A recursive search from the repo root reads other branches (HARD)
+
+`.claude/worktrees/` holds git worktrees of other branches — a full second checkout each, with
+its own `src/`, `docs/` and `.claude/`, and each carrying uncommitted work of its own.
+`git worktree list` names them.
+
+Two consequences bind every task:
+
+- **A recursive sweep started at the repository root walks into them.** `grep -r`, `find` and
+  `Glob` return `src/` code and rule text from a branch that is not the one in hand. Scope
+  every sweep to the tree you mean — `src/`, `test/`, `docs/`, or
+  `.claude/rules .claude/agents .claude/skills .claude/CLAUDE.md`, never a bare `.` or
+  `.claude`. A hit whose path contains `worktrees/` is another branch's file and is never
+  evidence about this one.
+- **A file under heavy edit in another worktree is a collision waiting to happen.** Before
+  planning a change that rewrites a shared file — `src/common/**` most of all — check
+  `git -C <worktree> status --porcelain` for it, and say so rather than discovering it at merge
+  time.
+
 ## Pattern
 
 1. Ask the graph: `graphify query "<question>"`

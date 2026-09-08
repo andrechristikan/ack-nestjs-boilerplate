@@ -65,8 +65,8 @@ Located in `src/configs/auth.config.ts`:
 | `algorithm` | `sha1` | HMAC algorithm passed to `otplib` |
 | `issuer` | from `AUTH_TWO_FACTOR_ISSUER`, no code default | Displayed in authenticator apps |
 | `digits` | `6` | TOTP code length (standard) |
-| `periodInMs` | `ms('30s')` | TOTP time window, stored in ms; otplib receives seconds |
-| `window` | `1` | Backward-only tolerance: `epochTolerance` is `[window × (periodInMs / 1000), 0]`, so one 30 second step in the past is accepted and none in the future |
+| `periodInSeconds` | `ms('30s') / 1000` | TOTP time window in seconds, the unit otplib takes |
+| `window` | `1` | Backward-only tolerance: `epochTolerance` is `[window × periodInSeconds, 0]`, so one 30 second step in the past is accepted and none in the future |
 | `secretLength` | `32` | Base32 secret length |
 | `challengeTtlInMs` | `ms('5m')` | Challenge token TTL (5 minutes) |
 | `challengeKeyPattern` | `TwoFactor:Challenge:{token}` | Redis key pattern for challenge tokens |
@@ -439,7 +439,7 @@ sequenceDiagram
     end
 ```
 
-The password-history check is what makes the reuse window real: a password still held in history for `periodInMs` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
+The password-history check is what makes the reuse window real: a password still held in history for `auth.password.periodInDays` is rejected before the 2FA step, so a user cannot rotate back to a recent password by passing 2FA.
 
 **Reset Password (Forgot Password):**
 ```mermaid

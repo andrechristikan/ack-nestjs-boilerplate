@@ -8,7 +8,7 @@ import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { IUser } from '@modules/user/interfaces/user.interface';
 
 export interface IAuthJwtService {
-    readonly jwtRefreshTokenExpirationTimeInMs: number;
+    readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     createAccessToken(
         subject: string,
         jti: string,

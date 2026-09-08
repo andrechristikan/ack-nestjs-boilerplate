@@ -28,7 +28,7 @@ This application uses **cache-manager v7**, which uses **Keyv** as the unified s
   - [Module Dependency Flow](#module-dependency-flow)
   - [RedisCacheModule](#rediscachemodule)
   - [CacheMainModule](#cachemainmodule)
-  - [SessionUtilModule](#sessionutilmodule)
+  - [SessionModule](#sessionmodule)
 - [Configuration](#configuration)
   - [Redis Configuration](#redis-configuration)
   - [Module Import Order](#module-import-order)
@@ -61,7 +61,7 @@ All services → Inject and reuse the same connection
 
 ### Global Module Pattern
 
-`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionUtilModule` carries the `@Global()` decorator:
+`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionModule` carries the `@Global()` decorator:
 - Providers automatically available everywhere
 - No need to import in feature modules
 
@@ -79,9 +79,8 @@ CommonModule
     │   └── Provides: CacheMainProvider
     │
     └── SessionModule (Global)
-        └── SessionUtilModule (Global)
-            └── Uses: RedisClientCachedProvider
-            └── Provides: SessionCacheProvider, SessionUtil
+        └── Uses: RedisClientCachedProvider
+        └── Provides: SessionCacheProvider, SessionService, SessionCacheService, SessionUtil
 ```
 
 ### RedisCacheModule
@@ -117,16 +116,16 @@ createKeyv(
 
 **Usage:**
 ```typescript
-export class FeatureFlagUtil {
+export class FeatureFlagCacheService {
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
     ) {}
 }
 ```
 
-Cache is injected into utils, interceptors, and health indicators, not into services. The current consumers are `ApiKeyUtil`, `AuthTwoFactorUtil`, `FeatureFlagUtil`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
+A cache manager is injected into a dedicated cache service, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCacheService`, `AuthCacheService`, `FeatureFlagCacheService`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
 
-### SessionUtilModule
+### SessionModule
 
 **Purpose:** Provides cache for session management only
 
@@ -138,14 +137,14 @@ Cache is injected into utils, interceptors, and health indicators, not into serv
 
 **Usage:**
 ```typescript
-export class SessionUtil {
+export class SessionCacheService {
     constructor(
         @Inject(SessionCacheProvider) private cacheManager: Cache,
     ) {}
 }
 ```
 
-`SessionUtil` is the only injection site. `SessionCacheProvider` is registered inside `SessionUtilModule` and stays internal to it: the module exports `SessionUtil` alone. `SessionModule`, the domain layer imported by `CommonModule`, imports `SessionUtilModule` and `SessionRepositoryModule` and exports `SessionService`.
+`SessionCacheService` is the only injection site. `SessionCacheProvider` is registered inside `SessionModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionService`, `SessionCacheService` and `SessionUtil`, and exports `SessionService` and `SessionCacheService`.
 
 Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
@@ -183,13 +182,13 @@ Both cache modules register their own `CacheManagerModule.registerAsync` over th
         QueueRegisterModule.forRoot(), // BullMQ, own connections on QUEUE_REDIS_URL
         CacheMainModule.forRoot(),     // Depends on RedisCacheModule
         // ... DatabaseModule, RequestModule, and other globals ...
-        SessionModule,                 // Feature modules later (its SessionUtilModule registers SessionCacheProvider)
+        SessionModule,                 // Feature modules later (registers SessionCacheProvider)
     ]
 })
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` pulls in `SessionUtilModule`, which registers its own cache provider over the same client later.
+**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` registers its own cache provider over the same client later.
 
 ## Usage
 
@@ -198,7 +197,7 @@ export class CommonModule {}
 **Global cache:**
 ```typescript
 @Injectable()
-export class FeatureFlagUtil {
+export class FeatureFlagCacheService {
     constructor(
         @Inject(CacheMainProvider) private readonly cacheManager: Cache,
     ) {}
@@ -208,7 +207,7 @@ export class FeatureFlagUtil {
 **Session cache:**
 ```typescript
 @Injectable()
-export class SessionUtil {
+export class SessionCacheService {
     constructor(
         @Inject(SessionCacheProvider) private cacheManager: Cache,
     ) {}

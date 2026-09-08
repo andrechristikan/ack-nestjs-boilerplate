@@ -11,7 +11,7 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInMs: number;
+            expirationTimeInSeconds: number;
         };
         refreshToken: {
             jwksUri: string;
@@ -19,7 +19,7 @@ export interface IConfigAuth {
             algorithm: Algorithm;
             privateKey: string;
             publicKey: string;
-            expirationTimeInMs: number;
+            expirationTimeInSeconds: number;
         };
         audience: string;
         issuer: string;
@@ -32,7 +32,7 @@ export interface IConfigAuth {
         saltLength: number;
         expiredInMs: number;
         expiredTemporaryInMs: number;
-        periodInMs: number;
+        periodInDays: number;
     };
     apple: {
         header: string;
@@ -55,7 +55,7 @@ export interface IConfigAuth {
         algorithm: HashAlgorithm;
         issuer: string;
         digits: number;
-        periodInMs: number;
+        periodInSeconds: number;
         window: number;
         secretLength: number;
         challengeTtlInMs: number;
@@ -81,9 +81,10 @@ export default registerAs('auth', (): IConfigAuth => ({
             algorithm: 'ES256',
             privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
             publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
-            expirationTimeInMs: ms(
-                process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED! as ms.StringValue
-            ),
+            expirationTimeInSeconds:
+                ms(
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED! as ms.StringValue
+                ) / 1000,
         },
 
         refreshToken: {
@@ -92,9 +93,11 @@ export default registerAs('auth', (): IConfigAuth => ({
             algorithm: 'ES512',
             privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
             publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
-            expirationTimeInMs: ms(
-                process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED! as ms.StringValue
-            ),
+            expirationTimeInSeconds:
+                ms(
+                    process.env
+                        .AUTH_JWT_REFRESH_TOKEN_EXPIRED! as ms.StringValue
+                ) / 1000,
         },
 
         audience: process.env.AUTH_JWT_AUDIENCE!,
@@ -109,7 +112,7 @@ export default registerAs('auth', (): IConfigAuth => ({
         saltLength: 12,
         expiredInMs: ms('182d'),
         expiredTemporaryInMs: ms('3d'),
-        periodInMs: ms('90d'),
+        periodInDays: ms('90d') / ms('1d'),
     },
 
     apple: {
@@ -133,7 +136,7 @@ export default registerAs('auth', (): IConfigAuth => ({
         algorithm: 'sha1',
         issuer: process.env.AUTH_TWO_FACTOR_ISSUER!,
         digits: 6,
-        periodInMs: ms('30s'),
+        periodInSeconds: ms('30s') / 1000,
         window: 1,
         secretLength: 32,
         challengeTtlInMs: ms('5m'),

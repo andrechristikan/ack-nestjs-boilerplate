@@ -12,3 +12,16 @@ export const HealthIndicatorResultSchema = z.record(
 export type HealthIndicatorResultDto = z.infer<
     typeof HealthIndicatorResultSchema
 >;
+
+/**
+ * Terminus indicator map whose entries may be absent: the shape of a check result's `info`
+ * and `error`.
+ */
+export const HealthIndicatorResultPartialSchema = z.record(
+    z.string(),
+    z.record(z.string(), z.unknown()).optional()
+);
+
+export type HealthIndicatorResultPartialDto = z.infer<
+    typeof HealthIndicatorResultPartialSchema
+>;

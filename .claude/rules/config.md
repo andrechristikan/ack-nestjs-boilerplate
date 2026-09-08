@@ -29,20 +29,31 @@ controller, guard, or module wiring is config in the wrong place.
 **A bare `const` is not an escape hatch** — promote it unless it is a genuinely fixed,
 single-source-of-truth invariant with no env knob today.
 
-## Time is milliseconds — no exceptions (HARD)
+## Time is the consumer's unit — no exceptions (HARD)
 
-Config has exactly one time unit.
+A duration config key is named for the unit its CONSUMER takes, and holds the value already in
+that unit.
 
-- Field suffix is `InMs`.
-- Value is `ms('<string>')` with a string literal — `ms('182d')`, `ms('30s')`.
-- **Never** a raw number (`30`), never inline arithmetic (`5 * 60 * 1000`, `30 * 60`), never a
-  unit in a trailing comment, and never an `InSeconds` / `InMinutes` / `InDay` field.
+- Field suffix names that unit — `InMs`, `InSeconds`, `InDays`.
+- Value is built from `ms('<string>')` with a string literal, divided to the target unit inside
+  the config file: `ms('30s')` where the consumer takes milliseconds, `ms('7d') / 1000` where it
+  takes seconds, `ms('90d') / ms('1d')` where it takes days. The `ms()` literal is what keeps
+  `604800` readable as seven days.
+- **Never** a raw number (`30`), never bare inline arithmetic (`5 * 60 * 1000`, `30 * 60`), and
+  never a unit stated only in a trailing comment.
 
-**The conversion lives in the CONSUMER, not the config.** Where a third-party package wants
-another unit, convert at the call site: `Math.floor(x / 1000)` for seconds (jsonwebtoken
-`expiresIn`, AWS presign, otplib TOTP period), `x / ms('1d')` for a days count. Where the
-package already takes ms (cache-manager / Keyv TTL, BullMQ `backoff.delay`), pass the value
-straight through. **A `/1000` inside a config file is the defect** — move it out.
+**The conversion lives in the CONFIG, not the consumer.** cache-manager / Keyv TTL and BullMQ
+`backoff.delay` take milliseconds; jsonwebtoken `expiresIn`, BullMQ `KeepJobs.age` and the otplib
+TOTP period take seconds; an S3 lifecycle `DaysAfterInitiation` takes days. Each key names what
+its own consumer takes, and the call site passes the value straight through. **A
+`Math.floor(x / 1000)` or an `x / ms('1d')` in a service, util, guard, interceptor or module
+wiring is the defect** — move the division into the config file and name the key for the unit it
+holds, because a division living in a service hides the unit from the one file that declares it.
+
+**This governs a CONFIG value only.** A duration computed at request time — a
+`HelperDateService.diff` result, a remainder a Redis script returned — has no config key to
+name, so converting it where it is consumed is correct and stays
+(`auth.jwt.service.ts` refresh-token remainder, `request.throttler.service.ts` retry-after).
 
 ## Size is bytes
 

@@ -23,13 +23,13 @@ export class AuthJwtService implements IAuthJwtService {
     private readonly jwtAccessTokenKid: string;
     private readonly jwtAccessTokenPrivateKey: string;
     private readonly jwtAccessTokenPublicKey: string;
-    private readonly jwtAccessTokenExpirationTimeInMs: number;
+    private readonly jwtAccessTokenExpirationTimeInSeconds: number;
     private readonly jwtAccessTokenAlgorithm: Algorithm;
 
     private readonly jwtRefreshTokenKid: string;
     private readonly jwtRefreshTokenPrivateKey: string;
     private readonly jwtRefreshTokenPublicKey: string;
-    readonly jwtRefreshTokenExpirationTimeInMs: number;
+    readonly jwtRefreshTokenExpirationTimeInSeconds: number;
     private readonly jwtRefreshTokenAlgorithm: Algorithm;
 
     private readonly jwtPrefix: string;
@@ -46,15 +46,17 @@ export class AuthJwtService implements IAuthJwtService {
         this.jwtAccessTokenKid = this.configService.get<string>(
             'auth.jwt.accessToken.kid'
         )!;
-        this.jwtAccessTokenExpirationTimeInMs = this.configService.get<number>(
-            'auth.jwt.accessToken.expirationTimeInMs'
-        )!;
+        this.jwtAccessTokenExpirationTimeInSeconds =
+            this.configService.get<number>(
+                'auth.jwt.accessToken.expirationTimeInSeconds'
+            )!;
         this.jwtRefreshTokenKid = this.configService.get<string>(
             'auth.jwt.refreshToken.kid'
         )!;
-        this.jwtRefreshTokenExpirationTimeInMs = this.configService.get<number>(
-            'auth.jwt.refreshToken.expirationTimeInMs'
-        )!;
+        this.jwtRefreshTokenExpirationTimeInSeconds =
+            this.configService.get<number>(
+                'auth.jwt.refreshToken.expirationTimeInSeconds'
+            )!;
 
         this.jwtAccessTokenPrivateKey = this.parseRequiredBase64DerPrivateKey(
             'auth.jwt.accessToken.privateKey'
@@ -140,7 +142,7 @@ export class AuthJwtService implements IAuthJwtService {
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtAccessTokenPrivateKey,
-            expiresIn: Math.floor(this.jwtAccessTokenExpirationTimeInMs / 1000),
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
@@ -159,9 +161,7 @@ export class AuthJwtService implements IAuthJwtService {
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.jwtRefreshTokenPrivateKey,
-            expiresIn:
-                expiresIn ??
-                Math.floor(this.jwtRefreshTokenExpirationTimeInMs / 1000),
+            expiresIn: expiresIn ?? this.jwtRefreshTokenExpirationTimeInSeconds,
             audience: this.jwtAudience,
             issuer: this.jwtIssuer,
             subject,
@@ -246,7 +246,7 @@ export class AuthJwtService implements IAuthJwtService {
         const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
-            expiresIn: Math.floor(this.jwtAccessTokenExpirationTimeInMs / 1000),
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken,
         };
@@ -316,7 +316,7 @@ export class AuthJwtService implements IAuthJwtService {
         const tokens: IAuthToken = {
             tokenType: this.jwtPrefix,
             roleType: user.role.type,
-            expiresIn: Math.floor(this.jwtAccessTokenExpirationTimeInMs / 1000),
+            expiresIn: this.jwtAccessTokenExpirationTimeInSeconds,
             accessToken,
             refreshToken: newRefreshToken,
         };

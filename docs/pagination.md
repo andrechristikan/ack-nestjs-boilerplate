@@ -777,12 +777,12 @@ The response reports the applied ordering back in the same `field:direction` for
 
 ### Basic Offset Pagination
 
-A list route travels `Controller → HTTP Service → Domain Service → Repository`. The HTTP service is where the raw rows become response DTOs; the domain service forwards the pagination params, and the repository is the layer that adds `include`.
+A list route travels `Controller → HTTP Service → Domain Service → Repository`. The domain service forwards the pagination params, the repository is the layer that adds `include`, and the item schema declared on `@ResponsePaging` shapes each row on the way out.
 
 **Controller:**
 ```typescript
 @Get('/list')
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 async list(
     @PaginationOffsetQuery({
         availableSearch: UserDefaultAvailableSearch,
@@ -798,11 +798,8 @@ async list(
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    const { data, ...others } =
-        await this.userService.getListOffsetByAdmin(pagination);
-
-    return { data: this.userUtil.mapList(data), ...others };
+): Promise<IResponsePagingReturn<IUser>> {
+    return this.userService.getListOffsetByAdmin(pagination);
 }
 ```
 
@@ -847,7 +844,7 @@ GET /admin/user/list?page=1&perPage=20&search=john&orderBy=name:asc
 **Controller:**
 ```typescript
 @Get('/list')
-@ResponsePaging('workspace.list')
+@ResponsePaging('workspace.list', { schema: WorkspaceResponseSchema })
 async list(
     @PaginationCursorQuery({
         availableSearch: WorkspaceDefaultAvailableSearch,
@@ -899,7 +896,7 @@ GET /user/workspace/list?cursor=eyJjdXJzb3IiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEi
 **Controller:**
 ```typescript
 @Get('/list')
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 async list(
     @PaginationOffsetQuery({
         availableSearch: UserDefaultAvailableSearch,
@@ -932,15 +929,13 @@ async getListOffsetByAdmin(
     status?: Record<string, IPaginationIn>,
     roleId?: Record<string, IPaginationEqual>,
     countryId?: Record<string, IPaginationEqual>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    const { data, ...others } = await this.userService.getListOffsetByAdmin(
+): Promise<IResponsePagingReturn<IUser>> {
+    return this.userService.getListOffsetByAdmin(
         pagination,
         status,
         roleId,
         countryId
     );
-
-    return { data: this.userUtil.mapList(data), ...others };
 }
 ```
 
@@ -996,9 +991,9 @@ export class UserAdminController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
     @UserAdminListDoc()
-    @ResponsePaging('user.list')
+    @ResponsePaging('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -1034,7 +1029,7 @@ export class UserAdminController {
 }
 ```
 
-`@ResponsePaging` is what turns the service's `IPaginationOffsetReturn` into the `metadata` block; `@UserAdminListDoc()` wraps `DocResponsePaging` and is where the same allow-list constants reach Swagger.
+`@ResponsePaging` is what turns the service's `IPaginationOffsetReturn` into the `metadata` block and serializes each row against the item schema; `@UserAdminListDoc()` wraps `DocResponsePaging` and is where the same allow-list constants reach Swagger.
 
 ## Integration with Doc Module
 
@@ -1050,7 +1045,7 @@ export const UserDefaultAvailableOrderBy = ['createdAt', 'name'];
 
 // src/modules/user/docs/user.admin.doc.ts
 DocResponsePaging<UserListResponseDto>('user.list', {
-    dto: UserListResponseDto,
+    schema: UserListResponseSchema,
     availableSearch: UserDefaultAvailableSearch,
     availableOrderBy: UserDefaultAvailableOrderBy,
     type: EnumPaginationType.offset,
@@ -1076,7 +1071,7 @@ Both decorators use the same option name, `availableOrderBy`, for the same const
 
 ```typescript
 DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
-    dto: WorkspaceResponseDto,
+    schema: WorkspaceResponseSchema,
     type: EnumPaginationType.cursor,
     availableSearch: WorkspaceDefaultAvailableSearch,
     availableOrderBy: WorkspaceCursorAvailableOrderBy,

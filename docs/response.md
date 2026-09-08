@@ -15,9 +15,9 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
   - [@ResponsePaging](#responsepaging)
   - [@ResponseFile](#responsefile)
 - [Serialization](#serialization)
-  - [ResponseUtil](#responseutil)
-  - [Opt-In with @Expose](#opt-in-with-expose)
-  - [Nested DTOs](#nested-dtos)
+  - [Declaring the Schema](#declaring-the-schema)
+  - [A Route That Returns No Data](#a-route-that-returns-no-data)
+  - [Nested Schemas](#nested-schemas)
   - [Hiding Fields](#hiding-fields)
   - [Serialization Flow](#serialization-flow)
 - [Response Structure](#response-structure)
@@ -43,18 +43,19 @@ Standard API response decorator with optional caching.
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
 - `options` (optional): Configuration options
+  - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
   - `cache` (boolean | object): Enable caching
 
-**Interceptor:** `ResponseInterceptor` - transforms responses into standard format with metadata and localized messages via [MessageService][ref-doc-message]
+**Interceptor:** `ResponseInterceptor` - serializes the payload against `options.schema`, then wraps it into the standard envelope with metadata and a localized message via [MessageService][ref-doc-message]
 
 **Usage:**
 
 ```typescript
-@Response('user.get')
+@Response('user.get', { schema: UserProfileResponseSchema })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
+async getUser(@Param('id') id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
   return {
-    data: await this.userService.findById(id)
+    data: await this.userHttpService.get(id)
   };
 }
 ```
@@ -62,9 +63,11 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 **Custom Status Code:**
 
 ```typescript
-@Response('user.create')
+@Response('user.create', { schema: DatabaseIdResponseSchema })
 @Post('/')
-async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> {
+async createUser(
+  @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+): Promise<IResponseReturn<DatabaseIdResponseDto>> {
   try {
     const data = await this.userService.create(dto);
     
@@ -92,10 +95,13 @@ async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> 
 **Custom Message:**
 
 ```typescript
-@Response('user.update')
+@Response('user.update', { schema: UserProfileResponseSchema })
 @Patch('/:id')
-async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<IResponseReturn<UserDto>> {
-  const user = await this.userService.update(id, dto);
+async updateUser(
+  @Param('id') id: string,
+  @Body({ schema: UserUpdateRequestSchema }) body: UserUpdateRequestDto
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  const user = await this.userHttpService.update(id, body);
   
   return {
     data: user,
@@ -114,6 +120,7 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
 - `options` (optional): Configuration options
+  - `schema` (zod schema): The shape of ONE item of the page; the interceptor wraps the page around it
   - `cache` (boolean | object): Enable caching
 
 **Requirements:**
@@ -126,11 +133,11 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 **Offset-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 @Get('/list')
 async listUsers(
   @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
-): Promise<IResponsePagingReturn<UserDto>> {
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
   const { data, ...others } = await this.userService.findAll(pagination);
 
   // `others` carries type: 'offset', count, page, perPage, totalPage,
@@ -142,11 +149,11 @@ async listUsers(
 **Cursor-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 @Get('/list')
 async listUsers(
   @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
-): Promise<IResponsePagingReturn<UserDto>> {
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
   const { data, ...others } = await this.userService.findAllCursor(pagination);
 
   // `others` carries type: 'cursor', cursor, perPage, hasNext and optional count
@@ -279,103 +286,103 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
 
 ## Serialization
 
-Response payloads are serialized in per-module mapper utilities (`*/utils/*.util.ts`) **before** they reach the controller. The `@Response` / `@ResponsePaging` interceptors only wrap the already-mapped `data` into the standard envelope — they do **not** strip or transform fields. Serialization is **opt-in**: only fields decorated with `@Expose()` survive; everything else is dropped (**fail-closed**). A newly added entity field never leaks into a response until it is explicitly exposed.
+A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. A response schema is a `z.object`, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it. The constraint when writing one: `rules/dto.md`.
 
-> Input validation (`RequestModule`) uses the opposite mode (`excludeExtraneousValues: false`) — unknown input keys are rejected by `whitelist`, not silently dropped. See [Request Validation Documentation][ref-doc-request-validation]. Input and output serialization are distinct paths.
+Serialization is **fail-closed** in both directions. A payload that the schema rejects raises `ResponseSerializationException`, and so does a handler that returns data on a route which declared no schema.
 
-### ResponseUtil
+> The inbound half is the mirror image: a request schema is `z.strictObject`, so an unknown key is rejected rather than dropped. See [Request Validation Documentation][ref-doc-request-validation].
 
-`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application, so a mapper that injects `ResponseUtil` and calls `serialize` inherits it, and a raw `plainToInstance` call bypasses it. The constraint when writing a mapper: `rules/dto.md`.
+### Declaring the Schema
+
+`@Response` takes the schema of the whole payload; `@ResponsePaging` takes the schema of one item and wraps the page around it.
 
 ```typescript
-@Injectable()
-export class ResponseUtil {
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V[]): T[];
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V): T;
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V | V[]): T | T[] {
-    return plainToInstance(cls, plain, {
-      excludeExtraneousValues: true,
-    });
-  }
+@Response('device.get', { schema: DeviceOwnershipResponseSchema })
+@Get('/get/:device')
+async get(
+  @Param('device', RequestRequiredPipe, RequestIsValidObjectIdPipe) device: string
+): Promise<IResponseReturn<DeviceOwnershipResponseDto>> {
+  return this.deviceHttpService.get(device);
 }
 ```
 
-**Mapper usage** — inject `ResponseUtil`, call `serialize` (overloaded for single object and array):
+A schema file exports the schema constant and the type inferred from it, and composes from a base rather than restating fields:
 
 ```typescript
-@Injectable()
-export class DeviceUtil {
-  constructor(private readonly responseUtil: ResponseUtil) {}
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    deviceId: z.string().meta({
+        description: 'Device ownership ID',
+        example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
+        description: 'User ID who owns the device',
+        example: faker.database.mongodbObjectId(),
+    }),
+});
 
-  mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
-    return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
-  }
+export type DeviceOwnershipResponseDto = z.infer<
+    typeof DeviceOwnershipResponseSchema
+>;
+```
+
+The `.meta({ description, example })` on each field is what the OpenAPI document is generated from. See [Doc Documentation][ref-doc-doc].
+
+### A Route That Returns No Data
+
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler returns `Promise<void>`:
+
+```typescript
+@Response('role.delete')
+@Delete('/delete/:role')
+async delete(
+  @Param('role', RequestRequiredPipe, RequestIsValidObjectIdPipe) role: string
+): Promise<void> {
+  await this.roleHttpService.delete(role);
 }
 ```
 
-### Opt-In with @Expose
+### Nested Schemas
 
-A declared field without `@Expose()` is dropped by the serializer, which is what keeps a new column off the response until someone exposes it deliberately. The constraint when writing a response DTO: `rules/dto.md`.
-
-```typescript
-export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
-  @ApiProperty({ description: 'Device ownership ID' })
-  @Expose()
-  deviceId: string;
-
-  @ApiProperty({ description: 'User ID who owns the device' })
-  @Expose()
-  userId: string;
-}
-```
-
-`@Transform(...)` and `@ApiProperty(...)` are independent — keep them as-is alongside `@Expose()`.
-
-### Nested DTOs
-
-`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. A nested DTO whose own fields carry no `@Expose()` serializes as an empty object, and a parent property that carries `@Type` without `@Expose()` is dropped like any other unexposed field, so both decorators sit on the parent property:
+A nested object is a named schema referenced from the parent, which keeps one definition per shape and lets the OpenAPI document reuse it:
 
 ```typescript
-@ApiProperty({ type: DeviceResponseDto })
-@Expose()
-@Type(() => DeviceResponseDto)
-device: DeviceResponseDto;
+device: DeviceResponseSchema.meta({
+    description: 'Device information',
+    example: { /* ... */ },
+}),
+revokedBy: UserRefResponseSchema.nullable().meta({
+    description: 'User who revoked the device ownership',
+    example: { /* ... */ },
+}),
 ```
+
+Stripping propagates: the nested schema strips its own undeclared keys the same way the parent does.
 
 ### Hiding Fields
 
-Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). **Subclass-hide** is the case that needs both decorators: a field the parent class already `@Expose()`s stays in the JSON until the subclass adds `@Exclude()`, and stays in the Swagger schema until the subclass adds `@ApiHideProperty()`.
+A field is hidden by leaving it out of the schema; there is no separate exclusion decorator. A shape that shows a field only on one route builds that route's schema from the shared one:
 
 ```typescript
-// Parent exposes isActive/startAt/endAt/name/type/key; create response hides every one of them and adds `secret`.
-export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
-  @Expose()
-  secret: string;
+// The base api-key shape carries no secret. Creation and reset are the two routes that return
+// it, and they declare it by extending the base.
+export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
+    secret: z.string().meta({
+        description: 'Secret key of ApiKey, only show at once',
+        example: faker.string.alphanumeric(20),
+    }),
+});
+```
 
-  @ApiHideProperty()
-  @Exclude()
-  isActive: boolean;
+To drop a field a base declares, derive with `.omit()`:
 
-  @ApiHideProperty()
-  @Exclude()
-  startAt?: Date;
-
-  @ApiHideProperty()
-  @Exclude()
-  endAt?: Date;
-
-  @ApiHideProperty()
-  @Exclude()
-  name: string;
-
-  @ApiHideProperty()
-  @Exclude()
-  type: EnumApiKeyType;
-
-  @ApiHideProperty()
-  @Exclude()
-  key: string;
-}
+```typescript
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({ /* ... */ });
 ```
 
 ### Serialization Flow
@@ -383,15 +390,16 @@ export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
 ```text
 Service returns entity / interface (raw)
     ↓
-Module mapper util: responseUtil.serialize(SomeResponseDto, data)
+Controller returns { data } / { data: [] } as IResponseReturn / IResponsePagingReturn
     ↓
-plainToInstance(cls, data, { excludeExtraneousValues: true })
+ResponseInterceptor reads the schema off ResponseSchemaMetaKey
     ↓
-Only @Expose() fields kept (nested @Type DTOs serialized recursively)
+schema['~standard'].validate(payload): undeclared keys stripped, a rejection raises
+ResponseSerializationException
     ↓
-Controller returns { data } / { data: [] }
+Envelope assembled: statusCode, localized message, metadata, data
     ↓
-ResponseInterceptor wraps into standard envelope + metadata + headers
+ResponseMetadataService.setHeaders mirrors the metadata onto response headers
 ```
 
 Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters call it instead of building metadata inline.
@@ -470,10 +478,12 @@ Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCurs
 **Basic Caching:**
 
 ```typescript
-@Response('user.get', { cache: true })
+@Response('user.get', { schema: UserProfileResponseSchema, cache: true })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
+async getUser(
+  @Param('id') id: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return { data: await this.userHttpService.get(id) };
 }
 ```
 
@@ -487,14 +497,17 @@ Apis:{key}
 
 ```typescript
 @Response('user.get', {
+  schema: UserProfileResponseSchema,
   cache: {
     key: 'user-detail',
     ttl: 3600000 // milliseconds (1 hour)
   }
 })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
+async getUser(
+  @Param('id') id: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return { data: await this.userHttpService.get(id) };
 }
 ```
 

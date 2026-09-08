@@ -35,12 +35,15 @@ spec's own fixture.
 - A date-shaped **request** field is typed as a date on its zod schema (`rules/validation.md`),
   not accepted as a raw string and parsed downstream.
 
-## Durations belong in config, in milliseconds
+## Durations belong in config, in the consumer's unit
 
-Every TTL, expiry, window, and backoff is a config key named `*InMs`, valued `ms('<string>')`
-(`rules/config.md`). A duration computed inline (`5 * 60 * 1000`) is the defect, and so is a
-config field named `InSeconds`. The conversion to whatever unit a third-party package wants
-happens at the CALL SITE.
+Every TTL, expiry, window, and backoff is a config key whose suffix names the unit its consumer
+takes — `InMs`, `InSeconds`, `InDays` — valued from an `ms('<string>')` literal divided to that
+unit inside the config file (`rules/config.md`). A duration computed inline (`5 * 60 * 1000`) is
+the defect, and so is a unit conversion at the CALL SITE: a service, util, guard, interceptor or
+module reads its config key and passes the value straight through. A duration COMPUTED at request
+time carries no config key, so converting it where it is consumed is correct
+(`rules/config.md`).
 
 ## Comparing and expiring
 

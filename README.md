@@ -72,7 +72,7 @@ This boilerplate is perfect for:
     @ExampleDoc()
     @Response('example.get')
     @TermPolicyAcceptanceProtected(...)
-    @PolicyAbilityProtected({...})
+    @PolicyProtected({...})
     @RoleProtected(...)
     @ProjectMemberProtected(...)      // /user scope only
     @ProjectProtected()               // /user scope only
@@ -218,7 +218,7 @@ Developer-friendly tooling and best practices.
 - **NestJS 12.x** - Latest framework version with full TypeScript support
 - **Swagger/OpenAPI 3** - Interactive API documentation
 - **API Versioning** - URL-based versioning (default v1)
-- **Request Validation** - Automatic validation with class-validator
+- **Request Validation** - Every request shape is a zod schema, validated by the global `RequestSchemaValidationPipe`
 - **Error Handling** - Standardized error responses with i18n
 - **Hot Reload** - Fast development with SWC
 - **Code Quality** - ESLint, Prettier, Husky pre-commit hooks

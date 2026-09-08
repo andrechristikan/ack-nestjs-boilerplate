@@ -114,9 +114,9 @@ export default registerAs(
             // Temporary password expiration (3 days), stored in milliseconds
             expiredTemporaryInMs: ms('3d'),
             
-            // Password reuse window (90 days), stored in milliseconds
+            // Password reuse window in days (90), the unit the reuse check takes
             // A password kept in history for this long cannot be set again
-            periodInMs: ms('90d'),
+            periodInDays: ms('90d') / ms('1d'),
         },
     })
 );
@@ -179,12 +179,13 @@ export default registerAs(
                 // Private key for signing access tokens (from environment)
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by AuthUtil's direct verify helpers
+                // Public key, used by the direct verify helpers on AuthJwtService
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
                 
-                // Access token expiration, stored in milliseconds (from AUTH_JWT_ACCESS_TOKEN_EXPIRED)
-                // The JWT signer receives seconds (Math.floor(value / 1000))
-                expirationTimeInMs: ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED),
+                // Access token expiration in seconds, the unit the JWT signer takes,
+                // parsed from the ms() string in AUTH_JWT_ACCESS_TOKEN_EXPIRED
+                expirationTimeInSeconds:
+                    ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED) / 1000,
             },
 
             refreshToken: {
@@ -200,12 +201,13 @@ export default registerAs(
                 // Private key for signing refresh tokens (from environment)
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by AuthUtil's direct verify helpers
+                // Public key, used by the direct verify helpers on AuthJwtService
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
                 
-                // Refresh token expiration, stored in milliseconds (from AUTH_JWT_REFRESH_TOKEN_EXPIRED)
-                // This value also determines the initial session expiry and Redis TTL
-                expirationTimeInMs: ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED),
+                // Refresh token expiration in seconds, parsed from the ms() string in
+                // AUTH_JWT_REFRESH_TOKEN_EXPIRED; it also sets the initial session expiry and Redis TTL
+                expirationTimeInSeconds:
+                    ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED) / 1000,
             },
 
             // JWT audience claim (identifies intended recipients)
@@ -224,7 +226,7 @@ export default registerAs(
 );
 ```
 
-Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthUtil.validateAccessToken` / `AuthUtil.validateRefreshToken`.
+Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtService.validateAccessToken` / `AuthJwtService.validateRefreshToken`.
 
 ### JWT Flow
 
@@ -600,8 +602,10 @@ sequenceDiagram
     participant User
     participant Client
     participant GoogleApple as Google/Apple
+    participant Guard
     participant API
-    participant AuthUtil
+    participant AuthSocialService
+    participant AuthJwtService
     participant Redis
     participant Database
 
@@ -612,30 +616,28 @@ sequenceDiagram
     Client->>API: POST /public/user/login/social/{google|apple}
     Note over Client,API: Authorization: Bearer <oauth_token>
     
-    API->>API: Guard extracts token from header
+    Client->>Guard: AuthSocialGoogleGuard / AuthSocialAppleGuard
+    Guard->>Guard: Split the Authorization header on the configured prefix
     
     alt Google Authentication
-        API->>AuthUtil: extractHeaderGoogle(request)
-        AuthUtil-->>API: Token extracted
-        API->>AuthUtil: verifyGoogle(token)
-        Note over AuthUtil: Uses OAuth2Client from<br/>google-auth-library
-        AuthUtil-->>API: TokenPayload {email, email_verified}
+        Guard->>AuthSocialService: verifyGoogle(token)
+        Note over AuthSocialService: Uses OAuth2Client from<br/>google-auth-library
+        AuthSocialService-->>Guard: TokenPayload {email, email_verified}
     else Apple Authentication
-        API->>AuthUtil: extractHeaderApple(request)
-        AuthUtil-->>API: Token extracted
-        API->>AuthUtil: verifyApple(token)
-        Note over AuthUtil: Uses verifyAppleToken from<br/>verify-apple-id-token
-        AuthUtil-->>API: Payload {email, email_verified}
+        Guard->>AuthSocialService: verifyApple(token)
+        Note over AuthSocialService: Uses verifyAppleToken from<br/>verify-apple-id-token
+        AuthSocialService-->>Guard: Payload {email, email_verified}
     end
     
     alt Token Valid
-        API->>API: Extract email from payload
+        Guard->>API: request.user = {email, emailVerified}
         API->>Database: Find user by email
         Note over API,Database: Created only when the flag's<br/>signUpAllowed metadata is true
         Database-->>API: User record
         
-        API->>AuthUtil: generateJti()
-        AuthUtil-->>API: 32-char random jti
+        API->>AuthJwtService: createTokens(user, loginFrom, loginWith)
+        Note over AuthJwtService: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
+        AuthJwtService-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
         
         par Store in Database
             API->>Database: Create session record with jti
@@ -645,11 +647,6 @@ sequenceDiagram
             Note over Redis: Key: User:{userId}:Session:{sessionId}<br/>Value: {userId, sessionId, jti, expiredAt}<br/>TTL: follows AUTH_JWT_REFRESH_TOKEN_EXPIRED
             Redis-->>API: Session cached
         end
-        
-        API->>AuthUtil: createAccessToken(userId, jti, payload)
-        AuthUtil-->>API: Access Token (ES256, includes jti)
-        API->>AuthUtil: createRefreshToken(userId, jti, payload)
-        AuthUtil-->>API: Refresh Token (ES512, includes jti)
         
         API-->>Client: Response with tokens
         Note over Client: Same UserLoginResponseDto as<br/>credential login: isTwoFactorEnable<br/>plus tokens or twoFactor
@@ -710,7 +707,7 @@ To obtain Google OAuth credentials:
 
 ```typescript
 @AuthPublicLoginSocialGoogleDoc()
-@Response('user.loginWithSocialGoogle')
+@Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
 @AuthSocialGoogleProtected()
 @FeatureFlagProtected('loginWithGoogle')
 @ApiKeyProtected()
@@ -719,8 +716,9 @@ To obtain Google OAuth credentials:
 @Post('/login/social/google')
 async loginWithGoogle(
     @AuthJwtPayload<IAuthSocialPayload>('email') email: string,
-    @Body() body: UserCreateSocialRequestDto
-): Promise<IResponseReturn<UserLoginResponseDto>> {
+    @Body({ schema: UserCreateSocialRequestSchema })
+    body: UserCreateSocialRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
     return this.userAuthHttpService.loginWithSocial(
         email,
         EnumUserLoginWith.socialGoogle,
@@ -775,7 +773,7 @@ To obtain Apple credentials:
 
 ```typescript
 @AuthPublicLoginSocialAppleDoc()
-@Response('user.loginWithSocialApple')
+@Response('user.loginWithSocialApple', { schema: UserLoginResponseSchema })
 @AuthSocialAppleProtected()
 @FeatureFlagProtected('loginWithApple')
 @ApiKeyProtected()
@@ -784,8 +782,9 @@ To obtain Apple credentials:
 @Post('/login/social/apple')
 async loginWithApple(
     @AuthJwtPayload<IAuthSocialPayload>('email') email: string,
-    @Body() body: UserCreateSocialRequestDto
-): Promise<IResponseReturn<UserLoginResponseDto>> {
+    @Body({ schema: UserCreateSocialRequestSchema })
+    body: UserCreateSocialRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
     return this.userAuthHttpService.loginWithSocial(
         email,
         EnumUserLoginWith.socialApple,
@@ -813,7 +812,7 @@ export default registerAs(
             algorithm: 'sha1',         // Hash algorithm (sha1)
             issuer: process.env.AUTH_TWO_FACTOR_ISSUER,
             digits: 6,
-            periodInMs: ms('30s'),     // Token validity window; otplib receives seconds (value / 1000)
+            periodInSeconds: ms('30s') / 1000, // Token validity window in seconds, the unit otplib takes
             window: 1,
             secretLength: 32,
             challengeTtlInMs: ms('5m'),
@@ -837,9 +836,9 @@ export default registerAs(
 - `strategy`: OTP strategy — `totp` (time-based)
 - `algorithm`: Hash algorithm used for TOTP generation — `sha1`
 - `issuer`: Label shown in the authenticator app, from `AUTH_TWO_FACTOR_ISSUER`
-- `periodInMs`: Token validity window, stored in milliseconds (default: `ms('30s')`); otplib receives seconds
+- `periodInSeconds`: Token validity window in seconds (default: 30), passed straight to otplib
 - `digits`: Number of digits in the OTP code (default: `6`)
-- `window`: Backward-only time steps tolerated; `epochTolerance` is `[window × (periodInMs / 1000), 0]`, so a past step is accepted and a future one is not (default: `1`)
+- `window`: Backward-only time steps tolerated; `epochTolerance` is `[window × periodInSeconds, 0]`, so a past step is accepted and a future one is not (default: `1`)
 - `secretLength`: Length of the generated secret (default: `32`)
 - `challengeTtlInMs`: TTL for the challenge token in cache (default: `5m`)
 - `challengeKeyPattern`: Cache key pattern for the challenge token (`TwoFactor:Challenge:{token}`)

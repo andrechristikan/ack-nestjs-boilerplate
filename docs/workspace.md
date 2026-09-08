@@ -120,11 +120,11 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 
 ### The `/admin` scope takes none of this
 
-Admin routes reach the same resources through `@RoleProtected()` + `@PolicyAbilityProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard.
+Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProtected()` and take the workspace id from the **path**. They never read `x-workspace-id` and never carry a workspace guard.
 
 ## Personal Workspace
 
-`UserOnboardingUtil.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug, and `UserOnboardingRepository.createWithWorkspace` writes it together with an `owner` membership inside the same transaction as the user.
+`UserOnboardingService.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug, and `UserOnboardingRepository.createWithWorkspace` writes it together with an `owner` membership inside the same transaction as the user.
 
 `buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`. The create transaction runs with the first candidate; a unique collision on `slug` rolls the transaction back and the next candidate is tried, and running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error. Admin CSV import writes all its rows in one transaction through `createManyWithWorkspace`, which substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
@@ -187,7 +187,7 @@ Neither preview answers `forbidden` for a resource that exists but is not eligib
 
 ### Admin Scope
 
-Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@PolicyAbilityProtected({ subject: workspace, action: [read] })`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
+Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@PolicyProtected({ subject: workspace, action: [read] })`. **Not feature-flagged**, does not read `x-workspace-id`, read-only.
 
 | Method | Path | Description |
 |---|---|---|
@@ -228,13 +228,13 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 
 **Delivery.** The link is `{home.url}/workspace/invites/{plainToken}`, AES-encrypted before it leaves the service. The encryption key differs by recipient: an existing user's link is keyed with their `userId`, an unregistered address's link is keyed with the invite `reference`. The two cases also use different notification processes (`workspaceInvite` and `workspaceInviteUnregistered`), though they share one SES template.
 
-**Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestDto`, a `PickType` of the create DTO); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
+**Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
 
 **Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success one transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`, sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace, creates the project membership when the invite carried one, and writes a `workspaceInviteAccepted` activity log.
 
 A user who has no account yet redeems the invite through sign-up instead, by passing `workspaceInviteToken`. See [Personal Workspace](#personal-workspace).
 
-**Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceInviteUtil.scheduleInviteExpirySweep`, which registers the recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue, using the cron in `workspace.invite.expirySweepCron` (`0 0 * * *`) in the app timezone and at `low` priority. The scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick. The job flips every `pending` invite past its `expiredAt` to `expired`.
+**Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceQueue.scheduleInviteExpirySweep`, which registers the recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue, using the cron in `workspace.invite.expirySweepCron` (`0 0 * * *`) in the app timezone and at `low` priority. The scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick. The job flips every `pending` invite past its `expiredAt` to `expired`.
 
 ## Join Requests
 

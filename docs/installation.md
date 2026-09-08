@@ -54,7 +54,7 @@ Before starting, install the following tools and packages. We recommend using th
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]
-> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
+> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#-installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
 
 ## Clone Repository
 
