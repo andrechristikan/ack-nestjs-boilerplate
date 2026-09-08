@@ -19,9 +19,9 @@ export type UserUpdateProfileRequestDto = z.infer<
 
 export const UserUpdateProfilePhotoRequestSchema =
     AwsS3PresignRequestSchema.pick({ size: true }).extend({
-        photoKey: z.string().min(1).meta({
-            description: 'photo path key',
-            example: 'user/profile/unique-photo-key.jpg',
+        key: AwsS3PresignRequestSchema.shape.key.meta({
+            description:
+                'Key of the uploaded profile photo, as returned by the presign step',
         }),
     });
 

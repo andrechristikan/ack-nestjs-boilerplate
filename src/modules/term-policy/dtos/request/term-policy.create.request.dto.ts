@@ -4,11 +4,10 @@ import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos
 import { TermPolicyContentsRequestSchema } from '@modules/term-policy/dtos/request/term-policy.contents.request.dto';
 
 export const TermPolicyCreateRequestSchema =
-    TermPolicyAcceptRequestSchema.extend(
-        TermPolicyContentsRequestSchema.shape
-    ).extend(
-        TermPolicyContentPresignRequestSchema.pick({ version: true }).shape
-    );
+    TermPolicyAcceptRequestSchema.extend({
+        contents: TermPolicyContentsRequestSchema.shape.contents,
+        version: TermPolicyContentPresignRequestSchema.shape.version,
+    });
 
 export type TermPolicyCreateRequestDto = z.infer<
     typeof TermPolicyCreateRequestSchema

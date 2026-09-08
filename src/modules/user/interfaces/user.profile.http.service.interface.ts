@@ -21,7 +21,7 @@ export interface IUserProfileHttpService {
     ): Promise<IResponseReturn<IAwsS3Presign>>;
     updatePhotoProfile(
         userId: string,
-        { photoKey, size }: UserUpdateProfilePhotoRequestDto
+        { key, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<void>;
     uploadPhotoProfile(userId: string, file: IFile): Promise<void>;
     claimUsername(

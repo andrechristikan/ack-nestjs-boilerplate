@@ -400,8 +400,8 @@ Routes excluded from auto-logging (defined in `logger.constant.ts`):
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
@@ -413,8 +413,8 @@ export const LoggerExcludedRoutes: string[] = [
 
 ### Pattern Matching Rules
 
-- **Exact match**: `/api/health` - matches only this exact path
-- **Wildcard suffix**: `/api/health/*` - matches `/api/health/status`, `/api/health/check`, etc.
+- **Exact match**: `/api/system/health` - matches only this exact path
+- **Wildcard suffix**: `/api/system/health/*` - matches `/api/system/health/database`, `/api/system/health/aws`, etc.
 - **Root path**: `/` - matches only the root endpoint
 - All patterns are **case-insensitive**
 
@@ -426,8 +426,8 @@ To exclude additional routes, modify the constant in `src/common/logger/constant
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',

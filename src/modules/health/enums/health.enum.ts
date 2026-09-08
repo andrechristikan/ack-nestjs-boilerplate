@@ -5,3 +5,9 @@ export enum EnumHealthStatus {
     degraded = 'degraded',
     shuttingDown = 'shutting_down',
 }
+
+/** Status of a single Terminus indicator inside a check's info, error and details maps. */
+export enum EnumHealthIndicatorStatus {
+    up = 'up',
+    down = 'down',
+}

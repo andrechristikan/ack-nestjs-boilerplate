@@ -24,7 +24,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectService implements IProjectService {
-    private readonly slugPattern: RegExp;
+    private readonly slugRegex: RegExp;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
@@ -36,9 +36,7 @@ export class ProjectService implements IProjectService {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.slugPattern = this.configService.get<RegExp>(
-            'project.slugPattern'
-        )!;
+        this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
         this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
         this.slugMaxLength = this.configService.get<number>(
             'project.slugMaxLength'
@@ -58,7 +56,7 @@ export class ProjectService implements IProjectService {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugPattern.test(slug)) {
+        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
             throw new ProjectSlugInvalidException();
         }
     }

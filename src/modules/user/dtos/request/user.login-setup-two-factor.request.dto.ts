@@ -3,10 +3,10 @@ import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/reques
 import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
 
 export const UserLoginSetupTwoFactorRequestSchema =
-    UserTwoFactorEnableRequestSchema.extend(
-        UserLoginVerifyTwoFactorRequestSchema.pick({ challengeToken: true })
-            .shape
-    );
+    UserTwoFactorEnableRequestSchema.extend({
+        challengeToken:
+            UserLoginVerifyTwoFactorRequestSchema.shape.challengeToken,
+    });
 
 export type UserLoginSetupTwoFactorRequestDto = z.infer<
     typeof UserLoginSetupTwoFactorRequestSchema

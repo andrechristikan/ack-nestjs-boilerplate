@@ -4,21 +4,18 @@ import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user
 import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 
 export const UserForgotPasswordResetRequestSchema =
-    UserChangePasswordRequestSchema.pick({ newPassword: true })
-        .extend(
-            UserLoginVerifyTwoFactorRequestSchema.omit({
-                challengeToken: true,
-            }).partial().shape
-        )
-        .extend({
-            token: z
-                .string()
-                .min(1)
-                .meta({
-                    description: 'Forgot password token',
-                    example: faker.string.alphanumeric(20),
-                }),
-        });
+    UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
+        method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
+        code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
+        backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
+        token: z
+            .string()
+            .min(1)
+            .meta({
+                description: 'Forgot password token',
+                example: faker.string.alphanumeric(20),
+            }),
+    });
 
 export type UserForgotPasswordResetRequestDto = z.infer<
     typeof UserForgotPasswordResetRequestSchema

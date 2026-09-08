@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { HealthResponseSchema } from '@modules/health/dtos/response/health.response.dto';
-import { EnumHealthStatus } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorStatus,
+    EnumHealthStatus,
+} from '@modules/health/enums/health.enum';
 
 /** Response shape of the database health check. */
 export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
@@ -12,13 +15,13 @@ export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
         description: 'Database indicators that reported up or degraded',
         example: {
             database: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             redis: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             queue: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),
@@ -26,13 +29,13 @@ export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
         description: 'Database indicators that reported down',
         example: {
             database: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             redis: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             queue: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
         },
     }),
@@ -40,13 +43,13 @@ export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
         description: 'Combined database indicator results for this check',
         example: {
             database: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             redis: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             queue: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),

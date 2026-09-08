@@ -144,7 +144,7 @@ Admin routes carry no project or workspace guard. They take the project id from 
 ## Slug
 
 - **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectService.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `ProjectRepository.createInWorkspace`. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
-- A slug sent to `update/:projectId/slug` is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugPattern`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
+- A slug sent to `update/:projectId/slug` is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
 - `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
 - `createInWorkspace` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
@@ -181,13 +181,13 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 ```typescript
 {
   slugPrefix: 'p-',
-  slugPattern: /^[0-9a-zA-Z-]+$/,
+  slugRegex: /^[0-9a-zA-Z-]+$/,
   slugMaxLength: 30,
   slugMaxAttempts: 5
 }
 ```
 
-`ProjectService` reads all four: `slugPattern` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
+`ProjectService` reads all four: `slugRegex` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
 
 ## Status Codes
 

@@ -48,10 +48,10 @@ export class UserProfileHttpService implements IUserProfileHttpService {
 
     async updatePhotoProfile(
         userId: string,
-        { photoKey, size }: UserUpdateProfilePhotoRequestDto
+        { key, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
         await this.userProfileService.updatePhotoProfile(userId, {
-            photoKey,
+            key,
             size,
         });
     }

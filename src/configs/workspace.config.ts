@@ -6,7 +6,7 @@ export interface IConfigWorkspace {
     maxWorkspacesPerUser: number;
     personalNamePattern: string;
     slugPrefix: string;
-    slugPattern: RegExp;
+    slugRegex: RegExp;
     slugMaxLength: number;
     slugMaxAttempts: number;
     invite: {
@@ -14,12 +14,12 @@ export interface IConfigWorkspace {
         tokenLength: number;
         referencePrefix: string;
         referenceRandomLength: number;
-        linkBaseUrl: string;
-        signupLinkBaseUrl: string;
+        linkPattern: string;
+        signUpLinkPattern: string;
         expirySweepCron: string;
     };
     joinRequest: {
-        reviewLinkBaseUrl: string;
+        reviewLinkPattern: string;
     };
 }
 
@@ -29,7 +29,7 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
     maxWorkspacesPerUser: 10,
     personalNamePattern: "{username}'s Workspace",
     slugPrefix: 'w-',
-    slugPattern: /^[0-9a-zA-Z-]+$/,
+    slugRegex: /^[0-9a-zA-Z-]+$/,
     slugMaxLength: 30,
     slugMaxAttempts: 5,
     invite: {
@@ -37,11 +37,11 @@ export default registerAs('workspace', (): IConfigWorkspace => ({
         tokenLength: 100,
         referencePrefix: 'WIN',
         referenceRandomLength: 25,
-        linkBaseUrl: 'workspace/invites',
-        signupLinkBaseUrl: 'sign-up',
+        linkPattern: '{homeUrl}/workspace/invites/{token}',
+        signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
         expirySweepCron: '0 0 * * *',
     },
     joinRequest: {
-        reviewLinkBaseUrl: 'workspace/join-requests',
+        reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}',
     },
 }));

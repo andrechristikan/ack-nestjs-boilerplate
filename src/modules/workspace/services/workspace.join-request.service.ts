@@ -33,7 +33,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService {
     private readonly homeUrl: string;
-    private readonly joinRequestReviewLinkBaseUrl: string;
+    private readonly joinRequestReviewLinkPattern: string;
 
     constructor(
         private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
@@ -46,8 +46,8 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
         private readonly featureFlagService: FeatureFlagService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
-        this.joinRequestReviewLinkBaseUrl = this.configService.get<string>(
-            'workspace.joinRequest.reviewLinkBaseUrl'
+        this.joinRequestReviewLinkPattern = this.configService.get<string>(
+            'workspace.joinRequest.reviewLinkPattern'
         )!;
     }
 
@@ -73,7 +73,9 @@ export class WorkspaceJoinRequestService implements IWorkspaceJoinRequestService
         ]);
         const requesterName =
             requester?.name ?? requester?.username ?? 'A user';
-        const link = `${this.homeUrl}/${this.joinRequestReviewLinkBaseUrl}/${joinRequest.id}`;
+        const link = this.joinRequestReviewLinkPattern
+            .replace('{homeUrl}', this.homeUrl)
+            .replace('{joinRequestId}', joinRequest.id);
 
         await Promise.all(
             reviewers.map(reviewer => {

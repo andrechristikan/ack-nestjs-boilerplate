@@ -208,7 +208,7 @@ export interface IUserGeneratePhotoProfile {
 }
 
 export interface IUserUpdatePhotoProfile {
-    photoKey: string;
+    key: string;
     size: number;
 }
 
@@ -233,7 +233,7 @@ export interface IUserLoginSocial {
     device: IDeviceIdentity;
     cookies: boolean;
     marketing: boolean;
-    workspaceInviteToken?: string;
+    inviteToken?: string;
 }
 
 export interface IUserSignUp {
@@ -245,7 +245,7 @@ export interface IUserSignUp {
     from: EnumUserSignUpFrom;
     cookies: boolean;
     marketing: boolean;
-    workspaceInviteToken?: string;
+    inviteToken?: string;
 }
 
 export interface IUserChangePassword extends IAuthTwoFactorVerify {

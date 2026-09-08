@@ -22,7 +22,8 @@ export interface IWorkspaceInviteTokenData {
     hashedToken: string;
     reference: string;
     expiredAt: Date;
-    link: string;
+    claimLink: string;
+    signUpLink: string;
 }
 
 export interface IWorkspaceJoinRequestRequester {

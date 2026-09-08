@@ -279,13 +279,15 @@ This configuration handles AWS service integration including S3 and SES services
 **`s3`** - S3 service configuration
 ```typescript
 s3: {
-  multipartExpiredInMs: number;   // Multipart upload expiration (ms('3d')); lifecycle rule receives days
-  presignExpiredInMs: number;     // Presigned URL expiration (ms('30m')); signer receives seconds
-  corsMaxAgeLongInMs: number;     // CORS preflight max-age, long (ms('1d')); S3 receives seconds
-  corsMaxAgeShortInMs: number;    // CORS preflight max-age, short (ms('1h')); S3 receives seconds
+  multipartExpiredInDays: number;     // Multipart upload expiration in days, handed straight to the lifecycle rule (`ms('3d') / ms('1d')`)
+  presignExpiredInSeconds: number;    // Presigned URL lifetime in seconds, handed straight to the signer (`ms('30m') / 1000`)
+  corsMaxAgeLongInSeconds: number;    // CORS preflight max-age in seconds, long (`ms('1d') / 1000`)
+  corsMaxAgeShortInSeconds: number;   // CORS preflight max-age in seconds, short (`ms('1h') / 1000`)
   maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
   timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
   region: string | null;          // AWS region for S3
+  objectUrlPattern: string;       // Object URL template ('{baseUrl}/{key}')
+  cdnUrlPattern: string;          // CDN URL template ('{cdnUrl}/{key}')
   iam: {
     key: string | null;           // AWS IAM access key ID
     secret: string | null;        // AWS IAM secret access key
@@ -314,7 +316,8 @@ s3: {
 > - The `iam.arn` is used for IAM role assumption (recommended for production)
 > - When using IAM roles, temporary credentials are automatically rotated
 > - Bucket ARNs are auto-generated as `arn:aws:s3:::{bucket-name}`
-> - Base URLs are auto-generated as `https://{bucket}.s3.{region}.amazonaws.com`
+> - Base URLs are built from the `https://{bucket}.s3.{region}.amazonaws.com` template, and a CDN URL from `https://{cdn}`
+> - `AwsS3Service.buildUrls` fills `objectUrlPattern` with the bucket `baseUrl` and the object key, and `cdnUrlPattern` with the bucket `cdnUrl` and the same key; a bucket without a `cdnUrl` reports `cdnUrl: null`
 
 **`ses`** - Simple Email Service configuration
 ```typescript
@@ -562,6 +565,11 @@ prefix: string                  // URL prefix for API documentation (default: '/
 version: string                 // Static version for Swagger documentation (default: '3.1.0')
 ```
 
+**`jsonUrlPattern`** - Path the OpenAPI JSON is served on
+```typescript
+jsonUrlPattern: string          // Relative path template ('{docPrefix}/json'), filled with `prefix` in `src/swagger.ts`
+```
+
 ### Message Configuration
 
 **File**: `src/configs/message.config.ts`
@@ -638,9 +646,9 @@ otpLength: number               // Length of OTP verification code
 tokenLength: number             // Length of verification token
 ```
 
-**`linkBaseUrl`** - Verification link base URL
+**`linkPattern`** - Verification link template
 ```typescript
-linkBaseUrl: string             // Base URL for verification links
+linkPattern: string             // Full verification link template ('{homeUrl}/verify-email/{token}')
 ```
 
 **`resendInMs`** - Resend cooldown period
@@ -675,9 +683,9 @@ expiredInMs: number             // Password reset expiration (ms('5m')); consume
 tokenLength: number             // Length of password reset token
 ```
 
-**`linkBaseUrl`** - Reset link base URL
+**`linkPattern`** - Reset link template
 ```typescript
-linkBaseUrl: string             // Base URL for password reset links
+linkPattern: string             // Full password reset link template ('{homeUrl}/forgot-password/{token}')
 ```
 
 **`resendInMs`** - Resend cooldown period
@@ -850,7 +858,7 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check.
+This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -872,6 +880,11 @@ diskThresholdPercent: number         // Disk usage alert threshold as a fraction
 **`diskPath`** - Disk path checked
 ```typescript
 diskPath: string                     // Filesystem path checked for storage (default: '/')
+```
+
+**`gracefulShutdownTimeoutInMs`** - Terminus graceful-shutdown window
+```typescript
+gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a shutdown signal (ms('30s'))
 ```
 
 ### Notification Configuration
@@ -945,9 +958,9 @@ personalNamePattern: string     // Name template for the personal workspace ("{u
 slugPrefix: string              // Prefix applied to generated workspace slugs (default: 'w-')
 ```
 
-**`slugPattern`** - Workspace slug validation pattern
+**`slugRegex`** - Workspace slug validation expression
 ```typescript
-slugPattern: RegExp             // Regex pattern for valid workspace slugs
+slugRegex: RegExp               // Regular expression a valid workspace slug matches
 ```
 
 **`slugMaxLength`** - Workspace slug length cap
@@ -967,8 +980,8 @@ invite: {
   tokenLength: number;           // Length of the invitation token (default: 100)
   referencePrefix: string;       // Prefix for invitation references (default: 'WIN')
   referenceRandomLength: number; // Random part length of the invitation reference (default: 25)
-  linkBaseUrl: string;           // Base path for invitation links ('workspace/invites')
-  signupLinkBaseUrl: string;     // Declared as 'sign-up'; no reader in src/
+  linkPattern: string;           // Claim link template for an invitee who already has an account ('{homeUrl}/workspace/invites/{token}')
+  signUpLinkPattern: string;     // Sign-up link template for an invitee without an account ('{homeUrl}/sign-up?inviteToken={token}')
   expirySweepCron: string;       // Cron pattern for the invitation expiry sweep (default: '0 0 * * *')
 }
 ```
@@ -976,7 +989,7 @@ invite: {
 **`joinRequest`** - Workspace join request configuration
 ```typescript
 joinRequest: {
-  reviewLinkBaseUrl: string;    // Base path for join request review links ('workspace/join-requests')
+  reviewLinkPattern: string;    // Review link template for a join request ('{homeUrl}/workspace/join-requests/{joinRequestId}')
 }
 ```
 
@@ -994,9 +1007,9 @@ This configuration handles project slug generation.
 slugPrefix: string              // Prefix applied to generated project slugs (default: 'p-')
 ```
 
-**`slugPattern`** - Project slug validation pattern
+**`slugRegex`** - Project slug validation expression
 ```typescript
-slugPattern: RegExp             // Regex pattern for valid project slugs
+slugRegex: RegExp               // Regular expression a valid project slug matches
 ```
 
 **`slugMaxLength`** - Project slug length cap

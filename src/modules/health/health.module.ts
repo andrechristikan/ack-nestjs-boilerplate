@@ -13,6 +13,7 @@ import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.
 import { HealthService } from '@modules/health/services/health.service';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 
 /**
@@ -37,8 +38,13 @@ import { TerminusModule } from '@nestjs/terminus';
     exports: [HealthService, HealthUtil],
     imports: [
         AwsModule,
-        TerminusModule.forRoot({
-            gracefulShutdownTimeoutMs: 30000,
+        TerminusModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                gracefulShutdownTimeoutMs: configService.get<number>(
+                    'health.gracefulShutdownTimeoutInMs'
+                )!,
+            }),
         }),
     ],
 })

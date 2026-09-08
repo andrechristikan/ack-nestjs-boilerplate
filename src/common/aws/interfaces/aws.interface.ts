@@ -35,7 +35,7 @@ export interface IAwsS3Presign {
     mime: string;
     extension: string;
     presignUrl: string;
-    expiredIn: number;
+    expiredInSeconds: number;
 }
 
 export interface IAwsS3PresignPart extends IAwsS3Presign {

@@ -90,9 +90,9 @@ export class UserAuthService implements IUserAuthService {
     private async resolveWorkspaceContext(
         username: string,
         email: string,
-        workspaceInviteToken?: string
+        inviteToken?: string
     ): Promise<IUserSignUpWorkspaceContext> {
-        if (workspaceInviteToken) {
+        if (inviteToken) {
             await this.userLoginService.assertWorkspaceInvitationAllowed();
         }
 
@@ -100,14 +100,14 @@ export class UserAuthService implements IUserAuthService {
             this.userOnboardingService.buildPersonalWorkspaceContexts([
                 username,
             ]);
-        const workspaceContext = workspaceInviteToken
+        const workspaceContext = inviteToken
             ? await this.userOnboardingRepository.resolveInviteWorkspaceContext(
-                  this.helperHashService.sha256Hash(workspaceInviteToken),
+                  this.helperHashService.sha256Hash(inviteToken),
                   email,
                   this.helperDateService.create()
               )
             : personalContext;
-        if (workspaceInviteToken && !workspaceContext) {
+        if (inviteToken && !workspaceContext) {
             throw new WorkspaceInviteInvalidException();
         }
 
@@ -173,7 +173,7 @@ export class UserAuthService implements IUserAuthService {
             from,
             device,
             username,
-            workspaceInviteToken,
+            inviteToken,
             name,
             countryId,
             cookies,
@@ -216,7 +216,7 @@ export class UserAuthService implements IUserAuthService {
             const workspaceContext = await this.resolveWorkspaceContext(
                 username,
                 email,
-                workspaceInviteToken
+                inviteToken
             );
 
             const userId = this.databaseUtil.createId();
@@ -310,7 +310,7 @@ export class UserAuthService implements IUserAuthService {
         email,
         username,
         password: passwordString,
-        workspaceInviteToken,
+        inviteToken,
         name,
         from,
         cookies,
@@ -349,7 +349,7 @@ export class UserAuthService implements IUserAuthService {
         const workspaceContext = await this.resolveWorkspaceContext(
             username,
             email,
-            workspaceInviteToken
+            inviteToken
         );
 
         try {

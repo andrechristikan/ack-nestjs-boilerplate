@@ -132,8 +132,8 @@ Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProte
 |---|---|
 | Admin create | Always |
 | Admin CSV import | Always, one per row |
-| Self sign-up | Only when no `workspaceInviteToken` is supplied |
-| Social sign-up | Only when no `workspaceInviteToken` is supplied |
+| Self sign-up | Only when no `inviteToken` is supplied |
+| Social sign-up | Only when no `inviteToken` is supplied |
 
 **A sign-up that carries a valid invite token joins the inviting workspace instead and gets no personal workspace.** That is the point of the invite: the new user lands where they were invited.
 
@@ -226,13 +226,13 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 
 **Expiry** comes from the request's `expiryDuration` (`EnumWorkspaceInviteExpiry`), defaulting to `workspace.invite.expiredInDays` (7).
 
-**Delivery.** The link is `{home.url}/workspace/invites/{plainToken}`, AES-encrypted before it leaves the service. The encryption key differs by recipient: an existing user's link is keyed with their `userId`, an unregistered address's link is keyed with the invite `reference`. The two cases also use different notification processes (`workspaceInvite` and `workspaceInviteUnregistered`), though they share one SES template.
+**Delivery.** `createInviteTokenData` mints two links from the one plain token: a claim link from `workspace.invite.linkPattern` (`{homeUrl}/workspace/invites/{token}`) and a sign-up link from `workspace.invite.signUpLinkPattern` (`{homeUrl}/sign-up?inviteToken={token}`). `sendInviteNotification` looks the invited address up among active users and picks one of them: an address that already has a User row is sent the claim link, AES-encrypted with that user's `userId`, through the `workspaceInvite` notification process; an address with no account is sent the sign-up link, AES-encrypted with the invite `reference`, through `workspaceInviteUnregistered`. The two processes share one SES template.
 
 **Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
 
 **Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success one transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`, sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace, creates the project membership when the invite carried one, and writes a `workspaceInviteAccepted` activity log.
 
-A user who has no account yet redeems the invite through sign-up instead, by passing `workspaceInviteToken`. See [Personal Workspace](#personal-workspace).
+A user who has no account yet redeems the invite through sign-up instead, by passing `inviteToken`. See [Personal Workspace](#personal-workspace).
 
 **Expiry sweep.** `WorkspaceProcessorService.onModuleInit` calls `WorkspaceQueue.scheduleInviteExpirySweep`, which registers the recurring BullMQ job through `upsertJobScheduler` on the `workspace` queue, using the cron in `workspace.invite.expirySweepCron` (`0 0 * * *`) in the app timezone and at `low` priority. The scheduler is registered with `immediately: true`, so a sweep also runs at boot rather than waiting for the first cron tick. The job flips every `pending` invite past its `expiredAt` to `expired`.
 
@@ -254,7 +254,7 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 ## Slug
 
 - **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceService.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `WorkspaceRepository.createWithOwner`. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
-- A slug sent to `update/slug` is validated by `WorkspaceService.assertSlugAllowed` against `workspace.slugPattern` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
+- A slug sent to `update/slug` is validated by `WorkspaceService.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
 - `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
 - `createWithOwner` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
@@ -282,7 +282,7 @@ Two layers, and they are not the same check.
 
 | Sub-key | Gates |
 |---|---|
-| `invitationAllowed` | invite list, create, resend, revoke, claim, public preview, and a sign-up that carries `workspaceInviteToken` |
+| `invitationAllowed` | invite list, create, resend, revoke, claim, public preview, and a sign-up that carries `inviteToken` |
 | `joinRequestAllowed` | public workspace preview by slug, join request create, list, accept, reject |
 
 Both default to `true` in the seed. Turning `invitationAllowed` off freezes the invite queue completely: an operator can no longer list, revoke, or redeem around existing invites until they expire.
@@ -300,7 +300,7 @@ A flag is never an authorization boundary. See [Feature Flag][ref-doc-feature-fl
   maxWorkspacesPerUser: 10,
   personalNamePattern: "{username}'s Workspace",
   slugPrefix: 'w-',
-  slugPattern: /^[0-9a-zA-Z-]+$/,
+  slugRegex: /^[0-9a-zA-Z-]+$/,
   slugMaxLength: 30,
   slugMaxAttempts: 5,
   invite: {
@@ -308,17 +308,17 @@ A flag is never an authorization boundary. See [Feature Flag][ref-doc-feature-fl
     tokenLength: 100,
     referencePrefix: 'WIN',
     referenceRandomLength: 25,
-    linkBaseUrl: 'workspace/invites',
-    signupLinkBaseUrl: 'sign-up',
+    linkPattern: '{homeUrl}/workspace/invites/{token}',
+    signUpLinkPattern: '{homeUrl}/sign-up?inviteToken={token}',
     expirySweepCron: '0 0 * * *'
   },
   joinRequest: {
-    reviewLinkBaseUrl: 'workspace/join-requests'
+    reviewLinkPattern: '{homeUrl}/workspace/join-requests/{joinRequestId}'
   }
 }
 ```
 
-`invite.signupLinkBaseUrl` has no reader in `src/`.
+Each link key is a full URL template. `{homeUrl}` is filled from `home.url`, so one host value serves all three.
 
 ## Status Codes
 

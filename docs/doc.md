@@ -508,6 +508,7 @@ There are two ways to obtain the Swagger JSON file, both available outside produ
 1. **Via URL (API Docs Endpoint):**
     - After starting the server, access: `/docs/json`
     - Example: `http://localhost:3000/docs/json`
+    - The path comes from `doc.jsonUrlPattern` (`{docPrefix}/json`), filled with `doc.prefix` in `src/swagger.ts`.
     - This endpoint serves the latest Swagger spec for the running app.
 
 2. **Via Generated File:**

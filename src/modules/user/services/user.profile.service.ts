@@ -137,14 +137,14 @@ export class UserProfileService implements IUserProfileService {
 
     async updatePhotoProfile(
         userId: string,
-        { photoKey, size }: IUserUpdatePhotoProfile
+        { key, size }: IUserUpdatePhotoProfile
     ): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign({
-                key: photoKey,
+                key,
                 size,
             });
 

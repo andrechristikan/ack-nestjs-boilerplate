@@ -48,7 +48,7 @@ export class UserPasswordService implements IUserPasswordService {
     private readonly forgotExpiredInMinutes: number;
     private readonly forgotTokenLength: number;
     private readonly forgotResendInMinutes: number;
-    private readonly forgotLinkBaseUrl: string;
+    private readonly forgotLinkPattern: string;
 
     constructor(
         private readonly userPasswordRepository: UserPasswordRepository,
@@ -84,8 +84,8 @@ export class UserPasswordService implements IUserPasswordService {
         this.forgotResendInMinutes =
             this.configService.get<number>('forgotPassword.resendInMs')! /
             ms('1m');
-        this.forgotLinkBaseUrl = this.configService.get<string>(
-            'forgotPassword.linkBaseUrl'
+        this.forgotLinkPattern = this.configService.get<string>(
+            'forgotPassword.linkPattern'
         )!;
     }
 
@@ -120,7 +120,9 @@ export class UserPasswordService implements IUserPasswordService {
     forgotPasswordCreate(userId: string): IUserForgotPasswordCreate {
         const token = this.forgotPasswordCreateToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = `${this.homeUrl}/${this.forgotLinkBaseUrl}/${token}`;
+        const link = this.forgotLinkPattern
+            .replace('{homeUrl}', this.homeUrl)
+            .replace('{token}', token);
         const encryptedLink = this.helperEncryptionService.aes256EncryptSimple(
             link,
             userId

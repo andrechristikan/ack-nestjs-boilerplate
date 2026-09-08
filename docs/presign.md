@@ -35,14 +35,14 @@ async presignGetItem(
 
 - `key`: the S3 object key. It must not start with `/`; the method throws when it does.
 - `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`. It selects which configured bucket is signed against. When omitted the bucket resolves to `public`.
-- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInMs`, defined in `aws.config.ts` as `ms('30m')` and converted with `Math.floor(value / 1000)`.
+- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 
 ### Behaviour
 
 - Returns `null` when S3 credentials are not configured, and logs a warning. A caller that needs a URL treats `null` as the S3 service being unavailable.
 - Sends a `HeadObjectCommand` before signing. A `NotFound` is swallowed; any other S3 error propagates.
 - Derives `extension` and `mime` from the key itself.
-- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredIn`, where `expiredIn` is the same lifetime in seconds that was used to sign.
+- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`, where `expiredInSeconds` is the same lifetime that was used to sign.
 
 ---
 
@@ -59,7 +59,7 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 5. Backend saves file reference to database with audit trail
 
 > [!NOTE]
-> **Default expiration:** 30 minutes (`presignExpiredInMs: ms('30m')` in `aws.config.ts`; the signer receives seconds via `Math.floor(value / 1000)`). Override per-call via the `expiredInSeconds` option.
+> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). Override per-call via the `expiredInSeconds` option.
 
 ### Implementation
 
@@ -195,7 +195,7 @@ export class UserProfileService {
 Two things follow from the options actually passed:
 
 - No `access` is passed, so both `presignPutItem` and `mapPresign` fall back to `EnumAwsS3Accessibility.public`. The photo is signed against, and stored in, the public bucket.
-- No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInMs`, which is 30 minutes.
+- No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
 `presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
 
@@ -273,7 +273,7 @@ export const AwsS3PresignResponseSchema = z.object({
   mime: z.string(),         // MIME type (use this as Content-Type header)
   extension: z.string(),    // File extension
   presignUrl: z.string(),   // The presigned URL for upload
-  expiredIn: z.number(),    // URL lifetime in seconds
+  expiredInSeconds: z.number(), // URL lifetime in seconds
 });
 ```
 
@@ -298,7 +298,7 @@ sequenceDiagram
     AwsS3Service->>S3: Request presigned URL
     S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
     AwsS3Service-->>Backend: IAwsS3Presign
-    Backend-->>Client: {presignUrl, key, mime, expiredIn}
+    Backend-->>Client: {presignUrl, key, mime, expiredInSeconds}
     
     Note over Client,S3: Direct Upload (Bypass Backend)
     Client->>S3: PUT file to presignUrl<br/>Header: Content-Type only

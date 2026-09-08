@@ -6,7 +6,10 @@ export const UserCreateSocialRequestSchema = UserSignUpRequestSchema.omit({
     email: true,
     from: true,
     password: true,
-}).extend(UserLoginRequestSchema.pick({ from: true, device: true }).shape);
+}).extend({
+    from: UserLoginRequestSchema.shape.from,
+    device: UserLoginRequestSchema.shape.device,
+});
 
 export type UserCreateSocialRequestDto = z.infer<
     typeof UserCreateSocialRequestSchema

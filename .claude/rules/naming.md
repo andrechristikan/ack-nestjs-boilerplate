@@ -133,6 +133,23 @@ provide exist:
 - **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).
 - **Payload interface names put the KIND last:** `INotificationSendPushPayload`, never `INotificationPayloadSendPush`.
 
+## `Pattern` and `Regex` on a config key
+
+- **`Pattern` names a placeholder STRING** — a literal carrying `{placeholder}` segments a
+  reader fills with `.replace()`. A `RegExp` never takes it.
+- **`Regex` names a `RegExp`**: `workspace.slugRegex`, `project.slugRegex`.
+- A placeholder string that is a **full URL** takes `Pattern`:
+  `workspace.invite.linkPattern`, `workspace.invite.signUpLinkPattern`,
+  `workspace.joinRequest.reviewLinkPattern`, `aws.s3.objectUrlPattern`,
+  `aws.s3.cdnUrlPattern` (`rules/config.md`).
+- A placeholder string that is a relative **fragment** takes `Pattern` when the fragment IS
+  the whole value (`doc.jsonUrlPattern`), and is named for the thing it holds when the
+  placeholder is incidental to what the key carries (`termPolicy.uploadContentPath`).
+
+The reservation runs one way. A key named `Pattern` is a placeholder string, and a full-URL
+placeholder string is named `Pattern`; a placeholder string that is neither is free to take
+another name.
+
 ## Case
 
 Every casing decision — camelCase on the wire, PascalCase types and constants, kebab paths and

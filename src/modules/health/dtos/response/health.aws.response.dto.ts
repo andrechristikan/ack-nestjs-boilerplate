@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { HealthResponseSchema } from '@modules/health/dtos/response/health.response.dto';
-import { EnumHealthStatus } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorStatus,
+    EnumHealthStatus,
+} from '@modules/health/enums/health.enum';
 
 /** Response shape of the AWS health check. */
 export const HealthAwsResponseSchema = HealthResponseSchema.extend({
@@ -12,13 +15,13 @@ export const HealthAwsResponseSchema = HealthResponseSchema.extend({
         description: 'AWS indicators that reported up or degraded',
         example: {
             s3PublicBucket: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             s3PrivateBucket: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             ses: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),
@@ -26,13 +29,13 @@ export const HealthAwsResponseSchema = HealthResponseSchema.extend({
         description: 'AWS indicators that reported down',
         example: {
             s3PublicBucket: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             s3PrivateBucket: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             ses: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
         },
     }),
@@ -40,13 +43,13 @@ export const HealthAwsResponseSchema = HealthResponseSchema.extend({
         description: 'Combined AWS indicator results for this check',
         example: {
             s3PublicBucket: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             s3PrivateBucket: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             ses: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),

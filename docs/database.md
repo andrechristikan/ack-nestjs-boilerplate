@@ -469,8 +469,8 @@ type UserPhoto {
 |---|---|---|
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Optional CDN base URL |
-| `completedUrl` | `String` | Full resolved URL (CDN or S3 direct) |
+| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
+| `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `image/jpeg`) |
 | `extension` | `String` | File extension (e.g. `jpg`) |
 | `access` | `String` | Access level (`public` or `private`) |
@@ -503,8 +503,8 @@ type TermPolicyContent {
 | `language` | `String` | Language code (e.g. `"en"`) |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Optional CDN base URL |
-| `completedUrl` | `String` | Full resolved URL |
+| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
+| `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `application/pdf`) |
 | `extension` | `String` | File extension (e.g. `pdf`) |
 | `access` | `String` | Access level (`public` or `private`) |

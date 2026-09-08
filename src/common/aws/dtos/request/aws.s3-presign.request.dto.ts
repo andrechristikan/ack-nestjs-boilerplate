@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { AwsS3ObjectKeyRegex } from '@common/aws/constants/aws.constant';
 
 export const AwsS3PresignRequestSchema = z.strictObject({
-    key: z.string().min(1).meta({
+    key: z.string().min(1).regex(AwsS3ObjectKeyRegex).meta({
         description: 'Object key to presign in S3',
-        example: faker.system.filePath(),
+        example:
+            'users/507f1f77bcf86cd799439011/profile/aB3xY9zQ1mN7pR2sT4vW.jpg',
     }),
     size: z
         .number()

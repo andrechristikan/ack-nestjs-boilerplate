@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { HealthResponseSchema } from '@modules/health/dtos/response/health.response.dto';
-import { EnumHealthStatus } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorStatus,
+    EnumHealthStatus,
+} from '@modules/health/enums/health.enum';
 
 /** Response shape of the instance health check. */
 export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
@@ -12,13 +15,13 @@ export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
         description: 'Instance indicators that reported up or degraded',
         example: {
             memoryRss: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             memoryHeap: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             storage: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),
@@ -26,13 +29,13 @@ export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
         description: 'Instance indicators that reported down',
         example: {
             memoryRss: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             memoryHeap: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             storage: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
         },
     }),
@@ -40,13 +43,13 @@ export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
         description: 'Combined instance indicator results for this check',
         example: {
             memoryRss: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             memoryHeap: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             storage: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),

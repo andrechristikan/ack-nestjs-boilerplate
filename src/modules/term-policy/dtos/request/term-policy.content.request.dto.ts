@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 
 export const TermPolicyContentRequestSchema =
@@ -6,9 +7,9 @@ export const TermPolicyContentRequestSchema =
         language: true,
         size: true,
     }).extend({
-        key: z.string().min(1).meta({
+        key: AwsS3PresignRequestSchema.shape.key.meta({
             description: 'Key of the term document in storage',
-            example: 'terms/privacy/en/terms_privacy_en_v1.hbs',
+            example: 'term-policies/privacy/v1/en.hbs',
         }),
     });
 

@@ -21,9 +21,9 @@ export const AwsS3PresignResponseSchema = z.object({
         description: 'Presigned URL for uploading the object to S3',
         example: faker.internet.url(),
     }),
-    expiredIn: z.number().meta({
-        description: 'Expired in millisecond for each presign url',
-        example: 10000,
+    expiredInSeconds: z.number().meta({
+        description: 'Lifetime of the presigned URL in seconds',
+        example: 1800,
     }),
 });
 

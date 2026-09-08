@@ -36,7 +36,7 @@ export class UserVerificationService implements IUserVerificationService {
     private readonly verificationExpiredInMinutes: number;
     private readonly verificationTokenLength: number;
     private readonly verificationResendInMinutes: number;
-    private readonly verificationLinkBaseUrl: string;
+    private readonly verificationLinkPattern: string;
 
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
@@ -70,8 +70,8 @@ export class UserVerificationService implements IUserVerificationService {
         this.verificationResendInMinutes =
             this.configService.get<number>('verification.resendInMs')! /
             ms('1m');
-        this.verificationLinkBaseUrl = this.configService.get<string>(
-            'verification.linkBaseUrl'
+        this.verificationLinkPattern = this.configService.get<string>(
+            'verification.linkPattern'
         )!;
     }
 
@@ -124,7 +124,9 @@ export class UserVerificationService implements IUserVerificationService {
 
         const token = this.verificationCreateToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = `${this.homeUrl}/${this.verificationLinkBaseUrl}/${token}`;
+        const link = this.verificationLinkPattern
+            .replace('{homeUrl}', this.homeUrl)
+            .replace('{token}', token);
         const encryptedLink = this.helperEncryptionService.aes256EncryptSimple(
             link ?? '',
             userId

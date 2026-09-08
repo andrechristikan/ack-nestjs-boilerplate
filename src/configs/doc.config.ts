@@ -4,10 +4,12 @@ export interface IConfigDoc {
     name: string;
     prefix: string;
     version: string;
+    jsonUrlPattern: string;
 }
 
 export default registerAs('doc', (): IConfigDoc => ({
     name: `${process.env.APP_NAME!} APIs Specification`,
     prefix: '/docs',
     version: '3.1.0',
+    jsonUrlPattern: '{docPrefix}/json',
 }));

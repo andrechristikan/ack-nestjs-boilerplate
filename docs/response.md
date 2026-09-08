@@ -94,24 +94,35 @@ async createUser(
 
 **Custom Message:**
 
+The controller carries the message path and nothing else; the values that fill it come back from the HTTP service on `metadata.messageProperties`:
+
 ```typescript
-@Response('user.update', { schema: UserProfileResponseSchema })
-@Patch('/:id')
-async updateUser(
-  @Param('id') id: string,
-  @Body({ schema: UserUpdateRequestSchema }) body: UserUpdateRequestDto
-): Promise<IResponseReturn<UserProfileResponseDto>> {
-  const user = await this.userHttpService.update(id, body);
-  
+// notification.shared.controller.ts
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<void>> {
+  return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+  const count = await this.notificationService.markAllAsRead(userId);
+
   return {
-    data: user,
     metadata: {
-      messagePath: 'user.updateSuccess',
-      messageProperties: { name: user.name }
-    }
+      messageProperties: {
+        count,
+      },
+    },
   };
 }
 ```
+
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
+
+`metadata` accepts a `messagePath` beside `messageProperties`. `ResponseInterceptor` reads the decorator's path first and then applies `responseMetadata?.messagePath ?? messagePath` (`src/common/response/interceptors/response.interceptor.ts:96`), so a handler that returns one replaces the path its route declared, and one that returns none keeps it. Every route in `src/` takes the second branch: the path on the decorator is the path that is sent.
 
 ### @ResponsePaging
 
@@ -297,12 +308,23 @@ Serialization is **fail-closed** in both directions. A payload that the schema r
 `@Response` takes the schema of the whole payload; `@ResponsePaging` takes the schema of one item and wraps the page around it.
 
 ```typescript
-@Response('device.get', { schema: DeviceOwnershipResponseSchema })
-@Get('/get/:device')
-async get(
-  @Param('device', RequestRequiredPipe, RequestIsValidObjectIdPipe) device: string
-): Promise<IResponseReturn<DeviceOwnershipResponseDto>> {
-  return this.deviceHttpService.get(device);
+@Response('user.profile', { schema: UserProfileResponseSchema })
+@Get('/profile/get')
+async profile(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+  return this.userProfileHttpService.getProfile(userId);
+}
+
+@ResponsePaging('device.list', { schema: DeviceOwnershipResponseSchema })
+@Get('/list')
+async list(
+  @PaginationCursorQuery({ availableOrderBy: DeviceCursorAvailableOrderBy })
+  pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+  @AuthJwtPayload('userId') userId: string,
+  @AuthJwtPayload('sessionId') sessionId: string
+): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
+  return this.deviceHttpService.getListCursor(userId, sessionId, pagination);
 }
 ```
 

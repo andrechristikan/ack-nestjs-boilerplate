@@ -543,7 +543,7 @@ pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 
 ### Choosing a Strategy
 
-The route prefix decides the strategy, not the endpoint. Every `/admin/**` list is offset; every list under `/user`, `/shared`, `/system`, and `/public` is cursor. There is no per-endpoint exception list.
+The route prefix decides the strategy, not the endpoint. Every paginated `/admin/**` list is offset; every paginated list under `/user`, `/shared`, `/system`, and `/public` is cursor. There is no per-endpoint exception list. The policy lists (`/admin/role/:roleId/policy/list` and `/system/role/:roleId/policy/list`) return the whole set under `@Response`, so they take no pagination at all.
 
 Two consequences a client has to plan around:
 

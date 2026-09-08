@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { HealthResponseSchema } from '@modules/health/dtos/response/health.response.dto';
-import { EnumHealthStatus } from '@modules/health/enums/health.enum';
+import {
+    EnumHealthIndicatorStatus,
+    EnumHealthStatus,
+} from '@modules/health/enums/health.enum';
 
 /** Response shape of the third-party health check. */
 export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
@@ -13,22 +16,22 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
         description: 'Third-party indicators that reported up or degraded',
         example: {
             sentry: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             firebase: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             google: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             apple: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             jwksAccessToken: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             jwksRefreshToken: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),
@@ -36,22 +39,22 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
         description: 'Third-party indicators that reported down',
         example: {
             sentry: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             firebase: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             google: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             apple: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             jwksAccessToken: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
             jwksRefreshToken: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
         },
     }),
@@ -59,22 +62,22 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
         description: 'Combined third-party indicator results for this check',
         example: {
             sentry: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             firebase: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             google: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             apple: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             jwksAccessToken: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
             jwksRefreshToken: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
     }),

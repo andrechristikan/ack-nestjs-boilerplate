@@ -60,6 +60,38 @@ name, so converting it where it is consumed is correct and stays
 Field suffix is `InBytes`, value is `bytes('500kb')`. Never a raw byte count and never
 `n * 1024 * 1024`.
 
+## A URL is a pattern
+
+A URL is a config key holding named `{placeholder}` segments, materialised by the reader with
+one `.replace()` per placeholder:
+
+```ts
+const link = this.inviteLinkPattern
+    .replace('{homeUrl}', () => this.homeUrl)
+    .replace('{token}', () => token);
+```
+
+**How much of the URL the key holds depends on where the URL goes.** A URL the application
+EMITS to a client — an email link, an S3 object URL, anything a recipient opens — holds the
+FULL URL including the host, because the recipient has no other way to resolve it. A path that
+never leaves the application — a route the framework mounts, a prefix it serves under — is a
+relative fragment, because the host is the one the request already arrived on
+(`doc.jsonUrlPattern`).
+
+- **The host keeps its own config key** — `home.url`, an S3 `baseUrl` — and is substituted INTO
+  the placeholder rather than folded into the pattern, so one host value serves every pattern
+  that needs it and a host change is one edit.
+- **String concatenation of a URL is the defect**, in a service, a util, a guard, an
+  interceptor, a config file, or bootstrap code. A template literal that glues a base onto a
+  path hides the whole shape from the file that declares it.
+- **The replacement argument is a FUNCTION whenever the value is not a literal in the same
+  file.** `String.prototype.replace` reads its string second argument as a template, so `$&`,
+  `` $` ``, `$'`, `$$` and `$1` in a token, an id, an object key or any other value that
+  arrived from the wire are expanded instead of inserted. `() => value` is inserted verbatim.
+- A `startsWith` prefix test against an INCOMING request URL matches a route rather than
+  building one, and this rule does not govern it.
+- The key suffix is `Pattern`, and `rules/naming.md` carries its boundary against `Regex`.
+
 ## Values that must move together
 
 - **`request.throttle.default.limit` must stay ABOVE `request.throttle.user.limit`.** The

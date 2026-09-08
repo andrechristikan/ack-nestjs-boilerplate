@@ -1,6 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import ms from 'ms';
 import {
     AbortMultipartUploadCommand,
     AbortMultipartUploadCommandInput,
@@ -106,10 +105,13 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
 
-    private readonly presignExpiredInMs: number;
-    private readonly multipartExpiredInMs: number;
-    private readonly corsMaxAgeLongInMs: number;
-    private readonly corsMaxAgeShortInMs: number;
+    private readonly presignExpiredInSeconds: number;
+    private readonly multipartExpiredInDays: number;
+    private readonly corsMaxAgeLongInSeconds: number;
+    private readonly corsMaxAgeShortInSeconds: number;
+
+    private readonly objectUrlPattern: string;
+    private readonly cdnUrlPattern: string;
 
     private readonly iamArn: string | null;
     private readonly corsAllowedOrigin: string[];
@@ -149,17 +151,24 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             access: EnumAwsS3Accessibility.private,
         } as IAwsS3ConfigBucket);
 
-        this.presignExpiredInMs = this.configService.get<number>(
-            'aws.s3.presignExpiredInMs'
+        this.presignExpiredInSeconds = this.configService.get<number>(
+            'aws.s3.presignExpiredInSeconds'
         )!;
-        this.multipartExpiredInMs = this.configService.get<number>(
-            'aws.s3.multipartExpiredInMs'
+        this.multipartExpiredInDays = this.configService.get<number>(
+            'aws.s3.multipartExpiredInDays'
         )!;
-        this.corsMaxAgeLongInMs = this.configService.get<number>(
-            'aws.s3.corsMaxAgeLongInMs'
+        this.corsMaxAgeLongInSeconds = this.configService.get<number>(
+            'aws.s3.corsMaxAgeLongInSeconds'
         )!;
-        this.corsMaxAgeShortInMs = this.configService.get<number>(
-            'aws.s3.corsMaxAgeShortInMs'
+        this.corsMaxAgeShortInSeconds = this.configService.get<number>(
+            'aws.s3.corsMaxAgeShortInSeconds'
+        )!;
+
+        this.objectUrlPattern = this.configService.get<string>(
+            'aws.s3.objectUrlPattern'
+        )!;
+        this.cdnUrlPattern = this.configService.get<string>(
+            'aws.s3.cdnUrlPattern'
         )!;
 
         this.iamArn = this.configService.get<string | null>('aws.s3.iam.arn')!;
@@ -220,6 +229,27 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         }
 
         return config;
+    }
+
+    private buildUrls(
+        config: IAwsS3ConfigBucket,
+        key: string
+    ): { completedUrl: string; cdnUrl: string | null } {
+        const { baseUrl, cdnUrl } = config;
+        const completedUrl = this.objectUrlPattern
+            .replace('{baseUrl}', baseUrl)
+            .replace('{key}', key);
+
+        if (!cdnUrl) {
+            return { completedUrl, cdnUrl: null };
+        }
+
+        return {
+            completedUrl,
+            cdnUrl: this.cdnUrlPattern
+                .replace('{cdnUrl}', cdnUrl)
+                .replace('{key}', key),
+        };
     }
 
     async checkConnection(): Promise<boolean> {
@@ -288,17 +318,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             HeadObjectCommandInput,
             HeadObjectCommandOutput
         >(headCommand);
-        const { pathWithFilename, extension, mime } =
-            this.getFileInfoFromKey(key);
+        const { extension, mime } = this.getFileInfoFromKey(key);
+        const { completedUrl, cdnUrl } = this.buildUrls(config, key);
 
         return {
             bucket: config.bucket,
             key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             size: item.ContentLength ?? 0,
             mime,
@@ -344,16 +371,19 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
             if (listItems.Contents) {
                 const mappedItems = listItems.Contents.map((item: _Object) => {
-                    const { pathWithFilename, extension, mime } =
-                        this.getFileInfoFromKey(item.Key!);
+                    const { extension, mime } = this.getFileInfoFromKey(
+                        item.Key!
+                    );
+                    const { completedUrl, cdnUrl } = this.buildUrls(
+                        config,
+                        item.Key!
+                    );
 
                     return {
                         bucket: config.bucket,
                         key: item.Key!,
-                        completedUrl: `${config.baseUrl}${pathWithFilename}`,
-                        cdnUrl: config.cdnUrl
-                            ? `${config.cdnUrl}${pathWithFilename}`
-                            : null,
+                        completedUrl,
+                        cdnUrl,
                         baseUrl: config.baseUrl,
                         extension,
                         size: item.Size ?? 0,
@@ -400,17 +430,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             GetObjectCommandInput,
             GetObjectCommandOutput
         >(command);
-        const { pathWithFilename, extension, mime } =
-            this.getFileInfoFromKey(key);
+        const { extension, mime } = this.getFileInfoFromKey(key);
+        const { completedUrl, cdnUrl } = this.buildUrls(config, key);
 
         return {
             bucket: config.bucket,
             key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             data: item.Body,
             size: item.ContentLength ?? 0,
@@ -466,9 +493,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             }
         }
 
-        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
-            file.key
-        );
+        const { extension, mime } = this.getFileInfoFromKey(file.key);
+        const { completedUrl, cdnUrl } = this.buildUrls(config, file.key);
 
         const content: Buffer = file.file;
         const command: PutObjectCommand = new PutObjectCommand({
@@ -486,11 +512,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         return {
             bucket: config.bucket,
             key: file.key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             size: file?.size ?? 0,
             mime,
@@ -659,9 +682,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             }
         }
 
-        const { pathWithFilename, extension, mime } = this.getFileInfoFromKey(
-            file.key
-        );
+        const { extension, mime } = this.getFileInfoFromKey(file.key);
+        const { completedUrl, cdnUrl } = this.buildUrls(config, file.key);
 
         const multiPartCommand: CreateMultipartUploadCommand =
             new CreateMultipartUploadCommand({
@@ -682,11 +704,8 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             bucket: config.bucket,
             uploadId: response.UploadId!,
             key: file.key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             size: file?.size ?? 0,
             lastPartNumber: 0,
@@ -847,15 +866,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             Key: key,
         });
         const expiresIn =
-            options?.expiredInSeconds ??
-            Math.floor(this.presignExpiredInMs / 1000);
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
         });
 
         return {
-            expiredIn: expiresIn,
+            expiredInSeconds: expiresIn,
             presignUrl: presignUrl,
             key,
             mime,
@@ -912,15 +930,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             ContentDisposition: 'inline',
         });
         const expiresIn =
-            options?.expiredInSeconds ??
-            Math.floor(this.presignExpiredInMs / 1000);
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
         });
 
         return {
-            expiredIn: expiresIn,
+            expiredInSeconds: expiresIn,
             presignUrl: presignUrl,
             key,
             mime,
@@ -955,8 +972,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn =
-            options?.expiredInSeconds ??
-            Math.floor(this.presignExpiredInMs / 1000);
+            options?.expiredInSeconds ?? this.presignExpiredInSeconds;
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -966,7 +982,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
         );
 
         return {
-            expiredIn: expiresIn,
+            expiredInSeconds: expiresIn,
             presignUrl: presignUrl,
             key,
             partNumber,
@@ -986,17 +1002,14 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
 
         const accessibility = options?.access ?? EnumAwsS3Accessibility.public;
         const config = this.getConfig(accessibility)!;
-        const { pathWithFilename, extension, mime } =
-            this.getFileInfoFromKey(key);
+        const { extension, mime } = this.getFileInfoFromKey(key);
+        const { completedUrl, cdnUrl } = this.buildUrls(config, key);
 
         return {
             bucket: config.bucket,
             key,
-            completedUrl: `${config.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                config.cdnUrl && config.cdnUrl !== ''
-                    ? `${config.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             size,
             mime,
@@ -1042,17 +1055,17 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
             CopyObjectCommandOutput
         >(copyCommand);
 
-        const { pathWithFilename, extension, mime } =
-            this.getFileInfoFromKey(destinationKey);
+        const { extension, mime } = this.getFileInfoFromKey(destinationKey);
+        const { completedUrl, cdnUrl } = this.buildUrls(
+            configTo,
+            destinationKey
+        );
 
         return {
             bucket: configTo.bucket,
             key: destinationKey,
-            completedUrl: `${configTo.baseUrl}${pathWithFilename}`,
-            cdnUrl:
-                configTo.cdnUrl && configTo.cdnUrl !== ''
-                    ? `${configTo.cdnUrl}${pathWithFilename}`
-                    : null,
+            completedUrl,
+            cdnUrl,
             extension,
             size: source.size,
             mime,
@@ -1125,7 +1138,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                             },
                             AbortIncompleteMultipartUpload: {
                                 DaysAfterInitiation:
-                                    this.multipartExpiredInMs / ms('1d'),
+                                    this.multipartExpiredInDays,
                             },
                             Expiration: {
                                 ExpiredObjectDeleteMarker: true,
@@ -1229,9 +1242,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'Content-Length',
                                 'Content-Type',
                             ],
-                            MaxAgeSeconds: Math.floor(
-                                this.corsMaxAgeLongInMs / 1000
-                            ),
+                            MaxAgeSeconds: this.corsMaxAgeLongInSeconds,
                         },
                         {
                             AllowedOrigins: this.corsAllowedOrigin,
@@ -1242,9 +1253,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'Content-Length',
                                 'x-amz-version-id',
                             ],
-                            MaxAgeSeconds: Math.floor(
-                                this.corsMaxAgeShortInMs / 1000
-                            ),
+                            MaxAgeSeconds: this.corsMaxAgeShortInSeconds,
                         },
                     ],
                 },
@@ -1277,9 +1286,7 @@ export class AwsS3Service implements IAwsS3Service, OnModuleInit {
                                 'x-amz-version-id',
                                 'x-amz-delete-marker',
                             ],
-                            MaxAgeSeconds: Math.floor(
-                                this.corsMaxAgeShortInMs / 1000
-                            ),
+                            MaxAgeSeconds: this.corsMaxAgeShortInSeconds,
                         },
                     ],
                 },

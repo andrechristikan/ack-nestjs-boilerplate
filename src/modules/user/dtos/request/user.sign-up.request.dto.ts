@@ -32,7 +32,7 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
         description: 'enum user sign up from',
         example: EnumUserSignUpFrom.mobile,
     }),
-    workspaceInviteToken: z
+    inviteToken: z
         .string()
         .min(1)
         .optional()

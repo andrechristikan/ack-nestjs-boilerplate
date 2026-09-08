@@ -3,13 +3,15 @@ import ms from 'ms';
 
 export interface IConfigAws {
     s3: {
-        multipartExpiredInMs: number;
-        presignExpiredInMs: number;
-        corsMaxAgeLongInMs: number;
-        corsMaxAgeShortInMs: number;
+        multipartExpiredInDays: number;
+        presignExpiredInSeconds: number;
+        corsMaxAgeLongInSeconds: number;
+        corsMaxAgeShortInSeconds: number;
         maxAttempts: number;
         timeoutInMs: number;
         region: string | null;
+        objectUrlPattern: string;
+        cdnUrlPattern: string;
         iam: {
             key: string | null;
             secret: string | null;
@@ -42,13 +44,15 @@ export interface IConfigAws {
 
 export default registerAs('aws', (): IConfigAws => ({
     s3: {
-        multipartExpiredInMs: ms('3d'),
-        presignExpiredInMs: ms('30m'),
-        corsMaxAgeLongInMs: ms('1d'),
-        corsMaxAgeShortInMs: ms('1h'),
+        multipartExpiredInDays: ms('3d') / ms('1d'),
+        presignExpiredInSeconds: ms('30m') / 1000,
+        corsMaxAgeLongInSeconds: ms('1d') / 1000,
+        corsMaxAgeShortInSeconds: ms('1h') / 1000,
         maxAttempts: 3,
         timeoutInMs: ms('30s'),
         region: process.env.AWS_S3_REGION ?? null,
+        objectUrlPattern: '{baseUrl}/{key}',
+        cdnUrlPattern: '{cdnUrl}/{key}',
         iam: {
             key: process.env.AWS_S3_IAM_CREDENTIAL_KEY ?? null,
             secret: process.env.AWS_S3_IAM_CREDENTIAL_SECRET ?? null,

@@ -28,7 +28,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class WorkspaceService implements IWorkspaceService {
     private readonly maxWorkspacesPerUser: number;
-    private readonly slugPattern: RegExp;
+    private readonly slugRegex: RegExp;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
@@ -45,9 +45,7 @@ export class WorkspaceService implements IWorkspaceService {
         this.maxWorkspacesPerUser = this.configService.get<number>(
             'workspace.maxWorkspacesPerUser'
         )!;
-        this.slugPattern = this.configService.get<RegExp>(
-            'workspace.slugPattern'
-        )!;
+        this.slugRegex = this.configService.get<RegExp>('workspace.slugRegex')!;
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
         )!;
@@ -69,7 +67,7 @@ export class WorkspaceService implements IWorkspaceService {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugPattern.test(slug)) {
+        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
             throw new WorkspaceSlugInvalidException();
         }
     }

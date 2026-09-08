@@ -4,9 +4,8 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 
 export const TermPolicyContentPresignRequestSchema =
-    TermPolicyAcceptRequestSchema.extend(
-        AwsS3PresignRequestSchema.pick({ size: true }).shape
-    ).extend({
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        type: TermPolicyAcceptRequestSchema.shape.type,
         language: z.enum(EnumMessageLanguage).meta({
             description: 'Language of the term document',
             example: EnumMessageLanguage.en,

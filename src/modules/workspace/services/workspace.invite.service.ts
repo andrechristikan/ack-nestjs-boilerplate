@@ -47,7 +47,8 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
     private readonly inviteTokenLength: number;
     private readonly inviteReferencePrefix: string;
     private readonly inviteReferenceRandomLength: number;
-    private readonly inviteLinkBaseUrl: string;
+    private readonly inviteLinkPattern: string;
+    private readonly inviteSignUpLinkPattern: string;
 
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
@@ -76,8 +77,11 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
         this.inviteReferenceRandomLength = this.configService.get<number>(
             'workspace.invite.referenceRandomLength'
         )!;
-        this.inviteLinkBaseUrl = this.configService.get<string>(
-            'workspace.invite.linkBaseUrl'
+        this.inviteLinkPattern = this.configService.get<string>(
+            'workspace.invite.linkPattern'
+        )!;
+        this.inviteSignUpLinkPattern = this.configService.get<string>(
+            'workspace.invite.signUpLinkPattern'
         )!;
     }
 
@@ -102,9 +106,21 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
                 days: expiryDurationInDays ?? this.inviteExpiredInDays,
             })
         );
-        const link = `${this.homeUrl}/${this.inviteLinkBaseUrl}/${token}`;
+        const claimLink = this.inviteLinkPattern
+            .replace('{homeUrl}', this.homeUrl)
+            .replace('{token}', token);
+        const signUpLink = this.inviteSignUpLinkPattern
+            .replace('{homeUrl}', this.homeUrl)
+            .replace('{token}', token);
 
-        return { token, hashedToken, reference, expiredAt, link };
+        return {
+            token,
+            hashedToken,
+            reference,
+            expiredAt,
+            claimLink,
+            signUpLink,
+        };
     }
 
     private async sendInviteNotification(
@@ -135,7 +151,7 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
         if (existingUser) {
             const encryptedInviteAcceptLink =
                 this.helperEncryptionService.aes256EncryptSimple(
-                    tokenData.link,
+                    tokenData.claimLink,
                     existingUser.id
                 );
 
@@ -150,7 +166,7 @@ export class WorkspaceInviteService implements IWorkspaceInviteService {
 
         const encryptedInviteAcceptLink =
             this.helperEncryptionService.aes256EncryptSimple(
-                tokenData.link,
+                tokenData.signUpLink,
                 invite.reference
             );
 
