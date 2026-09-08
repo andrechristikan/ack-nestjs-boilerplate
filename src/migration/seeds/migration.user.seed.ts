@@ -1,13 +1,14 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { UserUtil } from '@modules/user/utils/user.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -23,8 +24,9 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client';
 import { Command } from 'nest-commander';
-import { UAParser } from 'ua-parser-js';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
  * Seeds default users with password, verification, acceptances, and activity logs. Requires roles, countries, and term policies to already be seeded, and aborts otherwise.
@@ -44,6 +46,7 @@ export class MigrationUserSeed
     private readonly users: {
         country: string;
         email: string;
+        username: string;
         name: string;
         role: string;
         password: string;
@@ -53,10 +56,12 @@ export class MigrationUserSeed
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authUtil: AuthUtil,
-        private readonly userUtil: UserUtil,
-        private readonly helperService: HelperService,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly authPasswordService: AuthPasswordService,
+        private readonly userVerificationService: UserVerificationService,
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
+        private readonly activityLogUtil: ActivityLogUtil,
+        private readonly requestUtil: RequestUtil
     ) {
         super();
 
@@ -68,7 +73,7 @@ export class MigrationUserSeed
         this.logger.log('Seeding Users...');
         this.logger.log(`Found ${this.users.length} Users to seed.`);
 
-        const uniqueRoles = this.helperService.arrayUnique(
+        const uniqueRoles = this.helperArrayService.unique(
             this.users.map(user => user.role)
         );
         const roles = await this.databaseService.client.role.findMany({
@@ -88,7 +93,7 @@ export class MigrationUserSeed
             return;
         }
 
-        const uniqueCountries = this.helperService.arrayUnique(
+        const uniqueCountries = this.helperArrayService.unique(
             this.users.map(user => user.country)
         );
         const countries = await this.databaseService.client.country.findMany({
@@ -131,18 +136,27 @@ export class MigrationUserSeed
         }
 
         try {
-            const today = this.helperService.dateCreate();
+            const today = this.helperDateService.create();
 
-            const userAgent = UAParser(faker.internet.userAgent());
+            const userAgent = this.requestUtil.parseUserAgent(
+                faker.internet.userAgent()
+            );
             const ip = faker.internet.ip();
+            const requestLog: IRequestLog = {
+                userAgent,
+                ipAddress: ip,
+            };
 
             await this.databaseService.client.$transaction(
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authUtil.createPassword(userId, user.password);
+                        this.authPasswordService.createPassword(
+                            userId,
+                            user.password
+                        );
                     const { reference, hashedToken, type } =
-                        this.userUtil.verificationCreateVerification(
+                        this.userVerificationService.verificationCreateVerification(
                             userId,
                             EnumVerificationType.email
                         );
@@ -175,7 +189,7 @@ export class MigrationUserSeed
                                 [EnumTermPolicyType.privacy]: true,
                                 [EnumTermPolicyType.termsOfService]: true,
                             },
-                            username: this.userUtil.createRandomUsername(),
+                            username: user.username,
                             deletedAt: null,
                             passwordHistories: {
                                 create: {
@@ -188,8 +202,8 @@ export class MigrationUserSeed
                             },
                             verifications: {
                                 create: {
-                                    expiredAt: this.helperService.dateCreate(),
-                                    verifiedAt: this.helperService.dateCreate(),
+                                    expiredAt: this.helperDateService.create(),
+                                    verifiedAt: this.helperDateService.create(),
                                     reference,
                                     token: hashedToken,
                                     type,
@@ -201,55 +215,31 @@ export class MigrationUserSeed
                             activityLogs: {
                                 createMany: {
                                     data: [
-                                        {
-                                            action: EnumActivityLogAction.userCreated,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userCreated
-                                                ),
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        {
-                                            action: EnumActivityLogAction.userVerifiedEmail,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userVerifiedEmail
-                                                ),
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        },
-                                        ...termPolicies.map(termPolicy => ({
-                                            action: EnumActivityLogAction.userAcceptTermPolicy,
-                                            description:
-                                                this.activityLogUtil.getDescription(
-                                                    EnumActivityLogAction.userAcceptTermPolicy,
-                                                    {
-                                                        termPolicyType:
-                                                            termPolicy.type,
-                                                        termPolicyId:
-                                                            termPolicy.id,
-                                                    }
-                                                ),
-                                            metadata: {
-                                                termPolicyType: termPolicy.type,
-                                                termPolicyId: termPolicy.id,
-                                            },
-                                            ipAddress: ip,
-                                            userAgent:
-                                                this.databaseUtil.toPlainObject(
-                                                    userAgent
-                                                ),
-                                            createdBy: userId,
-                                        })),
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userCreated,
+                                            requestLog
+                                        ),
+                                        this.activityLogUtil.buildCreateManyUserData(
+                                            userId,
+                                            null,
+                                            EnumActivityLogAction.userVerifiedEmail,
+                                            requestLog
+                                        ),
+                                        ...termPolicies.map(termPolicy =>
+                                            this.activityLogUtil.buildCreateManyUserData(
+                                                userId,
+                                                null,
+                                                EnumActivityLogAction.userAcceptTermPolicy,
+                                                requestLog,
+                                                {
+                                                    termPolicyType:
+                                                        termPolicy.type,
+                                                    termPolicyId: termPolicy.id,
+                                                }
+                                            )
+                                        ),
                                     ],
                                 },
                             },

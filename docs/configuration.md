@@ -42,6 +42,8 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [Health Configuration](#health-configuration)
 - [Notification Configuration](#notification-configuration)
 - [File Configuration](#file-configuration)
+- [Workspace Configuration](#workspace-configuration)
+- [Project Configuration](#project-configuration)
 
 ## Configuration Structure
 
@@ -58,6 +60,7 @@ The configuration modules are imported and registered in `src/configs/index.ts` 
             cache: true,
             envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
             expandVariables: false,
+            validationSchema: AppEnvSchema,
         }),
         // ... other modules
     ],
@@ -119,8 +122,11 @@ globalPrefix: string
 http: {
   host: string;                   // Server host address
   port: number;                   // Server port number
+  trustedProxy: string | null;    // Express `trust proxy` network list, from HTTP_TRUSTED_PROXY; null trusts no proxy
 }
 ```
+
+> `trustedProxy` is a trusted-NETWORK list (`proxy-addr` preset names or explicit CIDRs, comma-separated), never a hop count and never `true`. It decides what `req.ip` resolves to, and therefore what the rate limiter keys on. See [Security and Middleware](security-and-middleware.md).
 
 **`urlVersion`** - API versioning configuration
 ```typescript
@@ -156,7 +162,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm (ES256, ES512, etc.)
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
+    expirationTimeInSeconds: number; // Token expiration in seconds, parsed from the `ms()` string in the env var
   };
   refreshToken: {
     jwksUri: string;              // JWKS URI for refresh token
@@ -164,7 +170,7 @@ jwt: {
     algorithm: Algorithm;         // JWT algorithm
     privateKey: string;           // Private key for token signing
     publicKey: string;            // Public key for token verification
-    expirationTimeInMs: number;   // Token expiration in ms; signer receives seconds
+    expirationTimeInSeconds: number; // Token expiration in seconds, parsed from the `ms()` string in the env var
   };
   audience: string;               // JWT audience claim
   issuer: string;                 // JWT issuer claim
@@ -181,7 +187,7 @@ password: {
   saltLength: number;             // Salt length for password hashing
   expiredInMs: number;            // Password expiration time (ms)
   expiredTemporaryInMs: number;   // Temporary password expiration (ms)
-  periodInMs: number;             // Password renewal period (ms)
+  periodInDays: number;           // Password renewal period in days (`ms('90d') / ms('1d')`)
 }
 ```
 
@@ -189,10 +195,10 @@ password: {
 ```typescript
 twoFactor: {
   issuer: string;                 // Issuer name for OTP (TOTP)
-  strategy: string;               // OTP strategy (default: 'totp')
-  algorithm: string;              // Hash algorithm for OTP (default: 'sha1')
+  strategy: OTPStrategy;          // OTP strategy (default: 'totp')
+  algorithm: HashAlgorithm;       // Hash algorithm for OTP (default: 'sha1')
   digits: number;                 // Number of digits in OTP
-  periodInMs: number;             // OTP validity window (ms); otplib receives seconds
+  periodInSeconds: number;        // OTP validity window in seconds (`ms('30s') / 1000`)
   window: number;                 // Allowed window for OTP validation
   secretLength: number;           // Length of OTP secret
   challengeTtlInMs: number;       // Challenge TTL in milliseconds
@@ -205,7 +211,7 @@ twoFactor: {
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
   lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
-    key: string;                  // Encryption key for backup codes
+    key: string;                  // Encryption key for TOTP secrets
   };
 }
 ```
@@ -273,13 +279,15 @@ This configuration handles AWS service integration including S3 and SES services
 **`s3`** - S3 service configuration
 ```typescript
 s3: {
-  multipartExpiredInMs: number;   // Multipart upload expiration (ms('3d')); lifecycle rule receives days
-  presignExpiredInMs: number;     // Presigned URL expiration (ms('30m')); signer receives seconds
-  corsMaxAgeLongInMs: number;     // CORS preflight max-age, long (ms('1d')); S3 receives seconds
-  corsMaxAgeShortInMs: number;    // CORS preflight max-age, short (ms('1h')); S3 receives seconds
+  multipartExpiredInDays: number;     // Multipart upload expiration in days, handed straight to the lifecycle rule (`ms('3d') / ms('1d')`)
+  presignExpiredInSeconds: number;    // Presigned URL lifetime in seconds, handed straight to the signer (`ms('30m') / 1000`)
+  corsMaxAgeLongInSeconds: number;    // CORS preflight max-age in seconds, long (`ms('1d') / 1000`)
+  corsMaxAgeShortInSeconds: number;   // CORS preflight max-age in seconds, short (`ms('1h') / 1000`)
   maxAttempts: number;            // Maximum retry attempts for S3 operations (default: 3)
   timeoutInMs: number;            // Request timeout in milliseconds (default: 30000ms)
   region: string | null;          // AWS region for S3
+  objectUrlPattern: string;       // Object URL template ('{baseUrl}/{key}')
+  cdnUrlPattern: string;          // CDN URL template ('{cdnUrl}/{key}')
   iam: {
     key: string | null;           // AWS IAM access key ID
     secret: string | null;        // AWS IAM secret access key
@@ -308,7 +316,8 @@ s3: {
 > - The `iam.arn` is used for IAM role assumption (recommended for production)
 > - When using IAM roles, temporary credentials are automatically rotated
 > - Bucket ARNs are auto-generated as `arn:aws:s3:::{bucket-name}`
-> - Base URLs are auto-generated as `https://{bucket}.s3.{region}.amazonaws.com`
+> - Base URLs are built from the `https://{bucket}.s3.{region}.amazonaws.com` template, and a CDN URL from `https://{cdn}`
+> - `AwsS3Service.buildUrls` fills `objectUrlPattern` with the bucket `baseUrl` and the object key, and `cdnUrlPattern` with the bucket `cdnUrl` and the same key; a bucket without a `cdnUrl` reports `cdnUrl: null`
 
 **`ses`** - Simple Email Service configuration
 ```typescript
@@ -346,7 +355,7 @@ enable: boolean                 // Turn logging on/off
 
 **`level`** - Log level configuration
 ```typescript
-level: string                   // Log level: error, warn, info, verbose, debug, silly
+level: EnumLoggerLevel          // Log level: fatal, error, warn, info, debug, trace
 ```
 
 **`intoFile`** - File logging option
@@ -372,7 +381,7 @@ prettier: boolean               // Format logs for better readability
 **`sentry`** - Sentry integration configuration
 ```typescript
 sentry: {
-  dsn?: string;                 // Sentry DSN for error tracking
+  dsn: string | null;           // Sentry DSN for error tracking; null when unset
   timeoutInMs: number;          // Sentry timeout in milliseconds
 }
 ```
@@ -416,7 +425,8 @@ timeoutInMs: number             // Request timeout in milliseconds (default: 300
 cors: {
   allowedMethod: string[];        // Allowed HTTP methods (GET, DELETE, PUT, PATCH, POST, HEAD, OPTIONS)
   allowedOrigin: string[];        // Allowed origins, parsed from CORS_ALLOWED_ORIGIN (comma-separated into an array)
-  allowedHeader: string[];        // Allowed headers for CORS requests
+  allowedHeader: string[];        // Request headers a client may send
+  exposedHeader: string[];        // Response headers a browser client may read (Access-Control-Expose-Headers)
 }
 ```
 
@@ -428,19 +438,37 @@ cors: {
 > - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
 > - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - Default headers include standard headers plus custom headers like `x-api-key`, `x-timezone`, `x-request-id`, etc.
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
 throttle: {
-  ttlInMs: number;                // Time window in milliseconds (default: 60000ms / 60s)
-  limit: number;                  // Maximum requests per time window (default: 100)
-  keyPattern: string;             // Counter key (default: 'Request:Throttler:{name}:{tracker}')
+  default: IRequestThrottlePolicy;                              // Global per-IP limiter, always on (300 / 60s, block 60s)
+  user: IRequestThrottlePolicy;                                 // Per-userId limiter, opt-in (100 / 60s, block 60s)
+  route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>; // Per-IP-per-handler tiers, opt-in
+  headerPrefix: string;           // Prefix for the suffixed rate-limit headers (default: 'X-RateLimit')
+  keyPattern: string;             // Window log key (default: 'Request:Throttler:{name}:{tracker}')
   blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
+  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttler:Seq:{name}:{tracker}')
+}
+
+interface IRequestThrottlePolicy {
+  ttlInMs: number;                // Sliding window length in milliseconds
+  limit: number;                  // Maximum requests per window
+  blockDurationInMs: number;      // How long a breaching tracker stays blocked
 }
 ```
 
-> `{name}` is the throttler name (default `default`); `{tracker}` is the client IP, or the authenticated user id when `@RequestThrottleByUser()` is applied. See [Security and Middleware](security-and-middleware.md).
+Route tiers (`EnumRequestThrottleRoute`), each with `ttlInMs` 60s and `blockDurationInMs` 5m:
+
+| Tier | `limit` |
+|---|---|
+| `strict` | 5 |
+| `moderate` | 20 |
+| `relaxed` | 60 |
+
+> `{name}` is the limiter name: `default`, `user`, or `route`. `{tracker}` is the client IP for `default`, the authenticated `userId` for `user`, and the composite `{tier}:{ControllerClass}.{handlerName}:{ip}` for `route`. See [Security and Middleware](security-and-middleware.md).
 
 ### Redis Configuration
 
@@ -479,11 +507,6 @@ This configuration handles user-related settings including username patterns and
 
 #### Configuration Keys:
 
-**`usernamePrefix`** - Username generation prefix
-```typescript
-usernamePrefix: string          // Prefix for auto-generated usernames (default: 'user')
-```
-
 **`usernamePattern`** - Username validation pattern
 ```typescript
 usernamePattern: RegExp         // Regex pattern for valid usernames
@@ -494,11 +517,24 @@ usernamePattern: RegExp         // Regex pattern for valid usernames
 uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 ```
 
+**`maxDataImport`** - User CSV import row cap
+```typescript
+maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
+```
+
 **`default`** - Default role and country assigned to new users
 ```typescript
 default: {
   role: string;                 // Default role name (default: 'user')
   country: string;              // Default country code (default: 'ID')
+}
+```
+
+**`onboarding`** - Prisma transaction timeouts for the user onboarding write
+```typescript
+onboarding: {
+  createTimeoutInMs: number;      // Timeout `UserOnboardingRepository.createWithWorkspace` runs with (ms('10s'))
+  createBulkTimeoutInMs: number;  // Timeout `createManyWithWorkspace` runs with (ms('30s'))
 }
 ```
 
@@ -527,6 +563,11 @@ prefix: string                  // URL prefix for API documentation (default: '/
 **`version`** - Static Swagger version
 ```typescript
 version: string                 // Static version for Swagger documentation (default: '3.1.0')
+```
+
+**`jsonUrlPattern`** - Path the OpenAPI JSON is served on
+```typescript
+jsonUrlPattern: string          // Relative path template ('{docPrefix}/json'), filled with `prefix` in `src/swagger.ts`
 ```
 
 ### Message Configuration
@@ -605,9 +646,9 @@ otpLength: number               // Length of OTP verification code
 tokenLength: number             // Length of verification token
 ```
 
-**`linkBaseUrl`** - Verification link base URL
+**`linkPattern`** - Verification link template
 ```typescript
-linkBaseUrl: string             // Base URL for verification links
+linkPattern: string             // Full verification link template ('{homeUrl}/verify-email/{token}')
 ```
 
 **`resendInMs`** - Resend cooldown period
@@ -642,9 +683,9 @@ expiredInMs: number             // Password reset expiration (ms('5m')); consume
 tokenLength: number             // Length of password reset token
 ```
 
-**`linkBaseUrl`** - Reset link base URL
+**`linkPattern`** - Reset link template
 ```typescript
-linkBaseUrl: string             // Base URL for password reset links
+linkPattern: string             // Full password reset link template ('{homeUrl}/forgot-password/{token}')
 ```
 
 **`resendInMs`** - Resend cooldown period
@@ -733,6 +774,15 @@ keyPattern: string              // Redis cache key pattern for feature flag data
 cacheTtlInMs: number            // Cache TTL in milliseconds for feature flag data
 ```
 
+**`anonymous`** - Anonymous evaluation identity configuration
+```typescript
+anonymous: {
+  headerName: string;           // HTTP header carrying the anonymous id (default: 'x-anonymous-id')
+  idMaxLength: number;          // Maximum anonymous id length (default: 100)
+  idPattern: RegExp;            // Regex pattern for a valid anonymous id
+}
+```
+
 ### Response Configuration
 
 **File**: `src/configs/response.config.ts`
@@ -775,7 +825,7 @@ clientEmail: string | null      // Firebase service account client email
 
 **`privateKey`** - Firebase service account private key
 ```typescript
-privateKey: string | null       // Service account private key (PEM); escaped `\n` sequences are converted to real newlines at load
+privateKey: string | null       // Service account private key (PEM), verbatim from the env var; `FirebaseUtil.normalizePrivateKey` turns escaped `\n` sequences into real newlines when `FirebaseService` reads it
 ```
 
 > [!NOTE]
@@ -794,11 +844,12 @@ This configuration holds the BullMQ default job options applied by `queue.regist
 ```typescript
 job: {
   attempts: number;                    // Retry attempts per job (default: 3)
-  removeOnComplete: number;            // Completed jobs retained (default: 50)
-  removeOnFail: number;                // Failed jobs retained (default: 100)
+  removeOnCompleteAgeInSeconds: number; // How long a completed job is kept (`ms('7d') / 1000`)
+  removeOnFailAgeInSeconds: number;    // How long a failed job is kept (`ms('14d') / 1000`)
   emailBackoffDelayInMs: number;       // Email queue exponential backoff delay (ms('10s'))
   pushBackoffDelayInMs: number;        // Push queue exponential backoff delay (ms('5s'))
   notificationBackoffDelayInMs: number; // Notification queue exponential backoff delay (ms('3s'))
+  workspaceBackoffDelayInMs: number;   // Workspace queue exponential backoff delay (ms('10s'))
 }
 ```
 
@@ -807,7 +858,7 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check.
+This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -831,20 +882,31 @@ diskThresholdPercent: number         // Disk usage alert threshold as a fraction
 diskPath: string                     // Filesystem path checked for storage (default: '/')
 ```
 
+**`gracefulShutdownTimeoutInMs`** - Terminus graceful-shutdown window
+```typescript
+gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a shutdown signal (ms('30s'))
+```
+
 ### Notification Configuration
 
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds push-notification cleanup settings consumed by `NotificationPushUtil`.
+This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceService` when it runs a sweep.
 
 #### Configuration Keys:
+
+**`dedupTtlInMs`** - Default deduplication TTL
+```typescript
+dedupTtlInMs: number            // BullMQ deduplication TTL for a notification job (ms('1s'))
+```
 
 **`push`** - Push cleanup settings
 ```typescript
 push: {
-  cleanupDedupTtlInMs: number;   // Deduplication TTL for the cleanup job (ms('1h'))
-  cleanupStaleTokensCron: string; // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
+  cleanupDedupTtlInMs: number;       // Deduplication TTL for the cleanup job (ms('1h'))
+  cleanupStaleTokensCron: string;    // Cron pattern for the stale-token cleanup (default: '0 0 * * *')
+  staleTokenThresholdInMs: number;   // Device inactivity after which its push token is cleared (ms('30d'))
 }
 ```
 
@@ -859,7 +921,105 @@ This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 1000)
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100)
+```
+
+### Workspace Configuration
+
+**File**: `src/configs/workspace.config.ts`
+**Interface**: `IConfigWorkspace`
+
+This configuration handles workspace resolution, slug generation, and workspace invitation settings.
+
+#### Configuration Keys:
+
+**`headerName`** - Workspace HTTP header
+```typescript
+headerName: string              // HTTP header carrying the active workspace id (default: 'x-workspace-id')
+```
+
+**`storeKey`** - Request store key
+```typescript
+storeKey: string                // Request store key for the resolved workspace id (default: 'workspaceId')
+```
+
+**`maxWorkspacesPerUser`** - Workspace ownership cap
+```typescript
+maxWorkspacesPerUser: number    // Maximum workspaces a single user may own (default: 10)
+```
+
+**`personalNamePattern`** - Personal workspace name template
+```typescript
+personalNamePattern: string     // Name template for the personal workspace ("{username}'s Workspace")
+```
+
+**`slugPrefix`** - Workspace slug prefix
+```typescript
+slugPrefix: string              // Prefix applied to generated workspace slugs (default: 'w-')
+```
+
+**`slugRegex`** - Workspace slug validation expression
+```typescript
+slugRegex: RegExp               // Regular expression a valid workspace slug matches
+```
+
+**`slugMaxLength`** - Workspace slug length cap
+```typescript
+slugMaxLength: number           // Maximum slug length (default: 30)
+```
+
+**`slugMaxAttempts`** - Workspace slug generation retries
+```typescript
+slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
+```
+
+**`invite`** - Workspace invitation configuration
+```typescript
+invite: {
+  expiredInDays: number;         // Invitation validity in days (default: 7)
+  tokenLength: number;           // Length of the invitation token (default: 100)
+  referencePrefix: string;       // Prefix for invitation references (default: 'WIN')
+  referenceRandomLength: number; // Random part length of the invitation reference (default: 25)
+  linkPattern: string;           // Claim link template for an invitee who already has an account ('{homeUrl}/workspace/invites/{token}')
+  signUpLinkPattern: string;     // Sign-up link template for an invitee without an account ('{homeUrl}/sign-up?inviteToken={token}')
+  expirySweepCron: string;       // Cron pattern for the invitation expiry sweep (default: '0 0 * * *')
+}
+```
+
+**`joinRequest`** - Workspace join request configuration
+```typescript
+joinRequest: {
+  reviewLinkPattern: string;    // Review link template for a join request ('{homeUrl}/workspace/join-requests/{joinRequestId}')
+}
+```
+
+### Project Configuration
+
+**File**: `src/configs/project.config.ts`
+**Interface**: `IConfigProject`
+
+This configuration handles project slug generation.
+
+#### Configuration Keys:
+
+**`slugPrefix`** - Project slug prefix
+```typescript
+slugPrefix: string              // Prefix applied to generated project slugs (default: 'p-')
+```
+
+**`slugRegex`** - Project slug validation expression
+```typescript
+slugRegex: RegExp               // Regular expression a valid project slug matches
+```
+
+**`slugMaxLength`** - Project slug length cap
+```typescript
+slugMaxLength: number           // Maximum slug length (default: 30)
+```
+
+**`slugMaxAttempts`** - Project slug generation retries
+```typescript
+slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
 ```
 
 

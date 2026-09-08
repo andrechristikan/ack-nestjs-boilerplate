@@ -15,12 +15,12 @@ An uploaded file is validated by a `src/common/file/pipes/` pipe, composed on th
 A CSV import endpoint composes two pipes in order, and the order is the contract:
 
 1. **`FileCsvParsePipe<T>`** — validates the upload is a non-empty `.csv` and parses the UTF-8 buffer into raw rows via `FileService.readCsv`.
-2. **`FileCsvValidationPipe<Dto>`** — `plainToInstance` + `class-validator` **per row**, collecting per-row failures into a `FileImportException` carrying `{ row, errors }[]`.
+2. **`FileCsvValidationPipe(schema)`** — validates every parsed row against a zod schema, collecting per-row failures into a `FileImportException` carrying `{ row, errors }[]`.
 
 - **Row errors are collected, never fail-fast.** `FileCsvValidationPipe` validates every row and reports all failures at once — do not rewrite it to throw on the first bad row.
 - **`file.maxDataImport` (config) is the row cap.** Exceeding it throws `FileExceedMaxDataImportException`. An unbounded import loads an attacker-controlled row count into memory — the cap is a limit, not a suggestion.
 - `FileImportException` is `@Catch`-ed by `app.validation-import.filter.ts` (first in the filter chain, `rules/exceptions.md`). It maps to `422` with row-scoped errors and reports **no Sentry** — a bad upload is a client error. Do not route import errors anywhere else.
-- The import DTO is a normal request DTO with `class-validator` decorators (`rules/validation.md`); the pipe validates rows against it with `whitelist: true, forbidNonWhitelisted: true`.
+- The import shape is a normal request schema (`rules/validation.md`), and the pipe is handed that schema; an unknown column is rejected the same way an unknown body key is.
 
 ## S3 presign — the client uploads, the API only signs
 

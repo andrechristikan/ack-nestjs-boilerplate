@@ -9,7 +9,7 @@ Two delivery channels, each with its own queue, processor, and processor-service
 - **Email** — SES via `AwsSESService`. Enqueued as an email job; sent by `NotificationEmailProcessorService`.
 - **Push** — Firebase via `FirebaseService`. Enqueued as a push job; sent by `NotificationPushProcessorService`.
 
-A channel is always **async through BullMQ** — a request never sends an email or push inline. The service enqueues; the processor sends. Delivery loss of a notification is loss-tolerable, which is exactly why it rides a durable queue rather than blocking the request.
+A channel is always **async through BullMQ** — a request never sends an email or push inline. The domain service decides and calls the queue class, the queue class enqueues, and the processor sends. Delivery loss of a notification is loss-tolerable, which is exactly why it rides a durable queue rather than blocking the request.
 
 ## Payload naming — kind is `Queue`, and it is LAST (HARD)
 
@@ -23,16 +23,16 @@ A notification job payload is a BullMQ `job.data` shape, so its interface follow
 ## Templates
 
 - A rendered notification (email body, term-policy document) is a **Handlebars template** (`.hbs`, `EnumFileExtensionTemplate`) rendered through the template service — never string-concatenated in a service.
-- Template content is **seeded initial data** (`rules/migration.md`): the `migration.template-notification.seed.ts` / `migration.template-term-policy.seed.ts` seeds populate it. Adding a template means adding it to the seed, not hardcoding it in a processor.
+- Template content is **seeded initial data** (`rules/seeding.md`): the `migration.template-notification.seed.ts` / `migration.template-term-policy.seed.ts` seeds populate it. Adding a template means adding it to the seed, not hardcoding it in a processor.
 - The template service resolves and renders; the processor-service calls it and hands the result to the channel client (`AwsSESService` / `FirebaseService`). A processor does not build markup.
 
 ## Layering inside the module
 
 The notification module carries more moving parts than most; keep the roles distinct:
 
-- **`*.util.ts`** builds the typed queue payload from caller inputs and enqueues it. This is where a caller-facing "send X" entry point lives.
+- **`*.queue.ts`** builds the typed queue payload from caller inputs and enqueues it — `NotificationQueue`, `NotificationEmailQueue`, `NotificationPushQueue`, one per queue in `queues/`. This is where a caller-facing "send X" entry point lives, and `NotificationModule` exports all three so a caller in another module injects the class directly (`rules/queue.md`).
 - **`*.processor.ts`** is the BullMQ dispatcher — `extends QueueProcessorBase`, switches on `job.name`, returns `IQueueResponse` (`rules/queue.md`). No sending logic inline.
-- **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSesService` / `FirebaseService`.
+- **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSESService` / `FirebaseService`.
 - A recipient with no token/address is a no-op the processor-service handles, not an exception — a missing push token is not a failed job.
 
 ## Security

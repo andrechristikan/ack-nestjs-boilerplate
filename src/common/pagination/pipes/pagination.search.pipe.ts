@@ -1,9 +1,8 @@
-import { Injectable, Type, mixin } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
 import {
     IPaginationQuery,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
+    IPaginationQueryRaw,
+    IPaginationSearchPipeReturn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -18,30 +17,6 @@ export function PaginationSearchPipe(
             private readonly requestStoreService: RequestStoreService
         ) {}
 
-        async transform(
-            value: { search: string } & (
-                | IPaginationQueryOffsetParams
-                | IPaginationQueryCursorParams
-            )
-        ): Promise<
-            IPaginationQueryOffsetParams | IPaginationQueryCursorParams
-        > {
-            if (!value || !value?.search || availableSearch.length === 0) {
-                return value;
-            }
-
-            const finalSearch = value.search?.trim();
-            this.requestStoreService.merge<IPaginationQuery>(
-                PaginationStoreKey,
-                { search: finalSearch, availableSearch }
-            );
-
-            return {
-                ...value,
-                where: this.buildSearchObject(finalSearch, availableSearch),
-            };
-        }
-
         private buildSearchObject(
             search: string,
             availableSearch: string[]
@@ -53,6 +28,37 @@ export function PaginationSearchPipe(
                         mode: Prisma.QueryMode.insensitive,
                     },
                 })),
+            };
+        }
+
+        private carryForward(
+            value?: IPaginationQueryRaw
+        ): IPaginationSearchPipeReturn {
+            return {
+                page: value?.page,
+                perPage: value?.perPage,
+                cursor: value?.cursor,
+                orderBy: value?.orderBy,
+            };
+        }
+
+        async transform(
+            value?: IPaginationQueryRaw
+        ): Promise<IPaginationSearchPipeReturn> {
+            const search = value?.search?.trim();
+
+            this.requestStoreService.merge<IPaginationQuery>(
+                PaginationStoreKey,
+                { availableSearch, ...(search && { search }) }
+            );
+
+            if (!search || availableSearch.length === 0) {
+                return this.carryForward(value);
+            }
+
+            return {
+                ...this.carryForward(value),
+                where: this.buildSearchObject(search, availableSearch),
             };
         }
     }

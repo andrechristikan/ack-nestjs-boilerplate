@@ -1,34 +1,31 @@
-import {
-    IMessageValidationError,
-    IMessageValidationImportError,
-} from '@common/message/interfaces/message.interface';
-import { ResponseDto } from '@common/response/dtos/response.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
+import { MessageValidationErrorSchema } from '@common/message/dtos/message.validation-error.dto';
+import { MessageValidationImportErrorSchema } from '@common/message/dtos/message.validation-import-error.dto';
+import { ResponseSchema } from '@common/response/dtos/response.dto';
 
 /**
  * Error response envelope adding an optional list of validation errors.
  */
-export class ResponseErrorDto extends ResponseDto<unknown> {
-    @ApiProperty({
-        type: String,
+export const ResponseErrorSchema = ResponseSchema.extend({
+    data: z.unknown().optional(),
+    module: z.string().optional().meta({
         description: 'Owning module of the error',
-        required: false,
         example: 'user',
-    })
-    module?: string;
-
-    @ApiProperty({
-        type: String,
+    }),
+    statusCodeKey: z.string().optional().meta({
         description: 'Status-code enum key of the error',
-        required: false,
         example: 'notFound',
-    })
-    statusCodeKey?: string;
+    }),
+    errors: z
+        .union([
+            z.array(MessageValidationErrorSchema),
+            z.array(MessageValidationImportErrorSchema),
+        ])
+        .optional()
+        .meta({
+            description:
+                'Field errors of a request body, or row errors of an imported file',
+        }),
+});
 
-    @ApiProperty({
-        type: 'array',
-        description: 'List of validation errors',
-        required: false,
-    })
-    errors?: IMessageValidationError[] | IMessageValidationImportError[];
-}
+export type ResponseErrorDto = z.infer<typeof ResponseErrorSchema>;

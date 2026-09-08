@@ -3,40 +3,43 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/requests/device.refresh.dto';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
+import {
+    IDeviceOwnership,
+    IDeviceOwnershipWithDevice,
+    IDeviceOwnershipWithSession,
+    IDeviceRefresh,
+} from '@modules/device/interfaces/device.interface';
 
 export interface IDeviceService {
     getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.DeviceOwnershipSelect,
-            Prisma.DeviceOwnershipWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+    ): Promise<IResponsePagingReturn<IDeviceOwnership>>;
     getListCursor(
         userId: string,
         sessionId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.DeviceOwnershipSelect,
-            Prisma.DeviceOwnershipWhereInput
-        >
-    ): Promise<IResponsePagingReturn<DeviceOwnershipResponseDto>>;
+        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
+    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>>;
+    getOwnershipsWithNotificationToken(
+        userId: string
+    ): Promise<IDeviceOwnershipWithDevice[]>;
+    cleanupNotificationTokens(
+        userId: string,
+        tokens: string[]
+    ): Promise<number>;
+    cleanupStaleNotificationTokens(thresholdInMs: number): Promise<number>;
     refresh(
         userId: string,
         deviceOwnershipId: string,
-        { name, notificationToken, platform }: DeviceRefreshRequestDto
+        data: IDeviceRefresh
     ): Promise<void>;
     remove(userId: string, deviceOwnershipId: string): Promise<void>;
     removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
         removedBy: string
-    ): Promise<IResponseReturn<void>>;
+    ): Promise<void>;
 }

@@ -1,5 +1,4 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { IMessageValidationError } from '@common/message/interfaces/message.interface';
 import { MessageService } from '@common/message/services/message.service';
@@ -21,7 +20,7 @@ export class AppValidationFilter implements ExceptionFilter {
         exception: RequestValidationException,
         host: ArgumentsHost
     ): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
+        const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
 
         const metadata = this.responseMetadataService.create();
@@ -30,7 +29,7 @@ export class AppValidationFilter implements ExceptionFilter {
             customLanguage: metadata.language,
         });
         const errors: IMessageValidationError[] =
-            this.messageService.setValidationMessage(exception.errors, {
+            this.messageService.setValidationMessage(exception.issues, {
                 customLanguage: metadata.language,
             });
 

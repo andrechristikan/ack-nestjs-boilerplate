@@ -1,190 +1,117 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
-import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
-import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
-import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
-import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
-import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
-import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
-import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
-import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
-import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
-import { AuthTwoFactorSetupRequiredException } from '@modules/auth/exceptions/auth.two-factor-setup-required.exception';
-import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
-import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
-import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
-import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
-import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
-import { UserForgotPasswordRequestLimitExceededException } from '@modules/user/exceptions/user.forgot-password-request-limit-exceeded.exception';
-import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
-import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
-import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
-import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
-import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.not-found-forbidden.exception';
-import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
-import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
-import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
-import { UserPasswordMustNewException } from '@modules/user/exceptions/user.password-must-new.exception';
-import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import { UserPasswordNotSetException } from '@modules/user/exceptions/user.password-not-set.exception';
-import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
-import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
-import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
-import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
-import { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
-import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
-import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
-import {
-    EnumFileExtensionDocument,
-    EnumFileExtensionImage,
-} from '@common/file/enums/file.enum';
-import { IFile } from '@common/file/interfaces/file.interface';
-import { FileService } from '@common/file/services/file.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationIn,
-    IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
+import { RequestLogStoreKey } from '@common/request/constants/request.constant';
+import { IRequestLog } from '@common/request/interfaces/request.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
-    IRequestApp,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
-import {
-    IResponseFileReturn,
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import {
-    IAuthJwtRefreshTokenPayload,
-    IAuthPassword,
-    IAuthTwoFactorVerify,
-    IAuthTwoFactorVerifyResult,
-} from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
-import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionUtil } from '@modules/session/utils/session.util';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import {
-    UserCheckEmailRequestDto,
-    UserCheckUsernameRequestDto,
-} from '@modules/user/dtos/request/user.check.request.dto';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import {
-    UserUpdateProfilePhotoRequestDto,
-    UserUpdateProfileRequestDto,
-} from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
-import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import {
-    UserCheckEmailResponseDto,
-    UserCheckUsernameResponseDto,
-} from '@modules/user/dtos/response/user.check.response.dto';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
-import { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { UserMobileNumberResponseDto } from '@modules/user/dtos/user.mobile-number.dto';
-import {
-    IUser,
-    IUserVerificationEmailCreate,
-} from '@modules/user/interfaces/user.interface';
-import { IUserService } from '@modules/user/interfaces/user.service.interface';
-import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserUtil } from '@modules/user/utils/user.util';
-import { Injectable, Logger } from '@nestjs/common';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
+    EnumRoleType,
+    EnumTermPolicyType,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
     Prisma,
+    User,
 } from '@generated/prisma-client';
-import { Duration } from 'luxon';
-import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { ConfigService } from '@nestjs/config';
-import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
-import { UserLoginSetupTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-setup-two-factor.request.dto';
-import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { CountryService } from '@modules/country/services/country.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleService } from '@modules/role/services/role.service';
+import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
+import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
+import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
+import { UserNotAuthenticatedException } from '@modules/user/exceptions/user.not-authenticated.exception';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserNotFoundForbiddenException } from '@modules/user/exceptions/user.not-found-forbidden.exception';
+import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
+import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
+import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
+import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
+import {
+    IUser,
+    IUserCheckEmail,
+    IUserCheckUsername,
+    IUserContact,
+    IUserCreateByAdmin,
+    IUserOnboardingVerificationRow,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
+import { IUserService } from '@modules/user/interfaces/user.service.interface';
+import { UserOnboardingRepository } from '@modules/user/repositories/user.onboarding.repository';
+import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserLoginService } from '@modules/user/services/user.login.service';
+import { UserOnboardingService } from '@modules/user/services/user.onboarding.service';
+import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserService implements IUserService {
-    private readonly logger = new Logger(UserService.name);
-
-    private readonly userRoleName: string;
-    private readonly userCountryName: string;
-
     constructor(
-        private readonly userUtil: UserUtil,
         private readonly userRepository: UserRepository,
-        private readonly countryRepository: CountryRepository,
-        private readonly roleRepository: RoleRepository,
-        private readonly passwordHistoryRepository: PasswordHistoryRepository,
-        private readonly awsS3Service: AwsS3Service,
-        private readonly helperService: HelperService,
-        private readonly fileService: FileService,
-        private readonly notificationUtil: NotificationUtil,
-        private readonly authUtil: AuthUtil,
-        private readonly sessionUtil: SessionUtil,
-        private readonly sessionRepository: SessionRepository,
-        private readonly featureFlagUtil: FeatureFlagUtil,
-        private readonly authTwoFactorUtil: AuthTwoFactorUtil,
-        private readonly configService: ConfigService,
+        private readonly userOnboardingRepository: UserOnboardingRepository,
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService,
+        private readonly userUtil: UserUtil,
+        private readonly userVerificationService: UserVerificationService,
+        private readonly helperHashService: HelperHashService,
+        private readonly userOnboardingUtil: UserOnboardingUtil,
+        private readonly userOnboardingService: UserOnboardingService,
+        private readonly userLoginService: UserLoginService,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly helperDateService: HelperDateService,
         private readonly requestStoreService: RequestStoreService
-    ) {
-        this.userRoleName =
-            this.configService.get<string>('user.default.role')!;
-        this.userCountryName = this.configService.get<string>(
-            'user.default.country'
-        )!;
+    ) {}
+
+    /** Builds the used-and-verified email verification an admin-created account is verified by. */
+    private buildVerifiedVerificationRow(
+        email: string
+    ): IUserOnboardingVerificationRow {
+        const token = this.userVerificationService.verificationCreateToken();
+
+        return {
+            reference:
+                this.userVerificationService.verificationCreateReference(),
+            token: this.helperHashService.sha256Hash(token),
+            type: EnumVerificationType.email,
+            to: email,
+            expiredAt:
+                this.userVerificationService.verificationSetExpiredDate(),
+            verifiedAt: this.helperDateService.create(),
+            isUsed: true,
+        };
     }
 
     async validateUserGuard(
-        request: IRequestApp,
+        userId: string | null,
         requiredVerified: boolean
     ): Promise<IUser> {
-        if (!request.user) {
-            throw new AuthJwtAccessTokenInvalidException();
+        if (!userId) {
+            throw new UserNotAuthenticatedException();
         }
 
-        const { userId } = request.user;
         const user = await this.userRepository.findOneWithRoleById(userId);
         if (!user) {
             throw new UserNotFoundForbiddenException();
@@ -195,7 +122,7 @@ export class UserService implements IUserService {
         }
 
         const checkPasswordExpired: boolean =
-            this.authUtil.checkPasswordExpired(user.passwordExpired);
+            this.authPasswordService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
             throw new UserPasswordExpiredException();
         }
@@ -208,73 +135,47 @@ export class UserService implements IUserService {
     }
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        const { data, ...others } =
-            await this.userRepository.findWithPaginationOffset(
-                pagination,
-                status,
-                role,
-                country
-            );
-
-        const users: UserListResponseDto[] = this.userUtil.mapList(data);
-        return {
-            data: users,
-            ...others,
-        };
+        roleId?: Record<string, IPaginationEqual>,
+        countryId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<IUser>> {
+        return this.userRepository.findWithPaginationOffset(
+            pagination,
+            status,
+            roleId,
+            countryId
+        );
     }
 
-    async getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        const { data, ...others } =
-            await this.userRepository.findWithPaginationCursor(
-                pagination,
-                status,
-                role,
-                country
-            );
-
-        const users: UserListResponseDto[] = this.userUtil.mapList(data);
-        return {
-            data: users,
-            ...others,
-        };
+    async getOneActive(userId: string): Promise<User | null> {
+        return this.userRepository.findOneActiveById(userId);
     }
 
-    async getOne(id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
+    async getListActive(): Promise<IUserContact[]> {
+        return this.userRepository.findActive();
+    }
+
+    async getOne(id: string): Promise<IUserProfile> {
         const user = await this.userRepository.findOneProfileById(id);
         if (!user) {
             throw new UserNotFoundException();
         }
 
-        return { data: this.userUtil.mapProfile(user) };
+        return user;
     }
 
     async createByAdmin(
-        { countryId, email, name, roleId }: UserCreateRequestDto,
+        { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
-    ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    ): Promise<string> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleRepository.existById(roleId),
+            this.roleService.existById(roleId),
             this.userRepository.existByEmail(email),
-            this.countryRepository.existById(countryId),
+            this.countryService.existById(countryId),
         ]);
 
         if (!checkRole) {
@@ -285,41 +186,95 @@ export class UserService implements IUserService {
             throw new UserEmailExistException();
         }
 
+        const [checkUsernamePattern, checkUsernameBadWord, usernameExist] =
+            await Promise.all([
+                this.userUtil.checkUsernamePattern(username),
+                this.userUtil.checkBadWord(username),
+                this.userRepository.existByUsername(username),
+            ]);
+        if (checkUsernamePattern) {
+            throw new UserUsernameNotAllowedException();
+        } else if (checkUsernameBadWord) {
+            throw new UserUsernameContainBadWordException();
+        } else if (usernameExist) {
+            throw new UserUsernameExistException();
+        }
+
         try {
             const userId = this.databaseUtil.createId();
-            const passwordString = this.authUtil.createPasswordRandom();
-            const password: IAuthPassword = this.authUtil.createPassword(
-                userId,
-                passwordString,
-                {
-                    temporary: true,
-                }
-            );
-            const randomUsername = this.userUtil.createRandomUsername();
-            const created = await this.userRepository.createByAdmin(
-                userId,
-                randomUsername,
-                {
-                    countryId,
-                    email,
-                    name,
-                    roleId,
-                },
-                password,
-                checkRole,
-                requestLog,
-                createdBy
-            );
+            const passwordString =
+                this.authPasswordService.createPasswordRandom();
+            const password: IAuthPassword =
+                this.authPasswordService.createPassword(
+                    userId,
+                    passwordString,
+                    {
+                        temporary: true,
+                    }
+                );
+            const [workspaceContext] =
+                this.userOnboardingService.buildPersonalWorkspaceContexts([
+                    username,
+                ]);
+            const isVerified = checkRole.type !== EnumRoleType.user;
+            let created: IUser;
+            try {
+                created =
+                    await this.userOnboardingRepository.createWithWorkspace({
+                        userId,
+                        email,
+                        name,
+                        username,
+                        countryId,
+                        roleId: checkRole.id,
+                        signUpFrom: EnumUserSignUpFrom.admin,
+                        signUpWith: EnumUserSignUpWith.credential,
+                        isVerified,
+                        termPolicy: {
+                            [EnumTermPolicyType.cookies]: false,
+                            [EnumTermPolicyType.marketing]: false,
+                            [EnumTermPolicyType.privacy]: true,
+                            [EnumTermPolicyType.termsOfService]: true,
+                        },
+                        acceptedTermPolicyTypes: [
+                            EnumTermPolicyType.termsOfService,
+                            EnumTermPolicyType.privacy,
+                        ],
+                        password,
+                        passwordHistoryType:
+                            UserCreateModeRules[EnumUserCreateMode.admin]
+                                .passwordHistoryType,
+                        verification: isVerified
+                            ? this.buildVerifiedVerificationRow(email)
+                            : null,
+                        activityLogs:
+                            this.userOnboardingService.buildOnboardingActivityLogs(
+                                EnumUserCreateMode.admin,
+                                workspaceContext,
+                                requestLog,
+                                createdBy
+                            ),
+                        workspaceContext,
+                        workspaceRows:
+                            this.userOnboardingService.buildWorkspaceRows(
+                                userId,
+                                workspaceContext,
+                                createdBy
+                            ),
+                        createdBy,
+                    });
+            } catch (error: unknown) {
+                throw this.userOnboardingUtil.mapCreateCollision(error);
+            }
 
-            // @note: send email after all creation
-            await this.notificationUtil.sendWelcomeByAdmin(
+            await this.notificationQueue.sendWelcomeByAdmin(
                 created.id,
                 {
                     password: password.passwordEncrypted,
-                    passwordCreatedAt: this.helperService.dateFormatToIso(
+                    passwordCreatedAt: this.helperDateService.formatToIso(
                         password.passwordCreated
                     ),
-                    passwordExpiredAt: this.helperService.dateFormatToIso(
+                    passwordExpiredAt: this.helperDateService.formatToIso(
                         password.passwordExpired
                     ),
                 },
@@ -331,19 +286,21 @@ export class UserService implements IUserService {
                 this.userUtil.mapActivityLogMetadata(created)
             );
 
-            return {
-                data: { id: created.id },
-            };
+            return created.id;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
 
     async updateStatusByAdmin(
         userId: string,
-        { status }: UserUpdateStatusRequestDto,
+        status: EnumUserStatus,
         updatedBy: string
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<void> {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
@@ -371,17 +328,17 @@ export class UserService implements IUserService {
                 this.userUtil.mapActivityLogMetadata(updated)
             );
 
-            return {};
+            return;
         } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
             throw new AppUnknownException(err);
         }
     }
 
-    async checkUsername({
-        username,
-    }: UserCheckUsernameRequestDto): Promise<
-        IResponseReturn<UserCheckUsernameResponseDto>
-    > {
+    async checkUsername(username: string): Promise<IUserCheckUsername> {
         const [checkUsername, checkBadWord, isExist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
@@ -389,125 +346,22 @@ export class UserService implements IUserService {
         ]);
 
         return {
-            data: {
-                badWord: checkBadWord,
-                exist: !!isExist,
-                pattern: checkUsername,
-            },
+            badWord: checkBadWord,
+            exist: !!isExist,
+            pattern: checkUsername,
         };
     }
 
-    async checkEmail({
-        email,
-    }: UserCheckEmailRequestDto): Promise<
-        IResponseReturn<UserCheckEmailResponseDto>
-    > {
+    async checkEmail(email: string): Promise<IUserCheckEmail> {
         const [checkBadWord, isExist] = await Promise.all([
             this.userUtil.checkBadWord(email),
             this.userRepository.existByEmail(email),
         ]);
 
         return {
-            data: {
-                badWord: checkBadWord,
-                exist: !!isExist,
-            },
+            badWord: checkBadWord,
+            exist: !!isExist,
         };
-    }
-
-    async getProfile(
-        userId: string
-    ): Promise<IResponseReturn<UserProfileResponseDto>> {
-        const user = await this.userRepository.findOneActiveProfileById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        const mapped = this.userUtil.mapProfile(user);
-
-        return {
-            data: mapped,
-        };
-    }
-
-    async updateProfile(
-        userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const checkCountry = await this.countryRepository.existById(countryId);
-        if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
-
-        try {
-            await this.userRepository.updateProfile(
-                userId,
-                {
-                    countryId,
-                    ...data,
-                },
-                requestLog
-            );
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async generatePhotoProfilePresign(
-        userId: string,
-        { extension, size }: UserGeneratePhotoProfileRequestDto
-    ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-        const key: string =
-            this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-                extension,
-            });
-
-        const aws: IAwsS3Presign | null =
-            await this.awsS3Service.presignPutItem(
-                {
-                    key,
-                    size,
-                },
-                {
-                    forceUpdate: true,
-                }
-            );
-
-        if (!aws) {
-            throw new AwsServiceUnavailableException();
-        }
-
-        return { data: aws };
-    }
-
-    async updatePhotoProfile(
-        userId: string,
-        { photoKey, size }: UserUpdateProfilePhotoRequestDto
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        try {
-            const aws: IAwsS3 = this.awsS3Service.mapPresign({
-                key: photoKey,
-                size,
-            });
-
-            await this.userRepository.updatePhotoProfile(
-                userId,
-                aws,
-                requestLog
-            );
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
     }
 
     async deleteSelf(userId: string): Promise<void> {
@@ -515,1490 +369,16 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
-            const sessions = await this.sessionRepository.findActive(userId);
-            await Promise.all([
-                this.userRepository.deleteSelf(userId, requestLog),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-                // TODO: delete device ownership
-            ]);
+            await this.userLoginService.revokeAllSessions(userId);
+            await this.userRepository.deleteSelf(userId, requestLog);
+            // TODO: delete device ownership
 
             return;
         } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async addMobileNumber(
-        userId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const checkCountry =
-            await this.countryRepository.findOneById(countryId);
-        if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
-
-        const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(checkCountry.phoneCode, phoneCode),
-            this.userRepository.existMobileNumber(userId, {
-                number,
-                countryId: checkCountry.id,
-                phoneCode,
-            }),
-        ]);
-        if (!checkValidMobileNumber) {
-            throw new UserMobileNumberInvalidException();
-        } else if (checkExist) {
-            throw new UserMobileNumberExistException();
-        }
-
-        try {
-            const updated = await this.userRepository.addMobileNumber(
-                userId,
-                {
-                    number,
-                    countryId,
-                    phoneCode,
-                },
-                requestLog
-            );
-
-            const mapped = this.userUtil.mapMobileNumber(updated);
-
-            return {
-                data: mapped,
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async updateMobileNumber(
-        userId: string,
-        mobileNumberId: string,
-        { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const [checkMobileNumberExist, checkCountry] = await Promise.all([
-            this.userRepository.findOneMobileNumber(userId, mobileNumberId),
-            this.countryRepository.findOneById(countryId),
-        ]);
-        if (!checkMobileNumberExist) {
-            throw new UserMobileNumberNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
-
-        const checkExist = await this.userRepository.existMobileNumber(
-            userId,
-            { number, countryId, phoneCode },
-            mobileNumberId
-        );
-        if (checkExist) {
-            throw new UserMobileNumberExistException();
-        }
-
-        const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            checkCountry.phoneCode,
-            phoneCode
-        );
-        if (!checkValidMobileNumber) {
-            throw new UserMobileNumberInvalidException();
-        }
-
-        try {
-            const updated = await this.userRepository.updateMobileNumber(
-                userId,
-                checkMobileNumberExist,
-                {
-                    number,
-                    countryId,
-                    phoneCode,
-                },
-                requestLog
-            );
-
-            const mapped = this.userUtil.mapMobileNumber(updated);
-
-            return {
-                data: mapped,
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async deleteMobileNumber(
-        userId: string,
-        mobileNumberId: string
-    ): Promise<IResponseReturn<UserMobileNumberResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const checkExist = await this.userRepository.findOneMobileNumber(
-            userId,
-            mobileNumberId
-        );
-        if (!checkExist) {
-            throw new UserMobileNumberNotFoundException();
-        }
-
-        try {
-            const updated = await this.userRepository.deleteMobileNumber(
-                userId,
-                mobileNumberId,
-                requestLog
-            );
-
-            const mapped = this.userUtil.mapMobileNumber(updated);
-
-            return {
-                data: mapped,
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async claimUsername(
-        userId: string,
-        { username }: UserClaimUsernameRequestDto
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const [checkUsername, checkBadWord, exist] = await Promise.all([
-            this.userUtil.checkUsernamePattern(username),
-            this.userUtil.checkBadWord(username),
-            this.userRepository.existByUsername(username),
-        ]);
-        if (checkUsername) {
-            throw new UserUsernameNotAllowedException();
-        } else if (checkBadWord) {
-            throw new UserUsernameContainBadWordException();
-        } else if (exist) {
-            throw new UserUsernameExistException();
-        }
-
-        try {
-            await this.userRepository.claimUsername(
-                userId,
-                { username },
-                requestLog
-            );
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        try {
-            const extension: EnumFileExtensionImage =
-                this.fileService.extractExtensionFromFilename(
-                    file.originalname
-                ) as EnumFileExtensionImage;
-
-            const key: string =
-                this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-                    extension,
-                });
-
-            const aws: IAwsS3 | null = await this.awsS3Service.putItem({
-                key,
-                size: file.size,
-                file: file.buffer,
-            });
-
-            if (aws) {
-                this.logger.debug(
-                    {
-                        userId,
-                        fileSize: file.size,
-                        awsKey: aws.key,
-                        awsBucket: aws.bucket,
-                    },
-                    `Photo profile uploaded to S3 with key: ${key}`
-                );
-
-                await this.userRepository.updatePhotoProfile(
-                    userId,
-                    aws,
-                    requestLog
-                );
+            if (err instanceof AppBaseException) {
+                throw err;
             }
 
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async updatePasswordByAdmin(
-        userId: string,
-        updatedBy: string
-    ): Promise<IResponseReturn<void>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (userId === updatedBy) {
-            throw new UserNotSelfException();
-        }
-
-        const user = await this.userRepository.findOneById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status === EnumUserStatus.blocked) {
-            throw new UserBlockedInvalidException();
-        }
-
-        try {
-            const passwordString = this.authUtil.createPasswordRandom();
-            const password = this.authUtil.createPassword(
-                userId,
-                passwordString,
-                {
-                    temporary: true,
-                }
-            );
-
-            const sessions = await this.sessionRepository.findActive(userId);
-            const [updated] = await Promise.all([
-                this.userRepository.updatePasswordByAdmin(
-                    userId,
-                    password,
-                    requestLog,
-                    updatedBy
-                ),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-            ]);
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendTemporaryPasswordByAdmin(
-                updated.id,
-                {
-                    password: password.passwordEncrypted,
-                    passwordCreatedAt: this.helperService.dateFormatToIso(
-                        password.passwordCreated
-                    ),
-                    passwordExpiredAt: this.helperService.dateFormatToIso(
-                        password.passwordExpired
-                    ),
-                },
-                updatedBy
-            );
-
-            this.requestStoreService.merge<IActivityLogMetadata>(
-                ActivityLogMetadataStoreKey,
-                this.userUtil.mapActivityLogMetadata(updated)
-            );
-
-            return {};
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async changePassword(
-        user: IUser,
-        {
-            newPassword,
-            oldPassword,
-            backupCode,
-            code,
-            method,
-        }: UserChangePasswordRequestDto
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (user.password) {
-            if (this.authUtil.checkPasswordAttempt(user)) {
-                throw new UserPasswordAttemptMaxException();
-            } else if (
-                !this.authUtil.validatePassword(oldPassword, user.password)
-            ) {
-                await this.userRepository.increasePasswordAttempt(user.id);
-
-                throw new UserPasswordNotMatchException();
-            }
-
-            await this.userRepository.resetPasswordAttempt(user.id);
-
-            const passwordHistories =
-                await this.passwordHistoryRepository.findActiveUser(user.id);
-            const passwordCheck = this.authUtil.checkPasswordPeriod(
-                passwordHistories,
-                newPassword
-            );
-            if (passwordCheck) {
-                throw new UserPasswordMustNewException(
-                    this.helperService.dateFormatToRFC2822(
-                        passwordCheck.expiredAt
-                    )
-                );
-            }
-        }
-
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
-        if (user.twoFactor?.enabled) {
-            twoFactorVerified = await this.handleTwoFactorValidation(user, {
-                code,
-                backupCode,
-                method,
-            });
-        }
-
-        try {
-            const sessions = await this.sessionRepository.findActive(user.id);
-            const password = this.authUtil.createPassword(user.id, newPassword);
-
-            await Promise.all([
-                this.userRepository.changePassword(
-                    user.id,
-                    password,
-                    requestLog
-                ),
-                this.sessionUtil.deleteAllLogins(user.id, sessions),
-                twoFactorVerified
-                    ? this.userRepository.verifyTwoFactor(
-                          user.id,
-                          twoFactorVerified,
-                          requestLog
-                      )
-                    : Promise.resolve(),
-            ]);
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendChangePassword(user.id);
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async loginCredential({
-        email,
-        password,
-        from,
-        device,
-    }: UserLoginRequestDto): Promise<IResponseReturn<UserLoginResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const user = await this.userRepository.findOneWithRoleByEmail(email);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        } else if (!user.password) {
-            throw new UserPasswordNotSetException();
-        }
-
-        if (this.authUtil.checkPasswordAttempt(user)) {
-            await this.userRepository.reachMaxPasswordAttempt(
-                user.id,
-                requestLog
-            );
-
-            throw new UserPasswordAttemptMaxException();
-        } else if (!this.authUtil.validatePassword(password, user.password)) {
-            await this.userRepository.increasePasswordAttempt(user.id);
-
-            throw new UserPasswordNotMatchException();
-        }
-
-        await this.userRepository.resetPasswordAttempt(user.id);
-
-        const checkPasswordExpired: boolean =
-            this.authUtil.checkPasswordExpired(user.passwordExpired!);
-        if (checkPasswordExpired) {
-            throw new UserPasswordExpiredException();
-        }
-
-        return this.handleLogin(
-            user,
-            device,
-            from,
-            EnumUserLoginWith.credential,
-            this.helperService.dateCreate()
-        );
-    }
-
-    async loginWithSocial(
-        email: string,
-        loginWith: EnumUserLoginWith,
-        { from, device, ...others }: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const featureFlag =
-            await this.featureFlagUtil.getMetadataByKeyAndCache<{
-                signUpAllowed: boolean;
-            }>(
-                loginWith === EnumUserLoginWith.socialGoogle
-                    ? 'loginWithGoogle'
-                    : 'loginWithApple'
-            );
-        let user = await this.userRepository.findOneWithRoleByEmail(email);
-
-        if (!user && featureFlag?.signUpAllowed) {
-            const role = await this.roleRepository.existByName(
-                this.userRoleName
-            );
-            if (!role) {
-                throw new RoleNotFoundException();
-            }
-
-            const randomUsername = this.userUtil.createRandomUsername();
-            user = await this.userRepository.createBySocial(
-                email,
-                randomUsername,
-                role.id,
-                loginWith,
-                { from, device, ...others },
-                requestLog
-            );
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendWelcomeSocial(user.id);
-        }
-
-        if (user!.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        }
-
-        if (!user!.isVerified) {
-            const updatedUser = await this.userRepository.verify(
-                user!.id,
-                requestLog
-            );
-            user!.isVerified = updatedUser.isVerified;
-        }
-
-        return this.handleLogin(
-            user!,
-            device,
-            from,
-            loginWith,
-            this.helperService.dateCreate()
-        );
-    }
-
-    async refresh(
-        user: IUser,
-        refreshToken: string
-    ): Promise<IResponseReturn<AuthTokenResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const {
-            sessionId,
-            userId,
-            jti: oldJti,
-            loginFrom,
-            loginWith,
-        } = this.authUtil.payloadToken<IAuthJwtRefreshTokenPayload>(
-            refreshToken
-        );
-
-        const session = await this.sessionUtil.getLogin(userId, sessionId);
-        if (!session || session.jti !== oldJti) {
-            throw new AuthJwtRefreshTokenInvalidException();
-        }
-
-        try {
-            const {
-                jti: newJti,
-                tokens,
-                expiredInMs,
-            } = this.authUtil.refreshToken(user, refreshToken);
-
-            await Promise.all([
-                this.sessionUtil.updateLogin(
-                    userId,
-                    sessionId,
-                    session,
-                    newJti,
-                    expiredInMs
-                ),
-                this.userRepository.refresh(
-                    userId,
-                    {
-                        sessionId,
-                        jti: newJti,
-                        expiredAt: session.expiredAt,
-                        loginFrom: loginFrom,
-                        loginWith: loginWith,
-                    },
-                    requestLog
-                ),
-            ]);
-
-            return {
-                data: tokens,
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async signUp({
-        countryId,
-        email,
-        password: passwordString,
-        ...others
-    }: UserSignUpRequestDto): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
-            this.userRepository.existByEmail(email),
-            this.countryRepository.existById(countryId),
-        ]);
-        if (!role) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
-        } else if (emailExist) {
-            throw new UserEmailExistException();
-        }
-
-        try {
-            const userId = this.databaseUtil.createId();
-            const password = this.authUtil.createPassword(
-                userId,
-                passwordString
-            );
-            const randomUsername = this.userUtil.createRandomUsername();
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    userId,
-                    EnumVerificationType.email
-                ) as IUserVerificationEmailCreate;
-
-            const created = await this.userRepository.signUp(
-                userId,
-                randomUsername,
-                role.id,
-                {
-                    countryId,
-                    email,
-                    password: passwordString,
-                    ...others,
-                },
-                password,
-                emailVerification,
-                requestLog
-            );
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendWelcome(created.id, {
-                expiredAt: this.helperService.dateFormatToIso(
-                    emailVerification.expiredAt
-                ),
-                reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
-                expiredInMinutes: emailVerification.expiredInMinutes,
-            });
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async verifyEmail({ token }: UserVerifyEmailRequestDto): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const hashedToken = this.userUtil.hashedToken(token);
-        const verification =
-            await this.userRepository.findOneActiveByVerificationEmailToken(
-                hashedToken
-            );
-        if (!verification) {
-            throw new UserTokenInvalidException();
-        }
-
-        try {
-            await this.userRepository.verifyEmail(
-                verification.id,
-                verification.userId,
-                requestLog
-            );
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendVerifiedEmail(verification.userId, {
-                reference: verification.reference,
-            });
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async sendVerificationEmail({
-        email,
-    }: UserSendEmailVerificationRequestDto): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const user = await this.userRepository.findOneActiveByEmail(email);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.isVerified) {
-            throw new UserEmailAlreadyVerifiedException();
-        }
-
-        const lastVerification =
-            await this.userRepository.findOneLatestByVerificationEmail(user.id);
-        if (lastVerification) {
-            const today = this.helperService.dateCreate();
-            const canResendAt = this.helperService.dateForward(
-                lastVerification.createdAt,
-                Duration.fromObject({
-                    minutes: this.userUtil.verificationExpiredInMinutes,
-                })
-            );
-
-            if (today < canResendAt) {
-                throw new UserVerificationEmailResendLimitExceededException(
-                    this.helperService.dateDiff(today, canResendAt).minutes
-                );
-            }
-        }
-
-        try {
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    user.id,
-                    EnumVerificationType.email
-                ) as IUserVerificationEmailCreate;
-
-            await this.userRepository.requestVerificationEmail(
-                user.id,
-                user.email,
-                emailVerification,
-                requestLog
-            );
-
-            await this.notificationUtil.sendVerificationEmail(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
-                    emailVerification.expiredAt
-                ),
-                reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
-                expiredInMinutes: emailVerification.expiredInMinutes,
-            });
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async forgotPassword({
-        email,
-    }: UserForgotPasswordRequestDto): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const user = await this.userRepository.findOneActiveByEmail(email);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        const lastForgotPassword =
-            await this.userRepository.findOneLatestByForgotPassword(user.id);
-        if (lastForgotPassword) {
-            const today = this.helperService.dateCreate();
-            const canResendAt = this.helperService.dateForward(
-                lastForgotPassword.createdAt,
-                Duration.fromObject({
-                    minutes: this.userUtil.forgotResendInMinutes,
-                })
-            );
-
-            if (today < canResendAt) {
-                throw new UserForgotPasswordRequestLimitExceededException(
-                    this.helperService.dateDiff(today, canResendAt).minutes
-                );
-            }
-        }
-
-        try {
-            const resetPassword = this.userUtil.forgotPasswordCreate(user.id);
-
-            await this.userRepository.forgotPassword(
-                user.id,
-                email,
-                resetPassword,
-                requestLog
-            );
-
-            await this.notificationUtil.sendForgotPassword(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
-                    resetPassword.expiredAt
-                ),
-                link: resetPassword.encryptedLink,
-                reference: resetPassword.reference,
-                expiredInMinutes: resetPassword.expiredInMinutes,
-                resendInMinutes: resetPassword.resendInMinutes,
-            });
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async resetPassword({
-        newPassword,
-        token,
-        backupCode,
-        code,
-        method,
-    }: UserForgotPasswordResetRequestDto): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const hashedToken = this.userUtil.hashedToken(token);
-        const resetPassword =
-            await this.userRepository.findOneActiveByForgotPasswordToken(
-                hashedToken
-            );
-        if (!resetPassword) {
-            throw new UserNotFoundException();
-        }
-
-        const passwordHistories =
-            await this.passwordHistoryRepository.findActiveUser(
-                resetPassword.userId
-            );
-        const passwordCheck = this.authUtil.checkPasswordPeriod(
-            passwordHistories,
-            newPassword
-        );
-        if (passwordCheck) {
-            throw new UserPasswordMustNewException(
-                this.authUtil.getPasswordPeriodInDays()
-            );
-        }
-
-        let twoFactorVerified: IAuthTwoFactorVerifyResult | undefined;
-        if (resetPassword.user.twoFactor?.enabled) {
-            twoFactorVerified = await this.handleTwoFactorValidation(
-                resetPassword.user,
-                {
-                    code,
-                    backupCode,
-                    method,
-                }
-            );
-        }
-
-        try {
-            const sessions = await this.sessionRepository.findActive(
-                resetPassword.userId
-            );
-            const password = this.authUtil.createPassword(
-                resetPassword.userId,
-                newPassword
-            );
-
-            await Promise.all([
-                this.userRepository.resetPassword(
-                    resetPassword.userId,
-                    resetPassword.id,
-                    password,
-                    requestLog
-                ),
-                this.sessionUtil.deleteAllLogins(
-                    resetPassword.userId,
-                    sessions
-                ),
-                twoFactorVerified
-                    ? this.userRepository.verifyTwoFactor(
-                          resetPassword.userId,
-                          twoFactorVerified,
-                          requestLog
-                      )
-                    : Promise.resolve(),
-            ]);
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendResetPassword(resetPassword.userId);
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    private async createTokenAndSession(
-        user: IUser,
-        device: DeviceRequestDto,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        loginAt: Date
-    ): Promise<AuthTokenResponseDto> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const { tokens, sessionId, jti } = this.authUtil.createTokens(
-            user,
-            loginFrom,
-            loginWith
-        );
-        const expiredAt = this.helperService.dateForward(
-            loginAt,
-            Duration.fromObject({
-                milliseconds: this.authUtil.jwtRefreshTokenExpirationTimeInMs,
-            })
-        );
-
-        const { isNewDevice, sessionShouldBeInactive } =
-            await this.userRepository.login(
-                user.id,
-                device,
-                {
-                    loginFrom,
-                    loginWith,
-                    jti,
-                    sessionId,
-                    expiredAt,
-                },
-                requestLog
-            );
-
-        const promises = [
-            this.sessionUtil.setLogin(user.id, sessionId, jti, expiredAt),
-        ];
-
-        if (sessionShouldBeInactive && sessionShouldBeInactive.length > 0) {
-            promises.push(
-                this.sessionUtil.deleteAllLogins(
-                    user.id,
-                    sessionShouldBeInactive
-                )
-            );
-        }
-
-        if (isNewDevice) {
-            promises.push(
-                this.notificationUtil.sendNewDeviceLogin(user.id, {
-                    requestLog,
-                    loginFrom,
-                    loginWith,
-                    loginAt: this.helperService.dateFormatToIso(loginAt),
-                })
-            );
-        }
-
-        await Promise.all(promises);
-
-        return tokens;
-    }
-
-    private async handleLogin(
-        user: IUser,
-        device: DeviceRequestDto,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith,
-        loginAt: Date
-    ): Promise<IResponseReturn<UserLoginResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (!user.isVerified) {
-            const emailVerification =
-                this.userUtil.verificationCreateVerification(
-                    user.id,
-                    EnumVerificationType.email
-                ) as IUserVerificationEmailCreate;
-
-            await this.userRepository.requestVerificationEmail(
-                user.id,
-                user.email,
-                emailVerification,
-                requestLog
-            );
-
-            // @note: send notification after all creation
-            await this.notificationUtil.sendVerificationEmail(user.id, {
-                expiredAt: this.helperService.dateFormatToIso(
-                    emailVerification.expiredAt
-                ),
-                reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
-                expiredInMinutes: emailVerification.expiredInMinutes,
-            });
-
-            throw new UserEmailNotVerifiedException();
-        }
-
-        if (!user.twoFactor?.enabled) {
-            const tokens = await this.createTokenAndSession(
-                user,
-                device,
-                loginFrom,
-                loginWith,
-                loginAt
-            );
-
-            return {
-                data: {
-                    isTwoFactorEnable: false,
-                    tokens,
-                },
-            };
-        }
-
-        const { challengeToken, expiresInMs } =
-            await this.authTwoFactorUtil.createChallenge({
-                userId: user.id,
-                device,
-                loginFrom,
-                loginWith,
-            });
-        if (user.twoFactor?.requiredSetup) {
-            const { encryptedSecret, otpauthUrl, secret, iv } =
-                await this.authTwoFactorUtil.setupTwoFactor(user.email);
-            await this.userRepository.setupTwoFactor(
-                user.id,
-                encryptedSecret,
-                iv,
-                requestLog
-            );
-
-            return {
-                data: {
-                    isTwoFactorEnable: true,
-                    twoFactor: {
-                        isRequiredSetup: true,
-                        challengeToken,
-                        challengeExpiresInMs: expiresInMs,
-                        backupCodesRemaining:
-                            user.twoFactor?.backupCodes.length ?? 0,
-                        otpauthUrl,
-                        secret,
-                    },
-                },
-            };
-        }
-
-        return {
-            data: {
-                isTwoFactorEnable: true,
-                twoFactor: {
-                    isRequiredSetup: false,
-                    challengeToken,
-                    challengeExpiresInMs: expiresInMs,
-                    backupCodesRemaining:
-                        user.twoFactor?.backupCodes.length ?? 0,
-                },
-            },
-        };
-    }
-
-    private async handleTwoFactorValidation(
-        user: IUser,
-        { method, code, backupCode }: IAuthTwoFactorVerify
-    ): Promise<IAuthTwoFactorVerifyResult> {
-        const retryAfterMs =
-            await this.authTwoFactorUtil.getLockTwoFactorAttempt(user);
-        if (retryAfterMs > 0) {
-            throw new AuthTwoFactorAttemptTemporaryLockException(
-                retryAfterMs / 1000
-            );
-        } else if (!method) {
-            throw new AuthTwoFactorMethodRequiredException();
-        }
-
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
-            user.twoFactor!,
-            {
-                method,
-                code,
-                backupCode,
-            }
-        );
-        if (!verified.isValid) {
-            await this.userRepository.increaseTwoFactorAttempt(user.id);
-
-            if (this.authTwoFactorUtil.checkAttempt(user)) {
-                await this.authTwoFactorUtil.lockTwoFactorAttempt(user);
-            }
-
-            throw new AuthTwoFactorInvalidException();
-        }
-
-        await this.userRepository.resetTwoFactorAttempt(user.id);
-
-        return verified;
-    }
-
-    async loginVerifyTwoFactor({
-        challengeToken,
-        code,
-        backupCode,
-        method,
-    }: UserLoginVerifyTwoFactorRequestDto): Promise<
-        IResponseReturn<AuthTokenResponseDto>
-    > {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const challenge =
-            await this.authTwoFactorUtil.getChallenge(challengeToken);
-        if (!challenge) {
-            throw new AuthTwoFactorChallengeInvalidException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(
-            challenge.userId
-        );
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        } else if (!user.isVerified) {
-            throw new UserEmailNotVerifiedException();
-        } else if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        } else if (user.twoFactor?.requiredSetup) {
-            throw new AuthTwoFactorRequiredSetupException();
-        }
-
-        const twoFactorVerified = await this.handleTwoFactorValidation(user, {
-            method,
-            code,
-            backupCode,
-        });
-
-        try {
-            const loginAt = this.helperService.dateCreate();
-            const [tokens] = await Promise.all([
-                this.createTokenAndSession(
-                    user,
-                    challenge.device,
-                    challenge.loginFrom,
-                    challenge.loginWith,
-                    loginAt
-                ),
-                this.authTwoFactorUtil.clearChallenge(challengeToken),
-                this.userRepository.verifyTwoFactor(
-                    user.id,
-                    twoFactorVerified,
-                    requestLog
-                ),
-            ]);
-
-            return {
-                data: tokens,
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async loginSetupTwoFactor({
-        code,
-        challengeToken,
-    }: UserLoginSetupTwoFactorRequestDto): Promise<
-        IResponseReturn<UserTwoFactorEnableResponseDto>
-    > {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const challenge =
-            await this.authTwoFactorUtil.getChallenge(challengeToken);
-        if (!challenge) {
-            throw new AuthTwoFactorChallengeInvalidException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(
-            challenge.userId
-        );
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        } else if (!user.isVerified) {
-            throw new UserEmailNotVerifiedException();
-        } else if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        } else if (!user.twoFactor?.requiredSetup) {
-            throw new AuthTwoFactorNotRequiredSetupException();
-        }
-
-        await this.handleTwoFactorValidation(user, {
-            method: EnumAuthTwoFactorMethod.code,
-            code,
-        });
-
-        try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.enableTwoFactor(
-                user.id,
-                backupCodes.hashes,
-                requestLog
-            );
-
-            return {
-                data: {
-                    backupCodes: backupCodes.codes,
-                },
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async getTwoFactorStatus(
-        user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
-        return {
-            data: this.userUtil.mapTwoFactor(user.twoFactor!),
-        };
-    }
-
-    async setupTwoFactor(
-        user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorSetupResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (user.twoFactor?.enabled) {
-            throw new AuthTwoFactorAlreadyEnabledException();
-        }
-
-        try {
-            const { encryptedSecret, otpauthUrl, secret, iv } =
-                await this.authTwoFactorUtil.setupTwoFactor(user.email);
-            await this.userRepository.setupTwoFactor(
-                user.id,
-                encryptedSecret,
-                iv,
-                requestLog
-            );
-
-            return {
-                data: {
-                    secret,
-                    otpauthUrl,
-                },
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async enableTwoFactor(
-        user: IUser,
-        { code }: UserTwoFactorEnableRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (user.twoFactor?.enabled) {
-            throw new AuthTwoFactorAlreadyEnabledException();
-        } else if (!user.twoFactor?.iv || !user.twoFactor?.secret) {
-            throw new AuthTwoFactorSetupRequiredException();
-        }
-
-        const secret = this.authTwoFactorUtil.decryptSecret(
-            user.twoFactor.secret,
-            user.twoFactor.iv
-        );
-        const isValidCode = this.authTwoFactorUtil.verifyCode(secret, code);
-        if (!isValidCode) {
-            throw new AuthTwoFactorInvalidException();
-        }
-
-        try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.enableTwoFactor(
-                user.id,
-                backupCodes.hashes,
-                requestLog
-            );
-
-            return {
-                data: {
-                    backupCodes: backupCodes.codes,
-                },
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async disableTwoFactor(
-        user: IUser,
-        { code, backupCode, method }: UserTwoFactorDisableRequestDto
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        }
-
-        const verified = await this.authTwoFactorUtil.verifyTwoFactor(
-            user.twoFactor!,
-            {
-                method,
-                code,
-                backupCode,
-            }
-        );
-        if (!verified.isValid) {
-            await this.userRepository.increaseTwoFactorAttempt(user.id);
-
-            throw new AuthTwoFactorInvalidException();
-        }
-
-        try {
-            const sessions = await this.sessionRepository.findActive(user.id);
-
-            await Promise.all([
-                this.userRepository.disableTwoFactor(user.id, requestLog),
-                this.sessionUtil.deleteAllLogins(user.id, sessions),
-            ]);
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async regenerateTwoFactorBackupCodes(
-        user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        }
-
-        try {
-            const backupCodes = this.authTwoFactorUtil.generateBackupCodes();
-            await this.userRepository.regenerateTwoFactorBackupCodes(
-                user.id,
-                backupCodes.hashes,
-                requestLog
-            );
-
-            return {
-                data: {
-                    backupCodes: backupCodes.codes,
-                },
-            };
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async resetTwoFactorByAdmin(
-        userId: string,
-        updatedBy: string
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        if (userId === updatedBy) {
-            throw new UserNotSelfException();
-        }
-
-        const user = await this.userRepository.findOneWithRoleById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status === EnumUserStatus.blocked) {
-            throw new UserBlockedInvalidException();
-        } else if (!user.twoFactor?.enabled) {
-            throw new AuthTwoFactorNotEnabledException();
-        }
-
-        try {
-            const sessions = await this.sessionRepository.findActive(userId);
-
-            await Promise.all([
-                this.userRepository.resetTwoFactorByAdmin(
-                    userId,
-                    updatedBy,
-                    requestLog
-                ),
-                this.sessionUtil.deleteAllLogins(userId, sessions),
-            ]);
-
-            // @note: send email after all creation
-            await this.notificationUtil.sendResetTwoFactorByAdmin(
-                user.id,
-                updatedBy
-            );
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async importByAdmin(
-        data: UserImportRequestDto[],
-        createdBy: string
-    ): Promise<void> {
-        // TODO: Optimize by doing
-        // - in background job with bullmq, also before create check username uniqueness
-        // - when upload file, upload using presign
-        // - load data from s3, and not process all in one time
-        // - think about how to show progress status to user with bullmq
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const emails = data.map(item => item.email);
-        const [checkRole, checkCountry, existingUsers] = await Promise.all([
-            this.roleRepository.existByName(this.userRoleName),
-            this.countryRepository.existByAlpha2Code(this.userCountryName),
-            this.userRepository.findByEmails(emails),
-        ]);
-
-        if (existingUsers.length > 0) {
-            throw new UserImportEmailExistException(
-                existingUsers.map(user => user.email).join(', ')
-            );
-        } else if (!checkRole) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
-            throw new CountryNotFoundException();
-        }
-
-        try {
-            const totalData = data.length;
-            const userIds = Array(totalData)
-                .fill(0)
-                .map(() => this.databaseUtil.createId());
-            const usernames = Array(totalData)
-                .fill(0)
-                .map(() => this.userUtil.createRandomUsername());
-            const passwords = Array(totalData)
-                .fill(0)
-                .map(() => this.authUtil.createPasswordRandom());
-            const passwordHasheds = userIds.map((e, i) =>
-                this.authUtil.createPassword(e, passwords[i])
-            );
-
-            const newUsers = await this.userRepository.importByAdmin(
-                data,
-                usernames,
-                passwordHasheds,
-                checkCountry.id,
-                checkRole,
-                requestLog,
-                createdBy
-            );
-
-            // @note: send email after all creation
-            const sendEmailPromises = [];
-            for (const [index, newUser] of newUsers.entries()) {
-                sendEmailPromises.push(
-                    this.notificationUtil.sendWelcomeByAdmin(
-                        newUser.id,
-                        {
-                            password: passwordHasheds[index].passwordEncrypted,
-                            passwordCreatedAt:
-                                this.helperService.dateFormatToIso(
-                                    passwordHasheds[index].passwordCreated
-                                ),
-                            passwordExpiredAt:
-                                this.helperService.dateFormatToIso(
-                                    passwordHasheds[index].passwordExpired
-                                ),
-                        },
-                        createdBy
-                    )
-                );
-            }
-
-            await Promise.all(sendEmailPromises);
-
-            return;
-        } catch (err: unknown) {
-            throw new AppUnknownException(err);
-        }
-    }
-
-    async exportByAdmin(
-        status?: Record<string, IPaginationIn>,
-        role?: Record<string, IPaginationEqual>,
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponseFileReturn> {
-        // TODO: Optimize by doing
-        // - in background job with bullmq
-        // - return aws s3 link
-        // - think about how to show progress status to user with bullmq
-
-        const data = await this.userRepository.findExport(
-            status,
-            role,
-            country
-        );
-
-        const users: UserExportResponseDto[] = this.userUtil.mapExport(data);
-        const csvString =
-            this.fileService.writeCsv<UserExportResponseDto>(users);
-
-        return {
-            data: csvString,
-            extension: EnumFileExtensionDocument.csv,
-        };
-    }
-
-    async logout(
-        userId: string,
-        sessionId: string,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        const checkActive = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!checkActive) {
-            throw new SessionNotFoundException();
-        }
-
-        try {
-            await Promise.all([
-                this.userRepository.logout(
-                    userId,
-                    sessionId,
-                    deviceOwnershipId,
-                    requestLog
-                ),
-                this.sessionUtil.deleteOneLogin(userId, sessionId),
-            ]);
-
-            return;
-        } catch (err: unknown) {
             throw new AppUnknownException(err);
         }
     }

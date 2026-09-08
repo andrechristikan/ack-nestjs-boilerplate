@@ -1,55 +1,46 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsMongoId,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    MinLength,
-} from 'class-validator';
-import { IsCustomEmail } from '@common/request/validations/request.custom-email.validation';
-import { Transform } from 'class-transformer';
+import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
-export class UserCreateRequestDto {
-    @ApiProperty({
-        example: faker.internet.email(),
-        required: true,
-        maxLength: 100,
-    })
-    @IsCustomEmail()
-    @IsNotEmpty()
-    @MaxLength(100)
-    @Transform(({ value }) => value.toLowerCase().trim())
-    email: Lowercase<string>;
-
-    @ApiProperty({
-        example: faker.database.mongodbObjectId(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsMongoId()
-    roleId: string;
-
-    @ApiProperty({
+export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
+    email: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .max(100)
+        .superRefine((value, ctx) => {
+            const validation = validateEmail(value);
+            if (!validation.validated) {
+                ctx.addIssue({
+                    code: 'custom',
+                    message: validation.messagePath,
+                });
+            }
+        })
+        .meta({
+            description: 'Email address of the user to create',
+            example: faker.internet.email(),
+        })
+        .transform(value => value as Lowercase<string>),
+    roleId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .meta({
+            description: 'Identifier of the role to assign',
+            example: faker.database.mongodbObjectId(),
+        }),
+    name: z.string().min(1).max(100).optional().meta({
+        description: 'Display name of the user to create',
         example: faker.person.fullName(),
-        required: false,
-        maxLength: 100,
-        minLength: 1,
-    })
-    @IsString()
-    @IsOptional()
-    @MinLength(1)
-    @MaxLength(100)
-    name?: string;
+    }),
+    countryId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/)
+        .meta({
+            description: 'Identifier of the user country',
+            example: faker.database.mongodbObjectId(),
+        }),
+});
 
-    @ApiProperty({
-        example: faker.database.mongodbObjectId(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsMongoId()
-    countryId: string;
-}
+export type UserCreateRequestDto = z.infer<typeof UserCreateRequestSchema>;

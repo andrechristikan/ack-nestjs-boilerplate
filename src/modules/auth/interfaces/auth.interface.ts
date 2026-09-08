@@ -1,7 +1,18 @@
-import { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { DeviceRequestDto } from '@modules/device/dtos/requests/device.request.dto';
-import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
+import { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
+import {
+    EnumRoleType,
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+} from '@generated/prisma-client';
+
+export interface IAuthToken {
+    tokenType: string;
+    roleType: EnumRoleType;
+    expiresIn: number;
+    accessToken: string;
+    refreshToken: string;
+}
 
 export interface IAuthPassword {
     passwordHash: string;
@@ -26,7 +37,6 @@ export interface IAuthJwtAccessTokenPayload {
     deviceOwnershipId: string;
     roleId: string;
 
-    // standard JWT claims
     jti?: string;
     iat?: number;
     nbf?: number;
@@ -49,7 +59,7 @@ export interface IAuthSocialPayload extends Pick<
 }
 
 export interface IAuthAccessTokenGenerate {
-    tokens: AuthTokenResponseDto;
+    tokens: IAuthToken;
     jti: string;
     sessionId: string;
 }

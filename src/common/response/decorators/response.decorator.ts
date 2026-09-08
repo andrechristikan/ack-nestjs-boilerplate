@@ -1,5 +1,8 @@
 import { SetMetadata, UseInterceptors, applyDecorators } from '@nestjs/common';
-import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
+import {
+    ResponseMessagePathMetaKey,
+    ResponseSchemaMetaKey,
+} from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
 import { IResponseOptions } from '@common/response/interfaces/response.interface';
@@ -9,7 +12,8 @@ import { ResponseFileInterceptor } from '@common/response/interceptors/response.
 
 /**
  * Standardizes a route's response via `ResponseInterceptor`; the handler must return
- * `IResponseReturn<T>`. `messagePath` is the i18n key; `options.cache` optionally enables caching.
+ * `IResponseReturn<T>`. `messagePath` is the i18n key; `options.schema` shapes the payload and its
+ * absence declares the route returns no data; `options.cache` optionally enables caching.
  */
 export function Response(
     messagePath: string,
@@ -19,6 +23,10 @@ export function Response(
         UseInterceptors(ResponseInterceptor),
         SetMetadata(ResponseMessagePathMetaKey, messagePath),
     ];
+
+    if (options?.schema) {
+        decorators.push(SetMetadata(ResponseSchemaMetaKey, options.schema));
+    }
 
     if (options?.cache) {
         decorators.push(UseInterceptors(ResponseCacheInterceptor));
@@ -39,7 +47,8 @@ export function Response(
 
 /**
  * Standardizes a paginated route via `ResponsePagingInterceptor`; the handler must return
- * `IResponsePagingReturn<T>` (offset or cursor). `options.cache` optionally enables caching.
+ * `IResponsePagingReturn<T>` (offset or cursor). `options.schema` shapes one item of the page;
+ * `options.cache` optionally enables caching.
  */
 export function ResponsePaging(
     messagePath: string,
@@ -49,6 +58,10 @@ export function ResponsePaging(
         UseInterceptors(ResponsePagingInterceptor),
         SetMetadata(ResponseMessagePathMetaKey, messagePath),
     ];
+
+    if (options?.schema) {
+        decorators.push(SetMetadata(ResponseSchemaMetaKey, options.schema));
+    }
 
     if (options?.cache) {
         decorators.push(UseInterceptors(ResponseCacheInterceptor));

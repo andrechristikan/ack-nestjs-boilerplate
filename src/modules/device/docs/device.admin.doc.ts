@@ -7,12 +7,17 @@ import {
     DocResponse,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import { DeviceResponseDto } from '@modules/device/dtos/response/device.response.dto';
+import {
+    DeviceOwnershipResponseDto,
+    DeviceOwnershipResponseSchema,
+} from '@modules/device/dtos/response/device.ownership.response.dto';
 import {
     DeviceOwnershipDocParamsId,
     DeviceOwnershipDocQueryList,
 } from '@modules/device/constants/device.doc.constant';
+import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
 export function DeviceAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -28,8 +33,10 @@ export function DeviceAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<DeviceResponseDto>('device.list', {
-            dto: DeviceResponseDto,
+        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+            schema: DeviceOwnershipResponseSchema,
+            availableOrderBy: DeviceDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }

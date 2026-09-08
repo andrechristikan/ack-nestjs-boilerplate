@@ -41,9 +41,10 @@ This application uses **cache-manager v7**, which uses **Keyv** as the unified s
 
 ### DRY & Singleton Pattern
 
-- **Single Redis Connection**: Only ONE Redis connection created and shared across all services
+- **Single Cache Connection**: Only ONE Redis connection is created for caching and shared across every cache consumer. BullMQ opens its own connections against `QUEUE_REDIS_URL` and does not reuse this client
 - **Single Configuration**: Defined once in `redis.config.ts`
 - **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
+- **Direct client consumer**: `RequestThrottlerStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
 
 **Example:**
 
@@ -60,7 +61,7 @@ All services → Inject and reuse the same connection
 
 ### Global Module Pattern
 
-`RedisCacheModule` and `CacheMainModule` are marked as `@Global()`:
+`RedisCacheModule` and `CacheMainModule` are dynamic modules whose `forRoot()` returns `global: true`, and `SessionModule` carries the `@Global()` decorator:
 - Providers automatically available everywhere
 - No need to import in feature modules
 
@@ -79,7 +80,7 @@ CommonModule
     │
     └── SessionModule (Global)
         └── Uses: RedisClientCachedProvider
-        └── Provides: SessionCacheProvider
+        └── Provides: SessionCacheProvider, SessionService, SessionCacheService, SessionUtil
 ```
 
 ### RedisCacheModule
@@ -93,7 +94,7 @@ CommonModule
 **Configuration:**
 ```typescript
 createKeyv(
-    { url: 'redis://localhost:6379' },
+    { url: 'redis://localhost:6379/0' }, // from CACHE_REDIS_URL
     {
         connectionTimeout: 30000,
         namespace: 'Cache',
@@ -115,18 +116,20 @@ createKeyv(
 
 **Usage:**
 ```typescript
-export class UserService {
+export class FeatureFlagCacheService {
     constructor(
-        @Inject(CacheMainProvider) readonly cache: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
     ) {}
 }
 ```
+
+A cache manager is injected into a dedicated cache service, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCacheService`, `AuthCacheService`, `FeatureFlagCacheService`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
 
 ### SessionModule
 
 **Purpose:** Provides cache for session management only
 
-**Provider:** `SessionCacheProvider`
+**Provider:** `SessionCacheProvider` (`src/modules/session/constants/session.constant.ts`)
 
 **Scope:** Global (available everywhere)
 
@@ -134,12 +137,16 @@ export class UserService {
 
 **Usage:**
 ```typescript
-export class SessionService {
+export class SessionCacheService {
     constructor(
-        @Inject(SessionCacheProvider) private cache: Cache,
+        @Inject(SessionCacheProvider) private cacheManager: Cache,
     ) {}
 }
 ```
+
+`SessionCacheService` is the only injection site. `SessionCacheProvider` is registered inside `SessionModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionService`, `SessionCacheService` and `SessionUtil`, and exports `SessionService` and `SessionCacheService`.
+
+Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
 ## Configuration
 
@@ -159,6 +166,10 @@ export class SessionService {
 
 **Default TTL:** Cache entries expire after **5 minutes** (300,000 milliseconds) by default. This can be overridden per cache operation.
 
+**Redis database:** The cache uses database `0` (`CACHE_REDIS_URL=redis://localhost:6379/0`). BullMQ uses database `1` (`QUEUE_REDIS_URL=redis://localhost:6379/1`) on the same server, so flushing one does not touch the other.
+
+**Key prefix:** `namespace: 'Cache'` with `keyPrefixSeparator: ':'` means every key is stored as `Cache:{key}`.
+
 ### Module Import Order
 
 **File:** `src/common/common.module.ts`
@@ -167,15 +178,17 @@ export class SessionService {
 @Module({
     imports: [
         ConfigModule.forRoot(),
-        RedisCacheModule.forRoot(),    // 1. First
-        CacheMainModule.forRoot(),      // 2. Second
-        SessionModule,                  // 3. Then feature modules
+        RedisCacheModule.forRoot(),    // Redis connection first
+        QueueRegisterModule.forRoot(), // BullMQ, own connections on QUEUE_REDIS_URL
+        CacheMainModule.forRoot(),     // Depends on RedisCacheModule
+        // ... DatabaseModule, RequestModule, and other globals ...
+        SessionModule,                 // Feature modules later (registers SessionCacheProvider)
     ]
 })
 export class CommonModule {}
 ```
 
-**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`.
+**Why this order?** `CacheMainModule` depends on `RedisClientCachedProvider` from `RedisCacheModule`. `SessionModule` registers its own cache provider over the same client later.
 
 ## Usage
 
@@ -184,9 +197,9 @@ export class CommonModule {}
 **Global cache:**
 ```typescript
 @Injectable()
-export class UserService {
+export class FeatureFlagCacheService {
     constructor(
-        @Inject(CacheMainProvider) readonly cache: Cache,
+        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
     ) {}
 }
 ```
@@ -194,9 +207,9 @@ export class UserService {
 **Session cache:**
 ```typescript
 @Injectable()
-export class SessionService {
+export class SessionCacheService {
     constructor(
-        @Inject(SessionCacheProvider) private cache: Cache,
+        @Inject(SessionCacheProvider) private cacheManager: Cache,
     ) {}
 }
 ```
@@ -217,3 +230,4 @@ For cache operations (set, get, delete, etc.), see:
 [ref-doc-environment]: environment.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-response]: response.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

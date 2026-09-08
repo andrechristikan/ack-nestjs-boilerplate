@@ -1,11 +1,19 @@
 import { AwsModule } from '@common/aws/aws.module';
+import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
+import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
+import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
+import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
+import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
+import { HealthService } from '@modules/health/services/health.service';
+import { HealthUtil } from '@modules/health/utils/health.util';
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { TerminusModule } from '@nestjs/terminus';
 
 /**
@@ -13,26 +21,30 @@ import { TerminusModule } from '@nestjs/terminus';
  */
 @Module({
     providers: [
+        HealthService,
+        HealthUtil,
         HealthAwsS3BucketIndicator,
         HealthAwsSESIndicator,
         HealthDatabaseIndicator,
         HealthInstanceIndicator,
         HealthRedisIndicator,
         HealthSentryIndicator,
+        HealthFirebaseIndicator,
+        HealthGoogleIndicator,
+        HealthAppleIndicator,
+        HealthJwksIndicator,
+        HealthQueueIndicator,
     ],
-    exports: [
-        HealthAwsS3BucketIndicator,
-        HealthAwsSESIndicator,
-        HealthDatabaseIndicator,
-        HealthInstanceIndicator,
-        HealthRedisIndicator,
-        HealthSentryIndicator,
-        TerminusModule,
-    ],
+    exports: [HealthService, HealthUtil],
     imports: [
         AwsModule,
-        TerminusModule.forRoot({
-            gracefulShutdownTimeoutMs: 30000,
+        TerminusModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                gracefulShutdownTimeoutMs: configService.get<number>(
+                    'health.gracefulShutdownTimeoutInMs'
+                )!,
+            }),
         }),
     ],
 })

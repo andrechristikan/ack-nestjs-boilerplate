@@ -1,15 +1,18 @@
-import { IsTwoFactorCode } from '@modules/auth/validations/auth.two-factor-code.validation';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { z } from 'zod';
 
-export class UserTwoFactorEnableRequestDto {
-    @ApiProperty({
-        description: `digit code from authenticator app`,
-        example: '654321',
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @IsTwoFactorCode()
-    code: string;
-}
+export const UserTwoFactorEnableRequestSchema = z.strictObject({
+    code: z
+        .string()
+        .min(1)
+        .regex(/^[0-9]+$/, {
+            error: () => 'auth.error.twoFactorCodeRequired',
+        })
+        .meta({
+            description: 'digit code from authenticator app',
+            example: '654321',
+        }),
+});
+
+export type UserTwoFactorEnableRequestDto = z.infer<
+    typeof UserTwoFactorEnableRequestSchema
+>;

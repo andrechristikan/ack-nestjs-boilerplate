@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v11.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma, works with any database. Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -54,8 +54,7 @@ This boilerplate is perfect for:
     - [🔔 Notifications](#-notifications)
     - [📝 Testing \& Documentation](#-testing--documentation)
   - [Quick Start](#quick-start)
-  - [Change DB with Minimal Effort](#change-db-with-minimal-effort)
-    - [Supported Databases](#supported-databases)
+  - [Database](#database)
   - [Installation](#installation)
   - [License](#license)
   - [Contribute](#contribute)
@@ -68,20 +67,26 @@ This boilerplate is perfect for:
 - Must run MongoDB as a `replication set` for `database transactions`.
 - If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
 - In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
-- When using multiple protection decorators, they must be applied in the correct order:
+- When using multiple protection decorators, they must be applied in the correct order. A route takes only the slots it needs; the relative order of the ones it takes never changes:
     ```typescript
     @ExampleDoc()
+    @Response('example.get')
     @TermPolicyAcceptanceProtected(...)
-    @PolicyAbilityProtected({...})
+    @PolicyProtected({...})
     @RoleProtected(...)
+    @ProjectMemberProtected(...)      // /user scope only
+    @ProjectProtected()               // /user scope only
+    @WorkspaceMemberProtected(...)    // /user scope only
+    @WorkspaceProtected()             // /user scope only
     @ActivityLog(...)
     @UserProtected()
-    @AuthJwtAccessProtected()
     @FeatureFlagProtected(...)
+    @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Get('/some-endpoint')
     ```
+    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets must sit **above** it. `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user` - below it, the guard always takes its anonymous branch and any rollout below 100% is inert. See [Authorization Documentation][ref-doc-authorization].
+- `@HttpCode()` belongs only on `@Post` routes. Every other method already defaults to `200 OK`, so declaring it there is a no-op.
 - The project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - The project uses Prisma `6.19` to handle the database.
 - The project uses pnpm as the package manager.
@@ -99,6 +104,7 @@ This boilerplate is perfect for:
 - [x] Notification System includes silent, inApp, push, and email.
 - [x] Activity Log records successful user activities with `@ActivityLog`
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
+- [x] Multi-workspace tenancy with workspace-scoped projects ([docs/workspace.md][ref-doc-workspace], [docs/project.md][ref-doc-project])
 
 ### Next Features
 
@@ -106,8 +112,7 @@ This boilerplate is perfect for:
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
-- [ ] Analytics Dashboard (Docs is provided at [docs/analytics.md][ref-doc-analytics])
-- [ ] Multi-Tenant Architecture
+- [ ] Analytics Dashboard
 - [ ] Verification Mobile Number, whatsapp or/and sms
 - [ ] Versioning System (Force frontend to update, especially mobile)
 
@@ -116,7 +121,7 @@ This boilerplate is perfect for:
 - Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
-- [ ] Unit test
+- [ ] Unit test suite: Jest is configured (`test/jest.json`, `pnpm test`) and `test/` holds **no spec files**, so `pnpm test` passes on `--passWithNoTests`
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -144,12 +149,13 @@ The project is built using the following technologies and versions. We always st
 
 | Name           | Version  |
 | -------------- | -------- |
-| NestJs         | v11.x    |
+| NestJs         | v12.x    |
 | NodeJs         | v24.11.x |
+| PNPM           | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8.0.x   |
-| Redis          | v8.0.x   |
+| MongoDB        | v8+ (compose: `mongo:latest`)   |
+| Redis          | v8+ (compose: `redis:latest`)   |
 | Docker         | v28.5.x  |
 | Docker Compose | v2.40.x  |
 
@@ -174,6 +180,7 @@ For more information see [package.json][ref-package-json]
 - **Modular Structure** - Component-based folder organization
 - **12-Factor App** - Cloud-native best practices
 - **Production Ready** - Enterprise-grade security and scalability
+- **Workspaces & Projects** - Every user lands in a workspace at creation, personal by default or the inviting workspace when they sign up through an invite; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
 
 ### 🔐 Authentication & Security
 Production-ready authentication system with multiple strategies and security layers.
@@ -184,7 +191,7 @@ Production-ready authentication system with multiple strategies and security lay
 - **Two-Factor Authentication** - TOTP-based 2FA with backup recovery codes
 - **RBAC & Policies** - Fine-grained role and permission system
 - **API Key Protection** - Secure external API access control
-- **Rate Limiting** - DDoS protection with configurable throttling
+- **Rate Limiting** - Redis-backed sliding window shared across instances: an always-on per-IP limit plus opt-in per-user and per-route tiers
 - **Security Headers** - Helmet integration for HTTP security
 
 ### 📊 Database & Storage
@@ -208,10 +215,10 @@ Built for speed and scalability from day one.
 ### 🛠 Development Experience
 Developer-friendly tooling and best practices.
 
-- **NestJS 11.x** - Latest framework version with full TypeScript support
+- **NestJS 12.x** - Latest framework version with full TypeScript support
 - **Swagger/OpenAPI 3** - Interactive API documentation
 - **API Versioning** - URL-based versioning (default v1)
-- **Request Validation** - Automatic validation with class-validator
+- **Request Validation** - Every request shape is a zod schema, validated by the global `RequestSchemaValidationPipe`
 - **Error Handling** - Standardized error responses with i18n
 - **Hot Reload** - Fast development with SWC
 - **Code Quality** - ESLint, Prettier, Husky pre-commit hooks
@@ -241,9 +248,9 @@ Multi-channel notification system for user engagement.
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
-- **Jest Testing** - Unit test setup mirroring `src/` under `test/`
+- **Jest Testing** - `test/jest.json` matches `test/**/*.spec.ts` and holds coverage at a global 100% threshold
 - **Swagger UI** - Auto-generated API documentation
-- **Detailed Docs** - 20+ documentation files covering all features
+- **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
 - **Docker Support** - Complete containerization with docker-compose
 
 ## Quick Start
@@ -258,35 +265,32 @@ pnpm install
 # Setup environment
 cp .env.example .env
 
-# Run with Docker
+# Generate JWT keys and the Prisma client
+pnpm generate:keys
+pnpm db:generate
+
+# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Access API
+# Push the schema (needs the MongoDB replica set above already running)
+pnpm db:migrate
+
+# Run the API on the host
+pnpm start:dev
+
+# Access Swagger
 open http://localhost:3000/docs
 ```
 
-## Change DB with Minimal Effort
+To run the API inside Compose as well, start with the `apis` profile: `docker-compose --profile apis up -d`.
 
-Thanks to **Repository Pattern** and **Prisma ORM**, switching databases requires minimal code changes. The abstraction layer isolates database logic from business logic.
+## Database
 
-### Supported Databases
+This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`). Schema sync uses `pnpm db:migrate` (`prisma db push`). There is no `prisma migrate` script.
 
-| Database | Best For | Transaction Support |
-|----------|----------|---------------------|
-| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
+Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. Prefer forking that work deliberately rather than treating it as a one-command switch.
 
-**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
-
-**Migration typically requires:**
-- Updating `prisma/schema.prisma` provider
-- Adjusting ID strategy (ObjectId → UUID). Update the `DatabaseUtil` helpers.
-- Running `pnpm prisma migrate dev`
-- Running `pnpm migration:seed`
-
-**Business logic stays unchanged** - services, controllers, and authentication work as-is.
-
-For detailed migration guides, see [Database Documentation][ref-doc-database].
+For MongoDB setup and seeding, see [Database Documentation][ref-doc-database].
 
 ## Installation
 
@@ -407,7 +411,9 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-presign]: docs/presign.md
 [ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
-[ref-doc-analytics]: docs/analytics.md
 [ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
 [ref-doc-doc]: docs/doc.md
+[ref-doc-workspace]: docs/workspace.md
+[ref-doc-project]: docs/project.md
+[ref-doc-status-codes]: docs/status-codes.md

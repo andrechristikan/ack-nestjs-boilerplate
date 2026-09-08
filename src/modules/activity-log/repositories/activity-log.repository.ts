@@ -12,6 +12,7 @@ import {
     IActivityLog,
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import {
     ActivityLog,
@@ -21,60 +22,125 @@ import {
 
 @Injectable()
 export class ActivityLogRepository {
+    private readonly userScopedFilter: NonNullable<
+        Prisma.ActivityLogWhereInput['OR']
+    > = [{ workspaceId: null }, { workspaceId: { isSet: false } }];
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    async findWithPaginationOffset(
+    private buildUserScopedWhere(
+        userId: string,
+        where?: Prisma.ActivityLogWhereInput
+    ): Prisma.ActivityLogWhereInput {
+        return {
+            AND: [
+                ...(where ? [where] : []),
+                { userId },
+                { OR: this.userScopedFilter },
+            ],
+        };
+    }
+
+    private buildWorkspaceScopedWhere(
+        workspaceId: string,
+        userId: string | null,
+        where?: Prisma.ActivityLogWhereInput
+    ): Prisma.ActivityLogWhereInput {
+        return {
+            AND: [
+                ...(where ? [where] : []),
+                { workspaceId },
+                ...(userId !== null ? [{ userId }] : []),
+            ],
+        };
+    }
+
+    async findUserScopedWithPaginationOffset(
         userId: string,
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.paginationService.offset<
             IActivityLog,
-            Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: {
-                ...where,
-                userId,
-            },
+            where: this.buildUserScopedWhere(userId, where),
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
 
-    async findWithPaginationCursor(
+    async findUserScopedWithPaginationCursor(
         userId: string,
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
         return this.paginationService.cursor<
             IActivityLog,
-            Prisma.ActivityLogSelect,
             Prisma.ActivityLogWhereInput
         >(this.databaseService.client.activityLog, {
             ...params,
-            where: {
-                ...where,
-                userId,
-            },
+            where: this.buildUserScopedWhere(userId, where),
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+            },
+        });
+    }
+
+    async findByWorkspaceWithPaginationOffset(
+        workspaceId: string,
+        userId: string | null,
+        {
+            where,
+            ...params
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.paginationService.offset<
+            IActivityLog,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.client.activityLog, {
+            ...params,
+            where: this.buildWorkspaceScopedWhere(workspaceId, userId, where),
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+            },
+        });
+    }
+
+    async findByWorkspaceWithPaginationCursor(
+        workspaceId: string,
+        userId: string | null,
+        {
+            where,
+            ...params
+        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+    ): Promise<IPaginationCursorReturn<IActivityLog>> {
+        return this.paginationService.cursor<
+            IActivityLog,
+            Prisma.ActivityLogWhereInput
+        >(this.databaseService.client.activityLog, {
+            ...params,
+            where: this.buildWorkspaceScopedWhere(workspaceId, userId, where),
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }

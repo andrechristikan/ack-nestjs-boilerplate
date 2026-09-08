@@ -1,68 +1,52 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import {
     EnumNotificationPriority,
     EnumNotificationType,
 } from '@generated/prisma-client';
 
-export class NotificationResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Base notification shape: one stored in-app notification of a user.
+ */
+export const NotificationResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    userId: z.string().meta({
+        description: 'Identifier of the user the notification belongs to',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    type: z.enum(EnumNotificationType).meta({
+        description: 'Type of the notification',
         example: EnumNotificationType.securityAlert,
-        enum: EnumNotificationType,
-    })
-    @Expose()
-    type: EnumNotificationType;
-
-    @ApiProperty({
-        required: true,
+    }),
+    priority: z.enum(EnumNotificationPriority).meta({
+        description: 'Priority of the notification',
         example: EnumNotificationPriority.high,
-        enum: EnumNotificationPriority,
-    })
-    @Expose()
-    priority: EnumNotificationPriority;
-
-    @ApiProperty({
-        required: true,
+    }),
+    title: z.string().meta({
+        description: 'Title shown to the user',
         example: 'Login',
-    })
-    @Expose()
-    title: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    body: z.string().meta({
+        description: 'Body text shown to the user',
         example: 'Login from web via credential',
-    })
-    @Expose()
-    body: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    metadata: z.unknown().meta({
+        description: 'Additional payload attached to the notification',
         example: { exampleKey: 'exampleValue' },
-    })
-    @Expose()
-    metadata?: unknown;
-
-    @ApiProperty({
-        required: true,
+    }),
+    isRead: z.boolean().meta({
+        description: 'Whether the user has read the notification',
         example: false,
-    })
-    @Expose()
-    isRead: boolean;
-
-    @ApiProperty({
-        required: false,
+    }),
+    readAt: z.date().nullable().meta({
+        description: 'When the user read the notification',
         example: faker.date.recent(),
-    })
-    @Expose()
-    readAt?: Date;
-}
+    }),
+});
+
+export type NotificationResponseDto = z.infer<
+    typeof NotificationResponseSchema
+>;

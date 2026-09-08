@@ -39,7 +39,6 @@ The Term Policy module manages legal agreements and user consent within the appl
 - [TermPolicyAcceptanceProtected](#termpolicyacceptanceprotected)
   - [Basic Usage](#basic-usage)
   - [How It Works](#how-it-works)
-  - [Default Behavior](#default-behavior)
   - [Important Notes](#important-notes)
 - [Migration & Seeding](#migration--seeding)
 - [Contribution](#contribution)
@@ -113,15 +112,20 @@ sequenceDiagram
     Note over Admin,Users: Publishing Process
     
     Admin->>API: Publish policy
-    API->>Database: Check policy has content
+    API->>Database: Reject an already-published policy, then a policy with no content
     API->>S3 Public: Move all content files
-    API->>Database: Update status to published
-    API->>Database: Set active users termPolicy[type]=false
-    API->>S3 Private: Delete private content
+    par
+        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to public keys,<br/>active users termPolicy[type] = false
+    and
+        API->>S3 Private: Delete the private content directory
+    end
+    API->>Users: Queue publishTermPolicy notification
     API->>Admin: Policy published
     
     Note over Users: Users must now re-accept
 ```
+
+Publishing is the one admin action that fans out to every user: after the transaction commits it queues a `publishTermPolicy` job, which emails every active user who still has the `transactional` + `email` notification setting enabled, in batches of `email.batchSize`.
 
 ### User Flow Diagram
 
@@ -142,11 +146,10 @@ sequenceDiagram
     Note over User,Database: Accepting Policy
     
     User->>API: Accept policy (type)
-    API->>Database: Check latest published exists
-    API->>Database: Check not already accepted
-    API->>Database: Create acceptance record
-    API->>Database: Update user.termPolicy[type]=true
-    API->>Database: Log activity (IP, userAgent)
+    API->>Database: Check latest published exists (404 otherwise)
+    API->>Database: Check that version not already accepted (409 otherwise)
+    API->>Database: One transaction: create acceptance record,<br/>set user.termPolicy[type] = true,<br/>log activity (IP, userAgent)
+    API->>User: Queue userAcceptTermPolicy notification
     API->>User: Acceptance recorded
     
     Note over User,Database: Accessing Protected Endpoint
@@ -187,14 +190,14 @@ POST /shared/user/term-policy/accept
 }
 ```
 
-Accepting the same policy twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
+The request names only the type; the server resolves it to the **latest published version** of that type and records the acceptance against that record. The duplicate check is per policy record, not per type, so a user who accepted version 1 can and must accept version 2 once it is published. Accepting the same version twice returns `409` (`alreadyAccepted`). When no published policy exists for the type, it returns `404` (`notFound`).
 
 ### View Acceptance History
 
 Users can view their acceptance history:
 
 ```typescript
-GET /shared/user/term-policy/list/accepted
+GET /shared/user/term-policy/acceptance/list
 ```
 
 Returns all policies the user has accepted with timestamps and policy details.
@@ -208,7 +211,7 @@ Admins manage the complete lifecycle of term policies from creation to publishin
 Generate presigned URL for uploading content to S3:
 
 ```typescript
-POST /admin/term-policy/generate/content/presign
+POST /admin/term-policy/content/presign/generate
 {
   "type": "termsOfService",
   "version": 1,
@@ -217,7 +220,7 @@ POST /admin/term-policy/generate/content/presign
 }
 ```
 
-The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredIn`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
+The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
 
 ### Create Policy
 
@@ -232,7 +235,7 @@ POST /admin/term-policy/create
 Add new language variant to draft policy:
 
 ```typescript
-PUT /admin/term-policy/update/:termPolicyId/content/add
+PUT /admin/term-policy/content/:termPolicyId/add
 ```
 
 ### Update Content
@@ -240,7 +243,7 @@ PUT /admin/term-policy/update/:termPolicyId/content/add
 Replace existing language content in draft policy:
 
 ```typescript
-PUT /admin/term-policy/update/:termPolicyId/content/update
+PUT /admin/term-policy/content/:termPolicyId/update
 ```
 
 ### Remove Content
@@ -248,7 +251,7 @@ PUT /admin/term-policy/update/:termPolicyId/content/update
 Remove specific language variant from draft policy:
 
 ```typescript
-DELETE /admin/term-policy/update/:termPolicyId/content/remove
+DELETE /admin/term-policy/content/:termPolicyId/remove
 ```
 
 ### Get Content
@@ -256,7 +259,7 @@ DELETE /admin/term-policy/update/:termPolicyId/content/remove
 Get presigned URL to download policy content:
 
 ```typescript
-POST /admin/term-policy/get/:termPolicyId/content/:language
+GET /admin/term-policy/content/:termPolicyId/:language/get
 ```
 
 Works on draft and published policies alike, and always signs against the private bucket.
@@ -268,7 +271,7 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing a policy with no content returns `400` (`contentEmpty`). Once published, policy cannot be edited or deleted.
+**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files live in the public bucket while the private copy is deleted.
 
 ### List Policies
 

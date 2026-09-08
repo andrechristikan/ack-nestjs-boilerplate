@@ -5,8 +5,8 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { Injectable } from '@nestjs/common';
 import { FeatureFlag, Prisma } from '@generated/prisma-client';
 
@@ -18,27 +18,19 @@ export class FeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
-            Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
         >(this.databaseService.client.featureFlag, pagination);
     }
 
     async findWithPaginationCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.FeatureFlagSelect,
-            Prisma.FeatureFlagWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         return this.paginationService.cursor<
             FeatureFlag,
-            Prisma.FeatureFlagSelect,
             Prisma.FeatureFlagWhereInput
         >(this.databaseService.client.featureFlag, pagination);
     }

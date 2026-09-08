@@ -4,18 +4,17 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from '@app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { useContainer, validate } from 'class-validator';
 import swaggerInit from './swagger';
-import { plainToInstance } from 'class-transformer';
-import { AppEnvDto } from '@app/dtos/app.env.dto';
-import { MessageService } from '@common/message/services/message.service';
 import { Logger as PinoLogger } from 'nestjs-pino';
+import { Express } from 'express';
 
 async function bootstrap(): Promise<void> {
     let app: NestApplication = await NestFactory.create(AppModule, {
         abortOnError: true,
         bufferLogs: true,
         bodyParser: false,
+        routeConflictPolicy: { duplicate: 'error', shadow: 'error' },
+        routeResolutionStrategy: 'specificity',
     });
 
     app.useLogger(app.get(PinoLogger));
@@ -25,6 +24,9 @@ async function bootstrap(): Promise<void> {
     const timezone: string = configService.get<string>('app.timezone')!;
     const host: string = configService.get<string>('app.http.host')!;
     const port: number = configService.get<number>('app.http.port')!;
+    const trustedProxy: string | null = configService.get<string | null>(
+        'app.http.trustedProxy'
+    )!;
     const globalPrefix: string = configService.get<string>('app.globalPrefix')!;
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
@@ -49,7 +51,9 @@ async function bootstrap(): Promise<void> {
     app = app.enableShutdownHooks();
 
     app.setGlobalPrefix(globalPrefix);
-    useContainer(app.select(AppModule), { fallbackOnErrors: true });
+    app.getHttpAdapter()
+        .getInstance<Express>()
+        .set('trust proxy', trustedProxy);
 
     if (versionEnable) {
         app.enableVersioning({
@@ -60,26 +64,6 @@ async function bootstrap(): Promise<void> {
     }
 
     const logger = new Logger(`${appName}-Main`);
-    const classEnv = plainToInstance(AppEnvDto, process.env);
-    const errors = await validate(classEnv, {
-        skipMissingProperties: false,
-        skipNullProperties: false,
-        skipUndefinedProperties: false,
-        validationError: {
-            target: false,
-            value: true,
-        },
-    });
-    if (errors.length > 0) {
-        const messageService = app.get(MessageService);
-        const errorsMessage = messageService.setValidationMessage(errors);
-
-        logger.error(errorsMessage, 'Env Variable Invalid');
-
-        throw new Error('Env Variable Invalid', {
-            cause: errorsMessage,
-        });
-    }
 
     await swaggerInit(app);
 
@@ -99,6 +83,7 @@ async function bootstrap(): Promise<void> {
         `App URL: http://${host}:${port}${globalPrefix}`,
         'NestApplication'
     );
+    logger.log(`App Trusted Proxy: ${trustedProxy}`, 'NestApplication');
     const databaseHost = new URL(databaseUrl).host;
     logger.log(`Database Host: ${databaseHost}`, 'NestApplication');
     logger.log(`Database Debug: ${databaseDebug}`, 'NestApplication');
@@ -109,4 +94,16 @@ async function bootstrap(): Promise<void> {
 
     return;
 }
-bootstrap();
+
+/**
+ * Forces the exit on a failed boot. Shutdown hooks are already registered by then, so the signal
+ * listeners keep the event loop alive and nothing else would terminate the process.
+ */
+bootstrap().catch((error: unknown) => {
+    const detail =
+        error instanceof Error ? (error.stack ?? error.message) : String(error);
+
+    process.stderr.write(`[Bootstrap] Failed to start the application\n`);
+    process.stderr.write(`${detail}\n`);
+    process.exit(1);
+});

@@ -30,6 +30,20 @@
     },
     "coverageReporters": ["html", "lcov", "json-summary"],
     "moduleFileExtensions": ["js", "ts", "json"],
+    "moduleNameMapper": {
+        "^@app/(.*)$": "<rootDir>/src/app/$1",
+        "^@common/(.*)$": "<rootDir>/src/common/$1",
+        "^@configs/(.*)$": "<rootDir>/src/configs/$1",
+        "^@config$": "<rootDir>/src/configs/index.ts",
+        "^@modules/(.*)$": "<rootDir>/src/modules/$1",
+        "^@router/(.*)$": "<rootDir>/src/router/$1",
+        "^@migration/(.*)$": "<rootDir>/src/migration/$1",
+        "^@test/(.*)$": "<rootDir>/test/$1",
+        "^@generated/(.*)$": "<rootDir>/generated/$1",
+        "^@prisma/client$": "<rootDir>/generated/prisma-client",
+        "^@queues/(.*)$": "<rootDir>/src/queues/$1",
+        "^@package$": "<rootDir>/package.json"
+    },
     "coverageProvider": "v8",
     "transform": {
         "^.+\\.(t|j)sx?$": [

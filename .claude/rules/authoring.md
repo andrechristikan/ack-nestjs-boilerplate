@@ -1,7 +1,7 @@
 # Authoring — where a sentence lives
 
-The four-tree map and the placement test are in `.claude/CLAUDE.md` → "Where a sentence
-lives". What follows here is the rationale and mechanics for writing INSIDE those trees
+The tree-by-tree placement map is in `.claude/skills/ack-claude-config/SKILL.md` → "Where a
+sentence lives". What follows here is the rationale and mechanics for writing INSIDE those trees
 correctly, not the placement decision itself.
 
 ## The asymmetry (HARD)
@@ -17,6 +17,48 @@ code at that moment.
 
 What does NOT move down into a rule: flow narrative, long code samples, catalogs. Those
 are `docs/`.
+
+## Final state only (HARD)
+
+**Binds `docs/*.md` AND `.claude/**` alike.** Both trees describe how the project works NOW,
+and nothing else.
+
+Never written in either tree: an issue, a bug, a bug fix, a defect that was repaired, a change,
+a decision and its reasoning, a rejected alternative, a migration note, a date, a version, or a
+changelog line.
+
+**The ban is on comparing against a FORMER STATE, not on a vocabulary.** "previously", "used
+to", "no longer", "now", "instead of" and "rather than" are banned where they contrast this
+version of the system with an earlier one, and perfectly correct where they contrast two
+options a reader is choosing between right now: `a repository is injected as a class rather
+than behind a token` is a rule doing its job; `the repository is no longer injected behind a
+token` is a changelog line. Grep finds the word; only reading finds the violation.
+
+**The test:** would this sentence exist if the thing had ALWAYS been this way? If it only makes
+sense because something used to be different, it is history. History lives in `git log`, in the
+PR description, and in the issue tracker.
+
+### The negation trap
+
+A sentence phrased as a fact can still be history. This is the form that survives every other
+check, so it gets its own test.
+
+- A negation that states a **CONTRACT** is a fact, and it stays. It tells the reader what to
+  send, what to expect, or what a guard will not do: `the refresh request carries no
+  fingerprint`; `an admin route carries no workspace guard`; `the cursor payload carries no
+  query`.
+- A negation that **REBUTS a former state or a corrected claim** is history wearing a fact's
+  clothes, and it goes: `there is no explicit $transaction wrapper around it`; `the session
+  count is not stored on the model`; `derived from platform, whether or not a token came with
+  the request`; `both paths pass the same action, so only createdBy differs`.
+
+The difference is who the sentence serves. The first serves a reader building against the
+system. The second serves only a reader who remembers what it used to say — and that reader
+should be reading the diff.
+
+**Rewrite, do not delete the information.** `the session count is not stored on the model`
+becomes `activeSessionCount is computed per read by a _count on sessions`. State what IS, drop
+the contrast.
 
 ## Mood
 
@@ -38,32 +80,24 @@ criterion is "no obligation SENTENCE in `docs/` prose".
 
 Every artifact is written in ENGLISH — code, identifiers, comments, commit messages,
 `docs/*.md`, `.claude/**`, `.superpowers/**`, PR descriptions. Conversation with the owner
-may be Bahasa Indonesia; artifacts are never mixed. When recording something the owner
-said, PARAPHRASE it in English; do not paste the original-language quote for provenance.
-The date and the "owner decision" attribution carry the provenance.
+may be Bahasa Indonesia; artifacts are never mixed. Something the owner said reaches an
+artifact only as the RULE or the FACT it produced, in English — never as a quote, never with
+a date, and never attributed. "Final state only" governs that: an artifact carries what is
+true, not who decided it or when.
 
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
 
-## Comments
+## Documentation prose (`docs/*.md`)
 
-- **Minimal comments** — default zero, only a critical WHY.
-- **No method JSDoc on internal code (HARD).** A service, repository, controller, seed `seed()`/`remove()`, guard, pipe, or processor method carries no JSDoc — types, names, and tests are the contract. JSDoc is fine on a published library's public API; this is an internal boilerplate, so almost everything is internal.
-- **Optional one-line class JSDoc** only when the class name alone does not say what the Nest provider/command is for (live seed classes and some modules do this). Never required. Never method-level to "match" a class comment.
-- **Banned JSDoc tags on any JSDoc that does exist:** `@example` `@param` `@returns` `@template` `@throws` `@private` `@export` `@class` `@implements` `@constraint` `@remarks`.
-- **No JSDoc on interfaces** (including per-field comments).
-- **`@note` is VERY RARE (HARD).** It exists for exactly two things:
-  1. **A decision between two viable paths, naming what the other path costs.**
-  2. **The hazard of the edit the next reader is about to make** — what BREAKS when they
-     do the obvious thing.
-  Both name a CONSEQUENCE. Zero per file is the normal count.
-- **`@note` is NEVER a justification (HARD).** Banned: rule-defense, restating a rule file,
-  narration of WHAT, changelog or plan notes. Delete on sight.
-- **Re-test the note AFTER the change lands.** Delete notes whose subject the change itself
-  removed.
-- **A note sits where the hazardous EDIT happens**, not where the value is declared.
-- **The test:** finish "…otherwise". If it ends in a concrete breakage, it may stay. If it
-  ends in "…because that is allowed", leave it out.
-- **Format:** `// @note: <reason>` exclusively, short and single-line (~80 chars). A bare `//` narration is not a form this codebase has. No trailing comments to the right of code.
-- **Preserve** existing rule-compliant `TODO` / `NOTE` / `@note` / `FIXME` / `XXX` / `HACK`
-  verbatim when still true; delete banned notes, do not preserve them.
+- **No em-dash (`—`) in documentation prose.** Use a period, comma, semicolon, colon, or
+  parentheses. Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not
+  overuse them. The one exception is an existing structured list whose every entry already uses
+  `—` as a separator: match it rather than breaking the pattern on one line.
+- Simple, firm, and pointed. Bullets first, prose where prose is needed. Keep the existing
+  section structure intact rather than reorganizing around a small correction.
+
+## What is NOT here
+
+Comment policy is `rules/comments.md`. Class member layout is `rules/code-style.md`. Neither
+is restated here.

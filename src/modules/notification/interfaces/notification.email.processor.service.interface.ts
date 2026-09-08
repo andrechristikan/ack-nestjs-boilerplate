@@ -1,6 +1,7 @@
 import {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
+    INotificationEmailUnregisteredQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -9,6 +10,11 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteUnregisteredPayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { Job } from 'bullmq';
@@ -102,6 +108,41 @@ export interface INotificationEmailProcessorService {
     processPublishTermPolicy(
         job: Job<
             INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWorkspaceInvite(
+        job: Job<
+            INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWorkspaceInviteUnregistered(
+        job: Job<
+            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWorkspaceJoinRequest(
+        job: Job<
+            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWorkspaceJoinAccepted(
+        job: Job<
+            INotificationEmailQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+            IQueueResponse,
+            EnumNotificationProcess
+        >
+    ): Promise<IQueueResponse>;
+    processWorkspaceJoinRejected(
+        job: Job<
+            INotificationEmailQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

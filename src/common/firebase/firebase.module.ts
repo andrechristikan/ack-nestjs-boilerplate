@@ -1,5 +1,6 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
+import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
 
 /**
  * Global module exposing `FirebaseService` (Admin SDK) for FCM push delivery app-wide.
@@ -10,8 +11,8 @@ export class FirebaseModule {
         return {
             module: FirebaseModule,
             global: true,
-            providers: [FirebaseService],
-            exports: [FirebaseService],
+            providers: [FirebaseUtil, FirebaseService],
+            exports: [FirebaseUtil, FirebaseService],
             imports: [],
             controllers: [],
         };

@@ -1,30 +1,34 @@
 import { Module } from '@nestjs/common';
+import { AwsModule } from '@common/aws/aws.module';
 import { CommonModule } from '@common/common.module';
 import { MigrationApiKeySeed } from '@migration/seeds/migration.api-key.seed';
-import { CountryModule } from '@modules/country/country.module';
-import { UserModule } from '@modules/user/user.module';
+import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
 import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
+import { MigrationPolicySeed } from '@migration/seeds/migration.policy.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
-import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
-import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
-import { MigrationAwsS3ConfigSeed } from '@migration/seeds/migration.aws-s3-config.seed';
-import { AwsModule } from '@common/aws/aws.module';
 import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
 import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.template-term-policy.seed';
+import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
+import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
+import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
+import { UserModule } from '@modules/user/user.module';
+import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 
 /**
  * Registers all `nest-commander` seed/remove commands for initial data migration.
  */
 @Module({
-    imports: [CommonModule, CountryModule, UserModule, AwsModule],
+    imports: [CommonModule, AwsModule, UserModule, WorkspaceRepositoryModule],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,
         MigrationFeatureFlagSeed,
+        MigrationPolicySeed,
         MigrationRoleSeed,
         MigrationTermPolicySeed,
         MigrationUserSeed,
+        MigrationWorkspaceSeed,
         MigrationTemplateEmailNotificationSeed,
         MigrationTemplateTermPolicySeed,
         MigrationAwsS3ConfigSeed,

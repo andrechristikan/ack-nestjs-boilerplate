@@ -4,6 +4,10 @@ import {
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
@@ -53,6 +57,46 @@ export interface INotificationPushProcessorService {
         },
     }: Job<
         INotificationPushQueuePayload,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceInvite({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinRequest({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinAccepted({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse>;
+    processWorkspaceJoinRejected({
+        data: {
+            send: { notificationTokens, username, notificationId, userId },
+            data,
+        },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse>;

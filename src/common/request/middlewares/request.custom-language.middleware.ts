@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NextFunction, Response } from 'express';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestLanguageStoreKey } from '@common/request/constants/request.constant';
 
@@ -16,7 +16,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService,
+        private readonly helperArrayService: HelperArrayService,
         private readonly requestStoreService: RequestStoreService
     ) {
         this.availableLanguage = this.configService.get<string[]>(
@@ -49,7 +49,7 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
     }
 
     private filterLanguage(customLanguage: string): string[] {
-        return this.helperService.arrayIntersection(
+        return this.helperArrayService.intersection(
             [customLanguage],
             this.availableLanguage
         );

@@ -1,7 +1,9 @@
-import { Session, User } from '@generated/prisma-client';
+import { Session } from '@generated/prisma-client';
+import { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface ISession extends Session {
-    user: User;
+    user: IUserRef;
+    revokedBy: IUserRef | null;
 }
 
 export interface ISessionCache {

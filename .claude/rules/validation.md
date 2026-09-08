@@ -1,37 +1,52 @@
-# Validation & DTOs — `class-validator` + `class-transformer`
+# Validation — zod schemas through the global pipe
 
-Detail in `docs/request-validation.md` and `docs/response.md`.
+Detail in `docs/request-validation.md` and `docs/response.md`. Shapes and placement are
+`rules/dto.md`; OpenAPI annotation is `rules/swagger.md`.
 
-## Request DTOs
+## The pipe
 
-- Live in `<module>/dtos/request/`, class named `<Module><Action>RequestDto`.
-- Every field carries `class-validator` decorators plus `@ApiProperty` for Swagger. A field with no validator is an unvalidated wire input.
-- `@Transform` normalizes at the boundary (`value.toLowerCase().trim()` for an email). Normalization belongs here, not in the service.
-- Shared custom validators live in `src/common/request/validations/` (`IsCustomEmail`, `IsPassword`, `IsAfterNow`, …). Module-specific ones go in `<module>/validations/`. Never inline a regex that duplicates an existing validator.
-- Optional fields are `field?: Type` — this is the ONE layer where `undefined` is legal (`rules/null-safety.md`).
+`RequestSchemaValidationPipe` (`src/common/request/pipes/request.schema-validation.pipe.ts`)
+extends Nest's `StandardSchemaValidationPipe` and is registered ONCE as `APP_PIPE` in
+`RequestModule.forRoot()`, with an `exceptionFactory` turning the issues into
+`RequestValidationException`. `AppValidationFilter` localizes those issues into the error
+envelope (`rules/exceptions.md`, `rules/i18n.md`).
 
-## Query DTOs
+**A body reaching a handler with no schema attached is a wiring defect and the pipe refuses
+it** — `RequestSchemaMissingException`. Binding a body is therefore always
+`@Body({ schema: <Module><Action>RequestSchema })`; a bare `@Body()` is the defect the pipe
+exists to catch.
 
-Pagination and filtering come from the `@Pagination*` decorators and pipes in `src/common/pagination/` (see `rules/pagination.md`), not from hand-rolled `@Query` parsing. Reach for a Query DTO when an endpoint has its own non-pagination filter set; otherwise use the existing decorators.
+## Request schemas
 
-## Response DTOs — `@Expose()` is load-bearing
+- Live in `<module>/dtos/request/`, exporting `<Module><Action>RequestSchema` and the inferred
+  `<Module><Action>RequestDto` type (`rules/naming.md`).
+- **A root request schema is `z.strictObject`**, so an unknown key is an error rather than a
+  silently ignored one. A derived schema inherits that from the base it extends — `.extend()`,
+  `.omit()`, `.pick()` and `.partial()` keep the strictness, so only the root spells it out.
+- **Every field carries its constraints on the schema** — `.min()`, `.max()`, `.email()`,
+  `.regex()`, `z.enum()`. A field typed `z.string()` with nothing else is an unvalidated wire
+  input, and the shape is the only thing standing between the request and the service.
+- **Normalization belongs on the schema, not in the service** — `.trim()`,
+  `.toLowerCase()`, `.transform()` run at the boundary so every caller sees one canonical
+  value.
+- Every field also carries `.meta({ description, example })`, which is what the OpenAPI
+  document is generated from (`rules/swagger.md`).
+- Shared custom checks live in `src/common/request/validations/`; module-specific ones go in
+  `<module>/validations/`. Never inline a regex that duplicates one that exists.
+- Optional fields are `.optional()` — this is the ONE layer where `undefined` is legal
+  (`rules/null-safety.md`).
 
-Response serialization runs through `ResponseUtil.serialize()`, which calls `plainToInstance` with `excludeExtraneousValues: true`. That makes the DTO **opt-in**: a field without `@Expose()` is dropped.
+## Params and queries
 
-- **Every field you intend to return MUST carry `@Expose()`.** A missing one is not a style slip; it is a silently absent field in the API response.
-- The flip side is the security property that makes this design worth it: **a new un-exposed field is dropped by default (fail-closed)**. A column added to the Prisma model does not leak just because someone forgot to think about it.
-- **Never turn off `excludeExtraneousValues`** for one endpoint, and never bypass `ResponseUtil` with a raw `plainToInstance`. The option is defined once for the whole app.
-- Hide an inherited field with `@Exclude()` plus `@ApiHideProperty()` — both, so the JSON and the Swagger schema agree.
-- `@Type(() => NestedDto)` is required on every nested DTO and array-of-DTO field, or the nested object serializes as a plain object and its own `@Expose` rules never run.
+- A path param is validated by pipes on the param itself — `RequestRequiredPipe`,
+  `RequestIsValidObjectIdPipe` — not by a schema (`rules/http.md`).
+- Pagination and filtering come from the `@Pagination*` decorators in
+  `src/common/pagination/` (`rules/pagination.md`), not from hand-rolled `@Query` parsing.
+  Reach for a query schema when an endpoint has its own non-pagination filter set; otherwise
+  use the existing decorators.
 
-Field names are the JSON keys. Rename them freely when the current name is wrong — no client compatibility is owed here (`rules/naming.md`).
+## Environment variables
 
-## DTO placement
-
-| Shape | Location |
-|---|---|
-| Request only | `dtos/request/<module>.<action>.request.dto.ts` |
-| Response only | `dtos/response/<module>.<action>.response.dto.ts` |
-| Shared by both, or a nested value object | `dtos/<module>.<noun>.dto.ts` |
-
-A DTO is the module's transport shape between HTTP and the service. Do not introduce a third model between the controller and the service.
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()`
+validates `process.env` against at boot. A new env var is added there as well as in
+`src/configs/` (`rules/config.md`).

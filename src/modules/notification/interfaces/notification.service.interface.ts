@@ -1,31 +1,28 @@
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+    EnumNotificationChannel,
+    EnumNotificationType,
+    Notification,
+    NotificationUserSetting,
+    Prisma,
+} from '@generated/prisma-client';
+import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 
 export interface INotificationService {
     getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>>;
-    getListUserSetting(
-        userId: string
-    ): Promise<IResponseReturn<NotificationUserSettingResponseDto>>;
-    markAsRead(
-        userId: string,
-        notificationId: string
-    ): Promise<IResponseReturn<void>>;
-    markAllAsRead(userId: string): Promise<IResponseReturn<void>>;
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
+    ): Promise<IResponsePagingReturn<Notification>>;
+    getListUserSetting(userId: string): Promise<NotificationUserSetting[]>;
+    markAsRead(userId: string, notificationId: string): Promise<void>;
+    markAllAsRead(userId: string): Promise<number>;
     updateUserSetting(
         userId: string,
-        data: NotificationUserSettingRequestDto
-    ): Promise<IResponseReturn<void>>;
+        data: INotificationUserSettingUpdate
+    ): Promise<void>;
+    validateUserSetting(
+        type: EnumNotificationType,
+        channel: EnumNotificationChannel
+    ): void;
 }

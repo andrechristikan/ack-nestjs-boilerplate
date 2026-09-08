@@ -73,6 +73,7 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `auth.json` | Authentication messages |
 | `aws.json` | AWS service messages |
 | `country.json` | Country-related messages |
+| `database.json` | Database-related messages |
 | `device.json` | Device management messages |
 | `doc.json` | API documentation messages |
 | `featureFlag.json` | Feature flag messages |
@@ -84,11 +85,14 @@ Message files use JSON format with nested structure. Key paths follow the patter
 | `pagination.json` | Pagination messages |
 | `passwordHistory.json` | Password history messages |
 | `policy.json` | Policy messages |
+| `project.json` | Project messages |
 | `request.json` | Request validation messages |
+| `response.json` | Response serialization error messages |
 | `role.json` | Role messages |
 | `session.json` | Session messages |
 | `termPolicy.json` | Terms & policy messages |
 | `user.json` | User messages |
+| `workspace.json` | Workspace messages |
 
 Example structure:
 
@@ -156,21 +160,25 @@ Pass variables through the `properties` option:
 ```json
 // src/languages/en/user.json
 {
-    "greeting": "Hello, {name}!",
-    "itemCount": "You have {count} items"
+    "error": {
+        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
+    }
 }
 ```
 
 ```typescript
-const greeting = this.messageService.setMessage('user.greeting', {
-    properties: { name: 'John' }
-});
-// Output: "Hello, John!"
+const resendLimit = this.messageService.setMessage(
+    'user.error.verificationEmailResendLimitExceeded',
+    { properties: { minutes: 5 } }
+);
+// Output: "You have exceeded the limit for resending verification emails. Try again after 5 minutes."
 
-const itemCount = this.messageService.setMessage('user.itemCount', {
-    properties: { count: 5 }
-});
-// Output: "You have 5 items"
+const importExist = this.messageService.setMessage(
+    'user.error.importEmailExist',
+    { properties: { emails: 'a@example.com, b@example.com' } }
+);
+// Output: "There are existing users with the provided email addresses. Email: a@example.com, b@example.com"
 ```
 
 ### Custom Language
@@ -218,45 +226,53 @@ throw new UserVerificationEmailResendLimitExceededException(resendIn);
 The `@Response` decorator translates success message paths. See [Response Documentation][ref-doc-response] for details.
 
 ```typescript
-@Response('user.create')
+@Response('user.create', { schema: DatabaseIdResponseSchema })
 @Post('/create')
 async create(
-    @Body() body: UserCreateRequestDto,
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
     @AuthJwtPayload('userId') createdBy: string
 ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-    return this.userService.createByAdmin(body, createdBy);
+    return this.userHttpService.createByAdmin(body, createdBy);
 }
 ```
 
-With variables, pass `messageProperties` via the `metadata` field on `IResponseReturn`:
+With variables, the HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`, and `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments. The controller carries only the `@Response` message path:
 
 ```typescript
-@Response('user.updateStatus')
-@Patch('/update/:userId/status')
-async updateStatus(
-    @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-    userId: string,
-    @AuthJwtPayload('userId') updatedBy: string,
-    @Body() body: UserUpdateStatusRequestDto
+// controller
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+    @AuthJwtPayload('userId') userId: string
 ): Promise<IResponseReturn<void>> {
-    await this.userService.updateStatusByAdmin(userId, body, updatedBy);
+    return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+    const count = await this.notificationService.markAllAsRead(userId);
 
     return {
         metadata: {
-            messageProperties: { status: body.status },
+            messageProperties: {
+                count,
+            },
         },
     };
 }
 ```
 
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
+
 ### Validation Pipe
 
-Validation errors are automatically translated by `MessageService`. The service handles both flat and nested validation errors by traversing the error tree and extracting constraints at each level. See [Request Validation Documentation][ref-doc-request-validation] for details.
+Validation issues are translated by `MessageService.setValidationMessage()`, which turns each Standard Schema issue into a `{ key, property, message }` entry. See [Request Validation Documentation][ref-doc-request-validation] for details.
 
 **Message Resolution Strategy:**
 
-1. **Primary**: Tries to resolve message from `request.error.{constraint}` path
-2. **Fallback**: If translation not found, uses the raw message from class-validator
+1. **Primary**: The issue's own `message` is translated, so a schema raising a message path (`request.error.isPassword.strong`) speaks for itself
+2. **Fallback**: When that translation comes back unchanged, the camelCase issue code is looked up under `request.error.{key}`
+3. `{property}` is interpolated with the last segment of the issue path
 
 **Example message file:**
 
@@ -264,36 +280,36 @@ Validation errors are automatically translated by `MessageService`. The service 
 // src/languages/en/request.json
 {
     "error": {
-        "isNotEmpty": "{property} cannot be empty.",
-        "isEmail": "{property} should be a valid email address.",
-        "minLength": "{property} is shorter than the minimum length allowed."
+        "invalidType": "{property} is not of the expected type.",
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "invalidFormat": "{property} does not match the expected format."
     }
 }
 ```
 
-**Nested Validation:**
+**Nested Properties:**
 
-For nested objects, the service return the full property path by traversing child errors:
+The `property` is the issue path joined with dots, so a field inside a nested object reads as its full path:
 
 ```typescript
-// Input DTO with nested validation
-class AddressDto {
-    @IsNotEmpty()
-    street: string;
-}
+// Schema with a nested object
+const AddressSchema = z.strictObject({
+    street: z.string().min(1),
+});
 
-class UserDto {
-    @ValidateNested()
-    address: AddressDto;
-}
+const UserSchema = z.strictObject({
+    address: AddressSchema,
+});
 
 // Validation error output:
 {
-    "key": "isNotEmpty",
+    "key": "tooSmall",
     "property": "address.street",
-    "message": "street cannot be empty."
+    "message": "street is shorter than the minimum allowed."
 }
 ```
+
+An issue with an empty path renders `Unknown`, and an issue carrying no string `code` falls back to the key `custom`.
 
 **Standard validation response:**
 
@@ -306,12 +322,12 @@ class UserDto {
     "message": "There are validation errors.",
     "errors": [
         {
-            "key": "isNotEmpty",
-            "property": "email",
-            "message": "email cannot be empty."
+            "key": "tooSmall",
+            "property": "username",
+            "message": "username is shorter than the minimum allowed."
         },
         {
-            "key": "isEmail",
+            "key": "custom",
             "property": "email",
             "message": "email should be a valid email address."
         }

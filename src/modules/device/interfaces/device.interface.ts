@@ -1,15 +1,42 @@
 import {
     Device,
     DeviceOwnership,
+    EnumDevicePlatform,
     Session,
-    User,
 } from '@generated/prisma-client';
+import { IUserRef } from '@modules/user/interfaces/user.interface';
+
+export interface IDeviceIdentity {
+    fingerprint: string;
+    name?: string;
+    platform?: EnumDevicePlatform;
+    notificationToken?: string;
+}
 
 export interface IDeviceOwnership extends DeviceOwnership {
     device: Device;
-    user: User;
+    user: IUserRef;
+    revokedBy: IUserRef | null;
     _count: {
         sessions: number;
     };
-    sessions?: Session[];
+}
+
+export interface IDeviceOwnershipWithDevice extends DeviceOwnership {
+    device: Device;
+}
+
+export interface IDeviceOwnershipWithSession extends IDeviceOwnership {
+    sessions: Session[];
+}
+
+export interface IDeviceOwnershipDetail extends IDeviceOwnership {
+    activeSessionCount: number;
+    isCurrentDevice: boolean;
+}
+
+export interface IDeviceRefresh {
+    name?: string;
+    platform?: EnumDevicePlatform;
+    notificationToken?: string;
 }

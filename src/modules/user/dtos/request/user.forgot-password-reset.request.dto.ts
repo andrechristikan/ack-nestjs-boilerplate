@@ -1,27 +1,22 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import { UserLoginVerifyTwoFactorRequestDto } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
-import {
-    ApiProperty,
-    IntersectionType,
-    OmitType,
-    PartialType,
-    PickType,
-} from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
+import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 
-export class UserForgotPasswordResetRequestDto extends IntersectionType(
-    PickType(UserChangePasswordRequestDto, ['newPassword'] as const),
-    PartialType(
-        OmitType(UserLoginVerifyTwoFactorRequestDto, ['challengeToken'])
-    )
-) {
-    @ApiProperty({
-        required: true,
-        description: 'Forgot password token',
-        example: faker.string.alphanumeric(20),
-    })
-    @IsString()
-    @IsNotEmpty()
-    token: string;
-}
+export const UserForgotPasswordResetRequestSchema =
+    UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
+        method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
+        code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
+        backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
+        token: z
+            .string()
+            .min(1)
+            .meta({
+                description: 'Forgot password token',
+                example: faker.string.alphanumeric(20),
+            }),
+    });
+
+export type UserForgotPasswordResetRequestDto = z.infer<
+    typeof UserForgotPasswordResetRequestSchema
+>;

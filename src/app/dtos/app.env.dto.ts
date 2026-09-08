@@ -1,310 +1,130 @@
-import { Type } from 'class-transformer';
-import {
-    IsBoolean,
-    IsEmail,
-    IsEnum,
-    IsInt,
-    IsNotEmpty,
-    IsNumber,
-    IsOptional,
-    IsString,
-    Matches,
-    MaxLength,
-    Min,
-    MinLength,
-    ValidateIf,
-} from 'class-validator';
+import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
 /**
+ * An env boolean is exactly `'true'` or `'false'`. Every other spelling fails the boot.
+ */
+const AppEnvBooleanSchema = z.stringbool({
+    truthy: ['true'],
+    falsy: ['false'],
+    case: 'sensitive',
+});
+
+/**
  * Validated shape of all application environment variables.
  */
-export class AppEnvDto {
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    APP_NAME: string;
+export const AppEnvSchema = z
+    .object({
+        APP_NAME: z.string().min(1),
+        APP_ENV: z.enum(EnumAppEnvironment),
+        APP_LANGUAGE: z.enum(EnumMessageLanguage),
+        APP_ENCRYPTION_SECRET_KEY: z.string().min(32).max(64),
+        APP_TIMEZONE: z.enum(EnumRequestTimezone),
 
-    @IsString()
-    @IsNotEmpty()
-    @IsEnum(EnumAppEnvironment)
-    APP_ENV: EnumAppEnvironment;
+        EMAIL_NO_REPLY: z.email().optional(),
+        EMAIL_SUPPORT: z.email().optional(),
+        EMAIL_ADMIN: z.email().optional(),
 
-    @IsString()
-    @IsNotEmpty()
-    @IsEnum(EnumMessageLanguage)
-    APP_LANGUAGE: EnumMessageLanguage;
+        HOME_NAME: z.string().min(1),
+        HOME_URL: z.string().min(1),
 
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(32)
-    @MaxLength(64)
-    APP_ENCRYPTION_SECRET_KEY: string;
+        HTTP_HOST: z.string().min(1),
+        HTTP_PORT: z.coerce.number().int(),
+        HTTP_TRUSTED_PROXY: z.string().optional(),
 
-    @IsString()
-    @IsNotEmpty()
-    @IsEnum(EnumRequestTimezone)
-    APP_TIMEZONE: EnumRequestTimezone;
+        LOGGER_ENABLE: AppEnvBooleanSchema,
+        LOGGER_LEVEL: z.enum(EnumLoggerLevel),
+        LOGGER_INTO_FILE: AppEnvBooleanSchema,
+        LOGGER_PRETTIER: AppEnvBooleanSchema,
+        LOGGER_AUTO: AppEnvBooleanSchema,
 
-    @IsString()
-    @IsOptional()
-    @IsEmail()
-    EMAIL_NO_REPLY: string;
+        CORS_ALLOWED_ORIGIN: z.string().min(1),
 
-    @IsString()
-    @IsOptional()
-    @IsEmail()
-    EMAIL_SUPPORT: string;
+        URL_VERSIONING_ENABLE: AppEnvBooleanSchema,
+        URL_VERSION: z.coerce.number().int().min(1),
 
-    @IsString()
-    @IsOptional()
-    @IsEmail()
-    EMAIL_ADMIN: string;
+        DATABASE_URL: z.string().min(1),
+        DATABASE_DEBUG: AppEnvBooleanSchema,
 
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    HOME_NAME: string;
+        AUTH_JWT_AUDIENCE: z.string().min(1),
+        AUTH_JWT_ISSUER: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_JWKS_URI: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_KID: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: z.string().min(1),
+        AUTH_JWT_ACCESS_TOKEN_EXPIRED: z
+            .string()
+            .min(1)
+            .regex(/^\d+[smhd]$/),
+        AUTH_JWT_REFRESH_TOKEN_JWKS_URI: z.string().min(1),
+        AUTH_JWT_REFRESH_TOKEN_KID: z.string().min(1),
+        AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: z.string().min(1),
+        AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: z.string().min(1),
+        AUTH_JWT_REFRESH_TOKEN_EXPIRED: z
+            .string()
+            .min(1)
+            .regex(/^\d+[smhd]$/),
 
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    HOME_URL: string;
+        AUTH_TWO_FACTOR_ISSUER: z.string().min(1),
+        AUTH_TWO_FACTOR_ENCRYPTION_KEY: z.string().min(1),
 
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    HTTP_HOST: string;
+        AUTH_SOCIAL_GOOGLE_CLIENT_ID: z.string().optional(),
+        AUTH_SOCIAL_GOOGLE_CLIENT_SECRET: z.string().optional(),
+        AUTH_SOCIAL_APPLE_CLIENT_ID: z.string().optional(),
+        AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID: z.string().optional(),
 
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
+        AWS_S3_IAM_CREDENTIAL_KEY: z.string().optional(),
+        AWS_S3_IAM_CREDENTIAL_SECRET: z.string().optional(),
+        AWS_S3_IAM_ARN: z.string().min(1).optional(),
+        AWS_S3_REGION: z.string().optional(),
+        AWS_S3_PUBLIC_BUCKET: z.string().optional(),
+        AWS_S3_PUBLIC_CDN: z.string().optional(),
+        AWS_S3_PRIVATE_BUCKET: z.string().optional(),
+        AWS_S3_PRIVATE_CDN: z.string().optional(),
+
+        AWS_SES_IAM_CREDENTIAL_KEY: z.string().optional(),
+        AWS_SES_IAM_CREDENTIAL_SECRET: z.string().optional(),
+        AWS_SES_IAM_ARN: z.string().min(1).optional(),
+        AWS_SES_REGION: z.string().optional(),
+
+        CACHE_REDIS_URL: z.string().min(1),
+        QUEUE_REDIS_URL: z.string().min(1),
+
+        SENTRY_DSN: z.string().optional(),
+
+        FIREBASE_PROJECT_ID: z.string().optional(),
+        FIREBASE_CLIENT_EMAIL: z.string().optional(),
+        FIREBASE_PRIVATE_KEY: z.string().optional(),
     })
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    HTTP_PORT: number;
+    .superRefine((env, ctx) => {
+        if (
+            (env.AWS_S3_IAM_CREDENTIAL_KEY ??
+                env.AWS_S3_IAM_CREDENTIAL_SECRET) &&
+            !env.AWS_S3_IAM_ARN
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['AWS_S3_IAM_ARN'],
+                message:
+                    'AWS_S3_IAM_ARN is required when an AWS S3 IAM credential is set',
+            });
+        }
 
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    LOGGER_ENABLE: boolean;
+        if (
+            (env.AWS_SES_IAM_CREDENTIAL_KEY ??
+                env.AWS_SES_IAM_CREDENTIAL_SECRET) &&
+            !env.AWS_SES_IAM_ARN
+        ) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['AWS_SES_IAM_ARN'],
+                message:
+                    'AWS_SES_IAM_ARN is required when an AWS SES IAM credential is set',
+            });
+        }
+    });
 
-    @IsString()
-    @IsNotEmpty()
-    @IsEnum(EnumLoggerLevel)
-    LOGGER_LEVEL: EnumLoggerLevel;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    LOGGER_INTO_FILE: boolean;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    LOGGER_PRETTIER: boolean;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    LOGGER_AUTO: boolean;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    CORS_ALLOWED_ORIGIN: string;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    URL_VERSIONING_ENABLE: boolean;
-
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @Min(1)
-    @IsInt()
-    @IsNotEmpty()
-    @Type(() => Number)
-    URL_VERSION: number;
-
-    @IsNotEmpty()
-    @IsString()
-    DATABASE_URL: string;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @Type(() => Boolean)
-    DATABASE_DEBUG: boolean;
-
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    AUTH_JWT_AUDIENCE: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    AUTH_JWT_ISSUER: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_ACCESS_TOKEN_JWKS_URI: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_ACCESS_TOKEN_KID: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(1)
-    @Matches(/^\d+[smhd]$/)
-    AUTH_JWT_ACCESS_TOKEN_EXPIRED: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_JWKS_URI: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_KID: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: string;
-
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @Matches(/^\d+[smhd]$/)
-    @MinLength(1)
-    AUTH_JWT_REFRESH_TOKEN_EXPIRED: string;
-
-    @IsNotEmpty()
-    @IsString()
-    AUTH_TWO_FACTOR_ISSUER: string;
-
-    @IsNotEmpty()
-    @IsString()
-    AUTH_TWO_FACTOR_ENCRYPTION_KEY: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_GOOGLE_CLIENT_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_GOOGLE_CLIENT_SECRET?: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_CLIENT_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_IAM_CREDENTIAL_KEY?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_IAM_CREDENTIAL_SECRET?: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @ValidateIf(
-        o => o.AWS_S3_IAM_CREDENTIAL_KEY || o.AWS_S3_IAM_CREDENTIAL_SECRET
-    )
-    AWS_S3_IAM_ARN?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_REGION?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_PUBLIC_BUCKET?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_PUBLIC_CDN?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_PRIVATE_BUCKET?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_S3_PRIVATE_CDN?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_SES_IAM_CREDENTIAL_KEY?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_SES_IAM_CREDENTIAL_SECRET?: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @ValidateIf(
-        o => o.AWS_SES_IAM_CREDENTIAL_KEY || o.AWS_SES_IAM_CREDENTIAL_SECRET
-    )
-    AWS_SES_IAM_ARN?: string;
-
-    @IsOptional()
-    @IsString()
-    AWS_SES_REGION?: string;
-
-    @IsNotEmpty()
-    @IsString()
-    CACHE_REDIS_URL: string;
-
-    @IsNotEmpty()
-    @IsString()
-    QUEUE_REDIS_URL: string;
-
-    @IsOptional()
-    @IsString()
-    SENTRY_DSN?: string;
-
-    @IsOptional()
-    @IsString()
-    FIREBASE_PROJECT_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    FIREBASE_CLIENT_EMAIL?: string;
-
-    @IsOptional()
-    @IsString()
-    FIREBASE_PRIVATE_KEY?: string;
-}
+export type AppEnvDto = z.infer<typeof AppEnvSchema>;

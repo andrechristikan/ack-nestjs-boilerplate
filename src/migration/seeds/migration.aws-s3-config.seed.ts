@@ -26,7 +26,7 @@ export class MigrationAwsS3ConfigSeed
     private async setPrivateBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for private bucket...');
 
-        // @note: need to set policies in order and sequentially
+        // Applied sequentially: the policy calls are order-dependent.
         await this.awsS3Service.settingBlockPublicAccessConfiguration({
             access: EnumAwsS3Accessibility.private,
         });
@@ -49,7 +49,7 @@ export class MigrationAwsS3ConfigSeed
     private async setPublicBucketPolicies(): Promise<void> {
         this.logger.log('Setting policies for public bucket...');
 
-        // @note: need to set policies in order and sequentially
+        // Applied sequentially: the policy calls are order-dependent.
         await this.awsS3Service.settingBlockPublicAccessConfiguration({
             access: EnumAwsS3Accessibility.public,
         });

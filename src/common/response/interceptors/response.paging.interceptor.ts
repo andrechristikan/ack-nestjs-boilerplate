@@ -6,26 +6,34 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { MessageService } from '@common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import { ResponseMessagePathMetaKey } from '@common/response/constants/response.constant';
 import {
-    ResponsePagingDto,
-    ResponsePagingMetadataDto,
-} from '@common/response/dtos/response.paging.dto';
+    ResponseMessagePathMetaKey,
+    ResponseSchemaMetaKey,
+} from '@common/response/constants/response.constant';
+import { ResponsePagingDto } from '@common/response/dtos/response.paging.dto';
+import { ResponsePagingMetadataDto } from '@common/response/dtos/response.paging-metadata.dto';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { IPaginationQuery } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IPaginationOrderBy,
+    IPaginationQuery,
+} from '@common/pagination/interfaces/pagination.interface';
+import { ResponsePaginationShapeInvalidException } from '@common/response/exceptions/response.pagination-shape-invalid.exception';
+import { ResponsePaginationTypeInvalidException } from '@common/response/exceptions/response.pagination-type-invalid.exception';
+import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 
 /**
- * Wraps paginated handler results into the standard envelope, merging pagination state from the
- * per-request store into the metadata and localizing the message.
+ * Wraps paginated handler results into the standard envelope, serializing every item against the
+ * route's declared schema, merging pagination state from the per-request store into the metadata
+ * and localizing the message.
  */
 @Injectable()
 export class ResponsePagingInterceptor<T> implements NestInterceptor {
@@ -35,6 +43,65 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly requestStoreService: RequestStoreService
     ) {}
+
+    private mapOrderBy(orderBy?: IPaginationOrderBy[]): string[] {
+        return (orderBy ?? []).flatMap(order =>
+            Object.entries(order).map(
+                ([field, direction]) => `${field}:${direction}`
+            )
+        );
+    }
+
+    /**
+     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
+     */
+    private validatePaginationResponse(
+        responseData: IResponsePagingReturn<T>
+    ): void {
+        if (!responseData) {
+            throw new ResponsePaginationShapeInvalidException();
+        }
+
+        if (
+            responseData.type !== EnumPaginationType.offset &&
+            responseData.type !== EnumPaginationType.cursor
+        ) {
+            throw new ResponsePaginationTypeInvalidException();
+        }
+
+        if (!responseData.data || !Array.isArray(responseData.data)) {
+            throw new ResponsePaginationShapeInvalidException();
+        }
+    }
+
+    /**
+     * A page without a declared item schema is a route that promised no data, so it fails closed.
+     */
+    private async serialize(
+        schema: StandardSchemaV1 | undefined,
+        items: unknown[]
+    ): Promise<T[]> {
+        if (!schema) {
+            throw new ResponseSerializationException();
+        }
+
+        const results = await Promise.all(
+            items.map(item => schema['~standard'].validate(item))
+        );
+
+        const serialized: T[] = [];
+        for (const result of results) {
+            if (result.issues) {
+                throw new ResponseSerializationException({
+                    rawError: result.issues,
+                });
+            }
+
+            serialized.push(result.value as T);
+        }
+
+        return serialized;
+    }
 
     /**
      * Cursor type contributes `nextCursor`; offset type contributes page fields.
@@ -46,13 +113,16 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<Response>) => {
-                    const ctx: HttpArgumentsHost = context.switchToHttp();
+                    const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
                     let messagePath: string = this.reflector.get<string>(
                         ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
+                    const schema = this.reflector.get<
+                        StandardSchemaV1 | undefined
+                    >(ResponseSchemaMetaKey, context.getHandler());
 
                     let data: T[] = [];
 
@@ -90,7 +160,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         hasPrevious = responseData.hasPrevious;
                     }
 
-                    data = rData;
+                    data = await this.serialize(schema, rData);
                     messagePath = rMetadata?.messagePath ?? messagePath;
 
                     const httpStatus =
@@ -126,7 +196,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
-                        orderBy: pagination.orderBy ?? [],
+                        orderBy: this.mapOrderBy(pagination.orderBy),
                         availableSearch: pagination.availableSearch ?? [],
                         availableOrderBy: pagination.availableOrderBy ?? [],
                     };
@@ -153,27 +223,5 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
         }
 
         return next.handle();
-    }
-
-    /**
-     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
-     */
-    private validatePaginationResponse(
-        responseData: IResponsePagingReturn<T>
-    ): void {
-        if (!responseData) {
-            throw new Error('ResponsePaging must instanceof IResponsePaging');
-        }
-
-        if (
-            responseData.type !== EnumPaginationType.offset &&
-            responseData.type !== EnumPaginationType.cursor
-        ) {
-            throw new Error('Field type must be cursor or offset');
-        }
-
-        if (!responseData.data || !Array.isArray(responseData.data)) {
-            throw new Error('Field data must in array and can not be empty');
-        }
     }
 }

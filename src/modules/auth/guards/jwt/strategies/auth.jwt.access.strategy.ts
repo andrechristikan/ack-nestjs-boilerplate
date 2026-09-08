@@ -18,7 +18,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         private readonly authService: AuthService,
         configService: ConfigService
     ) {
-        // @note: we don't validate jti here
+        // jti is not validated here.
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
                 configService.get<string>('auth.jwt.prefix')!

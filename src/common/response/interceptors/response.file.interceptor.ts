@@ -7,10 +7,9 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { FileService } from '@common/file/services/file.service';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -25,7 +24,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
 
     constructor(
         private readonly fileService: FileService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly configService: ConfigService
     ) {
@@ -41,7 +40,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<Response>) => {
-                    const ctx: HttpArgumentsHost = context.switchToHttp();
+                    const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
                     const responseData =
@@ -110,8 +109,8 @@ export class ResponseFileInterceptor implements NestInterceptor {
     }
 
     private createTimestamp(): number {
-        const today = this.helperService.dateCreate();
-        return this.helperService.dateGetTimestamp(today);
+        const today = this.helperDateService.create();
+        return this.helperDateService.getTimestamp(today);
     }
 
     /**

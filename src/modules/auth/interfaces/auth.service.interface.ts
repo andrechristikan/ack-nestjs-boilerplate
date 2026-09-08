@@ -1,4 +1,3 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
 import {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -22,10 +21,6 @@ export interface IAuthService {
         user: IAuthJwtRefreshTokenPayload,
         info: Error
     ): IAuthJwtRefreshTokenPayload;
-    validateOAuthAppleGuard(
-        request: IRequestApp<IAuthSocialPayload>
-    ): Promise<boolean>;
-    validateOAuthGoogleGuard(
-        request: IRequestApp<IAuthSocialPayload>
-    ): Promise<boolean>;
+    validateOAuthApple(idToken: string): Promise<IAuthSocialPayload>;
+    validateOAuthGoogle(idToken: string): Promise<IAuthSocialPayload>;
 }

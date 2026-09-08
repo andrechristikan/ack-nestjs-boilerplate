@@ -29,29 +29,30 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
+- [Models](#models)
 - [Composite Types](#composite-types)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
 	- [UserTermPolicy](#usertermpolicy)
 	- [UserPhoto](#userphoto)
-	- [RoleAbility](#roleability)
 	- [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
 	- [Client Access Surface](#client-access-surface)
 	- [Automatic Actor Stamping](#automatic-actor-stamping)
 	- [Soft Delete and Restore](#soft-delete-and-restore)
+- [Generated Unique Values](#generated-unique-values)
 - [Docker](#docker)
 - [Database Tools](#database-tools)
 	- [Prisma ORM](#prisma-orm)
 	- [Why Prisma for Repository Design Pattern?](#why-prisma-for-repository-design-pattern)
-	- [Change DB with Minimal Effort](#change-db-with-minimal-effort)
+	- [Database provider](#database-provider)
 
 
 ## Prerequisites
 
 > **💡 Tip:** Use Docker setup from the installation guide for automatic MongoDB replica set configuration.
 
-**MongoDB 8.0.x** running as a **replica set** (required for transactions)
+**MongoDB 8+** running as a **replica set** (required for transactions). Local compose uses `mongo:latest`.
 
 ## Migration
 
@@ -80,7 +81,7 @@ This command will read your Prisma schema and generate the client code in `gener
 
 ## Seeding
 
-Seeding in ACK NestJS Boilerplate is handled using [Commander.js][ref-commander]. All seed commands are implemented in `src/migration/seeds/*`.
+Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed commands are implemented in `src/migration/seeds/*`.
 
 ### Database Seeds
 
@@ -96,8 +97,8 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 
 **Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
 
-- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `termPolicy` → `user`. A seed that references another's rows runs after it, so `user` is last: it needs both `role` and `country`.
-- `migration:remove` runs `user` → `apiKey` → `featureFlag` → `country` → `role` → `termPolicy`, removing the referrer before anything it references.
+- `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `policy` needs `role`, `user` needs both `role` and `country`, and `workspace` needs the seeded users.
+- `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy`, removing the referrer before anything it references.
 - Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
 - Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
 
@@ -115,9 +116,11 @@ Run the command:
 - `apiKey`: Inserts default and system API keys for authentication and service access.
 - `country`: Inserts country data (name, codes, phone code, continent, timezone).
 - `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
-- `role`: Inserts user roles (superadmin, admin, user) with abilities and permissions.
+- `role`: Inserts user roles (superadmin, admin, user).
+- `policy`: Inserts the policy rows attached to each seeded role.
 - `termPolicy`: Inserts term policy documents (cookies, marketing, privacy, terms of service) with version and content.
 - `user`: Inserts initial user accounts (Super Admin, Admin, User) with country, role, and credentials.
+- `workspace`: Inserts one default personal workspace per seeded user, with that user as owner member. Requires the `user` seed to have run first, and skips any user who already owns a workspace.
 
 
 ### Template Seeds
@@ -130,7 +133,7 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 
 #### Email Templates
 
-Every time you run the email template seed, the templates will be inserted into AWS SES automatically.
+The email template seed imports the templates into AWS SES, checking each one first and importing only the ones SES does not already hold. It requires SES to be initialized and throws when it is not.
 
 **How to Run Email Template Seeds:**
 - Seed: `pnpm migration template-email-notification --type seed`
@@ -138,7 +141,7 @@ Every time you run the email template seed, the templates will be inserted into 
 
 #### Term Policy Templates
 
-Every time you run the term policy template seed, the policy documents will be linked to the database records automatically.
+The term policy template seed uploads each policy document to S3 and writes it onto the matching database record. It requires S3 to be initialized and throws when it is not.
 
 **How to Run Term Policy Template Seeds:**
 - Seed: `pnpm migration template-termPolicy --type seed`
@@ -205,8 +208,10 @@ Two API keys are created for authentication and service access. They are seeded 
 
 | Name | Type | Key | Secret | Usage |
 |------|------|-----|--------|-------|
-| Api Key Default | `default` | `fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
-| Api Key System | `system` | `UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+| Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
+| Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+
+The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyCredentialService.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
 
 **API Key Prefix Convention:**
 
@@ -228,13 +233,13 @@ This prefix is automatically added based on the `APP_ENV` environment variable w
 
 Three user roles are created with different permission levels:
 
-| Role | Type | Description | Abilities |
-|------|------|-------------|-----------|
-| superadmin | `superAdmin` | Super Admin Role | Full system access (unrestricted) |
-| admin | `admin` | Admin Role | All CRUD operations on all subjects |
-| user | `user` | User Role | Limited access (no special abilities) |
+| Role | Type | Description | Seeded policies |
+|------|------|-------------|-----------------|
+| superadmin | `superAdmin` | Super Admin Role | None: `superAdmin` bypasses the policy check entirely |
+| admin | `admin` | Admin Role | Every policy action on every policy subject |
+| user | `user` | User Role | None |
 
-**Admin Role Abilities**: The admin role has full CRUD permissions (`create`, `read`, `update`, `delete`) on all policy subjects defined in the system.
+**Admin role policies**: the `policy` seed writes one row per `EnumPolicySubject`, each carrying every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`). It reads the roles by name first and aborts without writing when one is missing, and each row is an upsert on `(roleId, subject)`, so re-running it is safe.
 
 ### Users
 
@@ -252,15 +257,15 @@ The seeded users differ per environment. This is controlled by `migrationUserDat
 
 **User accounts:**
 
-| Email | Name | Role | Password | Country | Environments |
-|-------|------|------|----------|---------|-------------|
-| superadmin@mail.com | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
-| admin@mail.com | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
-| user@mail.com | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
+| Email | Username | Name | Role | Password | Country | Environments |
+|-------|----------|------|------|----------|---------|-------------|
+| superadmin@mail.com | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
+| admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
+| user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
 ### Feature Flags
 
-Five feature flags are created to control authentication and user features:
+Six feature flags are created to control authentication, user, and workspace features:
 
 | Key | Description | Enabled | Rollout | Metadata |
 |-----|-------------|---------|---------|----------|
@@ -269,6 +274,7 @@ Five feature flags are created to control authentication and user features:
 | `loginWithCredential` | Enable login with Credential | ✅ Yes | 100% | - |
 | `signUp` | Enable user sign up | ✅ Yes | 100% | - |
 | `changePassword` | Enable change password feature | ✅ Yes | 100% | `forgotAllowed: true` |
+| `workspace` | Enable the workspace and project router surface, including invitation and join request | ✅ Yes | 100% | `invitationAllowed: true`, `joinRequestAllowed: true` |
 
 All features are enabled by default with 100% rollout for development convenience.
 
@@ -283,10 +289,43 @@ Four term policy documents are created:
 | `privacy` | 1 | EN | Privacy policy document |
 | `termsOfService` | 1 | EN | Terms of Service document |
 
-The `termPolicy` seed creates each record with an empty `contents` array. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are not linked automatically: run the term policy template seed to upload them to S3 and write the resulting `TermPolicyContent` entries onto the records.
+The `termPolicy` seed creates each record with an empty `contents` array and `status: published`. The document bodies are Handlebars templates in `src/modules/term-policy/templates/*.hbs`, one per type. They are linked by the term policy template seed, which uploads them to S3 and upserts the resulting `TermPolicyContent` entry (`language: en`) onto the version-1 record of each type.
 
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
+
+## Models
+
+Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the collection name is what you see in MongoDB.
+
+| Model | Collection | Purpose |
+|---|---|---|
+| `ApiKey` | `ApiKeys` | API key credentials for machine access |
+| `Role` | `Roles` | Roles |
+| `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
+| `Country` | `Countries` | Country reference data |
+| `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
+| `User` | `Users` | User accounts |
+| `Verification` | `Verifications` | Email and mobile verification tokens |
+| `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
+| `ActivityLog` | `ActivityLogs` | Audit trail of user actions |
+| `Session` | `Sessions` | Issued refresh sessions per device |
+| `Device` | `Devices` | Devices identified by fingerprint |
+| `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
+| `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
+| `TermPolicy` | `TermPolicies` | Term policy documents and versions |
+| `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
+| `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
+| `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
+| `Notification` | `Notifications` | Notification records |
+| `NotificationDelivery` | `NotificationDeliveries` | Per-channel delivery outcome of a notification |
+| `NotificationUserSetting` | `NotificationUserSettings` | Per-user channel and type preferences |
+| `Workspace` | `Workspaces` | Workspaces |
+| `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
+| `WorkspaceInvite` | `WorkspaceInvites` | Outstanding workspace invitations |
+| `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
+| `Project` | `Projects` | Projects inside a workspace |
+| `ProjectMember` | `ProjectMembers` | Project membership and role |
 
 ## Composite Types
 
@@ -318,7 +357,7 @@ type GeoLocation {
 - `Session.geoLocation` — location at login time
 - `ActivityLog.geoLocation` — location when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -379,7 +418,9 @@ type UserAgentOs {
 - `Session.userAgent` — client info at login time
 - `ActivityLog.userAgent` — client info when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). The audit service reads it from the store and threads the `IRequestLog` to its repository as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+`RequestUtil.parseUserAgent(raw)` builds the composite from the `ua-parser-js` result: each field falls back to `null`, and a sub-type whose every field came back `null` is stored as `null` rather than as an object of nulls.
+
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -428,37 +469,14 @@ type UserPhoto {
 |---|---|---|
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Optional CDN base URL |
-| `completedUrl` | `String` | Full resolved URL (CDN or S3 direct) |
+| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
+| `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `image/jpeg`) |
 | `extension` | `String` | File extension (e.g. `jpg`) |
 | `access` | `String` | Access level (`public` or `private`) |
 
 **Used in:**
 - `User.photo`
-
----
-
-### RoleAbility
-
-Represents a single CASL ability entry embedded in a `Role`. Each entry defines which actions are allowed on a given policy subject.
-
-```prisma
-type RoleAbility {
-  action  String[]
-  subject String
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `action` | `String[]` | List of allowed actions (e.g. `["read", "create"]`) |
-| `subject` | `String` | Policy subject (e.g. `"user"`, `"apiKey"`) |
-
-**Used in:**
-- `Role.abilities`
-
-See [Authorization Documentation][ref-doc-authorization] for how abilities are evaluated at runtime.
 
 ---
 
@@ -485,8 +503,8 @@ type TermPolicyContent {
 | `language` | `String` | Language code (e.g. `"en"`) |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
-| `cdnUrl` | `String?` | Optional CDN base URL |
-| `completedUrl` | `String` | Full resolved URL |
+| `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
+| `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `application/pdf`) |
 | `extension` | `String` | File extension (e.g. `pdf`) |
 | `access` | `String` | Access level (`public` or `private`) |
@@ -512,6 +530,8 @@ The extension carries the `create` / `createMany` / `update` / `updateMany` / `u
 
 `DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token, the factory, and the extension util stay unexported; `DatabaseModule` exports only `DatabaseService` and `DatabaseUtil`.
 
+The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
+
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
@@ -532,14 +552,37 @@ For a caller this means a nested write needs no hand-written `createdBy` / `upda
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry the soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone, and their repositories (`WorkspaceRepository.softDelete`, `ProjectRepository.softDelete`) stamp it through a plain `update` inside a `$transaction` that also writes the activity log. The workspace transaction extends the same stamp to the rows it owns: its active projects get `deletedAt`, its pending invites become `expired`, and its pending join requests become `cancelled`.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status, and write the nested activity log in one call.
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status to `inactive`, revoke the live sessions through a nested `updateMany`, and write the nested activity log in one call.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
 **Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
 
+## Generated Unique Values
+
+Some columns carry a server-generated value that must be unique: workspace and project slugs today. A random draw can collide with a row that already holds it, so every generator works from a **bounded candidate list that ends in a thrown exception**, never an unbounded loop and never a leaked Prisma error.
+
+The shape is the same in all three places:
+
+1. The caller draws the whole candidate list up front, `slugMaxAttempts` entries of `HelperStringService.generateSlug(prefix, maxLength)` (`5` for both `workspace` and `project`), and passes the list down.
+2. The consumer writes with one candidate at a time. A unique collision on that column rolls the write back and the next candidate is tried.
+3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 500).
+
+The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
+
+| Candidate source | Consumer | Retry unit |
+|---|---|---|
+| `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | the private `createWithSlug` transaction: workspace, owner membership, activity log |
+| `ProjectService.drawSlugCandidates()` | `ProjectRepository.createInWorkspace` | the private `createWithSlug` transaction: project plus activity log |
+| `UserOnboardingService.buildPersonalWorkspaceContexts()` | `UserOnboardingRepository.createWithWorkspace` / `createManyWithWorkspace` | the whole onboarding transaction |
+
+Three rules hold across all of them:
+
+- **A `P2002` on a value the repository did not draw is rethrown untouched.** `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error. Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`, turning a `username` collision into `UserUsernameExistException` and an `email` collision into `UserEmailExistException`.
+- **The candidate list is an argument, never a client field.** `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug, and the personal-workspace sign-up context carries `slugCandidates: string[]` that the onboarding repository indexes by attempt number.
+- **A batch retries as a batch.** `createManyWithWorkspace` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole transaction, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
 
 ## Docker
 
@@ -580,79 +623,27 @@ Prisma perfectly enables **Repository Design Pattern** implementation:
 - **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
 - **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
 - **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **Database Agnostic**: Switch between MongoDB, PostgreSQL without changing repository code
+- **MongoDB on this checkout**: `prisma/schema.prisma` uses `provider = "mongodb"`; schema sync is `pnpm db:migrate` (`prisma db push`)
 
-### Change DB with Minimal Effort
+### Database provider
 
-Prisma, combined with the Repository Pattern, allows you to switch databases with minimal effort and maximum codebase stability. The data access layer is fully abstracted, so your service and business logic remain unchanged regardless of the underlying database engine.
+This boilerplate ships **MongoDB only**. ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Prisma can target other engines in general, but switching provider here means rewriting the schema, `DatabaseUtil` ID helpers, and Mongo-specific query patterns. There is no `prisma migrate` script; do not treat a provider switch as a one-command migration.
 
-#### Supported Databases
-
-| Database | Best For | Transaction Support |
-|----------|----------|---------------------|
-| **MongoDB** | Document-based, flexible schema | ✅ Yes (replica set) |
-| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
-
-**Other supported databases:** MySQL, SQLite, SQL Server, CockroachDB
-
-#### Quick Migration: MongoDB → PostgreSQL
-
-**1. Update Prisma Schema** (`prisma/schema.prisma`):
-```prisma
-// Change provider
-datasource db {
-  provider = "postgresql"  // was: "mongodb"
-  url      = env("DATABASE_URL")
-}
-
-// Update ID fields in all models
-model User {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid  // was: @default(auto()) @map("_id") @db.ObjectId
-  // Replace @db.ObjectId with @db.Uuid from all foreign keys
-}
-```
-
-**2. Update Environment** (`.env`):
-```bash
-# From:
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?replicaSet=rs0
-
-# To:
-DATABASE_URL=postgresql://user:password@localhost:5432/ACKNestJs
-```
-
-**3. Generate Migration & Client:**
-```bash
-pnpm prisma migrate dev --name init  # PostgreSQL
-pnpm db:generate                      # Regenerate client
-```
-
-**4. Update Database Module Code:**
-
-- **DatabaseClientFactory** (`src/common/database/factories/database.client.factory.ts`) - May require updates for connection options and database-specific features
-- **DatabaseService** (`src/common/database/services/database.service.ts`) - May require updates for connection lifecycle and log event handling
-- **DatabaseUtil** (`src/common/database/utils/database.util.ts`) - Replace MongoDB `ObjectId` helpers with UUID validators
-
-**5. Re-seed Database:**
-```bash
-pnpm migration:seed
-```
+For setup and seeding on MongoDB, see the sections above.
 
 #### Learn More
 
-- [Prisma: Switching Databases][ref-prisma-setup]
 - [Prisma MongoDB Documentation][ref-prisma-mongodb]
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [nest-commander][ref-nest-commander]
 
 
 <!-- REFERENCES -->
 
+[ref-prisma]: https://www.prisma.io
 [ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-prisma-setup]: https://www.prisma.io/docs/getting-started/setup-prisma/add-to-existing-project#switching-databases
-[ref-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
 
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-authorization]: authorization.md

@@ -1,32 +1,37 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
+import { Country, Prisma } from '@generated/prisma-client';
+import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { ICountryService } from '@modules/country/interfaces/country.service.interface';
 import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { CountryUtil } from '@modules/country/utils/country.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class CountryService implements ICountryService {
-    constructor(
-        private readonly countryRepository: CountryRepository,
-        private readonly countryUtil: CountryUtil
-    ) {}
+    constructor(private readonly countryRepository: CountryRepository) {}
 
-    async getList(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
-    ): Promise<IResponsePagingReturn<CountryResponseDto>> {
-        const { data, ...others } =
-            await this.countryRepository.findWithPagination(pagination);
-        const countries: CountryResponseDto[] = this.countryUtil.mapList(data);
+    async getListCursor(
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
+    ): Promise<IResponsePagingReturn<Country>> {
+        return this.countryRepository.findWithPaginationCursor(pagination);
+    }
 
-        return {
-            data: countries,
-            ...others,
-        };
+    async existById(countryId: string): Promise<{ id: string } | null> {
+        return this.countryRepository.existById(countryId);
+    }
+
+    async existByAlpha2Code(
+        alpha2Code: string
+    ): Promise<{ id: string } | null> {
+        return this.countryRepository.existByAlpha2Code(alpha2Code);
+    }
+
+    async getOne(countryId: string): Promise<Country> {
+        const country = await this.countryRepository.findOneById(countryId);
+        if (!country) {
+            throw new CountryNotFoundException();
+        }
+
+        return country;
     }
 }

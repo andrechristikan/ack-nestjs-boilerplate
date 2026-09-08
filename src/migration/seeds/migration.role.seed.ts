@@ -1,16 +1,16 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationRoleData } from '@migration/data/migration.role.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import { Prisma } from '@generated/prisma-client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
 
 /**
- * Seeds the superadmin, admin, and user roles with their CASL abilities.
+ * Seeds the superadmin, admin, and user roles. The policy rows each role grants are seeded by
+ * `MigrationPolicySeed`, which runs after this one.
  */
 @Command({
     name: 'role',
@@ -24,12 +24,11 @@ export class MigrationRoleSeed
     private readonly logger = new Logger(MigrationRoleSeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly roles: RoleCreateRequestDto[] = [];
+    private readonly roles: Prisma.RoleCreateInput[] = [];
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly configService: ConfigService
     ) {
         super();
 
@@ -49,11 +48,9 @@ export class MigrationRoleSeed
                             name: role.name.toLowerCase(),
                         },
                         create: {
-                            ...role,
                             name: role.name.toLowerCase(),
-                            abilities: this.databaseUtil.toPlainArray(
-                                role.abilities
-                            ),
+                            description: role.description,
+                            type: role.type,
                         },
                         update: {},
                     })

@@ -1,9 +1,43 @@
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import {
+    EnumNotificationChannel,
+    EnumNotificationPriority,
+    EnumNotificationType,
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumWorkspaceJoinRejectReason,
+    EnumWorkspaceMemberRole,
+    Prisma,
 } from '@generated/prisma-client';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+
+export interface INotificationKindRule {
+    type: EnumNotificationType;
+    priority: EnumNotificationPriority;
+    title: string;
+    body: string;
+    pendingChannels: EnumNotificationChannel[];
+    deliveredChannels: EnumNotificationChannel[];
+}
+
+export interface INotificationCreate {
+    id: string;
+    userId: string;
+    metadata: Prisma.InputJsonValue;
+    createdBy: string;
+}
+
+export interface INotificationCreateEntry {
+    kind: EnumNotificationKind;
+    payload: INotificationCreate;
+}
+
+export interface INotificationUserSettingUpdate {
+    channel: EnumNotificationChannel;
+    type: EnumNotificationType;
+    isActive: boolean;
+}
 
 export interface INotificationTemporaryPasswordPayload {
     password: string;
@@ -51,6 +85,37 @@ export interface INotificationAcceptTermPolicyPayload extends INotificationPubli
     termPolicyId: string;
 }
 
+export interface INotificationWorkspaceInvitePayload {
+    workspaceId: string;
+    workspaceName: string;
+    inviterName: string;
+    workspaceMemberRole: EnumWorkspaceMemberRole;
+    encryptedInviteAcceptLink: string;
+    reference: string;
+    expiredAt: string;
+}
+
+export type INotificationWorkspaceInviteUnregisteredPayload =
+    INotificationWorkspaceInvitePayload;
+
+export interface INotificationWorkspaceJoinRequestPayload {
+    workspaceId: string;
+    workspaceName: string;
+    requesterName: string;
+    encryptedJoinRequestReviewLink: string;
+}
+
+export interface INotificationWorkspaceJoinAcceptedPayload {
+    workspaceId: string;
+    workspaceName: string;
+}
+
+export interface INotificationWorkspaceJoinRejectedPayload {
+    workspaceId: string;
+    workspaceName: string;
+    rejectReasonCode: EnumWorkspaceJoinRejectReason;
+}
+
 export interface INotificationBulkQueuePayload<T = unknown> {
     proceedBy: string;
     data?: T;
@@ -61,8 +126,6 @@ export interface INotificationQueuePayload<
 > extends INotificationBulkQueuePayload<T> {
     userId: string;
 }
-
-// For push notification
 
 export interface INotificationSendPushPayload {
     userId: string;
@@ -83,7 +146,6 @@ export interface INotificationPushCleanupTokenQueuePayload {
     };
 }
 
-// For email notification
 export interface INotificationEmailSendPayload {
     userId: string;
     notificationId: string;
@@ -100,5 +162,16 @@ export interface INotificationEmailQueuePayload<T = unknown> {
 
 export interface INotificationEmailBulkQueuePayload<T = unknown> {
     send: INotificationEmailSendPayload[];
+    data?: T;
+}
+
+export interface INotificationEmailSendUnregisteredPayload {
+    email: string;
+    cc?: string[];
+    bcc?: string[];
+}
+
+export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
+    send: INotificationEmailSendUnregisteredPayload;
     data?: T;
 }

@@ -2,72 +2,50 @@ import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagi
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { NotificationUserSettingDto } from '@modules/notification/dtos/notification.user-setting.dto';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+    EnumNotificationChannel,
+    EnumNotificationType,
+    Notification,
+    NotificationUserSetting,
+    Prisma,
+} from '@generated/prisma-client';
+import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
+import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
+import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
+import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import { INotificationService } from '@modules/notification/interfaces/notification.service.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class NotificationService implements INotificationService {
     constructor(
         private readonly notificationRepository: NotificationRepository,
-        private readonly notificationUtil: NotificationUtil,
+        private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async getListCursor(
         userId: string,
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
-        const { data, ...others } =
-            await this.notificationRepository.findWithPaginationCursor(
-                userId,
-                pagination
-            );
-
-        const notifications: NotificationResponseDto[] =
-            this.notificationUtil.mapList(data);
-
-        return {
-            data: notifications,
-            ...others,
-        };
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
+    ): Promise<IResponsePagingReturn<Notification>> {
+        return this.notificationRepository.findWithPaginationCursor(
+            userId,
+            pagination
+        );
     }
 
     async getListUserSetting(
         userId: string
-    ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        const userSettings =
-            await this.notificationRepository.findUserSetting(userId);
-
-        const settings: NotificationUserSettingDto[] =
-            this.notificationUtil.mapUserSettingList(userSettings);
-
-        return {
-            data: {
-                settings: settings,
-            },
-        };
+    ): Promise<NotificationUserSetting[]> {
+        return this.notificationUserSettingRepository.findUserSetting(userId);
     }
 
-    async markAsRead(
-        userId: string,
-        notificationId: string
-    ): Promise<IResponseReturn<void>> {
+    async markAsRead(userId: string, notificationId: string): Promise<void> {
         const checkExist = await this.notificationRepository.existById(
             userId,
             notificationId
@@ -79,38 +57,46 @@ export class NotificationService implements INotificationService {
         }
 
         await this.notificationRepository.markAsRead(userId, notificationId);
-
-        return {};
     }
 
-    async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+    async markAllAsRead(userId: string): Promise<number> {
         const batchUpdated =
             await this.notificationRepository.markAllAsRead(userId);
 
-        return {
-            metadata: {
-                messageProperties: {
-                    count: batchUpdated.count,
-                },
-            },
-        };
+        return batchUpdated.count;
     }
 
     async updateUserSetting(
         userId: string,
-        data: NotificationUserSettingRequestDto
-    ): Promise<IResponseReturn<void>> {
-        this.notificationUtil.validateUserSetting(data.type, data.channel);
+        data: INotificationUserSettingUpdate
+    ): Promise<void> {
+        this.validateUserSetting(data.type, data.channel);
 
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        await this.notificationRepository.updateUserSetting(
+        await this.notificationUserSettingRepository.updateUserSetting(
             userId,
             data,
             requestLog
         );
+    }
 
-        return {};
+    /** Rejects any type/channel pair not in the allowed combinations list. */
+    validateUserSetting(
+        type: EnumNotificationType,
+        channel: EnumNotificationChannel
+    ): void {
+        const validType = NotificationSettingUpdateAllowedCombinations.find(
+            e => e.type === type
+        );
+
+        if (!validType) {
+            throw new NotificationInvalidTypeException();
+        }
+
+        if (!validType.channels.includes(channel)) {
+            throw new NotificationInvalidChannelException();
+        }
     }
 }

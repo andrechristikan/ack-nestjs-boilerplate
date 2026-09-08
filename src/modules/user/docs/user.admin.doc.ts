@@ -9,17 +9,29 @@ import {
     DocResponseFile,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import {
+    UserListResponseDto,
+    UserListResponseSchema,
+} from '@modules/user/dtos/response/user.list.response.dto';
+import {
+    UserProfileResponseDto,
+    UserProfileResponseSchema,
+} from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserDocParamsId,
     UserDocQueryList,
 } from '@modules/user/constants/user.doc.constant';
+import {
+    UserDefaultAvailableOrderBy,
+    UserDefaultAvailableSearch,
+} from '@modules/user/constants/user.list.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { FileUploadSingleRequestDto } from '@common/file/dtos/file.single.dto';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    DatabaseIdResponseDto,
+    DatabaseIdResponseSchema,
+} from '@common/database/dtos/response/database.id.response.dto';
+import { FileUploadSingleRequestSchema } from '@common/file/dtos/file.single.dto';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 export function UserAdminListDoc(): MethodDecorator {
@@ -36,7 +48,10 @@ export function UserAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
-            dto: UserListResponseDto,
+            schema: UserListResponseSchema,
+            availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }
@@ -55,7 +70,7 @@ export function UserAdminGetDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<UserProfileResponseDto>('user.get', {
-            dto: UserProfileResponseDto,
+            schema: UserProfileResponseSchema,
         })
     );
 }
@@ -71,12 +86,11 @@ export function UserAdminCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<DatabaseIdResponseDto>('user.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: DatabaseIdResponseDto,
+            schema: DatabaseIdResponseSchema,
         })
     );
 }
@@ -89,7 +103,6 @@ export function UserAdminUpdateStatusDoc(): MethodDecorator {
         DocRequest({
             params: UserDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: UserUpdateStatusRequestDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -140,7 +153,7 @@ export function UserAdminImportDoc(): MethodDecorator {
             summary: 'import users via csv file',
         }),
         DocRequestFile({
-            dto: FileUploadSingleRequestDto,
+            schema: FileUploadSingleRequestSchema,
         }),
         DocAuth({
             xApiKey: true,

@@ -3,31 +3,29 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumRoleType, Policy, Prisma, Role } from '@generated/prisma-client';
+import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
+import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleAbilityDto } from '@modules/role/dtos/role.ability.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
+import {
+    IRole,
+    IRoleCreate,
+    IRoleUpdate,
+    IRoleWithPolicies,
+    IRoleWithPolicyCount,
+} from '@modules/role/interfaces/role.interface';
 import { IRoleService } from '@modules/role/interfaces/role.service.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -37,93 +35,69 @@ export class RoleService implements IRoleService {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
+    private storeActivityLogMetadata(role: Role): void {
+        this.requestStoreService.merge<IActivityLogMetadata>(
+            ActivityLogMetadataStoreKey,
+            this.roleUtil.mapActivityLogMetadata(role)
+        );
+
+        return;
+    }
+
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } =
-            await this.roleRepository.findWithPaginationOffsetByAdmin(
-                pagination,
-                type
-            );
-
-        const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
-
-        return {
-            data: roles,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+        return this.roleRepository.findWithPaginationOffsetByAdmin(
+            pagination,
+            type
+        );
     }
 
-    async getListCursor(
-        pagination: IPaginationQueryCursorParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+    async getListCursorBySystem(
+        pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } =
-            await this.roleRepository.findWithPaginationCursor(
-                pagination,
-                type
-            );
-
-        const roles: RoleListResponseDto[] = this.roleUtil.mapList(data);
-
-        return {
-            data: roles,
-            ...others,
-        };
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+        return this.roleRepository.findWithPaginationCursorBySystem(
+            pagination,
+            type
+        );
     }
 
-    async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
+    async existById(roleId: string): Promise<IRole | null> {
+        return this.roleRepository.existById(roleId);
+    }
+
+    async existByName(name: string): Promise<IRole | null> {
+        return this.roleRepository.existByName(name);
+    }
+
+    async getOne(id: string): Promise<IRoleWithPolicies> {
         const role = await this.roleRepository.findOneById(id);
         if (!role) {
             throw new RoleNotFoundException();
         }
 
-        return { data: this.roleUtil.mapOne(role) };
+        return role;
     }
 
-    async getAbilities(
-        id: string
-    ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
-        const role = await this.roleRepository.findOneById(id);
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        return { data: this.roleUtil.mapAbilities(role) };
-    }
-
-    async createByAdmin({
-        name,
-        ...others
-    }: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-        const exist = await this.roleRepository.existByName(name);
+    async createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies> {
+        const exist = await this.roleRepository.existByName(data.name);
         if (exist) {
             throw new RoleExistException();
         }
 
-        const created = await this.roleRepository.create({ name, ...others });
+        const created = await this.roleRepository.create(data);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.roleUtil.mapActivityLogMetadata(created)
-        );
+        this.storeActivityLogMetadata(created);
 
-        return {
-            data: this.roleUtil.mapOne(created),
-        };
+        return created;
     }
 
     async updateByAdmin(
         id: string,
-        data: RoleUpdateRequestDto
-    ): Promise<IResponseReturn<RoleDto>> {
+        data: IRoleUpdate
+    ): Promise<IRoleWithPolicies> {
         const role = await this.roleRepository.existById(id);
         if (!role) {
             throw new RoleNotFoundException();
@@ -131,17 +105,12 @@ export class RoleService implements IRoleService {
 
         const updated = await this.roleRepository.update(id, data);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.roleUtil.mapActivityLogMetadata(updated)
-        );
+        this.storeActivityLogMetadata(updated);
 
-        return {
-            data: this.roleUtil.mapOne(updated),
-        };
+        return updated;
     }
 
-    async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
+    async deleteByAdmin(id: string): Promise<Role> {
         const [role, roleUsed] = await Promise.all([
             this.roleRepository.existById(id),
             this.roleRepository.used(id),
@@ -155,18 +124,15 @@ export class RoleService implements IRoleService {
 
         const deleted = await this.roleRepository.delete(id);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.roleUtil.mapActivityLogMetadata(deleted)
-        );
+        this.storeActivityLogMetadata(deleted);
 
-        return {};
+        return deleted;
     }
 
     async validateRoleGuard(
         user: IUser | null,
         requiredRoles: EnumRoleType[]
-    ): Promise<RoleAbilityDto[]> {
+    ): Promise<Policy[]> {
         if (!user) {
             throw new AuthJwtAccessTokenInvalidException();
         }
@@ -181,8 +147,6 @@ export class RoleService implements IRoleService {
             throw new RoleForbiddenException();
         }
 
-        const abilities = this.roleUtil.mapOne(role).abilities;
-
-        return abilities;
+        return role.policies;
     }
 }

@@ -16,20 +16,22 @@ import {
     ResponseFile,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { UserService } from '@modules/user/services/user.service';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { UserHttpService } from '@modules/user/services/user.http.service';
+import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
+import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
+import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
     EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
     EnumUserStatus,
     Prisma,
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
+import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -41,6 +43,7 @@ import {
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import {
+    UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
     UserDefaultStatus,
 } from '@modules/user/constants/user.list.constant';
@@ -54,10 +57,10 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserAdminCreateDoc,
     UserAdminExportDoc,
@@ -68,10 +71,20 @@ import {
     UserAdminUpdatePasswordDoc,
     UserAdminUpdateStatusDoc,
 } from '@modules/user/docs/user.admin.doc';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import {
+    UserCreateRequestDto,
+    UserCreateRequestSchema,
+} from '@modules/user/dtos/request/user.create.request.dto';
+import {
+    DatabaseIdResponseDto,
+    DatabaseIdResponseSchema,
+} from '@common/database/dtos/response/database.id.response.dto';
 import { RequestTimeout } from '@common/request/decorators/request.decorator';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import {
+    UserUpdateStatusRequestDto,
+    UserUpdateStatusRequestSchema,
+} from '@modules/user/dtos/request/user.update-status.request.dto';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
@@ -79,7 +92,10 @@ import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import {
+    UserImportRequestDto,
+    UserImportRequestSchema,
+} from '@modules/user/dtos/request/user.import.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -87,12 +103,17 @@ import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.req
     path: '/user',
 })
 export class UserAdminController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userHttpService: UserHttpService,
+        private readonly userPasswordHttpService: UserPasswordHttpService,
+        private readonly userTwoFactorHttpService: UserTwoFactorHttpService,
+        private readonly userImportHttpService: UserImportHttpService
+    ) {}
 
     @UserAdminListDoc()
-    @ResponsePaging('user.list')
+    @ResponsePaging('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -100,37 +121,36 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
             availableSearch: UserDefaultAvailableSearch,
+            availableOrderBy: UserDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.UserSelect,
-            Prisma.UserWhereInput
-        >,
+        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
         @PaginationQueryFilterInEnum<EnumUserStatus>(
             'status',
             UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('country')
-        country?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-        return this.userService.getListOffsetByAdmin(
+        @PaginationQueryFilterEqualString('roleId')
+        roleId?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('countryId')
+        countryId?: Record<string, IPaginationEqual>
+    ): Promise<IResponsePagingReturn<IUser>> {
+        return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
-            role,
-            country
+            roleId,
+            countryId
         );
     }
 
     @UserAdminGetDoc()
-    @Response('user.get')
+    @Response('user.get', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -138,18 +158,19 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string
-    ): Promise<IResponseReturn<UserProfileResponseDto>> {
-        return this.userService.getOne(userId);
+    ): Promise<IResponseReturn<IUserProfile>> {
+        return this.userHttpService.getOne(userId);
     }
 
     @UserAdminCreateDoc()
-    @Response('user.create')
+    @Response('user.create', { schema: DatabaseIdResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -158,19 +179,20 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Body()
+        @Body({ schema: UserCreateRequestSchema })
         body: UserCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userService.createByAdmin(body, createdBy);
+        return this.userHttpService.createByAdmin(body, createdBy);
     }
 
     @UserAdminUpdateStatusDoc()
     @Response('user.updateStatus')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -179,20 +201,26 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
-        @Body() body: UserUpdateStatusRequestDto
+        @Body({ schema: UserUpdateStatusRequestSchema })
+        body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updateStatusByAdmin(userId, body, updatedBy);
+        return this.userHttpService.updateStatusByAdmin(
+            userId,
+            body,
+            updatedBy
+        );
     }
 
     @UserAdminUpdatePasswordDoc()
     @Response('user.updatePassword')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -201,19 +229,23 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.userService.updatePasswordByAdmin(userId, updatedBy);
+        return this.userPasswordHttpService.updatePasswordByAdmin(
+            userId,
+            updatedBy
+        );
     }
 
     @UserAdminResetTwoFactorDoc()
     @Response('user.twoFactor.resetByAdmin')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
@@ -222,19 +254,23 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/:userId/2fa/reset')
+    @RequestThrottle({ user: true })
+    @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
         @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {
-        return this.userService.resetTwoFactorByAdmin(userId, updatedBy);
+        await this.userTwoFactorHttpService.resetTwoFactorByAdmin(
+            userId,
+            updatedBy
+        );
     }
 
     @UserAdminImportDoc()
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
@@ -245,6 +281,7 @@ export class UserAdminController {
     @ApiKeyProtected()
     @FileUploadSingle()
     @RequestTimeout('1m')
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
@@ -254,17 +291,19 @@ export class UserAdminController {
             RequestRequiredPipe,
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
             FileCsvParsePipe,
-            FileCsvValidationPipe(UserImportRequestDto)
+            FileCsvValidationPipe(UserImportRequestSchema, {
+                maxDataImportConfigKey: 'user.maxDataImport',
+            })
         )
         data: UserImportRequestDto[]
     ): Promise<void> {
-        return this.userService.importByAdmin(data, createdBy);
+        await this.userImportHttpService.importByAdmin(data, createdBy);
     }
 
     @UserAdminExportDoc()
     @ResponseFile()
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected({
+    @PolicyProtected({
         subject: EnumPolicySubject.user,
         action: [EnumPolicyAction.read],
     })
@@ -272,6 +311,7 @@ export class UserAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(
@@ -280,11 +320,15 @@ export class UserAdminController {
             UserDefaultStatus
         )
         status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('role')
-        role?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('country')
-        country?: Record<string, IPaginationEqual>
+        @PaginationQueryFilterEqualString('roleId')
+        roleId?: Record<string, IPaginationEqual>,
+        @PaginationQueryFilterEqualString('countryId')
+        countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
-        return this.userService.exportByAdmin(status, role, country);
+        return this.userImportHttpService.exportByAdmin(
+            status,
+            roleId,
+            countryId
+        );
     }
 }

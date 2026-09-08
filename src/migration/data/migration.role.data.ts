@@ -1,38 +1,27 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
-const roleData: RoleCreateRequestDto[] = [
+const roleData: Prisma.RoleCreateInput[] = [
     {
         name: 'superadmin',
         description: 'Super Admin Role',
-        abilities: [],
         type: EnumRoleType.superAdmin,
     },
     {
         name: 'admin',
         description: 'Admin Role',
-        abilities: Object.values(EnumPolicySubject).map(role => ({
-            subject: role,
-            action: Object.values(EnumPolicyAction),
-        })),
         type: EnumRoleType.admin,
     },
     {
         name: 'user',
         description: 'User Role',
-        abilities: [],
         type: EnumRoleType.user,
     },
 ];
 
 export const migrationRoleData: Record<
     EnumAppEnvironment,
-    RoleCreateRequestDto[]
+    Prisma.RoleCreateInput[]
 > = {
     [EnumAppEnvironment.local]: roleData,
     [EnumAppEnvironment.development]: roleData,

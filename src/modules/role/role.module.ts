@@ -1,13 +1,14 @@
-import { Global, Module } from '@nestjs/common';
+import { RoleRepositoryModule } from '@modules/role/role.repository.module';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { Global, Module } from '@nestjs/common';
 
-/** Global module exposing role services, repository, and util app-wide. */
+/** Global so the role guard reaches the role domain service and the role mapping app-wide. */
 @Global()
 @Module({
-    providers: [RoleService, RoleRepository, RoleUtil],
-    exports: [RoleService, RoleRepository, RoleUtil],
-    imports: [],
+    controllers: [],
+    providers: [RoleService, RoleUtil],
+    exports: [RoleService, RoleUtil],
+    imports: [RoleRepositoryModule],
 })
 export class RoleModule {}

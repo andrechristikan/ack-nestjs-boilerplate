@@ -1,15 +1,14 @@
-import { Module } from '@nestjs/common';
+import { CountryRepositoryModule } from '@modules/country/country.repository.module';
 import { CountryService } from '@modules/country/services/country.service';
-import { CountryRepository } from '@modules/country/repositories/country.repository';
-import { CountryUtil } from '@modules/country/utils/country.util';
+import { Module } from '@nestjs/common';
 
 /**
  * Provides country lookup; controllers are wired by the route layer.
  */
 @Module({
-    imports: [],
-    exports: [CountryService, CountryRepository, CountryUtil],
-    providers: [CountryService, CountryRepository, CountryUtil],
     controllers: [],
+    providers: [CountryService],
+    exports: [CountryService],
+    imports: [CountryRepositoryModule],
 })
 export class CountryModule {}

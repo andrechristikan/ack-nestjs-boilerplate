@@ -1,15 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
+import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import { CountryDefaultAvailableSearch } from '@modules/country/constants/country.list.constant';
-import { CountryService } from '@modules/country/services/country.service';
-import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
+import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    CountryDefaultAvailableOrderBy,
+    CountryDefaultAvailableSearch,
+} from '@modules/country/constants/country.list.constant';
+import { CountryPublicListDoc } from '@modules/country/docs/country.public.doc';
+import {
+    CountryResponseDto,
+    CountryResponseSchema,
+} from '@modules/country/dtos/response/country.response.dto';
+import { CountryHttpService } from '@modules/country/services/country.http.service';
+import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.public.country')
 @Controller({
@@ -17,21 +23,19 @@ import { Prisma } from '@generated/prisma-client';
     path: '/country',
 })
 export class CountryPublicController {
-    constructor(private readonly countryService: CountryService) {}
+    constructor(private readonly countryHttpService: CountryHttpService) {}
 
     @CountryPublicListDoc()
-    @ResponsePaging('country.list')
+    @ResponsePaging('country.list', { schema: CountryResponseSchema })
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
+        @PaginationCursorQuery({
             availableSearch: CountryDefaultAvailableSearch,
+            availableOrderBy: CountryDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePagingReturn<CountryResponseDto>> {
-        return this.countryService.getList(pagination);
+        return this.countryHttpService.getListCursor(pagination);
     }
 }

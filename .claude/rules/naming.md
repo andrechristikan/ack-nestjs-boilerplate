@@ -15,13 +15,94 @@
 ```
 .service   .repository   .controller   .guard   .strategy   .decorator
 .interceptor   .filter   .middleware   .pipe   .processor   .indicator
-.factory   .validation   .util   .dto   .doc   .module
+.factory   .validation   .util   .queue   .dto   .doc   .module
 .enum   .constant   .interface   .exception
 ```
 
+Four more are valid, but ONLY inside the one tree that owns them — they are not general-purpose suffixes:
+
+| Suffix | Only under | Example |
+|---|---|---|
+| `.config` | `src/configs/` | `workspace.config.ts` |
+| `.data` | `src/migration/data/` | `migration.role.data.ts` |
+| `.seed` | `src/migration/seeds/` | `migration.user.seed.ts` |
+| `.base` | `src/migration/bases/`, `src/queues/bases/` | `queue.processor.base.ts` |
+
 Anything else is invalid.
 
-- **DTO files always end `.dto.ts`.** Request and response DTOs live under `dtos/request/` and `dtos/response/` and carry the direction in the name: `user.create.request.dto.ts`, `user.profile.response.dto.ts`. A DTO shared by both directions sits directly in `dtos/` (`user.mobile-number.dto.ts`).
+### The layer segment on a service, and the module files
+
+A service file carries the LAYER it belongs to, and the layer decides which module provides it
+(`rules/architecture.md`, `rules/nest-wiring.md`):
+
+```
+<module>[.<concern>].service.ts             →  <Module>[<Concern>]Service            domain
+<module>[.<concern>].http.service.ts        →  <Module>[<Concern>]HttpService        HTTP
+<module>[.<concern>].processor.service.ts   →  <Module>[<Concern>]ProcessorService   queue
+```
+
+A queue class carries the queue it enqueues onto, and lives in the feature's `queues/` folder
+(`rules/queue.md`):
+
+```
+<module>[.<concern>].queue.ts               →  <Module>[<Concern>]Queue
+```
+
+A feature's modules are named for the layer they provide, and only the ones with something to
+provide exist:
+
+```
+<module>.repository.module.ts   →  <Module>RepositoryModule
+<module>.module.ts              →  <Module>Module
+<module>.http.module.ts         →  <Module>HttpModule
+<module>.processor.module.ts    →  <Module>ProcessorModule
+```
+
+`src/router/` follows the same shape with `router` as the module prefix —
+`router.http.<scope>.module.ts` → `RouterHttp<Scope>Module`, and
+`router.processor.module.ts` → `RouterProcessorModule` (`rules/router.md`).
+
+- **DTO files always end `.dto.ts`**, and a DTO under `dtos/request/` or `dtos/response/` always carries its direction segment:
+
+  ```
+  <module>[.<concern>].request.dto.ts    →  <Module>[<Concern>]RequestSchema  + <Module>[<Concern>]RequestDto
+  <module>[.<concern>].response.dto.ts   →  <Module>[<Concern>]ResponseSchema + <Module>[<Concern>]ResponseDto
+  <module>.<noun>.dto.ts                 →  <Module><Noun>Schema + <Module><Noun>Dto   (shared by both directions)
+  ```
+
+  **A DTO file exports a zod schema and the type inferred from it** — the `Schema` const and
+  the `Dto` type, named alike (`rules/dto.md`). The const is what a decorator or a doc factory
+  receives; the type is what a signature carries.
+
+  **`<concern>` is OPTIONAL and it is not necessarily a verb.** It is an action
+  (`user.create.request.dto.ts`), a noun (`policy.update.request.dto.ts`,
+  `term-policy.contents.request.dto.ts`), or **absent when the DTO is the module's canonical
+  request or response shape** — `device.request.dto.ts` → `DeviceRequestDto`,
+  `country.request.dto.ts` → `CountryRequestDto`. Do not invent a filler segment to make a
+  canonical DTO look like the others.
+
+  The direction segment is what is NOT optional. A file in `dtos/request/` named
+  `<module>.<concern>.dto.ts` while its exports are `<Module><Concern>Request*` is the defect —
+  the file and its exports must agree on the direction.
+
+  A DTO genuinely shared by both directions, or a nested value object, sits directly in `dtos/`
+  and its exports end in a bare `Schema` / `Dto` (`user.two-factor.dto.ts` →
+  `UserTwoFactorSchema` + `UserTwoFactorDto`). **An export ending in `RequestDto` or
+  `ResponseDto` does not belong there** — it belongs in the folder its
+  direction names.
+
+- **One file MAY hold sibling DTOs of ONE concern, and it is named for the concern, not for any
+  one class.** `user.check.request.dto.ts` holds `UserCheckUsernameRequestDto` and
+  `UserCheckEmailRequestDto`; `user.mobile-number.request.dto.ts` holds
+  `UserAddMobileNumberRequestDto` and `UserUpdateMobileNumberRequestDto`;
+  `user.profile.request.dto.ts` holds `UserUpdateProfileRequestDto` and
+  `UserUpdateProfilePhotoRequestDto`. The siblings are normally variants of each other, built
+  with the zod combinators — `.extend()`, `.pick()`, `.omit()`, `.partial()`.
+
+  So a file name that does not match an export name is NOT a violation on its own. **Open the
+  file before calling one:** the question is whether every class in it belongs to the concern
+  the file names, not whether the first class happens to spell it out. Two unrelated concerns
+  in one file is the defect.
 - **One exception per file.** `<module>.<kebab-error>.exception.ts` — `user.password-not-match.exception.ts`. Never a barrel of exception classes.
 - **Swagger doc files** are `<module>.<scope>.doc.ts` under `docs/` (`user.admin.doc.ts`), exporting one decorator factory per endpoint.
 
@@ -29,41 +110,50 @@ Anything else is invalid.
 
 | Type | Rule | Example |
 |---|---|---|
-| Class | PascalCase, module-prefixed | `UserService`, `UserRepository`, `UserAdminController` |
+| Class | PascalCase, module-prefixed | `UserService`, `UserHttpService`, `UserRepository`, `UserAdminController` |
+| Queue class | `<Module>[<Concern>]Queue` | `NotificationQueue`, `NotificationEmailQueue`, `WorkspaceQueue` |
 | Interface | `I` + PascalCase | `IUser`, `IPaginationQuery`, `IRequestApp` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |
 | Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `UserDefaultAvailableSearch` |
 | Method / variable / field | camelCase | `findById`, `perPage` |
 | Exception class | `<Module><Descriptor>Exception` | `UserNotFoundException` |
-| Request DTO | `<Module>...RequestDto` | `UserCreateRequestDto` |
-| Response DTO | `<Module>...ResponseDto` | `UserProfileResponseDto` |
+| Request schema + type | `<Module>...RequestSchema` / `<Module>...RequestDto` | `UserCreateRequestSchema`, `UserCreateRequestDto` |
+| Response schema + type | `<Module>...ResponseSchema` / `<Module>...ResponseDto` | `UserProfileResponseSchema`, `UserProfileResponseDto` |
 | Payload interface | `I<Module><Action>Payload` | `INotificationSendPushPayload` |
 | Data shape | `I` + PascalCase | `IUser`, `IRequestLog`, `IActivityLogMetadata` |
 
 ## Rules that get broken most often
 
-- **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Interfaces describe DATA here, not service behavior — see the header-interface rule in `rules/operational.md`.
-- **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 5150`); see `rules/exceptions.md`.
+- **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Interfaces describe DATA here, not service behavior — see the header-interface rule in `rules/architecture.md`.
+- **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
-- **`Dto` suffix goes on BOTH the class name and the file name.** A DTO is the module's request/response transport shape.
+- **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).
 - **Payload interface names put the KIND last:** `INotificationSendPushPayload`, never `INotificationPayloadSendPush`.
 
-## Case convention
+## `Pattern` and `Regex` on a config key
 
-Everything on the wire and in the code is **camelCase** — request DTO fields, response DTO fields, query params, route params, Prisma columns, event and job payload fields, i18n keys. This is uniform and there is no snake_case surface anywhere in the project. Do not import a snake_case convention from another codebase.
+- **`Pattern` names a placeholder STRING** — a literal carrying `{placeholder}` segments a
+  reader fills with `.replace()`. A `RegExp` never takes it.
+- **`Regex` names a `RegExp`**: `workspace.slugRegex`, `project.slugRegex`.
+- A placeholder string that is a **full URL** takes `Pattern`:
+  `workspace.invite.linkPattern`, `workspace.invite.signUpLinkPattern`,
+  `workspace.joinRequest.reviewLinkPattern`, `aws.s3.objectUrlPattern`,
+  `aws.s3.cdnUrlPattern` (`rules/config.md`).
+- A placeholder string that is a relative **fragment** takes `Pattern` when the fragment IS
+  the whole value (`doc.jsonUrlPattern`), and is named for the thing it holds when the
+  placeholder is incidental to what the key carries (`termPolicy.uploadContentPath`).
 
-Types stay PascalCase; enum types keep the `Enum` prefix.
+The reservation runs one way. A key named `Pattern` is a placeholder string, and a full-URL
+placeholder string is named `Pattern`; a placeholder string that is neither is free to take
+another name.
 
-### Redis keys — a config pattern, not a prefix append
+## Case
 
-A Redis key is a full `keyPattern` string in a config file, with `{placeholder}` tokens the consumer fills via `.replace('{token}', value)`. The canonical form is `session.config`'s `'User:{userId}:Session:{sessionId}'`.
-
-- **Every segment is `PascalCase`.** `User:{userId}:Session:{sessionId}`, never `user:...:session:...` and never an inline lowercase segment like `` `${prefix}:lock:${id}` ``.
-- **No prefix-append.** A `cachePrefixKey: 'TwoFactor'` glued with `` `${prefix}:${x}` `` in the consumer hides the real key shape and invites an ad-hoc lowercase segment. Store the whole pattern in config; when one prefix backs two shapes, store two patterns (`challengeKeyPattern`, `lockKeyPattern`).
-- Keyv / BullMQ library `namespace` options (`'Cache'`, `'Queue'`) are not app-built keys — leave them.
+Every casing decision — camelCase on the wire, PascalCase types and constants, kebab paths and
+folders, Redis key patterns — is `rules/case-convention.md`.
 
 ## Everything is renameable — best practice wins
 
@@ -79,15 +169,10 @@ A handful of identifiers are read back out of state that already exists at deplo
 |---|---|
 | `EnumQueue` value (queue name) | jobs sitting in the old queue are orphaned — nothing consumes them. Drain the queue before deploying |
 | BullMQ job name | the processor dispatch no longer matches in-flight jobs. Drain the queue before deploying |
-| BullMQ job payload field (`I<Module><Action>Payload`) | jobs already in Redis reach a processor expecting new field names. Drain the queue before deploying |
+| BullMQ job payload field (`I<Module><Action>QueuePayload`) | jobs already in Redis reach a processor expecting new field names. Drain the queue before deploying |
 | JWT payload field | every issued token decodes wrong — every live session dies. Ship it as a forced re-login, deliberately |
 | Pagination cursor payload field | every base64 cursor a client holds fails the shape check; clients mid-scroll cannot advance. Ship in a window where a dead cursor is acceptable |
 | i18n key path | the key is the link between an exception's `messagePath` and `languages/*/<module>.json`. Rename both halves together, in every language |
 
 Do the rename. Just name the operational step in your hand-back so it reaches the deploy.
 
-## Never mirror a type that already has a name
-
-If a shape already exists as a named type, import it. A hand-written inline copy is a mirror: it drifts silently because nothing makes the two move together. A structural SUBSET is still a mirror — restating three fields of `IUser` inline means importing `IUser` and picking, not retyping.
-
-An inline object type is fine when it mirrors nothing. The test: does a named type for this shape already exist, or is this a structural subset of one? Yes → import it and delete the copy. No → inline is fine.

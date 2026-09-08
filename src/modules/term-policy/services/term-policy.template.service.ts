@@ -2,7 +2,7 @@ import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template-service.interface';
+import { ITermPolicyTemplateService } from '@modules/term-policy/interfaces/term-policy.template.service.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { EnumTermPolicyType } from '@generated/prisma-client';

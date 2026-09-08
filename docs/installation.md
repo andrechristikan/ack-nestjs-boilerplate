@@ -48,13 +48,13 @@ Before starting, install the following tools and packages. We recommend using th
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org) | v24.11.0+ |
-| [MongoDB](https://docs.mongodb.com/) | v8.2.11 |
-| [Redis](https://redis.io) | v8.8.0 |
-| [PNPM](http://pnpm.io) | v11.5.x |
+| [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
+| [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
+| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]
-> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
+> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#-installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
 
 ## Clone Repository
 
@@ -321,6 +321,20 @@ pnpm db:migrate
 pnpm migration:seed
 ```
 
+**Remove all seeded data:**
+```bash
+pnpm migration:remove
+```
+
+**Reset the database and reseed from scratch:**
+
+> [!WARNING]
+> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+
+```bash
+pnpm migration:fresh
+```
+
 **Seed email:**
 
 Use this to seed email data for testing email sending features.
@@ -376,6 +390,12 @@ pnpm lint:fix
 # Run tests
 pnpm test
 
+# Run tests with coverage
+pnpm test:cov
+
+# Type-check without emitting (also run by the pre-commit hook)
+pnpm typecheck
+
 # Check for dead/unused code
 pnpm deadcode
 
@@ -430,6 +450,7 @@ To verify everything is working correctly:
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
+[ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md

@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
     IPaginationQueryCursorParams,
@@ -10,6 +10,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ISession } from '@modules/session/interfaces/session.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
@@ -22,7 +23,7 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 export class SessionRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly helperService: HelperService,
+        private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly activityLogUtil: ActivityLogUtil
@@ -33,15 +34,11 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.offset<
             ISession,
-            Prisma.SessionSelect,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -51,7 +48,12 @@ export class SessionRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -61,14 +63,10 @@ export class SessionRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
     ): Promise<IResponsePagingReturn<ISession>> {
         return this.paginationService.cursor<
             ISession,
-            Prisma.SessionSelect,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -78,7 +76,12 @@ export class SessionRepository {
                 isRevoked: false,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -93,7 +96,7 @@ export class SessionRepository {
                 userId,
                 isRevoked: false,
                 expiredAt: {
-                    gte: this.helperService.dateCreate(),
+                    gte: this.helperDateService.create(),
                 },
             },
             select: {
@@ -115,7 +118,7 @@ export class SessionRepository {
                 userId,
                 isRevoked: false,
                 expiredAt: {
-                    gte: this.helperService.dateCreate(),
+                    gte: this.helperDateService.create(),
                 },
                 deviceOwnershipId,
             },
@@ -129,7 +132,7 @@ export class SessionRepository {
         userId: string,
         sessionId: string
     ): Promise<Session | null> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return this.databaseService.client.session.findFirst({
             where: {
@@ -155,7 +158,7 @@ export class SessionRepository {
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
+                revokedAt: this.helperDateService.create(),
                 revokedBy: {
                     connect: {
                         id: userId,
@@ -200,7 +203,7 @@ export class SessionRepository {
             },
             data: {
                 isRevoked: true,
-                revokedAt: this.helperService.dateCreate(),
+                revokedAt: this.helperDateService.create(),
                 revokedBy: {
                     connect: {
                         id: revokedBy,
@@ -230,7 +233,12 @@ export class SessionRepository {
                 },
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }

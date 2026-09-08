@@ -1,18 +1,30 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { ActivityLogSharedListDoc } from '@modules/activity-log/docs/activity-log.shared.doc';
-import { ActivityLogResponseDto } from '@modules/activity-log/dtos/response/activity-log.response.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { Prisma, Workspace } from '@generated/prisma-client';
+import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import {
+    ActivityLogSharedListSelfByWorkspaceDoc,
+    ActivityLogSharedListSelfDoc,
+} from '@modules/activity-log/docs/activity-log.shared.doc';
+import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
+import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    WorkspaceCurrent,
+    WorkspaceMemberProtected,
+    WorkspaceProtected,
+} from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -22,23 +34,58 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/activity-log',
 })
 export class ActivityLogSharedController {
-    constructor(private readonly activityLogService: ActivityLogService) {}
+    constructor(
+        private readonly activityLogHttpService: ActivityLogHttpService
+    ) {}
 
-    @ActivityLogSharedListDoc()
-    @ResponsePaging('activityLog.list')
+    @ActivityLogSharedListSelfDoc()
+    @ResponsePaging('activityLog.listSelf', {
+        schema: ActivityLogResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
-    async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
-            Prisma.ActivityLogSelect,
-            Prisma.ActivityLogWhereInput
-        >,
+    async listSelf(
+        @PaginationCursorQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<ActivityLogResponseDto>> {
-        return this.activityLogService.getListCursor(userId, pagination);
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.activityLogHttpService.getListCursorByUser(
+            userId,
+            pagination
+        );
+    }
+
+    @ActivityLogSharedListSelfByWorkspaceDoc()
+    @ResponsePaging('activityLog.listSelfByWorkspace', {
+        schema: ActivityLogResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @WorkspaceMemberProtected()
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected('workspace')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @RequestThrottle({ user: true })
+    @Get('/workspace/list')
+    async listSelfByWorkspace(
+        @PaginationCursorQuery({
+            availableOrderBy: ActivityLogDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>,
+        @AuthJwtPayload('userId') userId: string,
+        @WorkspaceCurrent() workspace: Workspace
+    ): Promise<IResponsePagingReturn<IActivityLog>> {
+        return this.activityLogHttpService.getListCursorByWorkspace(
+            workspace.id,
+            userId,
+            pagination
+        );
     }
 }

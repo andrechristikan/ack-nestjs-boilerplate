@@ -15,9 +15,9 @@ ACK NestJS Boilerplate standardizes API responses through decorators that automa
   - [@ResponsePaging](#responsepaging)
   - [@ResponseFile](#responsefile)
 - [Serialization](#serialization)
-  - [ResponseUtil](#responseutil)
-  - [Opt-In with @Expose](#opt-in-with-expose)
-  - [Nested DTOs](#nested-dtos)
+  - [Declaring the Schema](#declaring-the-schema)
+  - [A Route That Returns No Data](#a-route-that-returns-no-data)
+  - [Nested Schemas](#nested-schemas)
   - [Hiding Fields](#hiding-fields)
   - [Serialization Flow](#serialization-flow)
 - [Response Structure](#response-structure)
@@ -43,18 +43,19 @@ Standard API response decorator with optional caching.
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
 - `options` (optional): Configuration options
+  - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
   - `cache` (boolean | object): Enable caching
 
-**Interceptor:** `ResponseInterceptor` - transforms responses into standard format with metadata and localized messages via [MessageService][ref-doc-message]
+**Interceptor:** `ResponseInterceptor` - serializes the payload against `options.schema`, then wraps it into the standard envelope with metadata and a localized message via [MessageService][ref-doc-message]
 
 **Usage:**
 
 ```typescript
-@Response('user.get')
+@Response('user.get', { schema: UserProfileResponseSchema })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
+async getUser(@Param('id') id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
   return {
-    data: await this.userService.findById(id)
+    data: await this.userHttpService.get(id)
   };
 }
 ```
@@ -62,9 +63,11 @@ async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
 **Custom Status Code:**
 
 ```typescript
-@Response('user.create')
+@Response('user.create', { schema: DatabaseIdResponseSchema })
 @Post('/')
-async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> {
+async createUser(
+  @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+): Promise<IResponseReturn<DatabaseIdResponseDto>> {
   try {
     const data = await this.userService.create(dto);
     
@@ -91,21 +94,35 @@ async createUser(@Body() dto: CreateUserDto): Promise<IResponseReturn<UserDto>> 
 
 **Custom Message:**
 
+The controller carries the message path and nothing else; the values that fill it come back from the HTTP service on `metadata.messageProperties`:
+
 ```typescript
-@Response('user.update')
-@Patch('/:id')
-async updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto): Promise<IResponseReturn<UserDto>> {
-  const user = await this.userService.update(id, dto);
-  
+// notification.shared.controller.ts
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<void>> {
+  return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+  const count = await this.notificationService.markAllAsRead(userId);
+
   return {
-    data: user,
     metadata: {
-      messagePath: 'user.updateSuccess',
-      messageProperties: { name: user.name }
-    }
+      messageProperties: {
+        count,
+      },
+    },
   };
 }
 ```
+
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
+
+`metadata` accepts a `messagePath` beside `messageProperties`. `ResponseInterceptor` reads the decorator's path first and then applies `responseMetadata?.messagePath ?? messagePath` (`src/common/response/interceptors/response.interceptor.ts:96`), so a handler that returns one replaces the path its route declared, and one that returns none keeps it. Every route in `src/` takes the second branch: the path on the decorator is the path that is sent.
 
 ### @ResponsePaging
 
@@ -114,6 +131,7 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 **Parameters:**
 - `messagePath` (string): Path to response message for localization
 - `options` (optional): Configuration options
+  - `schema` (zod schema): The shape of ONE item of the page; the interceptor wraps the page around it
   - `cache` (boolean | object): Enable caching
 
 **Requirements:**
@@ -126,46 +144,32 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 **Offset-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 @Get('/list')
 async listUsers(
-  @PaginationOffsetQuery() query: IPaginationQuery
-): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, totalPage, count } = await this.userService.findAll(query);
-  
-  return {
-    type: 'offset',
-    data,
-    totalPage,
-    page: query.page,
-    perPage: query.perPage,
-    count,
-    hasNext: query.page < totalPage,
-    hasPrevious: query.page > 1,
-    nextPage: query.page < totalPage ? query.page + 1 : undefined,
-    previousPage: query.page > 1 ? query.page - 1 : undefined
-  };
+  @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+  const { data, ...others } = await this.userService.findAll(pagination);
+
+  // `others` carries type: 'offset', count, page, perPage, totalPage,
+  // hasNext, hasPrevious, nextPage, previousPage from PaginationService.offset
+  return { data, ...others };
 }
 ```
 
 **Cursor-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list')
+@ResponsePaging('user.list', { schema: UserListResponseSchema })
 @Get('/list')
 async listUsers(
-  @PaginationCursorQuery() query: IPaginationQuery
-): Promise<IResponsePagingReturn<UserDto>> {
-  const { data, cursor, count, hasNext } = await this.userService.findAllCursor(query);
-  
-  return {
-    type: 'cursor',
-    data,
-    cursor,
-    perPage: query.perPage,
-    count,
-    hasNext
-  };
+  @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
+): Promise<IResponsePagingReturn<UserListResponseDto>> {
+  const { data, ...others } = await this.userService.findAllCursor(pagination);
+
+  // `others` carries type: 'cursor', cursor, perPage, hasNext and optional count
+  // from PaginationService.cursor; the interceptor emits `cursor` as `nextCursor`
+  return { data, ...others };
 }
 ```
 
@@ -180,7 +184,7 @@ File download response decorator that handles CSV and PDF file downloads with pr
 - Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
 - CSV data must be a string (pre-converted to CSV format)
 - PDF data must be a Buffer
-- Optional `filename` - if not provided, generates timestamped filename: `export-{timestamp}.{extension}`
+- Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
 **Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
@@ -293,87 +297,114 @@ async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFile
 
 ## Serialization
 
-Response payloads are serialized in per-module mapper utilities (`*/utils/*.util.ts`) **before** they reach the controller. The `@Response` / `@ResponsePaging` interceptors only wrap the already-mapped `data` into the standard envelope — they do **not** strip or transform fields. Serialization is **opt-in**: only fields decorated with `@Expose()` survive; everything else is dropped (**fail-closed**). A newly added entity field never leaks into a response until it is explicitly exposed.
+A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. A response schema is a `z.object`, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it. The constraint when writing one: `rules/dto.md`.
 
-> Input validation (`RequestModule`) uses the opposite mode (`excludeExtraneousValues: false`) — unknown input keys are rejected by `whitelist`, not silently dropped. See [Request Validation Documentation][ref-doc-request-validation]. Input and output serialization are distinct paths.
+Serialization is **fail-closed** in both directions. A payload that the schema rejects raises `ResponseSerializationException`, and so does a handler that returns data on a route which declared no schema.
 
-### ResponseUtil
+> The inbound half is the mirror image: a request schema is `z.strictObject`, so an unknown key is rejected rather than dropped. See [Request Validation Documentation][ref-doc-request-validation].
 
-`ResponseUtil` (`src/common/response/utils/response.util.ts`) centralizes serialization. It is provided by the global `ResponseModule` and wraps `plainToInstance` with `excludeExtraneousValues: true` — the transform option is defined here **once** for the whole application. Never call `plainToInstance` directly on the response path; inject `ResponseUtil` and call `serialize`.
+### Declaring the Schema
+
+`@Response` takes the schema of the whole payload; `@ResponsePaging` takes the schema of one item and wraps the page around it.
 
 ```typescript
-@Injectable()
-export class ResponseUtil {
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V[]): T[];
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V): T;
-  serialize<T, V>(cls: ClassConstructor<T>, plain: V | V[]): T | T[] {
-    return plainToInstance(cls, plain, {
-      excludeExtraneousValues: true,
-    });
-  }
+@Response('user.profile', { schema: UserProfileResponseSchema })
+@Get('/profile/get')
+async profile(
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+  return this.userProfileHttpService.getProfile(userId);
+}
+
+@ResponsePaging('device.list', { schema: DeviceOwnershipResponseSchema })
+@Get('/list')
+async list(
+  @PaginationCursorQuery({ availableOrderBy: DeviceCursorAvailableOrderBy })
+  pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+  @AuthJwtPayload('userId') userId: string,
+  @AuthJwtPayload('sessionId') sessionId: string
+): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
+  return this.deviceHttpService.getListCursor(userId, sessionId, pagination);
 }
 ```
 
-**Mapper usage** — inject `ResponseUtil`, call `serialize` (overloaded for single object and array):
+A schema file exports the schema constant and the type inferred from it, and composes from a base rather than restating fields:
 
 ```typescript
-@Injectable()
-export class DeviceUtil {
-  constructor(private readonly responseUtil: ResponseUtil) {}
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    deviceId: z.string().meta({
+        description: 'Device ownership ID',
+        example: faker.database.mongodbObjectId(),
+    }),
+    userId: z.string().meta({
+        description: 'User ID who owns the device',
+        example: faker.database.mongodbObjectId(),
+    }),
+});
 
-  mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
-    return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
-  }
+export type DeviceOwnershipResponseDto = z.infer<
+    typeof DeviceOwnershipResponseSchema
+>;
+```
+
+The `.meta({ description, example })` on each field is what the OpenAPI document is generated from. See [Doc Documentation][ref-doc-doc].
+
+### A Route That Returns No Data
+
+`@Response(messagePath)` with no `schema` declares a route whose body carries `statusCode`, `message`, and `metadata` and nothing else. The handler returns `Promise<void>`:
+
+```typescript
+@Response('role.delete')
+@Delete('/delete/:role')
+async delete(
+  @Param('role', RequestRequiredPipe, RequestIsValidObjectIdPipe) role: string
+): Promise<void> {
+  await this.roleHttpService.delete(role);
 }
 ```
 
-### Opt-In with @Expose
+### Nested Schemas
 
-Every field that should appear in the response **must** carry `@Expose()`. A declared field without `@Expose()` is dropped at serialization time.
-
-```typescript
-export class DeviceOwnershipResponseDto extends DatabaseResponseDto {
-  @ApiProperty({ description: 'Device ownership ID' })
-  @Expose()
-  deviceId: string;
-
-  @ApiProperty({ description: 'User ID who owns the device' })
-  @Expose()
-  userId: string;
-}
-```
-
-`@Transform(...)` and `@ApiProperty(...)` are independent — keep them as-is alongside `@Expose()`.
-
-### Nested DTOs
-
-`excludeExtraneousValues: true` propagates into nested `@Type(() => X)` properties. When a parent DTO is serialized, **every nested DTO must already carry `@Expose()` on its own fields** — otherwise the nested object comes back empty. Keep both `@Type` and `@Expose` on the parent property:
+A nested object is a named schema referenced from the parent, which keeps one definition per shape and lets the OpenAPI document reuse it:
 
 ```typescript
-@ApiProperty({ type: DeviceResponseDto })
-@Expose()
-@Type(() => DeviceResponseDto)
-device: DeviceResponseDto;
+device: DeviceResponseSchema.meta({
+    description: 'Device information',
+    example: { /* ... */ },
+}),
+revokedBy: UserRefResponseSchema.nullable().meta({
+    description: 'User who revoked the device ownership',
+    example: { /* ... */ },
+}),
 ```
+
+Stripping propagates: the nested schema strips its own undeclared keys the same way the parent does.
 
 ### Hiding Fields
 
-Under opt-in, a sensitive top-level field is hidden simply by **not** adding `@Expose()` — no `@Exclude()` needed (e.g. `password`, `hash`). `@Exclude()` plus `@ApiHideProperty()` is required for **subclass-hide**: when a subclass must hide a field that a parent class already `@Expose()`s, both are needed so the JSON and the Swagger schema agree.
+A field is hidden by leaving it out of the schema; there is no separate exclusion decorator. A shape that shows a field only on one route builds that route's schema from the shared one:
 
 ```typescript
-// Parent exposes isActive/startAt/endAt/name/type/key; create response hides isActive/startAt, keeps the rest, and adds `secret`.
-export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
-  @Expose()
-  secret: string;
+// The base api-key shape carries no secret. Creation and reset are the two routes that return
+// it, and they declare it by extending the base.
+export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
+    secret: z.string().meta({
+        description: 'Secret key of ApiKey, only show at once',
+        example: faker.string.alphanumeric(20),
+    }),
+});
+```
 
-  @ApiHideProperty()
-  @Exclude()
-  isActive: boolean;
+To drop a field a base declares, derive with `.omit()`:
 
-  @ApiHideProperty()
-  @Exclude()
-  startAt?: Date;
-}
+```typescript
+export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({ /* ... */ });
 ```
 
 ### Serialization Flow
@@ -381,18 +412,19 @@ export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
 ```text
 Service returns entity / interface (raw)
     ↓
-Module mapper util: responseUtil.serialize(SomeResponseDto, data)
+Controller returns { data } / { data: [] } as IResponseReturn / IResponsePagingReturn
     ↓
-plainToInstance(cls, data, { excludeExtraneousValues: true })
+ResponseInterceptor reads the schema off ResponseSchemaMetaKey
     ↓
-Only @Expose() fields kept (nested @Type DTOs serialized recursively)
+schema['~standard'].validate(payload): undeclared keys stripped, a rejection raises
+ResponseSerializationException
     ↓
-Controller returns { data } / { data: [] }
+Envelope assembled: statusCode, localized message, metadata, data
     ↓
-ResponseInterceptor wraps into standard envelope + metadata + headers
+ResponseMetadataService.setHeaders mirrors the metadata onto response headers
 ```
 
-Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the four app filters call it instead of building metadata inline.
+Metadata and headers are built by the shared `ResponseMetadataService` (`src/common/response/services/response.metadata.service.ts`): `create()` returns a `ResponseMetadataDto` from the request store, `setHeaders(response, metadata)` mirrors it to response headers. The three response interceptors and the five app filters call it instead of building metadata inline.
 
 ## Response Structure
 
@@ -439,7 +471,7 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     count?: number;
     hasNext: boolean;
     hasPrevious: boolean;
-    orderBy: IPaginationOrderBy[];   // e.g. [{ createdAt: 'desc' }]
+    orderBy: string[];   // `field:direction` entries, e.g. ['createdAt:desc']
     availableSearch: string[];
     availableOrderBy: string[];
     
@@ -451,11 +483,15 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
     
     // Cursor-specific fields (when type = 'cursor')
     nextCursor?: string;
-    previousCursor?: string;
+    previousCursor?: string;   // declared on the DTO, never populated
   };
   data: T[];
 }
 ```
+
+`metadata.orderBy` is a string array, symmetric with `availableOrderBy` beside it. `ResponsePagingInterceptor` flattens the service-level `IPaginationOrderBy[]` (`[{ createdAt: 'desc' }]`) into `field:direction` entries (`['createdAt:desc']`), which is also the format the `orderBy` query parameter accepts. An empty order renders `[]`.
+
+Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCursor` from the service's `cursor` field and leaves `previousCursor` unassigned, so that key is always `undefined` and is dropped from the JSON body. `hasPrevious` is only assigned on the offset branch, so it stays `false` for every cursor response. Neither field carries the information a "previous page" control would need.
 
 ## Caching
 
@@ -464,31 +500,36 @@ Metadata and headers are built by the shared `ResponseMetadataService` (`src/com
 **Basic Caching:**
 
 ```typescript
-@Response('user.get', { cache: true })
+@Response('user.get', { schema: UserProfileResponseSchema, cache: true })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
+async getUser(
+  @Param('id') id: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return { data: await this.userHttpService.get(id) };
 }
 ```
 
 **Cache Key:**
 
 ```text
-Apis:*
+Apis:{key}
 ```
 
 **Custom Cache Configuration:**
 
 ```typescript
 @Response('user.get', {
+  schema: UserProfileResponseSchema,
   cache: {
     key: 'user-detail',
     ttl: 3600000 // milliseconds (1 hour)
   }
 })
 @Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserDto>> {
-  return { data: await this.userService.findById(id) };
+async getUser(
+  @Param('id') id: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return { data: await this.userHttpService.get(id) };
 }
 ```
 

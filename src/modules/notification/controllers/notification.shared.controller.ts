@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -10,7 +11,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import { Notification, Prisma } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -23,10 +24,17 @@ import {
     NotificationSharedMarkAsReadDoc,
     NotificationSharedUpdateUserSettingDoc,
 } from '@modules/notification/docs/notification.shared.doc';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
+import {
+    NotificationUserSettingRequestDto,
+    NotificationUserSettingRequestSchema,
+} from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
+import {
+    NotificationUserSettingResponseDto,
+    NotificationUserSettingResponseSchema,
+} from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import { NotificationHttpService } from '@modules/notification/services/notification.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -48,37 +56,44 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/notification',
 })
 export class NotificationSharedController {
-    constructor(private readonly notificationService: NotificationService) {}
+    constructor(
+        private readonly notificationHttpService: NotificationHttpService
+    ) {}
 
     @NotificationSharedListDoc()
-    @ResponsePaging('notification.list')
+    @ResponsePaging('notification.list', {
+        schema: NotificationResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
-            Prisma.NotificationSelect,
-            Prisma.NotificationWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableOrderBy: NotificationDefaultAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<NotificationResponseDto>> {
-        return this.notificationService.getListCursor(userId, pagination);
+    ): Promise<IResponsePagingReturn<Notification>> {
+        return this.notificationHttpService.getListCursor(userId, pagination);
     }
 
     @NotificationSharedListUserSettingDoc()
-    @Response('notification.listUserSetting')
+    @Response('notification.listUserSetting', {
+        schema: NotificationUserSettingResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/list/user-setting')
+    @RequestThrottle({ user: true })
+    @Get('/setting/list')
     async listUserSetting(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
-        return this.notificationService.getListUserSetting(userId);
+        return this.notificationHttpService.getListUserSetting(userId);
     }
 
     @NotificationSharedMarkAsReadDoc()
@@ -87,7 +102,8 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Patch('/update/read/:notificationId')
+    @RequestThrottle({ user: true })
+    @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
         @Param(
@@ -97,7 +113,7 @@ export class NotificationSharedController {
         )
         notificationId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.markAsRead(userId, notificationId);
+        return this.notificationHttpService.markAsRead(userId, notificationId);
     }
 
     @NotificationSharedMarkAllAsReadDoc()
@@ -106,12 +122,13 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
-    @Post('/update/read-all')
+    @Post('/update/read')
     async markAllAsRead(
         @AuthJwtPayload('userId') userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.markAllAsRead(userId);
+        return this.notificationHttpService.markAllAsRead(userId);
     }
 
     @NotificationSharedUpdateUserSettingDoc()
@@ -120,13 +137,14 @@ export class NotificationSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/update/setting')
+    @RequestThrottle({ user: true })
+    @Put('/setting/update')
     async updateUserSetting(
         @AuthJwtPayload('userId')
         userId: string,
-        @Body()
+        @Body({ schema: NotificationUserSettingRequestSchema })
         body: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.notificationService.updateUserSetting(userId, body);
+        return this.notificationHttpService.updateUserSetting(userId, body);
     }
 }

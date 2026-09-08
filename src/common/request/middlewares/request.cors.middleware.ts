@@ -11,6 +11,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
     private readonly allowedOrigin: string | boolean | string[];
     private readonly allowedMethod: string[];
     private readonly allowedHeader: string[];
+    private readonly exposedHeader: string[];
 
     constructor(private readonly configService: ConfigService) {
         this.allowedOrigin = this.configService.get<
@@ -22,6 +23,9 @@ export class RequestCorsMiddleware implements NestMiddleware {
         this.allowedHeader = this.configService.get<string[]>(
             'request.cors.allowedHeader'
         )!;
+        this.exposedHeader = this.configService.get<string[]>(
+            'request.cors.exposedHeader'
+        )!;
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
@@ -30,6 +34,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
                 this.originValidator(origin, callback),
             methods: this.allowedMethod,
             allowedHeaders: this.allowedHeader,
+            exposedHeaders: this.exposedHeader,
             preflightContinue: false,
             credentials: this.shouldAllowCredentials(),
             optionsSuccessStatus: HttpStatus.NO_CONTENT,

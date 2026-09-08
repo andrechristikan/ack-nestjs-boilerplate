@@ -43,8 +43,11 @@ export class UserNotFoundException extends AppBaseException {
 
 ## Throwing rules
 
-- **Services throw the module's typed exception.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
-- **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the service's call.
+- **The DOMAIN service throws the typed exception of whatever SUBJECT failed.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
+- **The subject decides which module's exception is thrown, not the caller.** A service raises another module's exception when that module owns the entity the caller asked about — `WorkspaceNotFoundException` from a project service when the workspace is missing, `CountryNotFoundException` from a user service when the country id does not resolve. `module` and `statusCode` then tell the client WHICH thing was not found, which is the point of both fields. Never allocate a duplicate code in your own block for another module's entity (`rules/cross-module.md`).
+- **An HTTP service and a processor service throw nothing of their own.** They translate a DTO or a job payload and let the domain service's exception travel out; a business exception raised in either is a rule the other transport never applies (`rules/architecture.md`).
+- **A util MAPS an error to the module's exception and RETURNS it; the caller throws. A util raises nothing itself.** `UserOnboardingUtil.mapCreateCollision` turns a unique collision on `username` or `email` into the matching exception and hands back anything else untouched, so the caller's `catch` reads `throw this.userOnboardingUtil.mapCreateCollision(error)` — one line, and the `throw` is visible where the flow actually stops. A util that throws hides that decision inside a call the reader has to open. A rejection that RAISES belongs to the domain service, whatever it rests on: `NotificationService.validateUserSetting` checks a type-and-channel pair against the allowed combinations and throws, in the same layer that reads for a quota, a membership or a status transition (`rules/architecture.md`).
+- **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the domain service's call.
 - **Controllers do not catch module exceptions (`AppBaseException`).** The global filter chain owns the mapping. A `try/catch` in a controller that reshapes an exception is duplicating the filter and will drift from it.
 - Framework `HttpException`s (route 404, throttler 429, payload limits) are the framework's to throw and `AppHttpFilter`'s to handle. Feature code does not raise them.
 
@@ -69,7 +72,7 @@ Detail and the full procedure (tables): `rules/status-code.md`. Summary:
 `app.module.ts` registers the `APP_FILTER` providers in this array order — general → base-exception → http → validation → validation-import. NestJS evaluates them in reverse, so the most specific catch runs first:
 
 - `app.validation-import.filter.ts` — `@Catch(FileImportException)`, row-level CSV import errors. No Sentry.
-- `app.validation.filter.ts` — `@Catch(RequestValidationException)`, class-validator failures. No Sentry.
+- `app.validation.filter.ts` — `@Catch(RequestValidationException)`, request-schema failures. No Sentry.
 - `app.http.filter.ts` — `@Catch(HttpException)`, framework errors only. Sentry at 500+.
 - `app.base-exception.filter.ts` — `@Catch(AppBaseException)`, every `AppBaseException`. Sentry only when `httpStatus >= 500`.
 - `app.general.filter.ts` — `@Catch()`, the fallback. Always 500, always Sentry.
@@ -82,7 +85,5 @@ Response shape is `ResponseErrorDto`: `{ statusCode, statusCodeKey, module, mess
 
 ## i18n messages
 
-- `messagePath` is a **nested** JSON key, and the filename is the prefix: `user.error.notFound` → `src/languages/en/user.json` → `{ "error": { "notFound": "..." } }`.
-- **Flat keys are forbidden.** `"error.notFound": "..."` as a single string key does not resolve.
-- Every new exception needs its key added to every language file, not just `en`.
-- Placeholders use `{name}` and are fed by `messageProperties`.
+`messagePath` is a nested JSON key whose FIRST segment is the language filename, and every new
+exception needs its key in every language file. The full rule set is `rules/i18n.md`.

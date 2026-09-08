@@ -6,56 +6,30 @@ import {
     HttpStatus,
     Logger,
 } from '@nestjs/common';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import Case from 'case';
 import { MessageService } from '@common/message/services/message.service';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import * as Sentry from '@sentry/nestjs';
 
 /**
- * Handles framework `HttpException`: redirects off-prefix paths, builds the standard error
- * envelope from the HTTP status, and reports 5xx to Sentry.
+ * Handles framework `HttpException`: builds the standard error envelope from the HTTP status
+ * and reports 5xx to Sentry.
  */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppHttpFilter.name);
 
-    private readonly globalPrefix: string;
-    private readonly docPrefix: string;
-
-    private readonly directPermanentToPath: string = '/public/hello';
-    private readonly directPermanentTo: string;
-
     constructor(
         private readonly messageService: MessageService,
-        private readonly configService: ConfigService,
         private readonly responseMetadataService: ResponseMetadataService
-    ) {
-        this.globalPrefix = this.configService.get<string>('app.globalPrefix')!;
-        this.docPrefix = this.configService.get<string>('doc.prefix')!;
-        this.directPermanentTo = `${this.globalPrefix}${this.directPermanentToPath}`;
-    }
+    ) {}
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
+        const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
-        const request: IRequestApp = ctx.getRequest<IRequestApp>();
-
-        if (
-            !request.path.startsWith(this.globalPrefix) &&
-            !request.path.startsWith(this.docPrefix)
-        ) {
-            response.redirect(
-                HttpStatus.PERMANENT_REDIRECT,
-                this.directPermanentTo
-            );
-            return;
-        }
 
         this.sendToSentry(exception);
 

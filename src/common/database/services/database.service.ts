@@ -61,7 +61,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Closes the connection.
+     * Closes the connection. A failure is logged and swallowed, because throwing here would abort
+     * the shutdown sequence and leave the process alive with its signal handlers already consumed.
      */
     private async disconnect(): Promise<void> {
         try {
@@ -69,7 +70,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             this.logger.log('Successfully disconnected from the database');
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to disconnect from the database');
-            throw error;
         }
     }
 

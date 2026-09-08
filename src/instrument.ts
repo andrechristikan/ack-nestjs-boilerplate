@@ -76,12 +76,10 @@ if (loggerConfigs.sentry.dsn) {
                 originalException instanceof QueueException &&
                 !originalException.isFatal
             ) {
-                // Don't send non-fatal QueueExceptions to Sentry
                 return null;
             }
 
             if (event.request) {
-                // Filter out excluded routes
                 const url = event.request.url;
 
                 if (isExcludedUrl(url, LoggerExcludedRoutes)) {
@@ -91,14 +89,12 @@ if (loggerConfigs.sentry.dsn) {
 
             if (event.request && event.contexts && event.contexts.response) {
                 const statusCode = event.contexts.response.status_code;
-                // Only send events for errors (5xx status codes)
                 if (statusCode && statusCode < 500) {
                     return null;
                 }
             }
 
             if (event.level === 'info' || event.level === 'debug') {
-                // Don't send info and debug level events
                 return null;
             }
 
@@ -115,7 +111,6 @@ if (loggerConfigs.sentry.dsn) {
             const transaction = samplingContext?.transactionContext;
             const transactionName = transaction?.name;
 
-            // Never sample excluded routes
             if (
                 transactionName &&
                 isExcludedUrl(transactionName, LoggerExcludedRoutes)
@@ -127,11 +122,9 @@ if (loggerConfigs.sentry.dsn) {
                 appConfigs.env === EnumAppEnvironment.production &&
                 transaction?.data?.status === 'ok'
             ) {
-                // Only sample 5% of successful transactions
                 return 0.05;
             }
 
-            // Use normal sampling rate for errors or non-production
             return appConfigs.env === EnumAppEnvironment.production ? 0.3 : 1.0;
         },
     });

@@ -13,6 +13,11 @@ export enum EnumNotificationProcess {
     resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
+    workspaceInvite = 'workspaceInvite',
+    workspaceInviteUnregistered = 'workspaceInviteUnregistered',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
 export enum EnumNotificationPushProcess {
@@ -22,4 +27,29 @@ export enum EnumNotificationPushProcess {
     temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
     resetPassword = 'resetPassword',
     newDeviceLogin = 'newDeviceLogin',
+    workspaceInvite = 'workspaceInvite',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
+}
+
+export enum EnumNotificationKind {
+    welcome = 'welcome',
+    welcomeSocial = 'welcomeSocial',
+    welcomeByAdmin = 'welcomeByAdmin',
+    verificationEmail = 'verificationEmail',
+    verifiedEmail = 'verifiedEmail',
+    verifiedMobileNumber = 'verifiedMobileNumber',
+    temporaryPasswordByAdmin = 'temporaryPasswordByAdmin',
+    changePassword = 'changePassword',
+    forgotPassword = 'forgotPassword',
+    resetPassword = 'resetPassword',
+    resetTwoFactorByAdmin = 'resetTwoFactorByAdmin',
+    newDeviceLogin = 'newDeviceLogin',
+    publishTermPolicy = 'publishTermPolicy',
+    userAcceptTermPolicy = 'userAcceptTermPolicy',
+    workspaceInvite = 'workspaceInvite',
+    workspaceJoinRequest = 'workspaceJoinRequest',
+    workspaceJoinAccepted = 'workspaceJoinAccepted',
+    workspaceJoinRejected = 'workspaceJoinRejected',
 }

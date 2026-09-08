@@ -14,11 +14,15 @@ import {
     TermPolicyDefaultType,
 } from '@modules/term-policy/constants/term-policy.list.constant';
 import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
-import { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
+import {
+    EnumTermPolicyType,
+    Prisma,
+    TermPolicy,
+} from '@generated/prisma-client';
 
 @ApiTags('modules.public.termPolicy')
 @Controller({
@@ -26,26 +30,27 @@ import { EnumTermPolicyType, Prisma } from '@generated/prisma-client';
     path: '/term-policy',
 })
 export class TermPolicyPublicController {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+    constructor(
+        private readonly termPolicyHttpService: TermPolicyHttpService
+    ) {}
 
     @TermPolicyPublicListDoc()
-    @ResponsePaging('termPolicy.list')
+    @ResponsePaging('termPolicy.list', {
+        schema: TermPolicyResponseSchema,
+    })
     @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationCursorQuery({
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.TermPolicySelect,
-            Prisma.TermPolicyWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         @PaginationQueryFilterInEnum<EnumTermPolicyType>(
             'type',
             TermPolicyDefaultType
         )
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicyResponseDto>> {
-        return this.termPolicyService.getListPublished(pagination, type);
+    ): Promise<IResponsePagingReturn<TermPolicy>> {
+        return this.termPolicyHttpService.getListPublished(pagination, type);
     }
 }

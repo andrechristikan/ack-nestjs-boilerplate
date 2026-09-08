@@ -3,7 +3,7 @@ import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guar
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 
 /**
- * Guards a route behind a feature flag; `keyPath` is `key` or `key.metadataKey`.
+ * Guards a route behind a feature flag; `keyPath` is a bare flag key.
  */
 export function FeatureFlagProtected(keyPath: string): MethodDecorator {
     return applyDecorators(

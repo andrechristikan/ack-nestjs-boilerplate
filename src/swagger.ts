@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'fs';
+import { createSchema } from 'zod-openapi';
+import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
 
@@ -22,6 +24,8 @@ export default async function (app: NestApplication): Promise<void> {
     const docName: string = configService.get<string>('doc.name')!;
     const docVersion: string = configService.get<string>('doc.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
+    const docJsonUrlPattern: string =
+        configService.get<string>('doc.jsonUrlPattern')!;
 
     const logger = new Logger(`${appName}-Doc`);
 
@@ -63,6 +67,8 @@ export default async function (app: NestApplication): Promise<void> {
 
         const document = SwaggerModule.createDocument(app, documentBuild, {
             deepScanRoutes: true,
+            standardSchemaConverter: (schema, { schemaType }) =>
+                createSchema(schema as z.core.$ZodType, { io: schemaType }),
         });
 
         try {
@@ -72,7 +78,10 @@ export default async function (app: NestApplication): Promise<void> {
         }
 
         SwaggerModule.setup(docPrefix, app, document, {
-            jsonDocumentUrl: `${docPrefix}/json`,
+            jsonDocumentUrl: docJsonUrlPattern.replace(
+                '{docPrefix}',
+                docPrefix
+            ),
             explorer: true,
             customSiteTitle: docName,
             ui: true,

@@ -26,7 +26,7 @@ jobs:
 
         steps:
             - name: Git checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
 
             - name: Get short sha commit
               id: git
@@ -35,7 +35,7 @@ jobs:
 
             - name: Get latest version
               id: version
-              uses: martinbeentjes/npm-get-version-action@main
+              uses: martinbeentjes/npm-get-version-action@v1
 
             - name: Log info
               run: |
@@ -44,13 +44,13 @@ jobs:
                   echo Version is: ${{ steps.version.outputs.current-version }}
 
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@master
+              uses: docker/setup-qemu-action@v4
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@master
+              uses: docker/setup-buildx-action@v4
 
             - name: Login to Docker Registry
-              uses: docker/login-action@master
+              uses: docker/login-action@v4
               with:
                   registry: ${{ vars.DOCKER_REGISTRY_URL }}
                   username: ${{ secrets.DOCKER_USERNAME }}
@@ -86,7 +86,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
 
             - name: Set SSH variables
               if: ${{ github.ref_name == matrix.branch }}
@@ -113,7 +113,7 @@ jobs:
 
             - name: Deploy via SSH
               if: ${{ github.ref_name == matrix.branch }}
-              uses: appleboy/ssh-action@master
+              uses: appleboy/ssh-action@v1
               with:
                   host: ${{ env.SSH_HOST }}
                   username: ${{ env.SSH_USER }}
@@ -142,7 +142,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
 
             - name: Set SSH variables
               if: ${{ github.ref_name == matrix.branch }}
@@ -169,7 +169,7 @@ jobs:
 
             - name: Clean Docker Images
               if: ${{ github.ref_name == matrix.branch }}
-              uses: appleboy/ssh-action@master
+              uses: appleboy/ssh-action@v1
               with:
                   host: ${{ env.SSH_HOST }}
                   username: ${{ env.SSH_USER }}

@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
@@ -13,13 +14,14 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
+import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionSharedListDoc,
     SessionSharedRevokeDoc,
 } from '@modules/session/docs/session.shared.doc';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionService } from '@modules/session/services/session.service';
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
+import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
@@ -31,26 +33,24 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/session',
 })
 export class SessionSharedController {
-    constructor(private readonly sessionService: SessionService) {}
+    constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionSharedListDoc()
-    @ResponsePaging('session.list')
+    @ResponsePaging('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationCursorQuery({
-            availableOrderBy: SessionDefaultAvailableOrderBy,
+            availableOrderBy: SessionCursorAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListCursor(userId, pagination);
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.sessionHttpService.getListCursor(userId, pagination);
     }
 
     @SessionSharedRevokeDoc()
@@ -59,12 +59,13 @@ export class SessionSharedController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
         @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {
-        return this.sessionService.revoke(userId, sessionId);
+        await this.sessionHttpService.revoke(userId, sessionId);
     }
 }

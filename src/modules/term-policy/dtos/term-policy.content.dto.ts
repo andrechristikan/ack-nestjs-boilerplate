@@ -1,15 +1,15 @@
-import { AwsS3ResponseDto } from '@common/aws/dtos/response/aws.s3.response.dto';
+import { z } from 'zod';
+import { AwsS3ResponseSchema } from '@common/aws/dtos/response/aws.s3.response.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-export class TermContentDto extends AwsS3ResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Nested value object: one localized term or policy document stored in S3.
+ */
+export const TermContentSchema = AwsS3ResponseSchema.extend({
+    language: z.enum(EnumMessageLanguage).meta({
         description: 'Language of the term document',
         example: EnumMessageLanguage.en,
-        enum: EnumMessageLanguage,
-    })
-    @Expose()
-    readonly language: EnumMessageLanguage;
-}
+    }),
+});
+
+export type TermContentDto = z.infer<typeof TermContentSchema>;

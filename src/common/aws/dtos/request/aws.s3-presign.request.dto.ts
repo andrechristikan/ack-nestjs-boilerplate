@@ -1,50 +1,20 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { AwsS3ObjectKeyRegex } from '@common/aws/constants/aws.constant';
 
-export class AwsS3PresignRequestDto {
-    @ApiProperty({
-        required: true,
-        example: faker.system.filePath(),
-    })
-    @IsNotEmpty()
-    @IsString()
-    key: string;
+export const AwsS3PresignRequestSchema = z.strictObject({
+    key: z.string().min(1).regex(AwsS3ObjectKeyRegex).meta({
+        description: 'Object key to presign in S3',
+        example:
+            'users/507f1f77bcf86cd799439011/profile/aB3xY9zQ1mN7pR2sT4vW.jpg',
+    }),
+    size: z
+        .number()
+        .int()
+        .meta({
+            description: 'Object size in bytes',
+            example: faker.number.int({ min: 1, max: 10_485_760 }),
+        }),
+});
 
-    @ApiProperty({
-        required: true,
-    })
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    size: number;
-}
-
-export class AwsS3PresignPartRequestDto extends AwsS3PresignRequestDto {
-    @ApiProperty({
-        required: true,
-        example: 1,
-        description: 'Part number for multipart upload',
-    })
-    @IsNumber({
-        allowInfinity: false,
-        allowNaN: false,
-        maxDecimalPlaces: 0,
-    })
-    @IsInt()
-    @IsNotEmpty()
-    partNumber: number;
-
-    @ApiProperty({
-        required: true,
-        example: '1',
-        description: 'Upload ID for multipart upload',
-    })
-    @IsString()
-    @IsNotEmpty()
-    uploadId: string;
-}
+export type AwsS3PresignRequestDto = z.infer<typeof AwsS3PresignRequestSchema>;

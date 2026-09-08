@@ -1,4 +1,4 @@
-import { ValidationError } from '@nestjs/common';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,
@@ -11,7 +11,7 @@ export interface IMessageService {
     filterLanguage(customLanguage: string): string;
     setMessage(path: string, options?: IMessageSetOptions): string;
     setValidationMessage(
-        errors: ValidationError[],
+        issues: readonly StandardSchemaV1.Issue[],
         options?: IMessageErrorOptions
     ): IMessageValidationError[];
     setValidationImportMessage(

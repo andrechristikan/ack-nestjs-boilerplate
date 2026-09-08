@@ -1,13 +1,23 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
 import { IFile } from '@common/file/interfaces/file.interface';
 
 /**
  * Multipart body shape for endpoints accepting multiple file uploads.
  */
-export class FileUploadMultipleRequestDto {
-    @ApiProperty({
-        type: 'array',
-        items: { type: 'string', format: 'binary', description: 'Multi file' },
-    })
-    files: IFile[];
-}
+export const FileUploadMultipleRequestSchema = z.strictObject({
+    files: z
+        .array(
+            z.custom<IFile>().meta({
+                type: 'string',
+                format: 'binary',
+                description: 'Multi file',
+            })
+        )
+        .meta({
+            description: 'Files uploaded in this request',
+        }),
+});
+
+export type FileUploadMultipleRequestDto = z.infer<
+    typeof FileUploadMultipleRequestSchema
+>;

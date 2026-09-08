@@ -1,96 +1,87 @@
 import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClassConstructor, plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
 import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
+import { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
 /**
- * Builds a pipe that transforms parsed CSV rows into `dto` and validates each via
- * class-validator, collecting per-row failures into a `FileImportException`.
+ * Builds a pipe that validates every parsed CSV row against `schema`,
+ * collecting per-row failures into a `FileImportException`.
  */
-export function FileCsvValidationPipe<TDto extends ClassConstructor<unknown>>(
-    dto: TDto
+export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
+    schema: TSchema,
+    options?: IFileCsvValidationOptions
 ): Type<PipeTransform> {
     @Injectable()
     class MixinFileCsvValidationPipe implements PipeTransform {
         private readonly maxDataImport: number;
 
         constructor(private readonly configService: ConfigService) {
+            // Takes the config KEY, not the value: a pipe factory runs at
+            // decoration time, before config is resolved.
             this.maxDataImport = this.configService.get<number>(
-                'file.maxDataImport'
+                options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;
         }
 
-        async transform(
-            value: unknown[]
-        ): Promise<InstanceType<TDto>[] | undefined> {
-            if (!value) {
-                return undefined;
-            }
-
-            return this.parse(value);
-        }
-
         /**
-         * Throws when rows are empty or exceed the configured `file.maxDataImport`,
-         * then forwards to DTO validation.
+         * Validates each row against `schema`; throws `FileImportException` with row indexes on any failure.
          */
-        private async parse(value: unknown[]): Promise<InstanceType<TDto>[]> {
-            if (!value || value.length === 0) {
-                throw new FileRequiredExtractFirstException();
-            } else if (value.length > this.maxDataImport) {
-                throw new FileExceedMaxDataImportException();
-            }
-
-            return this.validateDto(value);
-        }
-
-        /**
-         * Validates each row against `dto`; throws `FileImportException` with row indexes on any failure.
-         */
-        private async validateDto(
+        private async validateRows(
             data: unknown[]
-        ): Promise<InstanceType<TDto>[]> {
-            const dtos: InstanceType<TDto>[] = [];
+        ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {
+            const rows: StandardSchemaV1.InferOutput<TSchema>[] = [];
             const errors: IMessageValidationImportErrorParam[] = [];
+
             for (let i = 0; i < data.length; i++) {
-                const item = data[i];
+                const result = await schema['~standard'].validate(data[i]);
 
-                const validator = plainToInstance(
-                    dto,
-                    item
-                ) as InstanceType<TDto>;
-                const validationErrors = await validate(validator as object, {
-                    skipMissingProperties: false,
-                    skipNullProperties: false,
-                    skipUndefinedProperties: false,
-                    forbidUnknownValues: false,
-                    whitelist: true,
-                    forbidNonWhitelisted: true,
-                    validationError: {
-                        target: false,
-                        value: true,
-                    },
-                });
-
-                if (validationErrors.length > 0) {
+                if (result.issues) {
                     errors.push({
                         row: i,
-                        errors: validationErrors,
+                        errors: result.issues,
                     });
-                } else {
-                    dtos.push(validator);
+
+                    continue;
                 }
+
+                rows.push(result.value);
             }
 
             if (errors.length > 0) {
                 throw new FileImportException(errors);
             }
 
-            return dtos;
+            return rows;
+        }
+
+        /**
+         * Throws when rows are empty or exceed the configured row cap,
+         * then forwards to row validation.
+         */
+        private async parse(
+            value: unknown[]
+        ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {
+            if (!value || value.length === 0) {
+                throw new FileRequiredExtractFirstException();
+            } else if (value.length > this.maxDataImport) {
+                throw new FileExceedMaxDataImportException();
+            }
+
+            return this.validateRows(value);
+        }
+
+        async transform(
+            value: unknown[]
+        ): Promise<StandardSchemaV1.InferOutput<TSchema>[] | undefined> {
+            if (!value) {
+                return undefined;
+            }
+
+            return this.parse(value);
         }
     }
 

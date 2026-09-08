@@ -1,16 +1,16 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
-import { PolicyRequiredAbilityMetaKey } from '@modules/policy/constants/policy.constant';
-import { PolicyAbilityGuard } from '@modules/policy/guards/policy.ability.guard';
-import { RoleAbilityRequestDto } from '@modules/role/dtos/request/role.ability.request.dto';
+import { PolicyRequiredMetaKey } from '@modules/policy/constants/policy.constant';
+import { PolicyGuard } from '@modules/policy/guards/policy.guard';
+import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
 /**
- * Protects a route, requiring the caller to hold the given CASL abilities.
+ * Protects a route, requiring the caller to hold the given policies.
  */
-export function PolicyAbilityProtected(
-    ...requiredAbilities: RoleAbilityRequestDto[]
+export function PolicyProtected(
+    ...requiredPolicies: PolicyRequestDto[]
 ): MethodDecorator {
     return applyDecorators(
-        UseGuards(PolicyAbilityGuard),
-        SetMetadata(PolicyRequiredAbilityMetaKey, requiredAbilities)
+        UseGuards(PolicyGuard),
+        SetMetadata(PolicyRequiredMetaKey, requiredPolicies)
     );
 }

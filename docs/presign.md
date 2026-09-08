@@ -20,7 +20,7 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 
 ## AWS S3 Presigned URL Get Capability
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. It is a service capability only. No controller calls it, so there is no route, no request DTO, and no message key for a download presign.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentService.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes `access: EnumAwsS3Accessibility.private`, so term policy content is signed against the private bucket. There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 
@@ -35,14 +35,14 @@ async presignGetItem(
 
 - `key`: the S3 object key. It must not start with `/`; the method throws when it does.
 - `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`. It selects which configured bucket is signed against. When omitted the bucket resolves to `public`.
-- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInMs`, defined in `aws.config.ts` as `ms('30m')` and converted with `Math.floor(value / 1000)`.
+- `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 
 ### Behaviour
 
 - Returns `null` when S3 credentials are not configured, and logs a warning. A caller that needs a URL treats `null` as the S3 service being unavailable.
 - Sends a `HeadObjectCommand` before signing. A `NotFound` is swallowed; any other S3 error propagates.
 - Derives `extension` and `mime` from the key itself.
-- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredIn`, where `expiredIn` is the same lifetime in seconds that was used to sign.
+- The returned `IAwsS3Presign` carries `key`, `mime`, `extension`, `presignUrl`, and `expiredInSeconds`, where `expiredInSeconds` is the same lifetime that was used to sign.
 
 ---
 
@@ -59,48 +59,36 @@ AWS S3 presigned URLs enable secure client-side direct uploads to S3 without exp
 5. Backend saves file reference to database with audit trail
 
 > [!NOTE]
-> **Default expiration:** 30 minutes (`presignExpiredInMs: ms('30m')` in `aws.config.ts`; the signer receives seconds via `Math.floor(value / 1000)`). Override per-call via the `expiredInSeconds` option.
+> **Default expiration:** 30 minutes (`presignExpiredInSeconds: ms('30m') / 1000` in `aws.config.ts`, which is the unit the signer takes). Override per-call via the `expiredInSeconds` option.
 
 ### Implementation
 
-**Step 1 - Request DTOs:**
+**Step 1 - Request schemas:**
 
-Both DTOs take `size` from `AwsS3PresignRequestDto`, which validates it with `@IsNumber({ allowInfinity: false, allowNaN: false, maxDecimalPlaces: 0 })`, `@IsInt()`, and `@IsNotEmpty()`.
+Both schemas pick `size` off `AwsS3PresignRequestSchema`, where it is `z.number().int()`.
 
 ```typescript
-export class UserGeneratePhotoProfileRequestDto extends PickType(
-  AwsS3PresignRequestDto,
-  ['size']
-) {
-  @ApiProperty({
-    type: 'string',
-    enum: EnumFileExtensionImage,
-    default: EnumFileExtensionImage.jpg,
-  })
-  @IsString()
-  @IsEnum(EnumFileExtensionImage)
-  @IsNotEmpty()
-  extension: EnumFileExtensionImage;
-}
+export const UserGeneratePhotoProfileRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        extension: z.enum(EnumFileExtensionImage).meta({
+            description: 'Image file extension of the profile photo',
+            default: EnumFileExtensionImage.jpg,
+            example: EnumFileExtensionImage.jpg,
+        }),
+    });
 
-export class UserUpdateProfilePhotoRequestDto extends PickType(
-  AwsS3PresignRequestDto,
-  ['size']
-) {
-  @ApiProperty({
-    required: true,
-    description: 'photo path key',
-    example: 'user/profile/unique-photo-key.jpg',
-  })
-  @IsString()
-  @IsNotEmpty()
-  photoKey: string;
-}
+export const UserUpdateProfilePhotoRequestSchema =
+    AwsS3PresignRequestSchema.pick({ size: true }).extend({
+        photoKey: z.string().min(1).meta({
+            description: 'photo path key',
+            example: 'user/profile/unique-photo-key.jpg',
+        }),
+    });
 ```
 
 **Step 2 - Controller Endpoints:**
 
-`UserSharedController` is registered by `RoutesSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/generate-presign/photo` and `PUT /shared/user/profile/update/photo`, under the configured global prefix and the `v1` version prefix.
+`UserSharedController` is registered by `RouterHttpSharedModule`, which the router mounts under `/shared`. The endpoints below are therefore `POST /shared/user/profile/photo/presign/generate` and `PUT /shared/user/profile/photo/update`, under the configured global prefix and the `v1` version prefix.
 
 ```typescript
 @ApiTags('modules.shared.user')
@@ -109,21 +97,31 @@ export class UserUpdateProfilePhotoRequestDto extends PickType(
   path: '/user',
 })
 export class UserSharedController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userProfileHttpService: UserProfileHttpService,
+    // ... the other HTTP services this controller dispatches to
+  ) {}
 
   @UserSharedGeneratePhotoProfilePresignDoc()
-  @Response('user.generatePhotoProfilePresign')
+  @Response('user.generatePhotoProfilePresign', {
+    schema: AwsS3PresignResponseSchema,
+  })
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
+  @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
   @HttpCode(HttpStatus.OK)
-  @Post('/profile/generate-presign/photo')
+  @Post('/profile/photo/presign/generate')
   async generatePhotoProfilePresign(
     @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-    return this.userService.generatePhotoProfilePresign(userId, body);
+    @Body({ schema: UserGeneratePhotoProfileRequestSchema })
+    body: UserGeneratePhotoProfileRequestDto
+  ): Promise<IResponseReturn<IAwsS3Presign>> {
+    return this.userProfileHttpService.generatePhotoProfilePresign(
+      userId,
+      body
+    );
   }
 
   @UserSharedUpdatePhotoProfileDoc()
@@ -132,28 +130,32 @@ export class UserSharedController {
   @UserProtected()
   @AuthJwtAccessProtected()
   @ApiKeyProtected()
-  @Put('/profile/update/photo')
+  @RequestThrottle({ user: true })
+  @Put('/profile/photo/update')
   async updatePhotoProfile(
     @AuthJwtPayload('userId') userId: string,
-    @Body() body: UserUpdateProfilePhotoRequestDto
+    @Body({ schema: UserUpdateProfilePhotoRequestSchema })
+    body: UserUpdateProfilePhotoRequestDto
   ): Promise<void> {
-    return this.userService.updatePhotoProfile(userId, body);
+    await this.userProfileHttpService.updatePhotoProfile(userId, body);
   }
 }
 ```
 
 **Step 3 - Service Implementation:**
+
+`UserProfileHttpService` is a thin hop: it awaits the domain service and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileService`.
+
 ```typescript
 @Injectable()
-export class UserService {
+export class UserProfileService {
   async generatePhotoProfilePresign(
     userId: string,
-    { extension, size }: UserGeneratePhotoProfileRequestDto
-  ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-    const key: string =
-      this.userUtil.createRandomFilenamePhotoProfileWithPath(userId, {
-        extension,
-      });
+    { extension, size }: IUserGeneratePhotoProfile
+  ): Promise<IAwsS3Presign> {
+    const key: string = this.createRandomFilenamePhotoProfileWithPath(userId, {
+      extension,
+    });
 
     const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
       { key, size },
@@ -164,20 +166,28 @@ export class UserService {
       throw new AwsServiceUnavailableException();
     }
 
-    return { data: aws };
+    return aws;
   }
 
   async updatePhotoProfile(
     userId: string,
-    { photoKey, size }: UserUpdateProfilePhotoRequestDto
+    { photoKey, size }: IUserUpdatePhotoProfile
   ): Promise<void> {
     const requestLog: IRequestLog =
       this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-    const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photoKey, size });
-    await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
+    try {
+      const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photoKey, size });
+      await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
 
-    return;
+      return;
+    } catch (err: unknown) {
+      if (err instanceof AppBaseException) {
+        throw err;
+      }
+
+      throw new AppUnknownException(err);
+    }
   }
 }
 ```
@@ -185,7 +195,7 @@ export class UserService {
 Two things follow from the options actually passed:
 
 - No `access` is passed, so both `presignPutItem` and `mapPresign` fall back to `EnumAwsS3Accessibility.public`. The photo is signed against, and stored in, the public bucket.
-- No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInMs`, which is 30 minutes.
+- No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
 `presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
 
@@ -194,7 +204,7 @@ Two things follow from the options actually passed:
 async function uploadPhotoSimple(file: File) {
   try {
     // Step 1: Request presigned URL
-    const response = await fetch('/api/v1/shared/user/profile/generate-presign/photo', {
+    const response = await fetch('/api/v1/shared/user/profile/photo/presign/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +233,7 @@ async function uploadPhotoSimple(file: File) {
     }
 
     // Step 3: Notify backend
-    await fetch('/api/v1/shared/user/profile/update/photo', {
+    await fetch('/api/v1/shared/user/profile/photo/update', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -255,40 +265,40 @@ interface IAwsS3PresignPutItemOptions {
 
 ### Response Structure
 
-`AwsS3PresignResponseDto` exposes exactly five fields, each carrying `@Expose()`:
+`AwsS3PresignResponseSchema` declares exactly five fields, and the response interceptor strips anything else:
 
 ```typescript
-class AwsS3PresignResponseDto {
-  key: string;           // S3 object key (save this for later reference)
-  mime: string;          // MIME type (use this as Content-Type header)
-  extension: string;     // File extension
-  presignUrl: string;    // The presigned URL for upload
-  expiredIn: number;     // URL lifetime in seconds
-}
+export const AwsS3PresignResponseSchema = z.object({
+  key: z.string(),          // S3 object key (save this for later reference)
+  mime: z.string(),         // MIME type (use this as Content-Type header)
+  extension: z.string(),    // File extension
+  presignUrl: z.string(),   // The presigned URL for upload
+  expiredInSeconds: z.number(), // URL lifetime in seconds
+});
 ```
 
-`AwsS3PresignPartResponseDto` extends it with `partNumber` and `size`, both also `@Expose()`d.
+`AwsS3PresignPartResponseSchema` extends it with `partNumber` and `size`.
 
 ### Flow Diagram
 ```mermaid
 sequenceDiagram
     participant Client
     participant Backend
-    participant UserUtil
+    participant UserProfileService
     participant AwsS3Service
     participant S3 as AWS S3
     participant Repository as Database
 
-    Client->>Backend: POST /generate-presign/photo<br/>{extension, size}
-    Backend->>UserUtil: createRandomFilenamePhotoProfileWithPath()
-    UserUtil-->>Backend: unique S3 key
+    Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
+    Backend->>UserProfileService: createRandomFilenamePhotoProfileWithPath()
+    UserProfileService-->>Backend: unique S3 key
     
     Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true})
     Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
     AwsS3Service->>S3: Request presigned URL
     S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
     AwsS3Service-->>Backend: IAwsS3Presign
-    Backend-->>Client: {presignUrl, key, mime, expiredIn}
+    Backend-->>Client: {presignUrl, key, mime, expiredInSeconds}
     
     Note over Client,S3: Direct Upload (Bypass Backend)
     Client->>S3: PUT file to presignUrl<br/>Header: Content-Type only
@@ -297,8 +307,8 @@ sequenceDiagram
         S3->>S3: Encrypt file with AES256
         S3-->>Client: 200 OK
         
-        Client->>Backend: PUT /update/photo<br/>{photoKey: key, size}
-        Backend->>AwsS3Service: mapPresign(key, size)
+        Client->>Backend: PUT /profile/photo/update<br/>{photoKey: key, size}
+        Backend->>AwsS3Service: mapPresign({ key, size })
         AwsS3Service-->>Backend: IAwsS3
         
         Backend->>Repository: updatePhotoProfile(userId, aws)
@@ -320,7 +330,7 @@ sequenceDiagram
 
 1. **Generate Presigned URL Stage:**
    - Client requests presigned URL with file metadata (extension, size)
-   - Backend generates a unique S3 key through `UserUtil`, which delegates to `FileService.createRandomFilename`
+   - Backend generates a unique S3 key through `UserProfileService.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
    - `AwsS3Service` creates time-limited presigned URL with encryption enabled
    - Backend returns presigned URL data to client
 
@@ -340,13 +350,13 @@ sequenceDiagram
 
 ### Term Policy Content Presign
 
-The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RoutesAdminModule`, so the route is `POST /admin/term-policy/generate/content/presign`.
+The second presign endpoint signs a term policy content upload. `TermPolicyAdminController` is registered by `RouterHttpAdminModule`, so the route is `POST /admin/term-policy/content/presign/generate`.
 
 ```typescript
 @TermPolicyAdminGenerateContentPresignDoc()
 @Response('termPolicy.generateContentPresign')
 @TermPolicyAcceptanceProtected()
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.termPolicy,
   action: [
     EnumPolicyAction.read,
@@ -358,18 +368,22 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 @UserProtected()
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
+@RequestThrottle({ user: true })
 @HttpCode(HttpStatus.OK)
-@Post('/generate/content/presign')
+@Post('/content/presign/generate')
 async generate(
-  @Body() body: TermPolicyContentPresignRequestDto
+  @Body({ schema: TermPolicyContentPresignRequestSchema })
+  body: TermPolicyContentPresignRequestDto
 ): Promise<IResponseReturn<AwsS3PresignResponseDto>> {
-  return this.termPolicyService.generateContentPresignByAdmin(body);
+  return this.termPolicyContentHttpService.generateContentPresignByAdmin(
+    body
+  );
 }
 ```
 
-- `TermPolicyContentPresignRequestDto` carries `type` (from `TermPolicyAcceptRequestDto`), `size` (picked from `AwsS3PresignRequestDto`), `language` (`EnumMessageLanguage`), and `version` (integer).
-- The service rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
-- The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` with the `hbs` extension.
+- `TermPolicyContentPresignRequestSchema` carries `type` (from `TermPolicyAcceptRequestSchema`), `size` (picked from `AwsS3PresignRequestSchema`), `language` (`EnumMessageLanguage`), and `version` (integer).
+- `TermPolicyContentService.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
+- The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
 
 ### Multipart Part Presign

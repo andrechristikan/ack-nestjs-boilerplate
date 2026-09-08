@@ -7,14 +7,20 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
+import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     RoleDocParamsId,
     RoleDocQueryList,
 } from '@modules/role/constants/role.doc.constant';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
+import {
+    RoleDefaultAvailableOrderBy,
+    RoleDefaultAvailableSearch,
+} from '@modules/role/constants/role.list.constant';
+import {
+    RoleListResponseDto,
+    RoleListResponseSchema,
+} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleDto, RoleSchema } from '@modules/role/dtos/role.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function RoleAdminListDoc(): MethodDecorator {
@@ -31,7 +37,10 @@ export function RoleAdminListDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponsePaging<RoleListResponseDto>('role.list', {
-            dto: RoleListResponseDto,
+            schema: RoleListResponseSchema,
+            availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
+            type: EnumPaginationType.offset,
         })
     );
 }
@@ -49,8 +58,8 @@ export function RoleAdminGetDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<RoleDto>('role.get', {
-            dto: RoleDto,
+        DocResponse<RoleDto>('role.get', {
+            schema: RoleSchema,
         })
     );
 }
@@ -66,12 +75,11 @@ export function RoleAdminCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<RoleDto>('role.create', {
             httpStatus: HttpStatus.CREATED,
-            dto: RoleDto,
+            schema: RoleSchema,
         })
     );
 }
@@ -84,7 +92,6 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         DocRequest({
             params: RoleDocParamsId,
             bodyType: EnumDocRequestBodyType.json,
-            dto: RoleUpdateRequestDto,
         }),
         DocAuth({
             xApiKey: true,
@@ -92,7 +99,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<RoleDto>('role.update', {
-            dto: RoleDto,
+            schema: RoleSchema,
         })
     );
 }

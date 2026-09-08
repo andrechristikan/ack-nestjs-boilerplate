@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -24,30 +23,21 @@ export class ApiKeyRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>> {
-        return this.paginationService.offset<
-            ApiKey,
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >(this.databaseService.client.apiKey, {
-            ...params,
-            where: {
-                ...where,
-                ...isActive,
-                ...type,
-            },
-            orderBy: [
-                {
-                    createdAt: EnumPaginationOrderDirectionType.desc,
+        return this.paginationService.offset<ApiKey, Prisma.ApiKeyWhereInput>(
+            this.databaseService.client.apiKey,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...isActive,
+                    ...type,
                 },
-            ],
-        });
+            }
+        );
     }
 
     async create(

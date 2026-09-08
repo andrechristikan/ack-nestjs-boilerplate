@@ -1,69 +1,32 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
 /**
- * Response DTO for an AWS S3 presigned URL.
+ * Response shape for an AWS S3 presigned URL.
  */
-export class AwsS3PresignResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.system.filePath(),
+export const AwsS3PresignResponseSchema = z.object({
+    key: z.string().meta({
         description: 'S3 object key/path',
-    })
-    @Expose()
-    key: string;
-
-    @ApiProperty({
-        required: true,
-        example: 'image/jpeg',
+        example: faker.system.filePath(),
+    }),
+    mime: z.string().meta({
         description: 'MIME type of the object',
-    })
-    @Expose()
-    mime: string;
-
-    @ApiProperty({
-        required: true,
-        example: 'jpg',
+        example: 'image/jpeg',
+    }),
+    extension: z.string().meta({
         description: 'File extension',
-    })
-    @Expose()
-    extension: string;
-
-    @ApiProperty({
-        required: true,
-        example: faker.internet.url(),
+        example: 'jpg',
+    }),
+    presignUrl: z.string().meta({
         description: 'Presigned URL for uploading the object to S3',
-    })
-    @Expose()
-    presignUrl: string;
+        example: faker.internet.url(),
+    }),
+    expiredInSeconds: z.number().meta({
+        description: 'Lifetime of the presigned URL in seconds',
+        example: 1800,
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-        example: 10000,
-        description: 'Expired in millisecond for each presign url',
-    })
-    @Expose()
-    expiredIn: number;
-}
-
-/**
- * Response DTO for a presigned URL targeting a specific multipart upload part.
- */
-export class AwsS3PresignPartResponseDto extends AwsS3PresignResponseDto {
-    @ApiProperty({
-        required: true,
-        example: 1,
-        description: 'Part number in the multipart upload',
-    })
-    @Expose()
-    partNumber: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1024,
-        description: 'Size of the part in bytes',
-    })
-    @Expose()
-    size: number;
-}
+export type AwsS3PresignResponseDto = z.infer<
+    typeof AwsS3PresignResponseSchema
+>;

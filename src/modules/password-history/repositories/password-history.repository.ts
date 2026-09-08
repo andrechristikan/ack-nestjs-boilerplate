@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -7,6 +7,7 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { PasswordHistory, Prisma } from '@generated/prisma-client';
 
@@ -15,7 +16,7 @@ export class PasswordHistoryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperService: HelperService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -23,14 +24,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.offset<
             IPasswordHistory,
-            Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -39,7 +36,9 @@ export class PasswordHistoryRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -49,14 +48,10 @@ export class PasswordHistoryRepository {
         {
             where,
             ...others
-        }: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >
+        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.paginationService.cursor<
             IPasswordHistory,
-            Prisma.PasswordHistorySelect,
             Prisma.PasswordHistoryWhereInput
         >(this.databaseService.client.passwordHistory, {
             ...others,
@@ -65,13 +60,15 @@ export class PasswordHistoryRepository {
                 userId,
             },
             include: {
-                user: true,
+                user: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
         return this.databaseService.client.passwordHistory.findMany({
             where: {
                 userId,

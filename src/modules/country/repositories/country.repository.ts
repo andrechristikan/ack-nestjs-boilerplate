@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Injectable } from '@nestjs/common';
@@ -12,17 +12,13 @@ export class CountryRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    async findWithPagination(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
+    async findWithPaginationCursor(
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePagingReturn<Country>> {
-        return this.paginationService.offset<
-            Country,
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >(this.databaseService.client.country, pagination);
+        return this.paginationService.cursor<Country, Prisma.CountryWhereInput>(
+            this.databaseService.client.country,
+            pagination
+        );
     }
 
     async existById(id: string): Promise<{ id: string } | null> {

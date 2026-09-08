@@ -6,16 +6,16 @@ This documentation explains the features and usage of **Activity Log Module**: L
 
 Activity Log records audited user actions. There are two recording paths:
 
-1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method, and the interceptor persists one log for the authenticated actor after the handler runs. This document covers that path.
-2. **Repository-written** - a repository nests an `activityLogs.create` inside the Prisma write it already performs, so the log lands in the same transaction as the mutation. All `user*` actions in `EnumActivityLogAction` are recorded this way (`userLoginCredential`, `userChangePassword`, `userRemoveDevice`, and the rest), built with the same `ActivityLogUtil.getDescription`.
+1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method; after the handler runs the interceptor hands the action to `ActivityLogService.create()`, which writes one log for the authenticated actor. This document covers that path.
+2. **Repository-written** - a repository writes the log alongside the Prisma mutation it already performs, either as a nested `activityLogs.create` or as another operation of the same transaction, so the log lands with the mutation. Every `user*`, `workspace*`, and `project*` action in `EnumActivityLogAction` is recorded this way (`userLoginCredential`, `workspaceInviteAccepted`, `projectMemberAssigned`, and the rest), through `ActivityLogUtil.buildCreateArgs`, which resolves the description with the same `ActivityLogUtil.getDescription` and stamps the `workspaceId` the mutation belongs to.
 
 **Notes:**
 
-- Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` and `errorStack` are merged into `metadata`, and ` - Error: <message>` is appended to `description`.
+- Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` is merged into `metadata`, and `description` gains ` - Error: <message>` followed by ` - Stack: <stack>` when the error carried a stack.
 - Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
 - `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
 - `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
-- Never log secrets (password, token, apiKey) or large objects in metadata.
+- Do not log secrets (password, token, apiKey) or large objects in metadata.
 
 ## Related Documents
 
@@ -46,11 +46,25 @@ Activity Log records audited user actions. There are two recording paths:
 | Component | Responsibility |
 |---|---|
 | `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
-| `ActivityLogInterceptor` | Reads the action, reads dynamic metadata and request context (`IRequestLog`: IP, user agent, geo) from the request store, persists the log on success and failure |
+| `ActivityLogInterceptor` | Reads the action off the handler, and on both the success and the error path calls `ActivityLogService.create(userId, action, rawError)` without awaiting it |
 | `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
-| `ActivityLogService` | Read side: paginated listing for admin and self |
-| `ActivityLogRepository` | Data access (Prisma) |
-| `ActivityLogUtil` | Builds the i18n description, serializes list responses |
+| `ActivityLogService` | Write side of the decorator path: reads the dynamic metadata and the request context (`IRequestLog`: IP, user agent, geo) from the request store, serializes any error, and writes the row. Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
+| `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
+| `ActivityLogRepository` | Data access (Prisma), including the decorator path's `create` |
+| `ActivityLogUtil` | Builds the i18n description, and builds the create args and the nested `createMany` data a repository-written log is created from |
+
+## List Endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
+| `GET` | `/shared/user/activity-log/workspace/list` | Authenticated user lists own logs in the workspace from `x-workspace-id` (cursor) |
+| `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
+| `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
+
+Global prefix `/api` and version `v1` apply as elsewhere.
+
+The two user-scoped lists match rows whose `workspaceId` is null or unset, so an account's own timeline holds the logs that belong to no workspace. A log written inside a workspace mutation appears in the two workspace-scoped lists.
 
 ## Flow
 
@@ -70,14 +84,16 @@ sequenceDiagram
     Service->>Storage: merge(ActivityLogMetadataStoreKey, { ... })
     alt Success
         Service-->>Interceptor: result
-        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
-        Interceptor->>DB: create log (non-blocking)
+        Interceptor->>ActivityLogService: create(userId, action, null) (not awaited)
+        ActivityLogService->>Storage: get(RequestLogStoreKey), get(ActivityLogMetadataStoreKey)
+        ActivityLogService->>DB: create log
         DB-->>Client: Success Response
     else Failure
         Service-->>Interceptor: throws error
-        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
-        Note over Interceptor: serialize error into metadata + description
-        Interceptor->>DB: create log (non-blocking)
+        Interceptor->>ActivityLogService: create(userId, action, error) (not awaited)
+        ActivityLogService->>Storage: get(RequestLogStoreKey), get(ActivityLogMetadataStoreKey)
+        Note over ActivityLogService: serialize error into metadata + description
+        ActivityLogService->>DB: create log
         DB-->>Client: Error Response
     end
 ```
@@ -94,26 +110,29 @@ ActivityLog(action: EnumActivityLogAction): MethodDecorator
 
 The decorator takes only `action`. There is no static metadata at decoration time; all metadata is set dynamically from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`.
 
-Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It must sit above `@AuthJwtAccessProtected`.
+Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It sits above `@AuthJwtAccessProtected` in source so the interceptor runs after JWT has populated `request.user`.
 
 ```typescript
+@Response('role.create', { schema: RoleSchema })
 @ActivityLog(EnumActivityLogAction.adminRoleCreate)
 @AuthJwtAccessProtected() // required
 @Post('/create')
-async create(@Body() dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    return this.roleService.createByAdmin(dto);
+async create(
+    @Body({ schema: RoleCreateRequestSchema }) body: RoleCreateRequestDto
+): Promise<IResponseReturn<RoleDto>> {
+    return this.roleHttpService.create(body);
 }
 ```
 
 ### Metadata (dynamic only)
 
-All metadata is dynamic: set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use it for entity values resolved during the request. The interceptor reads it from the request store and, on failure, merges in the serialized error (`{ ...metadata, ...error }`) before writing.
+All metadata is dynamic: set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use it for entity values resolved during the request. `ActivityLogService.create()` reads it from the request store and, on failure, merges in the serialized error (`{ ...metadata, ...error }`) before writing.
 
 ### Request store (metadata)
 
 Dynamic metadata lives in the generic `RequestStoreService` (`@common/request`), backed by `nestjs-cls`. Services call `merge(ActivityLogMetadataStoreKey, metadata)` to shallow-merge into the current request's metadata; the interceptor reads it via `get(ActivityLogMetadataStoreKey)`. The `ActivityLogMetadataStoreKey` constant is the only key used for activity-log metadata.
 
-Request context (IP, user agent, geo) is read from the same store under `RequestLogStoreKey`. It is computed once per request by `RequestUtil.buildRequestLog(req)` in `RequestRequestLogMiddleware`, not recomputed by the interceptor. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+Request context (IP, user agent, geo) is read from the same store under `RequestLogStoreKey`. It is computed once per request by `RequestUtil.buildRequestLog(req)` in `RequestRequestLogMiddleware`, and read from there rather than recomputed. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
 
 ```typescript
 merge<T extends object>(key: string, value: Partial<T>): void; // shallow-merge into the request store
@@ -124,15 +143,15 @@ Build the metadata shape in the module's util, then merge it in the service:
 
 ```typescript
 // Service - inject RequestStoreService, merge metadata after the mutation
-async createByAdmin(dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    const created = await this.roleRepository.create(dto);
+async create(body: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
+    const created = await this.roleRepository.create(body);
 
     this.requestStoreService.merge<IActivityLogMetadata>(
         ActivityLogMetadataStoreKey,
         this.roleUtil.mapActivityLogMetadata(created)
     );
 
-    return { data: this.roleUtil.mapOne(created) };
+    return { data: created };
 }
 
 // Util - owns the metadata shape
@@ -158,6 +177,7 @@ Each log contains:
 - **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
 - **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
 - **metadata** - dynamic context from the request store (JSON, null when empty)
+- **workspaceId** - the workspace a repository-written log belongs to, taken from the mutation. An interceptor-written log carries none, which is what places it in the user-scoped lists
 - **createdAt** - timestamp
 
 ### Metadata
@@ -166,7 +186,7 @@ Each log contains:
 type IActivityLogMetadata = Record<string, string | number | Date | boolean>;
 ```
 
-Stored as `null` when empty. On failure the interceptor adds `errorMessage` and `errorStack`.
+Stored as `null` when empty. On failure `errorMessage` is added; the stack goes to the description rather than the metadata.
 
 ```json
 {

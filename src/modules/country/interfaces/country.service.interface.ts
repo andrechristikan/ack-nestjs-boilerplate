@@ -1,13 +1,12 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
+import { Country, Prisma } from '@generated/prisma-client';
 
 export interface ICountryService {
-    getList(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
-    ): Promise<IResponsePagingReturn<CountryResponseDto>>;
+    getListCursor(
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
+    ): Promise<IResponsePagingReturn<Country>>;
+    existById(countryId: string): Promise<{ id: string } | null>;
+    existByAlpha2Code(alpha2Code: string): Promise<{ id: string } | null>;
+    getOne(countryId: string): Promise<Country>;
 }

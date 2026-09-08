@@ -1,145 +1,114 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { z } from 'zod';
+import { faker } from '@faker-js/faker';
 
-class RequestUserAgentBrowserResponseDto {
-    @ApiProperty({
-        required: false,
+const RequestUserAgentBrowserResponseSchema = z.object({
+    name: z.string().nullable().meta({
+        description: 'Browser name parsed from the user agent',
         example: 'Chrome',
-    })
-    @Expose()
-    name?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    version: z.string().nullable().meta({
+        description: 'Full browser version parsed from the user agent',
         example: '112.0.5615.49',
-    })
-    @Expose()
-    version?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    major: z.string().nullable().meta({
+        description: 'Major browser version parsed from the user agent',
         example: '112',
-    })
-    @Expose()
-    major?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    type: z.string().nullable().meta({
+        description: 'Browser type parsed from the user agent',
         example: 'mobile',
-    })
-    @Expose()
-    type?: string;
-}
+    }),
+});
 
-class RequestUserAgentCpuResponseDto {
-    @ApiProperty({
-        required: false,
+const RequestUserAgentCpuResponseSchema = z.object({
+    architecture: z.string().nullable().meta({
+        description: 'CPU architecture parsed from the user agent',
         example: 'amd64',
-    })
-    @Expose()
-    architecture?: string;
-}
+    }),
+});
 
-class RequestUserAgentDeviceResponseDto {
-    @ApiProperty({
-        required: false,
+const RequestUserAgentDeviceResponseSchema = z.object({
+    type: z.string().nullable().meta({
+        description: 'Device type parsed from the user agent',
         example: 'mobile',
-    })
-    @Expose()
-    type?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    vendor: z.string().nullable().meta({
+        description: 'Device vendor parsed from the user agent',
         example: 'Apple',
-    })
-    @Expose()
-    vendor?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    model: z.string().nullable().meta({
+        description: 'Device model parsed from the user agent',
         example: 'iPhone',
-    })
-    @Expose()
-    model?: string;
-}
+    }),
+});
 
-class RequestUserAgentEngineResponseDto {
-    @ApiProperty({
-        required: false,
+const RequestUserAgentEngineResponseSchema = z.object({
+    name: z.string().nullable().meta({
+        description: 'Rendering engine name parsed from the user agent',
         example: 'WebKit',
-    })
-    @Expose()
-    name?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    version: z.string().nullable().meta({
+        description: 'Rendering engine version parsed from the user agent',
         example: '537.36',
-    })
-    @Expose()
-    version?: string;
-}
+    }),
+});
 
-class RequestUserAgentOsResponseDto {
-    @ApiProperty({
-        required: false,
+const RequestUserAgentOsResponseSchema = z.object({
+    name: z.string().nullable().meta({
+        description: 'Operating system name parsed from the user agent',
         example: 'iOS',
-    })
-    @Expose()
-    name?: string;
-
-    @ApiProperty({
-        required: false,
+    }),
+    version: z.string().nullable().meta({
+        description: 'Operating system version parsed from the user agent',
         example: '16.3.1',
-    })
-    @Expose()
-    version?: string;
-}
+    }),
+});
 
-/** Response DTO representing parsed User-Agent information from the request header. */
-export class RequestUserAgentResponseDto {
-    @ApiProperty({
-        required: false,
-    })
-    @Expose()
-    ua: string;
+/** Response shape representing parsed User-Agent information from the request header. */
+export const RequestUserAgentResponseSchema = z.object({
+    ua: z.string().nullable().meta({
+        description: 'Raw user-agent string from the request',
+        example: faker.internet.userAgent(),
+    }),
+    browser: RequestUserAgentBrowserResponseSchema.nullable().meta({
+        description: 'Browser details parsed from the user agent',
+        example: {
+            name: 'Chrome',
+            version: '112.0.5615.49',
+            major: '112',
+            type: 'mobile',
+        },
+    }),
+    cpu: RequestUserAgentCpuResponseSchema.nullable().meta({
+        description: 'CPU details parsed from the user agent',
+        example: {
+            architecture: 'amd64',
+        },
+    }),
+    device: RequestUserAgentDeviceResponseSchema.nullable().meta({
+        description: 'Device details parsed from the user agent',
+        example: {
+            type: 'mobile',
+            vendor: 'Apple',
+            model: 'iPhone',
+        },
+    }),
+    engine: RequestUserAgentEngineResponseSchema.nullable().meta({
+        description: 'Rendering engine details parsed from the user agent',
+        example: {
+            name: 'WebKit',
+            version: '537.36',
+        },
+    }),
+    os: RequestUserAgentOsResponseSchema.nullable().meta({
+        description: 'Operating system details parsed from the user agent',
+        example: {
+            name: 'iOS',
+            version: '16.3.1',
+        },
+    }),
+});
 
-    @ApiProperty({
-        required: false,
-        type: RequestUserAgentBrowserResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentBrowserResponseDto)
-    browser?: RequestUserAgentBrowserResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestUserAgentCpuResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentCpuResponseDto)
-    cpu?: RequestUserAgentCpuResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestUserAgentDeviceResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentDeviceResponseDto)
-    device?: RequestUserAgentDeviceResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestUserAgentEngineResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentEngineResponseDto)
-    engine?: RequestUserAgentEngineResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestUserAgentOsResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentOsResponseDto)
-    os?: RequestUserAgentOsResponseDto;
-}
+export type RequestUserAgentResponseDto = z.infer<
+    typeof RequestUserAgentResponseSchema
+>;

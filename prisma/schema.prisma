@@ -31,22 +31,39 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  type        EnumRoleType  @default(user)
-  abilities   RoleAbility[]
+  type        EnumRoleType @default(user)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
-  users User[] @relation("UserRole")
+  policies Policy[] @relation("RolePolicy")
+  users    User[]   @relation("UserRole")
 
   @@unique(fields: [name])
   @@index(fields: [type, createdAt(sort: Desc)])
   @@map("Roles")
+}
+
+model Policy {
+  id      String             @id @default(auto()) @map("_id") @db.ObjectId
+  roleId  String             @db.ObjectId
+  subject EnumPolicySubject
+  action  EnumPolicyAction[]
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [roleId, subject])
+  @@map("Policies")
 }
 
 model Country {
@@ -97,29 +114,31 @@ model UserMobileNumber {
 }
 
 model User {
-  id              String             @id @default(auto()) @map("_id") @db.ObjectId
-  name            String?
-  username        String
-  isVerified      Boolean            @default(false)
-  verifiedAt      DateTime?
-  email           String
-  roleId          String             @db.ObjectId
-  password        String?
-  passwordExpired DateTime?
-  passwordCreated DateTime?
-  passwordAttempt Int?
-  signUpAt        DateTime           @default(now())
-  signUpFrom      EnumUserSignUpFrom
-  signUpWith      EnumUserSignUpWith
-  status          EnumUserStatus     @default(active)
-  gender          EnumUserGender?
-  countryId       String             @db.ObjectId
-  lastLoginAt     DateTime?
-  lastIPAddress   String?
-  lastLoginFrom   EnumUserLoginFrom?
-  lastLoginWith   EnumUserLoginWith?
-  termPolicy      UserTermPolicy
-  photo           UserPhoto?
+  id                     String             @id @default(auto()) @map("_id") @db.ObjectId
+  name                   String?
+  username               String
+  isVerified             Boolean            @default(false)
+  verifiedAt             DateTime?
+  email                  String
+  roleId                 String             @db.ObjectId
+  password               String?
+  passwordExpired        DateTime?
+  passwordCreated        DateTime?
+  passwordAttempt        Int?
+  signUpAt               DateTime           @default(now())
+  signUpFrom             EnumUserSignUpFrom
+  signUpWith             EnumUserSignUpWith
+  status                 EnumUserStatus     @default(active)
+  gender                 EnumUserGender?
+  countryId              String             @db.ObjectId
+  lastLoginAt            DateTime?
+  lastIPAddress          String?
+  lastLoginFrom          EnumUserLoginFrom?
+  lastLoginWith          EnumUserLoginWith?
+  lastWorkspaceId        String?            @db.ObjectId
+  lastWorkspaceChangedAt DateTime?
+  termPolicy             UserTermPolicy
+  photo                  UserPhoto?
 
   createdAt DateTime  @default(now())
   createdBy String?   @db.ObjectId
@@ -143,6 +162,9 @@ model User {
   deviceOwnerships        DeviceOwnership[]          @relation("DeviceOwnershipUser")
   revokedSessions         Session[]                  @relation("SessionRevokedByUser")
   revokedDeviceOwnerships DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
+  workspaceMembers        WorkspaceMember[]          @relation("UserWorkspaceMembers")
+  workspaceJoinRequests   WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
+  projectMembers          ProjectMember[]            @relation("UserProjectMembers")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -191,12 +213,14 @@ model PasswordHistory {
   createdBy String?  @db.ObjectId
 
   @@index(fields: [userId, expiredAt(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("PasswordHistories")
 }
 
 model ActivityLog {
   id          String                @id @default(auto()) @map("_id") @db.ObjectId
   userId      String                @db.ObjectId
+  workspaceId String?               @db.ObjectId
   action      EnumActivityLogAction
   ipAddress   String?
   userAgent   UserAgent
@@ -204,13 +228,15 @@ model ActivityLog {
   geoLocation GeoLocation?
   metadata    Json?
 
-  user User @relation("UserActivityLogs", fields: [userId], references: [id])
+  user      User       @relation("UserActivityLogs", fields: [userId], references: [id])
+  workspace Workspace? @relation("WorkspaceActivityLogs", fields: [workspaceId], references: [id])
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
 
-  @@index(fields: [userId, createdAt(sort: Desc)])
-  @@index(fields: [userId, action, createdAt(sort: Desc)])
+  @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc)])
   @@map("ActivityLogs")
 }
 
@@ -238,6 +264,7 @@ model Session {
 
   @@unique(fields: [userId, jti])
   @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
+  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
   @@index(fields: [userId, deviceOwnershipId, isRevoked])
   @@index(fields: [deviceOwnershipId])
@@ -289,7 +316,7 @@ model DeviceOwnership {
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
   @@index(fields: [deviceId, revokedAt])
-  @@index(fields: [userId, isRevoked])
+  @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, revokedAt])
   @@index(fields: [deviceId, userId, revokedAt])
   @@map("DeviceOwnerships")
@@ -352,11 +379,12 @@ model TermPolicyUserAcceptance {
 
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@map("TermPolicyUserAcceptances")
 }
 
 model FeatureFlag {
-  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
   key            String
   description    String
   isEnable       Boolean  @default(true)
@@ -413,6 +441,7 @@ model Notification {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, isRead, createdAt(sort: Desc)])
   @@index(fields: [userId, type, createdAt(sort: Desc)])
   @@index(fields: [userId, priority, isRead, createdAt(sort: Desc)])
@@ -456,16 +485,162 @@ model NotificationUserSetting {
   @@map("NotificationUserSettings")
 }
 
+model Workspace {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String
+  description String?
+  isPublic    Boolean @default(false)
+
+  members      WorkspaceMember[]
+  invites      WorkspaceInvite[]
+  joinRequests WorkspaceJoinRequest[]
+  projects     Project[]
+  activityLogs ActivityLog[]          @relation("WorkspaceActivityLogs")
+
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+
+  @@unique(fields: [slug])
+  @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
+  @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [deletedAt, name])
+  @@map("Workspaces")
+}
+
+model WorkspaceMember {
+  id          String                  @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String                  @db.ObjectId
+  userId      String                  @db.ObjectId
+  role        EnumWorkspaceMemberRole
+  joinedAt    DateTime                @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation("UserWorkspaceMembers", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [workspaceId, userId])
+  @@index(fields: [userId])
+  @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, joinedAt, id])
+  @@map("WorkspaceMembers")
+}
+
+model WorkspaceInvite {
+  id               String                    @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String                    @db.ObjectId
+  email            String
+  workspaceRole    EnumWorkspaceMemberRole
+  projectId        String?                   @db.ObjectId
+  projectRole      EnumProjectMemberRole?
+  token            String
+  reference        String
+  expiredAt        DateTime
+  status           EnumWorkspaceInviteStatus @default(pending)
+  invitedByUserId  String                    @db.ObjectId
+  acceptedAt       DateTime?
+  acceptedByUserId String?                   @db.ObjectId
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  project   Project?  @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [token])
+  @@unique(fields: [reference])
+  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [email, status])
+  @@index(fields: [token, expiredAt, status])
+  @@index(fields: [workspaceId, expiredAt])
+  @@map("WorkspaceInvites")
+}
+
+model WorkspaceJoinRequest {
+  id               String                         @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId      String                         @db.ObjectId
+  userId           String                         @db.ObjectId
+  status           EnumWorkspaceJoinRequestStatus @default(pending)
+  message          String?
+  rejectReasonCode EnumWorkspaceJoinRejectReason?
+  reviewedByUserId String?                        @db.ObjectId
+  reviewedAt       DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation("UserWorkspaceJoinRequests", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, status])
+  @@map("WorkspaceJoinRequests")
+}
+
+model Project {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  workspaceId String  @db.ObjectId
+  name        String
+  slug        String
+  description String?
+
+  workspace Workspace         @relation(fields: [workspaceId], references: [id])
+  members   ProjectMember[]
+  invites   WorkspaceInvite[]
+
+  createdAt DateTime  @default(now())
+  createdBy String?   @db.ObjectId
+  updatedAt DateTime  @updatedAt
+  updatedBy String?   @db.ObjectId
+  deletedAt DateTime?
+
+  @@unique(fields: [workspaceId, slug])
+  @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("Projects")
+}
+
+model ProjectMember {
+  id        String                @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String                @db.ObjectId
+  userId    String                @db.ObjectId
+  role      EnumProjectMemberRole
+  joinedAt  DateTime              @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation("UserProjectMembers", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.ObjectId
+
+  @@unique(fields: [projectId, userId])
+  @@index(fields: [userId])
+  @@index(fields: [projectId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, joinedAt, id])
+  @@map("ProjectMembers")
+}
+
 type UserTermPolicy {
   termsOfService Boolean
   privacy        Boolean
   marketing      Boolean
   cookies        Boolean
-}
-
-type RoleAbility {
-  action  String[]
-  subject String
 }
 
 type UserPhoto {
@@ -575,6 +750,29 @@ enum EnumRoleType {
   user
 }
 
+enum EnumPolicyAction {
+  manage
+  read
+  create
+  update
+  delete
+}
+
+enum EnumPolicySubject {
+  all
+  apiKey
+  role
+  user
+  session
+  activityLog
+  passwordHistory
+  termPolicy
+  featureFlag
+  device
+  workspace
+  project
+}
+
 enum EnumApiKeyType {
   system
   default
@@ -664,6 +862,30 @@ enum EnumActivityLogAction {
   adminUserResetTwoFactor
   adminUserImport
   adminDeviceRemove
+
+  workspaceCreated
+  workspaceUpdated
+  workspaceVisibilityUpdated
+  workspaceDeleted
+  workspaceSwitched
+  workspaceMemberRoleUpdated
+  workspaceMemberRemoved
+  workspaceMemberLeft
+  workspaceOwnershipTransferred
+  workspaceInviteCreated
+  workspaceInviteAccepted
+  workspaceInviteRevoked
+  workspaceJoinRequested
+  workspaceJoinAccepted
+  workspaceJoinRejected
+
+  projectCreated
+  projectUpdated
+  projectDeleted
+  projectMemberAssigned
+  projectMemberRoleUpdated
+  projectMemberRemoved
+  projectMemberLeft
 }
 
 enum EnumDevicePlatform {
@@ -701,4 +923,40 @@ enum EnumNotificationPriority {
 enum EnumBiometricType {
   fingerprint
   faceId
+}
+
+enum EnumWorkspaceMemberRole {
+  owner
+  admin
+  member
+}
+
+enum EnumWorkspaceInviteStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum EnumWorkspaceJoinRequestStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+}
+
+enum EnumWorkspaceJoinRejectReason {
+  notAFit
+  incompleteProfile
+  spam
+  unknownRequester
+  wrongWorkspace
+  memberLimitReached
+  other
+}
+
+enum EnumProjectMemberRole {
+  admin
+  member
+  viewer
 }
