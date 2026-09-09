@@ -90,9 +90,7 @@ export function TermPolicyAdminDeleteDoc(): MethodDecorator {
         DocRequest({
             params: TermPolicyDocParamsId,
         }),
-        DocResponse<TermPolicyResponseDto>('termPolicy.create', {
-            schema: TermPolicyResponseSchema,
-        })
+        DocResponse('termPolicy.delete')
     );
 }
 

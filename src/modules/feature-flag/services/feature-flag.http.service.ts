@@ -7,6 +7,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { FeatureFlag, Prisma } from '@generated/prisma-client';
+import { FeatureFlagTargetUserRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.target-user.request';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { IFeatureFlagHttpService } from '@modules/feature-flag/interfaces/feature-flag.http.service.interface';
@@ -62,6 +63,34 @@ export class FeatureFlagHttpService implements IFeatureFlagHttpService {
         const updated = await this.featureFlagService.updateMetadataByAdmin(
             id,
             body
+        );
+
+        return {
+            data: updated,
+        };
+    }
+
+    async addTargetUserByAdmin(
+        id: string,
+        body: FeatureFlagTargetUserRequestDto
+    ): Promise<IResponseReturn<FeatureFlag>> {
+        const updated = await this.featureFlagService.addTargetUserByAdmin(
+            id,
+            body
+        );
+
+        return {
+            data: updated,
+        };
+    }
+
+    async removeTargetUserByAdmin(
+        id: string,
+        userId: string
+    ): Promise<IResponseReturn<FeatureFlag>> {
+        const updated = await this.featureFlagService.removeTargetUserByAdmin(
+            id,
+            userId
         );
 
         return {

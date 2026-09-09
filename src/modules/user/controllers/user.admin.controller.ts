@@ -31,7 +31,10 @@ import {
     Prisma,
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import {
+    IUserList,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -58,7 +61,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
@@ -138,7 +141,7 @@ export class UserAdminController {
         roleId?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
@@ -161,7 +164,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
         return this.userHttpService.getOne(userId);
@@ -204,7 +207,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
@@ -232,7 +235,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -257,7 +260,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {

@@ -10,7 +10,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -62,6 +62,7 @@ import {
     TermPolicyRemoveContentRequestSchema,
 } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -86,7 +87,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
 } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -130,7 +130,7 @@ export class TermPolicyAdminController {
             TermPolicyDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         return this.termPolicyHttpService.getListByAdmin(
             pagination,
             type,
@@ -158,14 +158,12 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyCreateRequestSchema })
         body: TermPolicyCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<ITermPolicy>> {
         return this.termPolicyHttpService.createByAdmin(body, createdBy);
     }
 
     @TermPolicyAdminDeleteDoc()
-    @Response('termPolicy.delete', {
-        schema: TermPolicyResponseSchema,
-    })
+    @Response('termPolicy.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
@@ -179,9 +177,9 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:termPolicyId')
     async delete(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<void>> {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 
@@ -229,7 +227,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/update')
     async updateContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto,
@@ -257,7 +255,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/content/:termPolicyId/add')
     async addContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto,
@@ -285,7 +283,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/content/:termPolicyId/remove')
     async removeContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto,
@@ -314,7 +312,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/content/:termPolicyId/:language/get')
     async getContent(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @Param('language', RequestRequiredPipe) language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
@@ -339,7 +337,7 @@ export class TermPolicyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/publish/:termPolicyId')
     async publish(
-        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {

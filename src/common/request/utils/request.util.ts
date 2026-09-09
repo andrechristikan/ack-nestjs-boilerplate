@@ -5,17 +5,15 @@ import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
 import {
-    GeoLocation,
-    UserAgent,
-    UserAgentBrowser,
-    UserAgentCpu,
-    UserAgentDevice,
-    UserAgentEngine,
-    UserAgentOs,
-} from '@generated/prisma-client';
-import {
     IRequestApp,
+    IRequestGeoLocation,
     IRequestLog,
+    IRequestUserAgent,
+    IRequestUserAgentBrowser,
+    IRequestUserAgentCpu,
+    IRequestUserAgentDevice,
+    IRequestUserAgentEngine,
+    IRequestUserAgentOs,
 } from '@common/request/interfaces/request.interface';
 
 @Injectable()
@@ -30,28 +28,28 @@ export class RequestUtil {
         return isIP(ip) ? ip : (req.socket.remoteAddress ?? '');
     }
 
-    parseUserAgent(raw: string | undefined): UserAgent {
+    parseUserAgent(raw: string | undefined): IRequestUserAgent {
         const result = UAParser(raw);
 
-        const browser: UserAgentBrowser = {
+        const browser: IRequestUserAgentBrowser = {
             name: result.browser.name ?? null,
             version: result.browser.version ?? null,
             major: result.browser.major ?? null,
             type: result.browser.type ?? null,
         };
-        const cpu: UserAgentCpu = {
+        const cpu: IRequestUserAgentCpu = {
             architecture: result.cpu.architecture ?? null,
         };
-        const device: UserAgentDevice = {
+        const device: IRequestUserAgentDevice = {
             type: result.device.type ?? null,
             vendor: result.device.vendor ?? null,
             model: result.device.model ?? null,
         };
-        const engine: UserAgentEngine = {
+        const engine: IRequestUserAgentEngine = {
             name: result.engine.name ?? null,
             version: result.engine.version ?? null,
         };
-        const os: UserAgentOs = {
+        const os: IRequestUserAgentOs = {
             name: result.os.name ?? null,
             version: result.os.version ?? null,
         };
@@ -83,7 +81,7 @@ export class RequestUtil {
         const userAgent = this.parseUserAgent(req.headers['user-agent']);
         const ipAddress = getClientIp(req) ?? null;
 
-        let geoLocation: GeoLocation | null = null;
+        let geoLocation: IRequestGeoLocation | null = null;
         if (ipAddress) {
             const geo = geoIp.lookup(ipAddress);
             if (geo) {

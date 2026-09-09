@@ -6,7 +6,7 @@ Detail in `docs/database.md` (seeding section). This file is the rule set. Despi
 
 `src/migration/` seeds **initial data only**: the reference and bootstrap rows an empty database needs to boot and be usable — roles, countries, the seed api-key, feature flags, term policies, notification/term templates, the aws-s3 config, and the seed user.
 
-- **MongoDB has NO migration files.** Schema shape is applied by `prisma db push` (`db:migrate`), not by versioned migration scripts. So there is no "write a migration" here — there is only "seed initial data".
+- **PostgreSQL schema changes use versioned Prisma Migrate files** under `prisma/migrations/`, applied through `db:migrate`. This workflow covers initial-data seeds only; schema migrations remain governed by `rules/database.md`.
 - **Not a data-backfill tool.** A one-off production data fix, a column re-compute, a historical import — none of those belong here. A seed populates the baseline an install starts from; it is re-runnable bootstrap, not a dated change record.
 - **Not a place for business logic.** A seed writes rows; it does not compute business decisions.
 
@@ -43,9 +43,9 @@ Adding a seed with a dependency means placing it correctly in **both** bundled s
 ## Idempotency
 
 - `seed()` MUST be safe to run against a database that may already hold its rows — guard with an existence check or an upsert, never a blind `create` that throws on the second run. `migration:seed` is run repeatedly across environments.
-- `remove()` deletes what `seed()` wrote, scoped to it. It does not truncate a shared collection another seed also populates.
+- `remove()` deletes what `seed()` wrote, scoped to it. It does not truncate a shared table another seed also populates.
 
 ## Off-limits (inherits the mandatory schema rule)
 
-- **`migration:fresh` is a DB-reset command** — it resets the database before seeding. It is one of the commands the owner runs (`rules/prisma-schema.md`): describe the intent and let the owner run it.
+- **`migration:fresh` is a DB-reset command** — it runs `prisma migrate reset --force` before seeding. It is on the forbidden list (`rules/database.md`, mandatory rule 1): do not run it, describe the intent and let the owner run it.
 - `migration:seed`, `migration:remove`, and every `migration:*` command are the owner's to run — you write the seed, you do not execute the seeder against a database.

@@ -17,9 +17,9 @@ import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.req
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { IUserHttpService } from '@modules/user/interfaces/user.http.service.interface';
 import {
-    IUser,
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
@@ -34,7 +34,7 @@ export class UserHttpService implements IUserHttpService {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userService.getListOffsetByAdmin(
             pagination,
             status,

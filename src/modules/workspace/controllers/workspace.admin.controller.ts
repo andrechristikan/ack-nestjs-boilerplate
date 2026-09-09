@@ -7,7 +7,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
+import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -102,7 +102,7 @@ export class WorkspaceAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:workspaceId')
     async get(
-        @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('workspaceId', RequestRequiredPipe, RequestIsValidUuidPipe)
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.getByIdForAdmin(workspaceId);
@@ -124,7 +124,7 @@ export class WorkspaceAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:workspaceId/members')
     async membersList(
-        @Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('workspaceId', RequestRequiredPipe, RequestIsValidUuidPipe)
         workspaceId: string,
         @PaginationOffsetQuery({
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,

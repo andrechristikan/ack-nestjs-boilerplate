@@ -7,10 +7,12 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
     EnumTermPolicyStatus,
+    EnumTermPolicyType,
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
     Prisma,
 } from '@generated/prisma-client';
+import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import {
     IUser,
@@ -85,7 +87,11 @@ export class UserOnboardingRepository {
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt: this.helperDateService.create(),
-            termPolicy: input.termPolicy,
+            termsOfServiceAccepted:
+                input.termPolicy[EnumTermPolicyType.termsOfService],
+            privacyAccepted: input.termPolicy[EnumTermPolicyType.privacy],
+            cookiesAccepted: input.termPolicy[EnumTermPolicyType.cookies],
+            marketingAccepted: input.termPolicy[EnumTermPolicyType.marketing],
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -227,7 +233,13 @@ export class UserOnboardingRepository {
                                     data: this.buildUserCreateData(input),
                                     include: {
                                         role: { include: { policies: true } },
-                                        twoFactor: true,
+                                        twoFactor: {
+                                            include: {
+                                                backupCodes: {
+                                                    where: TwoFactorActiveBackupCodesFilter,
+                                                },
+                                            },
+                                        },
                                     },
                                 })
                             )
@@ -285,7 +297,7 @@ export class UserOnboardingRepository {
                     token: hashedToken,
                     status: EnumWorkspaceInviteStatus.pending,
                     expiredAt: { gt: now },
-                    workspace: { OR: WorkspaceActiveFilter },
+                    workspace: WorkspaceActiveFilter,
                 },
             });
 

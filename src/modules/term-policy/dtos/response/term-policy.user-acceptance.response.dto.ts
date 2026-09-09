@@ -19,18 +19,18 @@ export const TermPolicyUserAcceptanceResponseSchema =
         userId: z.string().meta({
             description:
                 'Identifier of the user who accepted the terms or policy',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
         user: UserRefResponseSchema.meta({
             description: 'Embedded user who accepted the terms or policy',
             example: {
-                id: faker.database.mongodbObjectId(),
+                id: faker.string.uuid(),
                 createdAt: faker.date.recent(),
-                createdBy: faker.database.mongodbObjectId(),
+                createdBy: faker.string.uuid(),
                 updatedAt: faker.date.recent(),
-                updatedBy: faker.database.mongodbObjectId(),
+                updatedBy: faker.string.uuid(),
                 deletedAt: faker.date.recent(),
-                deletedBy: faker.database.mongodbObjectId(),
+                deletedBy: faker.string.uuid(),
                 name: faker.person.fullName(),
                 username: faker.internet.username().toLowerCase(),
                 photo: {
@@ -47,16 +47,16 @@ export const TermPolicyUserAcceptanceResponseSchema =
         }),
         termPolicyId: z.string().meta({
             description: 'Identifier of the terms or policy accepted',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
         termPolicy: TermPolicyResponseSchema.meta({
             description: 'Embedded terms or policy that was accepted',
             example: {
-                id: faker.database.mongodbObjectId(),
+                id: faker.string.uuid(),
                 createdAt: faker.date.recent(),
-                createdBy: faker.database.mongodbObjectId(),
+                createdBy: faker.string.uuid(),
                 updatedAt: faker.date.recent(),
-                updatedBy: faker.database.mongodbObjectId(),
+                updatedBy: faker.string.uuid(),
                 type: EnumTermPolicyType.termsOfService,
                 status: EnumTermPolicyStatus.draft,
                 contents: [],

@@ -18,16 +18,16 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     deviceId: z.string().meta({
         description: 'Device ownership ID',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     device: DeviceResponseSchema.meta({
         description: 'Device information',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             name: faker.commerce.productName(),
             platform: EnumDevicePlatform.android,
             lastActiveAt: faker.date.recent(),
@@ -36,7 +36,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     }),
     userId: z.string().meta({
         description: 'User ID who owns the device',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     revokedAt: z.date().nullable().meta({
         description: 'Date the device ownership was revoked',
@@ -48,18 +48,18 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     }),
     revokedById: z.string().nullable().meta({
         description: 'User ID who revoked the device ownership',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     revokedBy: UserRefResponseSchema.nullable().meta({
         description: 'User who revoked the device ownership',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {

@@ -1,6 +1,6 @@
+import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
@@ -29,10 +29,25 @@ export class MigrationTemplateTermPolicySeed
     constructor(
         private readonly termPolicyTemplateService: TermPolicyTemplateService,
         private readonly databaseService: DatabaseService,
-        private readonly awsS3Service: AwsS3Service,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly awsS3Service: AwsS3Service
     ) {
         super();
+    }
+
+    private mapContent(asset: IAwsS3): Omit<IAwsS3, 'data'> & {
+        language: EnumMessageLanguage;
+    } {
+        return {
+            language: EnumMessageLanguage.en,
+            bucket: asset.bucket,
+            key: asset.key,
+            cdnUrl: asset.cdnUrl,
+            completedUrl: asset.completedUrl,
+            mime: asset.mime,
+            extension: asset.extension,
+            access: asset.access,
+            size: asset.size,
+        };
     }
 
     async seed(): Promise<void> {
@@ -59,6 +74,21 @@ export class MigrationTemplateTermPolicySeed
                 this.termPolicyTemplateService.importCookie(),
                 this.termPolicyTemplateService.importMarketing(),
             ]);
+            if (
+                !termsOfServiceAsset ||
+                !privacyAsset ||
+                !cookieAsset ||
+                !marketingAsset
+            ) {
+                this.logger.error('Term policy template asset is missing.');
+                return;
+            }
+
+            const termsOfServiceContent =
+                this.mapContent(termsOfServiceAsset);
+            const privacyContent = this.mapContent(privacyAsset);
+            const cookieContent = this.mapContent(cookieAsset);
+            const marketingContent = this.mapContent(marketingAsset);
 
             await this.databaseService.client.$transaction([
                 this.databaseService.client.termPolicy.upsert({
@@ -72,20 +102,15 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.termsOfService,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...termsOfServiceAsset,
-                            },
-                        ]),
+                        contents: {
+                            create: termsOfServiceContent,
+                        },
                     },
                     update: {
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...termsOfServiceAsset,
-                            },
-                        ]),
+                        contents: {
+                            deleteMany: {},
+                            create: termsOfServiceContent,
+                        },
                     },
                 }),
                 this.databaseService.client.termPolicy.upsert({
@@ -99,20 +124,15 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.privacy,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...privacyAsset,
-                            },
-                        ]),
+                        contents: {
+                            create: privacyContent,
+                        },
                     },
                     update: {
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...privacyAsset,
-                            },
-                        ]),
+                        contents: {
+                            deleteMany: {},
+                            create: privacyContent,
+                        },
                     },
                 }),
                 this.databaseService.client.termPolicy.upsert({
@@ -126,20 +146,15 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.cookies,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...cookieAsset,
-                            },
-                        ]),
+                        contents: {
+                            create: cookieContent,
+                        },
                     },
                     update: {
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...cookieAsset,
-                            },
-                        ]),
+                        contents: {
+                            deleteMany: {},
+                            create: cookieContent,
+                        },
                     },
                 }),
                 this.databaseService.client.termPolicy.upsert({
@@ -153,20 +168,15 @@ export class MigrationTemplateTermPolicySeed
                         type: EnumTermPolicyType.marketing,
                         version: 1,
                         status: EnumTermPolicyStatus.published,
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...marketingAsset,
-                            },
-                        ]),
+                        contents: {
+                            create: marketingContent,
+                        },
                     },
                     update: {
-                        contents: this.databaseUtil.toPlainArray([
-                            {
-                                language: EnumMessageLanguage.en,
-                                ...marketingAsset,
-                            },
-                        ]),
+                        contents: {
+                            deleteMany: {},
+                            create: marketingContent,
+                        },
                     },
                 }),
             ]);

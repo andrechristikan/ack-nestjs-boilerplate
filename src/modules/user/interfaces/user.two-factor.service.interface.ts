@@ -1,10 +1,10 @@
-import { TwoFactor } from '@generated/prisma-client';
 import {
     IAuthToken,
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import {
     IUser,
+    IUserTwoFactor,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 
@@ -17,7 +17,7 @@ export interface IUserTwoFactorService {
         challengeToken: string,
         code: string
     ): Promise<string[]>;
-    getTwoFactorStatus(user: IUser): TwoFactor;
+    getTwoFactorStatus(user: IUser): IUserTwoFactor;
     setupTwoFactor(user: IUser): Promise<IUserTwoFactorSetup>;
     enableTwoFactor(user: IUser, code: string): Promise<string[]>;
     disableTwoFactor(

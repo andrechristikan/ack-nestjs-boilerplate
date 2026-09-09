@@ -12,6 +12,7 @@ import {
 } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
 import {
     IUser,
     IUserForgotPasswordCreate,
@@ -48,7 +49,13 @@ export class UserPasswordRepository {
                 user: {
                     include: {
                         role: { include: { policies: true } },
-                        twoFactor: true,
+                        twoFactor: {
+                            include: {
+                                backupCodes: {
+                                    where: TwoFactorActiveBackupCodesFilter,
+                                },
+                            },
+                        },
                     },
                 },
             },

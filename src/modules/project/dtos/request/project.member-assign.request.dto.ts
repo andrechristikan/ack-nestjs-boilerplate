@@ -9,7 +9,7 @@ export const ProjectMemberAssignRequestSchema = z.strictObject({
         .meta({
             description:
                 'User id to assign to the project; must already be a member of the parent workspace',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     role: z.enum(EnumProjectMemberRole).meta({
         description:

@@ -21,7 +21,8 @@ import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/excep
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -33,6 +34,7 @@ import {
     EnumTermPolicyStatus,
     Prisma,
     TermPolicy,
+    TermPolicyContent,
 } from '@generated/prisma-client';
 
 @Injectable()
@@ -57,8 +59,8 @@ export class TermPolicyService implements ITermPolicyService {
 
     mapPublicContent(
         newItems: IAwsS3[],
-        contents: ITermPolicyContent[]
-    ): ITermPolicyContent[] {
+        contents: TermPolicyContent[]
+    ): ITermPolicyContentCreate[] {
         return newItems.map(item => {
             const language = contents.find(
                 c =>
@@ -74,21 +76,21 @@ export class TermPolicyService implements ITermPolicyService {
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         return this.termPolicyRepository.find(pagination, type, status);
     }
 
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         return this.termPolicyRepository.findPublished(pagination, type);
     }
 
     async createByAdmin(
         { contents, type, version }: ITermPolicyCreate,
         createdBy: string
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         const isExist = await this.termPolicyRepository.existByVersionAndType(
             version,
             type
@@ -104,7 +106,7 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const mappedContents: ITermPolicyContent[] = contents.map(
+            const mappedContents: ITermPolicyContentCreate[] = contents.map(
                 ({ language, key, size }: ITermPolicyContentUpload) => ({
                     language,
                     ...this.awsS3Service.mapPresign(
@@ -176,26 +178,24 @@ export class TermPolicyService implements ITermPolicyService {
             throw new TermPolicyNotFoundException();
         } else if (termPolicy.status === EnumTermPolicyStatus.published) {
             throw new TermPolicyStatusInvalidException();
-        } else if (
-            (termPolicy.contents as unknown as ITermPolicyContent[]).length ===
-            0
-        ) {
+        } else if (termPolicy.contents.length === 0) {
             throw new TermPolicyContentEmptyException();
         }
 
         try {
             const contentPublicPath =
                 this.termPolicyUtil.getContentPublicPath(termPolicy);
-            const contents =
-                termPolicy.contents as unknown as ITermPolicyContent[];
 
             const newItems = await this.awsS3Service.moveItems(
-                contents,
+                termPolicy.contents,
                 contentPublicPath,
                 {}
             );
 
-            const newContents = this.mapPublicContent(newItems, contents);
+            const newContents = this.mapPublicContent(
+                newItems,
+                termPolicy.contents
+            );
 
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
             const [updated] = await Promise.all([

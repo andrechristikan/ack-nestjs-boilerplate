@@ -3,7 +3,7 @@
         "validation": "There are validation errors.",
         "paramRequired": "Required parameter is missing.",
         "schemaMissing": "The request could not be validated. Please try again later.",
-        "isMongoId": "{property} should be a valid MongoDB ObjectId.",
+        "isUuid": "{property} should be a valid UUID.",
         "invalidType": "{property} is not of the expected type.",
         "tooSmall": "{property} is shorter than the minimum allowed.",
         "tooBig": "{property} is longer than the maximum allowed.",

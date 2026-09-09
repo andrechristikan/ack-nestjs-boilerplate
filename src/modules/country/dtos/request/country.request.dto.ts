@@ -24,7 +24,7 @@ export const CountryRequestSchema = CountryResponseSchema.pick({
                 example: faker.location.countryCode('alpha-3'),
             })
             .transform(value => value.toUpperCase()),
-        phoneCode: z
+        phoneCodes: z
             .array(z.string().max(4))
             .min(1)
             .meta({

@@ -69,9 +69,7 @@ export class WorkspaceMemberRepository {
             where: {
                 userId,
                 role: EnumWorkspaceMemberRole.owner,
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }

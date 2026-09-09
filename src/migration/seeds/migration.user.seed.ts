@@ -183,12 +183,10 @@ export class MigrationUserSeed
                             signUpWith: EnumUserSignUpWith.credential,
                             signUpFrom: EnumUserSignUpFrom.system,
                             status: EnumUserStatus.active,
-                            termPolicy: {
-                                [EnumTermPolicyType.cookies]: false,
-                                [EnumTermPolicyType.marketing]: false,
-                                [EnumTermPolicyType.privacy]: true,
-                                [EnumTermPolicyType.termsOfService]: true,
-                            },
+                            cookiesAccepted: false,
+                            marketingAccepted: false,
+                            privacyAccepted: true,
+                            termsOfServiceAccepted: true,
                             username: user.username,
                             deletedAt: null,
                             passwordHistories: {

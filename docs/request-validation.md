@@ -134,7 +134,7 @@ async list(
     availableOrderBy: ProjectDefaultAvailableOrderBy,
   })
   pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-  @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+  @Query('workspaceId', new RequestIsValidUuidPipe({ optional: true }))
   workspaceId?: string
 ) {
   return this.projectHttpService.getListForAdmin(pagination, workspaceId);
@@ -238,15 +238,13 @@ findOne(@Param('user', RequestRequiredPipe) user: string) {
 }
 ```
 
-**RequestIsValidObjectIdPipe**
-Validates a MongoDB ObjectId, throwing `RequestIsMongoIdException` otherwise. Instantiate it with `{ optional: true }` to let an absent value pass through as `undefined`:
+**RequestIsValidUuidPipe**
+Validates UUID path parameters:
 
 ```typescript
-@Get('/get/:user')
-findOne(
-  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
-) {
-  return this.userHttpService.get(user);
+@Get(':userId')
+findOne(@Param('userId', RequestIsValidUuidPipe) userId: string) {
+  return this.userService.findById(userId);
 }
 ```
 

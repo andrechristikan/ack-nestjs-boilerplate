@@ -15,7 +15,8 @@ Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is gover
 - **An array value cannot change element type on update.** `checkMetadataKey` treats `string[]` and `number[]` as distinct types, and an empty array counts as an empty value (rejected), same as `''`.
 - **Keys are frozen; only values change.** The admin API updates values, never adds or removes a metadata key — schema consistency is the contract.
 - **A metadata sub-key used as a gate requires a boolean value.** `FeatureFlagService.validateFeatureFlagMetadata(key, metadataKey)` throws `predefinedKeyTypeInvalid` when the value is not boolean, and `serviceUnavailable` (503) when it is `false`.
-- Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
+- Per-feature config lives in metadata; per-user targeting lives in the `FeatureFlagUser` relation and percentage rollout lives in `rolloutPercent`, never in metadata.
+- Status updates only change `isEnable` and `rolloutPercent`; target users are added or removed through dedicated target-user operations.
 
 ## Gating
 
@@ -26,7 +27,7 @@ Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is gover
 
 ## Rollout and targeting
 
-- **`targetUserIds` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
+- **`FeatureFlagUser` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
 - **Rollout buckets stickily.** `md5('<key>:<identifier>')` salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
 - **`isEnable: false` outranks both.** A targeted user is still rejected when the flag is globally off — that is what makes it a kill switch.
 
@@ -35,7 +36,7 @@ Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is gover
 - **An authenticated caller is always bucketed by `userId`, and the `x-anonymous-id` header is ignored entirely.** If the header could override it, any user could move their own bucket by sending one.
 - **With no authenticated user:** `rolloutPercent: 100` passes without the header ever being read; anything below 100 buckets by `x-anonymous-id`, and a caller that sends none or sends a malformed one is REJECTED. Fail closed — a gate that silently admits everyone is not a gate.
 - The header name and the length/charset bounds come from `featureFlag.anonymous.*` config, never a literal in the service. An unbounded client string must not reach the hash, the logs, or a cache key; an invalid value is treated as absent.
-- **`targetUserIds` applies to authenticated callers only** — targeting is by `userId`, which an anonymous caller does not have.
+- **`FeatureFlagUser` targeting applies to authenticated callers only** — targeting is by `userId`, which an anonymous caller does not have.
 
 ## A flag is never an authorization boundary (HARD)
 

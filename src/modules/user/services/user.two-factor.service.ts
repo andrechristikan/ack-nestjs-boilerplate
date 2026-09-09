@@ -4,7 +4,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumUserStatus, TwoFactor } from '@generated/prisma-client';
+import { EnumUserStatus } from '@generated/prisma-client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
@@ -26,6 +26,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import {
     IUser,
+    IUserTwoFactor,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { IUserTwoFactorService } from '@modules/user/interfaces/user.two-factor.service.interface';
@@ -161,7 +162,7 @@ export class UserTwoFactorService implements IUserTwoFactorService {
         }
     }
 
-    getTwoFactorStatus(user: IUser): TwoFactor {
+    getTwoFactorStatus(user: IUser): IUserTwoFactor {
         return user.twoFactor!;
     }
 

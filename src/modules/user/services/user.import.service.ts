@@ -30,6 +30,7 @@ import { IUserImportService } from '@modules/user/interfaces/user.import.service
 import {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserImportRow,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportRepository } from '@modules/user/repositories/user.import.repository';
@@ -230,7 +231,7 @@ export class UserImportService implements IUserImportService {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IUser[]> {
+    ): Promise<IUserExport[]> {
         // TODO: Optimize by doing
         // - in background job with bullmq
         // - return aws s3 link

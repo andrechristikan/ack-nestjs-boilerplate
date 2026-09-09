@@ -15,7 +15,8 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { ITermPolicyContentService } from '@modules/term-policy/interfaces/term-policy.content.service.interface';
 import {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
 } from '@modules/term-policy/interfaces/term-policy.interface';
@@ -42,7 +43,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         return;
     }
 
-    private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
+    private async findOneDraftById(termPolicyId: string): Promise<ITermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -106,10 +107,10 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         { key, size, language }: ITermPolicyContentUpload,
         updatedBy: string
     ): Promise<void> {
-        const termPolicy = await this.findOneDraftById(termPolicyId);
+        await this.findOneDraftById(termPolicyId);
 
         try {
-            const mappedContent: ITermPolicyContent = {
+            const mappedContent: ITermPolicyContentCreate = {
                 language,
                 ...this.awsS3Service.mapPresign(
                     { key, size },
@@ -120,7 +121,6 @@ export class TermPolicyContentService implements ITermPolicyContentService {
             };
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
                 mappedContent,
                 updatedBy
             );
@@ -145,7 +145,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (existingContent) {
@@ -153,7 +153,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         }
 
         try {
-            const mappedContent: ITermPolicyContent = {
+            const mappedContent: ITermPolicyContentCreate = {
                 language,
                 ...this.awsS3Service.mapPresign(
                     { key, size },
@@ -188,7 +188,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         const existingContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (!existingContent) {
@@ -198,7 +198,6 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         try {
             const updated = await this.termPolicyRepository.removeContent(
                 termPolicyId,
-                termPolicy.contents as unknown as ITermPolicyContent[],
                 { language },
                 updatedBy
             );
@@ -226,7 +225,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         }
 
         const existContent = this.termPolicyUtil.getContentByLanguage(
-            termPolicy.contents as unknown as ITermPolicyContent[],
+            termPolicy.contents,
             language
         );
         if (!existContent) {

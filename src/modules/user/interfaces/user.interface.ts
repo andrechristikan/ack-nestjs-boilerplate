@@ -15,7 +15,9 @@ import {
     EnumVerificationType,
     EnumWorkspaceMemberRole,
     Prisma,
+    Role,
     TwoFactor,
+    TwoFactorBackupCode,
     User,
     UserMobileNumber,
     UserPhoto,
@@ -29,9 +31,24 @@ import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
+export interface IUserTwoFactor extends TwoFactor {
+    backupCodes: TwoFactorBackupCode[];
+}
+
 export interface IUser extends User {
     role: IRoleWithPolicies;
-    twoFactor: TwoFactor | null;
+    twoFactor: IUserTwoFactor | null;
+}
+
+/** A user row plus its profile photo, as rendered in the admin list. */
+export interface IUserList extends IUser {
+    photo: UserPhoto | null;
+}
+
+/** A user row flattened for CSV export: only the role name and the photo are joined. */
+export interface IUserExport extends User {
+    role: Pick<Role, 'name'>;
+    photo: UserPhoto | null;
 }
 
 export type IUserContact = Pick<User, 'id' | 'email' | 'username'>;
@@ -56,6 +73,7 @@ export interface IUserMobileNumber extends UserMobileNumber {
 export interface IUserProfile extends IUser {
     mobileNumbers: IUserMobileNumber[];
     country: Country;
+    photo: UserPhoto | null;
 }
 
 export interface IUserLogin {

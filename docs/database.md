@@ -29,11 +29,10 @@ This documentation explains the database architecture and features in ACK NestJS
 	- [Users](#users)
 	- [Feature Flags](#feature-flags)
 	- [Term Policies](#term-policies)
-- [Models](#models)
-- [Composite Types](#composite-types)
+- [Relational and JSON Data Shapes](#relational-and-json-data-shapes)
 	- [GeoLocation](#geolocation)
 	- [UserAgent](#useragent)
-	- [UserTermPolicy](#usertermpolicy)
+	- [User Term Policy Acceptance](#user-term-policy-acceptance)
 	- [UserPhoto](#userphoto)
 	- [TermPolicyContent](#termpolicycontent)
 - [Audit Fields and Soft Delete](#audit-fields-and-soft-delete)
@@ -50,18 +49,21 @@ This documentation explains the database architecture and features in ACK NestJS
 
 ## Prerequisites
 
-> **💡 Tip:** Use Docker setup from the installation guide for automatic MongoDB replica set configuration.
+> **💡 Tip:** Use the Docker setup from the installation guide for a ready-to-use PostgreSQL and Redis development stack.
 
-**MongoDB 8+** running as a **replica set** (required for transactions). Local compose uses `mongo:latest`.
+**PostgreSQL 18.x** with the project database created and reachable through `DATABASE_URL`.
 
 ## Migration
 
-Prisma does not support migrations for MongoDB. Instead, use `prisma db push` to sync your Prisma schema with the MongoDB database.
+ACK NestJS Boilerplate uses Prisma Migrate for PostgreSQL schema changes. Migration files live under `prisma/migrations/*` and are applied through the project database scripts.
 
-In ACK NestJS Boilerplate, you can use the `pnpm db:migrate` script to quickly sync your schema to MongoDB.
+For local development, use:
 
-For details, see the official Prisma documentation: [Prisma for MongoDB][ref-prisma-mongodb]
+```bash
+pnpm db:migrate
+```
 
+For details, see the official Prisma documentation: [Prisma Migrate][ref-prisma-migrate]
 
 ## Generate Database Client
 
@@ -93,7 +95,7 @@ ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly in
 **How to Run All Seeds:**
 - `pnpm migration:seed` — runs all seed commands to populate initial data.
 - `pnpm migration:remove` — removes all seeded data from the database.
-- `pnpm migration:fresh` — force-resets the database schema (`prisma db push --force-reset`) then immediately re-seeds all data. Useful during development when you need a clean slate.
+- `pnpm migration:fresh` — resets the PostgreSQL schema with Prisma Migrate, then immediately re-seeds all data. Useful during development when you need a clean slate.
 
 **Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
 
@@ -114,7 +116,7 @@ Run the command:
 **Available Modules:**
 
 - `apiKey`: Inserts default and system API keys for authentication and service access.
-- `country`: Inserts country data (name, codes, phone code, continent, timezone).
+- `country`: Inserts country data (name, codes, phone codes, continent, timezone).
 - `featureFlag`: Inserts feature flags to enable/disable features (e.g., login methods, sign up, change password).
 - `role`: Inserts user roles (superadmin, admin, user).
 - `policy`: Inserts the policy rows attached to each seeded role.
@@ -294,54 +296,21 @@ The `termPolicy` seed creates each record with an empty `contents` array and `st
 For more details on how seeding works, see: [Template Seeds](#template-seeds)
 
 
-## Models
+## Relational and JSON Data Shapes
 
-Every model in `prisma/schema.prisma` maps to a MongoDB collection through `@@map`. The Prisma name is what repositories address on `databaseService.client.<model>`; the collection name is what you see in MongoDB.
-
-| Model | Collection | Purpose |
-|---|---|---|
-| `ApiKey` | `ApiKeys` | API key credentials for machine access |
-| `Role` | `Roles` | Roles |
-| `Policy` | `Policies` | The `(subject, action[])` rows a role grants, evaluated through CASL |
-| `Country` | `Countries` | Country reference data |
-| `UserMobileNumber` | `UserMobiles` | A user's mobile numbers and their verification state |
-| `User` | `Users` | User accounts |
-| `Verification` | `Verifications` | Email and mobile verification tokens |
-| `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
-| `ActivityLog` | `ActivityLogs` | Audit trail of user actions |
-| `Session` | `Sessions` | Issued refresh sessions per device |
-| `Device` | `Devices` | Devices identified by fingerprint |
-| `DeviceOwnership` | `DeviceOwnerships` | Link between a user and a device |
-| `TwoFactor` | `TwoFactors` | Two-factor secret, attempt counter, and backup codes |
-| `TermPolicy` | `TermPolicies` | Term policy documents and versions |
-| `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
-| `FeatureFlag` | `FeatureFlags` | Feature toggles with rollout percent and metadata |
-| `ForgotPassword` | `ForgotPasswords` | Password reset tokens |
-| `Notification` | `Notifications` | Notification records |
-| `NotificationDelivery` | `NotificationDeliveries` | Per-channel delivery outcome of a notification |
-| `NotificationUserSetting` | `NotificationUserSettings` | Per-user channel and type preferences |
-| `Workspace` | `Workspaces` | Workspaces |
-| `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
-| `WorkspaceInvite` | `WorkspaceInvites` | Outstanding workspace invitations |
-| `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
-| `Project` | `Projects` | Projects inside a workspace |
-| `ProjectMember` | `ProjectMembers` | Project membership and role |
-
-## Composite Types
-
-Prisma composite types are embedded sub-documents in MongoDB (not separate collections). They are defined with the `type` keyword in `prisma/schema.prisma` and stored inline within the parent document rather than in separate collections.
+PostgreSQL uses relational child tables for repeatable domain data and JSON columns for request snapshots. IDs are UUIDv7 strings (`String @db.Uuid`) generated by the database through `uuidv7()`.
 
 ### GeoLocation
 
 Represents the geographic location derived from a client's IP address using `geoip-lite`.
 
 ```prisma
-type GeoLocation {
-  latitude  Float
-  longitude Float
-  country   String
-  region    String
-  city      String
+model ActivityLog {
+  geoLocation Json?
+}
+
+model Session {
+  geoLocation Json?
 }
 ```
 
@@ -366,40 +335,12 @@ Resolved once per request into the request store (`RequestLogStoreKey`, as part 
 Represents parsed user-agent information from the client's `User-Agent` HTTP header using `ua-parser-js`. `UserAgent` is the top-level type that embeds four sub-types.
 
 ```prisma
-type UserAgent {
-  ua      String?
-  browser UserAgentBrowser?
-  cpu     UserAgentCpu?
-  device  UserAgentDevice?
-  engine  UserAgentEngine?
-  os      UserAgentOs?
+model ActivityLog {
+  userAgent Json
 }
 
-type UserAgentBrowser {
-  name    String?
-  version String?
-  major   String?
-  type    String?
-}
-
-type UserAgentCpu {
-  architecture String?
-}
-
-type UserAgentDevice {
-  type   String?
-  vendor String?
-  model  String?
-}
-
-type UserAgentEngine {
-  name    String?
-  version String?
-}
-
-type UserAgentOs {
-  name    String?
-  version String?
+model Session {
+  userAgent Json
 }
 ```
 
@@ -424,28 +365,39 @@ Resolved once per request into the request store (`RequestLogStoreKey`, as part 
 
 ---
 
-### UserTermPolicy
+### User Term Policy Acceptance
 
-Represents the user's acceptance flags for each term policy type. Stored inline on the `User` document.
+The current acceptance state is stored directly on `User`, with one boolean column for each term policy type. Publishing a new policy version resets the corresponding column for every active, non-deleted user.
 
 ```prisma
-type UserTermPolicy {
-  termsOfService Boolean
-  privacy        Boolean
-  marketing      Boolean
-  cookies        Boolean
+model User {
+  termsOfServiceAccepted Boolean @default(false)
+  privacyAccepted        Boolean @default(false)
+  cookiesAccepted        Boolean @default(false)
+  marketingAccepted      Boolean @default(false)
+
+  acceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+}
+
+model TermPolicyUserAcceptance {
+  id           String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId       String   @db.Uuid
+  termPolicyId String   @db.Uuid
+  acceptedAt   DateTime @default(now())
+
+  user       User       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id])
+  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  @@unique(fields: [userId, termPolicyId])
+  @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
+  @@map("term_policy_user_acceptances")
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `termsOfService` | `Boolean` | Has accepted Terms of Service |
-| `privacy` | `Boolean` | Has accepted Privacy Policy |
-| `marketing` | `Boolean` | Has accepted Marketing terms |
-| `cookies` | `Boolean` | Has accepted Cookie policy |
-
-**Used in:**
-- `User.termPolicy`
+The boolean columns are used for access checks. `TermPolicyUserAcceptance` records which policy version the user accepted and when, preserving acceptance history through `User.acceptances`.
 
 ---
 
@@ -454,7 +406,9 @@ type UserTermPolicy {
 Represents the user's profile photo stored in AWS S3.
 
 ```prisma
-type UserPhoto {
+model UserPhoto {
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId       String  @unique @db.Uuid
   bucket       String
   key          String
   cdnUrl       String?
@@ -478,6 +432,29 @@ type UserPhoto {
 **Used in:**
 - `User.photo`
 
+### RoleAbility
+
+Represents a single CASL ability entry related to a `Role`. Each entry defines one allowed action on a given policy subject.
+
+```prisma
+model RoleAbility {
+  id      String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  roleId  String @db.Uuid
+  subject String
+  action  String
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `action` | `String` | Allowed action (e.g. `"read"` or `"create"`) |
+| `subject` | `String` | Policy subject (e.g. `"user"`, `"apiKey"`) |
+
+**Used in:**
+- `Role.abilities`
+
+See [Authorization Documentation][ref-doc-authorization] for how abilities are evaluated at runtime.
+
 ---
 
 ### TermPolicyContent
@@ -485,7 +462,9 @@ type UserPhoto {
 Represents a localized content file for a term policy document, stored in AWS S3.
 
 ```prisma
-type TermPolicyContent {
+model TermPolicyContent {
+  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  termPolicyId String  @db.Uuid
   language     String
   bucket       String
   key          String
@@ -535,16 +514,16 @@ The same interface file exports `IDatabaseTransactionClient`, the `tx` type for 
 What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
-- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
+- A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, `$queryRaw`, and `$executeRaw` all work on `client`.
 - `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes or must branch on an intermediate result. Both run on `client`, so audit stamping still fires inside them. In the callback form use the `tx` client for every operation; a call back to `databaseService.client` escapes the transaction.
-- The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
+- The PostgreSQL health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
 
 - On `create`, `createMany`, `update`, `updateMany`, and `upsert`, the extension fills `createdBy` and `updatedBy` from the current request actor.
 - The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user carries no actor, and nothing is stamped.
 - A field is filled only when the model actually has that column and the caller left it null. An explicit value the caller passes always wins.
-- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.ObjectId`; they store the actor's user id.
+- `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.Uuid`; they store the actor's user id.
 
 **Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved from the Prisma DMMF rather than the parent's field set, and the recursion continues to any deeper level.
 
@@ -623,25 +602,45 @@ Prisma perfectly enables **Repository Design Pattern** implementation:
 - **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
 - **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
 - **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **MongoDB on this checkout**: `prisma/schema.prisma` uses `provider = "mongodb"`; schema sync is `pnpm db:migrate` (`prisma db push`)
+- **Database Isolated**: Prisma and the repository layer isolate database-specific code from services and controllers
 
-### Database provider
+### PostgreSQL Design
 
-This boilerplate ships **MongoDB only**. ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Prisma can target other engines in general, but switching provider here means rewriting the schema, `DatabaseUtil` ID helpers, and Mongo-specific query patterns. There is no `prisma migrate` script; do not treat a provider switch as a one-command migration.
+Prisma, combined with the Repository Pattern, keeps database logic inside repositories. Services and controllers should consume module interfaces, DTOs, and repository methods rather than building Prisma queries directly.
 
-For setup and seeding on MongoDB, see the sections above.
+#### Current Database
+
+| Database | Best For | Transaction Support |
+|----------|----------|---------------------|
+| **PostgreSQL** | Relational Database, reliability | ✅ Yes |
+
+**Environment** (`.env`):
+```bash
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
+```
+
+**Schema and client:**
+```bash
+pnpm db:migrate
+pnpm db:generate
+```
+
+**Seeds:**
+```bash
+pnpm migration:seed
+```
 
 #### Learn More
 
-- [Prisma MongoDB Documentation][ref-prisma-mongodb]
-- [nest-commander][ref-nest-commander]
+- [Prisma Migrate][ref-prisma-migrate]
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 
 <!-- REFERENCES -->
 
 [ref-prisma]: https://www.prisma.io
-[ref-prisma-mongodb]: https://www.prisma.io/docs/orm/overview/databases/mongodb#commonalities-with-other-database-provider
-[ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
+[ref-prisma-migrate]: https://www.prisma.io/docs/orm/prisma-migrate
+[ref-commander]: https://nest-commander.jaymcdoniel.dev
 
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md

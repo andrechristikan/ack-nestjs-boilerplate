@@ -40,7 +40,7 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
         .meta({
             description:
                 'Project to also join; must belong to the current workspace. Requires projectRole',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     projectRole: z.enum(EnumProjectMemberRole).optional().meta({
         description:

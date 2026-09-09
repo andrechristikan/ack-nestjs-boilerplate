@@ -56,7 +56,7 @@ flowchart TD
     J -->|Yes| L{isEnable = true?}
     L -->|No| K[Throw: serviceUnavailable]
     L -->|Yes| S{User exists in request?}
-    S -->|Yes| S1{userId in targetUserIds?}
+    S -->|Yes| S1{userId in targetUsers relation?}
     S1 -->|Yes| T[Allow access]
     S1 -->|No| U[Hash 'key:userId' with MD5]
     S -->|No| N1{rolloutPercent >= 100?}
@@ -104,7 +104,7 @@ export class AuthController {
 }
 ```
 
-`@FeatureFlagProtected()` must sit **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
+`@FeatureFlagProtected()` must sit **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making target-user allow-listing and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
 ### With Service
 
@@ -169,27 +169,32 @@ await this.featureFlagService.validateFeatureFlagMetadata(
 
 It throws `predefinedKeyNotFound` (500) when the flag row is missing, `serviceUnavailable` (503) when the flag is disabled, `predefinedKeyTypeInvalid` (500) when the metadata value is not a boolean, and `serviceUnavailable` (503) when the boolean is `false`.
 
-Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
+Metadata is per-feature config (small on/off and typed values). Per-user targeting uses the `FeatureFlag.targetUsers` relation (see [Targeting](#targeting)), not metadata.
 
 ## Targeting
 
-`targetUserIds` is an allow-list of user ids that always receive the feature, bypassing the rollout percentage.
+`FeatureFlag.targetUsers` is an allow-list stored as `FeatureFlagUser` rows. A targeted user always receives the feature, bypassing the rollout percentage.
 
 ```typescript
 {
   key: 'newFeature',
-  targetUserIds: ['userIdA', 'userIdB'],
+  targetUsers: [{ userId: 'userIdA' }, { userId: 'userIdB' }],
   rolloutPercent: 30
 }
 ```
 
 **How it works:**
 1. Only evaluated when the request has an authenticated user.
-2. If `userId` is in `targetUserIds`, access is granted and rollout is skipped.
+2. The relation rows are converted to user IDs during evaluation. If `userId` matches one, access is granted and rollout is skipped.
 3. Otherwise the user falls back to rollout percentage.
 4. Anonymous requests (no user) skip targeting and go straight to the anonymous rollout branch (see [Rollout Percentage](#rollout-percentage)).
 
-`targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty. Omit the field to keep the current list; send `[]` to clear it.
+The `targetUsers` relation is managed through dedicated target-user endpoints and defaults to empty. Status updates only change `isEnable` and `rolloutPercent`.
+
+**Admin target-user endpoints:**
+- `PUT /feature-flag/:featureFlagId/user` adds a user to the allow-list. Adding an existing user is idempotent. The body is `{ "userId": "<uuid>" }`.
+- `DELETE /feature-flag/:featureFlagId/user/:userId` removes a user from the allow-list. Removing a missing user is idempotent.
+- Both endpoints invalidate the feature-flag cache.
 
 ## Rollout Percentage
 
@@ -208,7 +213,7 @@ Controls gradual feature deployment using deterministic hashing:
 4. The same identifier always gets the same result per flag (deterministic)
 5. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%)
 
-**Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not in `targetUserIds`.
+**Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not represented in `targetUsers`.
 
 **Anonymous callers** are handled separately:
 
@@ -249,7 +254,8 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Feature flags cannot be added via admin API
 - Feature flags cannot be deleted
 - Metadata keys cannot be modified (add/remove)
-- Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
+- Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
+- Target users can be added or removed through dedicated target-user endpoints
 
 
 ## Contribution
