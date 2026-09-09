@@ -36,7 +36,7 @@ export class UserMobileNumberService implements IUserMobileNumberService {
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
             this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
-            this.userMobileNumberRepository.existMobileNumber(userId, {
+            this.userMobileNumberRepository.existsMobileNumber(userId, {
                 number,
                 countryId: country.id,
                 phoneCode,
@@ -87,7 +87,7 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         }
 
         const checkExist =
-            await this.userMobileNumberRepository.existMobileNumber(
+            await this.userMobileNumberRepository.existsMobileNumber(
                 userId,
                 { number, countryId, phoneCode },
                 mobileNumberId

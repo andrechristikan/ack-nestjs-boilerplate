@@ -43,12 +43,12 @@ export class UserMobileNumberRepository {
         });
     }
 
-    async existMobileNumber(
+    async existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         excludeId?: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.userMobileNumber.findFirst({
+    ): Promise<boolean> {
+        const count = await this.databaseService.client.userMobileNumber.count({
             where: {
                 number,
                 countryId,
@@ -62,10 +62,9 @@ export class UserMobileNumberRepository {
                       }
                     : {}),
             },
-            select: {
-                id: true,
-            },
         });
+
+        return count > 0;
     }
 
     async addMobileNumber(

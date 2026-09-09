@@ -82,16 +82,16 @@ export class NotificationRepository {
         });
     }
 
-    async existById(
+    async findIsReadById(
         userId: string,
         notificationId: string
-    ): Promise<{ id: string; isRead: boolean } | null> {
+    ): Promise<{ isRead: boolean } | null> {
         return this.databaseService.client.notification.findFirst({
             where: {
                 id: notificationId,
                 userId,
             },
-            select: { id: true, isRead: true },
+            select: { isRead: true },
         });
     }
 

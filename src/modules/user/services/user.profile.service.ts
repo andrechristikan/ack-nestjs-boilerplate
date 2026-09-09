@@ -81,7 +81,7 @@ export class UserProfileService implements IUserProfileService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const checkCountry = await this.countryService.existById(countryId);
+        const checkCountry = await this.countryService.existsById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
         }
@@ -225,7 +225,7 @@ export class UserProfileService implements IUserProfileService {
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
-            this.userRepository.existByUsername(username),
+            this.userRepository.existsByUsername(username),
         ]);
         if (checkUsername) {
             throw new UserUsernameNotAllowedException();

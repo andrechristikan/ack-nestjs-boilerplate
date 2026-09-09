@@ -92,12 +92,12 @@ export class DeviceService implements IDeviceService {
         deviceOwnershipId: string,
         data: IDeviceRefresh
     ): Promise<void> {
-        const existDeviceOwnership =
-            await this.deviceOwnershipRepository.existActive(
+        const deviceOwnershipExists =
+            await this.deviceOwnershipRepository.existsActive(
                 userId,
                 deviceOwnershipId
             );
-        if (!existDeviceOwnership) {
+        if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
 
@@ -109,7 +109,7 @@ export class DeviceService implements IDeviceService {
         try {
             await this.deviceOwnershipRepository.refresh(
                 userId,
-                existDeviceOwnership.id,
+                deviceOwnershipId,
                 data,
                 notificationProvider,
                 requestLog
@@ -126,12 +126,12 @@ export class DeviceService implements IDeviceService {
     }
 
     async remove(userId: string, deviceOwnershipId: string): Promise<void> {
-        const existDeviceOwnership =
-            await this.deviceOwnershipRepository.existActive(
+        const deviceOwnershipExists =
+            await this.deviceOwnershipRepository.existsActive(
                 userId,
                 deviceOwnershipId
             );
-        if (!existDeviceOwnership) {
+        if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
 
@@ -141,11 +141,11 @@ export class DeviceService implements IDeviceService {
         try {
             await this.sessionService.deleteLoginsByDeviceOwnership(
                 userId,
-                existDeviceOwnership.id
+                deviceOwnershipId
             );
             await this.deviceOwnershipRepository.remove(
                 userId,
-                existDeviceOwnership.id,
+                deviceOwnershipId,
                 requestLog
             );
 
@@ -164,12 +164,12 @@ export class DeviceService implements IDeviceService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<void> {
-        const existDeviceOwnership =
-            await this.deviceOwnershipRepository.existActive(
+        const deviceOwnershipExists =
+            await this.deviceOwnershipRepository.existsActive(
                 userId,
                 deviceOwnershipId
             );
-        if (!existDeviceOwnership) {
+        if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
 
@@ -179,11 +179,11 @@ export class DeviceService implements IDeviceService {
         try {
             await this.sessionService.deleteLoginsByDeviceOwnership(
                 userId,
-                existDeviceOwnership.id
+                deviceOwnershipId
             );
             const removed = await this.deviceOwnershipRepository.removeByAdmin(
                 userId,
-                existDeviceOwnership.id,
+                deviceOwnershipId,
                 removedBy,
                 requestLog
             );

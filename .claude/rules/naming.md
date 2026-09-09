@@ -131,6 +131,7 @@ provide exist:
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
 - **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).
+- **A method that asserts a boolean state answers `Promise<boolean>`, never a nullable row for the caller to truthiness-check.** Existence takes the `exists*` prefix — `existsById`, `existsByEmail`, `existsBySlug`; any other state names the state it asserts — `isUsedById`. A caller that needs the row calls the layer's read method instead: `get*` on a service, `find*` on a repository, with a `select` no wider than that caller reads.
 - **Payload interface names put the KIND last:** `INotificationSendPushPayload`, never `INotificationPayloadSendPush`.
 
 ## `Pattern` and `Regex` on a config key

@@ -11,7 +11,7 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import { FileUploadSingleRequestSchema } from '@common/file/dtos/file.single.dto';
+import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
 import {
     AuthTokenResponseDto,
     AuthTokenResponseSchema,

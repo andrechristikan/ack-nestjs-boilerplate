@@ -89,7 +89,7 @@ export class TermPolicyService implements ITermPolicyService {
         { contents, type, version }: ITermPolicyCreate,
         createdBy: string
     ): Promise<TermPolicy> {
-        const isExist = await this.termPolicyRepository.existByVersionAndType(
+        const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
         );

@@ -31,7 +31,7 @@ import {
     DatabaseIdResponseDto,
     DatabaseIdResponseSchema,
 } from '@common/database/dtos/response/database.id.response.dto';
-import { FileUploadSingleRequestSchema } from '@common/file/dtos/file.single.dto';
+import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 
 export function UserAdminListDoc(): MethodDecorator {

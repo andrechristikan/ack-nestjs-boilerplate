@@ -23,8 +23,9 @@ export interface IRoleService {
         pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>>;
-    existById(roleId: string): Promise<IRole | null>;
-    existByName(name: string): Promise<IRole | null>;
+    existsById(roleId: string): Promise<boolean>;
+    getById(roleId: string): Promise<IRole | null>;
+    getByName(name: string): Promise<IRole | null>;
     getOne(id: string): Promise<IRoleWithPolicies>;
     createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies>;
     updateByAdmin(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;

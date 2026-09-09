@@ -60,15 +60,12 @@ export class TermPolicyContentService implements ITermPolicyContentService {
         type,
         version,
     }: ITermPolicyContentPresign): Promise<IAwsS3Presign> {
-        const termPolicy =
-            await this.termPolicyRepository.existByVersionAndType(
+        const status =
+            await this.termPolicyRepository.findStatusByVersionAndType(
                 version,
                 type
             );
-        if (
-            termPolicy &&
-            termPolicy.status === EnumTermPolicyStatus.published
-        ) {
+        if (status === EnumTermPolicyStatus.published) {
             throw new TermPolicyStatusInvalidException();
         }
 

@@ -85,13 +85,13 @@ export class UserImportService implements IUserImportService {
 
         const [
             checkRole,
-            checkCountry,
+            countryId,
             existingUsersByEmail,
             existingUsersByUsername,
             badWordChecks,
         ] = await Promise.all([
-            this.roleService.existByName(this.userRoleName),
-            this.countryService.existByAlpha2Code(this.userCountryName),
+            this.roleService.getByName(this.userRoleName),
+            this.countryService.getIdByAlpha2Code(this.userCountryName),
             this.userImportRepository.findByEmails(emails),
             this.userImportRepository.findByUsernames(usernames),
             Promise.all(
@@ -109,7 +109,7 @@ export class UserImportService implements IUserImportService {
             );
         } else if (!checkRole) {
             throw new RoleNotFoundException();
-        } else if (!checkCountry) {
+        } else if (countryId === null) {
             throw new CountryNotFoundException();
         } else if (existingUsersByUsername.length > 0) {
             throw new UserImportUsernameExistException(
@@ -146,7 +146,7 @@ export class UserImportService implements IUserImportService {
                     email,
                     name,
                     username: usernames[index],
-                    countryId: checkCountry.id,
+                    countryId,
                     roleId: checkRole.id,
                     signUpFrom: EnumUserSignUpFrom.admin,
                     signUpWith: EnumUserSignUpWith.credential,
