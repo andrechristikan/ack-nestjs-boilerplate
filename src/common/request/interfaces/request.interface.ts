@@ -11,30 +11,30 @@ export interface IRequestGeoLocation {
 }
 
 export interface IRequestUserAgentBrowser {
-    name?: string | null;
-    version?: string | null;
-    major?: string | null;
-    type?: string | null;
+    name: string | null;
+    version: string | null;
+    major: string | null;
+    type: string | null;
 }
 
 export interface IRequestUserAgentCpu {
-    architecture?: string | null;
+    architecture: string | null;
 }
 
 export interface IRequestUserAgentDevice {
-    type?: string | null;
-    vendor?: string | null;
-    model?: string | null;
+    type: string | null;
+    vendor: string | null;
+    model: string | null;
 }
 
 export interface IRequestUserAgentEngine {
-    name?: string | null;
-    version?: string | null;
+    name: string | null;
+    version: string | null;
 }
 
 export interface IRequestUserAgentOs {
-    name?: string | null;
-    version?: string | null;
+    name: string | null;
+    version: string | null;
 }
 
 export interface IRequestUserAgent {

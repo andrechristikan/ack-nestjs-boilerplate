@@ -1,11 +1,13 @@
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { IUserTwoFactorStatus } from '@modules/user/interfaces/user.interface';
+import {
+    IUserTwoFactor,
+    IUserTwoFactorStatus,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumUserLoginWith,
-    TwoFactor,
     User,
 } from '@generated/prisma-client';
 import { Profanity } from '@2toad/profanity';
@@ -43,7 +45,7 @@ export class UserUtil {
     }
 
     /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
-    mapTwoFactor(twoFactor: TwoFactor): IUserTwoFactorStatus {
+    mapTwoFactor(twoFactor: IUserTwoFactor): IUserTwoFactorStatus {
         return {
             isEnabled: twoFactor.enabled,
             isPendingConfirmation:

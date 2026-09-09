@@ -81,7 +81,7 @@ export class WorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -91,7 +91,7 @@ export class WorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                OR: WorkspaceActiveFilter,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -134,7 +134,7 @@ export class WorkspaceRepository {
             where: {
                 AND: [
                     where ?? {},
-                    { OR: WorkspaceActiveFilter },
+                    WorkspaceActiveFilter,
                     { members: { some: { userId } } },
                 ],
             },
@@ -285,7 +285,7 @@ export class WorkspaceRepository {
             this.databaseService.client.project.updateMany({
                 where: {
                     workspaceId,
-                    OR: ProjectActiveFilter,
+                    ...ProjectActiveFilter,
                 },
                 data: {
                     deletedAt: today,

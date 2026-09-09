@@ -10,12 +10,14 @@ import {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
 import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
     IUser,
     IUserContact,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
@@ -45,8 +47,8 @@ export class UserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
+    ): Promise<IResponsePagingReturn<IUserList>> {
+        return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
                 ...params,
@@ -59,7 +61,14 @@ export class UserRepository {
                 },
                 include: {
                     role: { include: { policies: true } },
-                    twoFactor: true,
+                    twoFactor: {
+                        include: {
+                            backupCodes: {
+                                where: TwoFactorActiveBackupCodesFilter,
+                            },
+                        },
+                    },
+                    photo: true,
                 },
             }
         );
@@ -102,7 +111,13 @@ export class UserRepository {
             where: { email, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -113,7 +128,14 @@ export class UserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -129,7 +151,14 @@ export class UserRepository {
             include: {
                 role: { include: { policies: true } },
                 country: true,
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
+                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -144,7 +173,13 @@ export class UserRepository {
             where: { id, deletedAt: null },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }

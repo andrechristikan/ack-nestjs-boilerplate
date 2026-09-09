@@ -62,6 +62,7 @@ import {
     TermPolicyRemoveContentRequestSchema,
 } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentHttpService } from '@modules/term-policy/services/term-policy.content.http.service';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -86,7 +87,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
 } from '@generated/prisma-client';
 
 @ApiTags('modules.admin.termPolicy')
@@ -130,7 +130,7 @@ export class TermPolicyAdminController {
             TermPolicyDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         return this.termPolicyHttpService.getListByAdmin(
             pagination,
             type,
@@ -158,14 +158,12 @@ export class TermPolicyAdminController {
         @Body({ schema: TermPolicyCreateRequestSchema })
         body: TermPolicyCreateRequestDto,
         @AuthJwtPayload('userId') createdBy: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<ITermPolicy>> {
         return this.termPolicyHttpService.createByAdmin(body, createdBy);
     }
 
     @TermPolicyAdminDeleteDoc()
-    @Response('termPolicy.delete', {
-        schema: TermPolicyResponseSchema,
-    })
+    @Response('termPolicy.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.termPolicy,
@@ -181,7 +179,7 @@ export class TermPolicyAdminController {
     async delete(
         @Param('termPolicyId', RequestRequiredPipe, RequestIsValidUuidPipe)
         termPolicyId: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<void>> {
         return this.termPolicyHttpService.deleteByAdmin(termPolicyId);
     }
 

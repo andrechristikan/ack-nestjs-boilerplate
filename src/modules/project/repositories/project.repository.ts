@@ -69,7 +69,7 @@ export class ProjectRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
         });
     }
@@ -113,7 +113,7 @@ export class ProjectRepository {
                     AND: [
                         where ?? {},
                         { workspaceId },
-                        { OR: ProjectActiveFilter },
+                        ProjectActiveFilter,
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),

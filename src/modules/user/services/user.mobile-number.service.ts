@@ -35,7 +35,7 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         const country = await this.countryService.getOne(countryId);
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
+            this.userUtil.checkMobileNumber(country.phoneCodes, phoneCode),
             this.userMobileNumberRepository.existMobileNumber(userId, {
                 number,
                 countryId: country.id,
@@ -97,7 +97,7 @@ export class UserMobileNumberService implements IUserMobileNumberService {
         }
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            country.phoneCode,
+            country.phoneCodes,
             phoneCode
         );
         if (!checkValidMobileNumber) {

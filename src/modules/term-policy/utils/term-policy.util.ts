@@ -3,13 +3,12 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumTermPolicyType,
-    Prisma,
     TermPolicy,
+    TermPolicyContent,
 } from '@generated/prisma-client';
 
 @Injectable()
@@ -60,15 +59,6 @@ export class TermPolicyUtil {
         return fullPath;
     }
 
-    checkContentExist(
-        contents: Prisma.JsonArray,
-        language: EnumMessageLanguage
-    ): boolean {
-        return !!(contents as unknown as ITermPolicyContent[]).find(
-            c => c.language === language
-        );
-    }
-
     getContentPublicPath(termPolicy: TermPolicy): string {
         return this.contentPublicPath
             .replace('{type}', termPolicy.type)
@@ -85,9 +75,9 @@ export class TermPolicyUtil {
     }
 
     getContentByLanguage(
-        contents: ITermPolicyContent[],
+        contents: TermPolicyContent[],
         language: EnumMessageLanguage
-    ): ITermPolicyContent | null {
+    ): TermPolicyContent | null {
         return contents.find(c => c.language === language) ?? null;
     }
 }

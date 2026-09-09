@@ -1,3 +1,1 @@
-export enum EnumMessageLanguage {
-    en = 'en',
-}
+export { EnumMessageLanguage } from '@generated/prisma-client';

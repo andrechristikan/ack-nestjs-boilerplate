@@ -31,7 +31,10 @@ import {
     Prisma,
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
+import {
+    IUserList,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -138,7 +141,7 @@ export class UserAdminController {
         roleId?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,

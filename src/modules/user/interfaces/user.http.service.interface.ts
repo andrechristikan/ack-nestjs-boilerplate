@@ -16,9 +16,9 @@ import {
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
-    IUser,
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 
@@ -28,7 +28,7 @@ export interface IUserHttpService {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>>;
+    ): Promise<IResponsePagingReturn<IUserList>>;
     getOne(id: string): Promise<IResponseReturn<IUserProfile>>;
     createByAdmin(
         body: UserCreateRequestDto,

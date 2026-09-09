@@ -1,7 +1,10 @@
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 
 export interface IRequestContextService {
     getHostname(): string;
-    resolveCity(geoLocation?: GeoLocation): string;
-    resolveDevice(userAgent: UserAgent): string;
+    resolveCity(geoLocation?: IRequestGeoLocation | null): string;
+    resolveDevice(userAgent: IRequestUserAgent): string;
 }

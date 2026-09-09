@@ -3,9 +3,14 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyType,
     TermPolicy,
+    TermPolicyContent,
     TermPolicyUserAcceptance,
 } from '@generated/prisma-client';
 import { IUserRef } from '@modules/user/interfaces/user.interface';
+
+export interface ITermPolicy extends TermPolicy {
+    contents: TermPolicyContent[];
+}
 
 export interface ITermPolicyUserAcceptance extends TermPolicyUserAcceptance {
     user: IUserRef;
@@ -18,7 +23,8 @@ export interface ITermPolicyContentUpload {
     key: string;
 }
 
-export interface ITermPolicyContent extends Omit<IAwsS3, 'data'> {
+/** The persistable columns of one localized content document — the create/update input shape. */
+export interface ITermPolicyContentCreate extends Omit<IAwsS3, 'data'> {
     language: EnumMessageLanguage;
 }
 

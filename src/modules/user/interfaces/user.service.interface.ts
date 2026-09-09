@@ -11,6 +11,7 @@ import {
     IUserCheckUsername,
     IUserContact,
     IUserCreateByAdmin,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 
@@ -24,7 +25,7 @@ export interface IUserService {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>>;
+    ): Promise<IResponsePagingReturn<IUserList>>;
     getOneActive(userId: string): Promise<User | null>;
     getListActive(): Promise<IUserContact[]>;
     getOne(id: string): Promise<IUserProfile>;

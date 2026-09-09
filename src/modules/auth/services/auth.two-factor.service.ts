@@ -1,7 +1,6 @@
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { TwoFactor } from '@generated/prisma-client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import {
     IAuthTwoFactorBackupCodes,
@@ -12,7 +11,7 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { IAuthTwoFactorService } from '@modules/auth/interfaces/auth.two-factor.service.interface';
 import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import { IUser, IUserTwoFactor } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
@@ -141,15 +140,19 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
         };
     }
 
-    /** Verifies a TOTP or backup code; a consumed backup code is returned removed in newBackupCodes. */
+    /** Verifies a TOTP or backup code; a consumed backup code hash is returned in usedBackupCodeHash. */
     async verifyTwoFactor(
-        twoFactor: TwoFactor,
+        twoFactor: IUserTwoFactor,
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
         const normalizedCode =
             method === EnumAuthTwoFactorMethod.code
                 ? code?.trim()
                 : backupCode?.trim();
+        const activeBackupCodes = twoFactor.backupCodes.map(
+            ({ codeHash }) => codeHash
+        );
+
         if (!twoFactor.secret || !twoFactor.iv || !normalizedCode) {
             return {
                 isValid: false,
@@ -157,7 +160,7 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
             };
         } else if (
             method === EnumAuthTwoFactorMethod.backupCodes &&
-            twoFactor.backupCodes.length === 0
+            activeBackupCodes.length === 0
         ) {
             return {
                 isValid: false,
@@ -182,7 +185,7 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
         }
 
         const backupValidation = this.verifyBackupCode(
-            twoFactor.backupCodes,
+            activeBackupCodes,
             normalizedCode
         );
         if (!backupValidation.isValid) {
@@ -192,13 +195,10 @@ export class AuthTwoFactorService implements IAuthTwoFactorService {
             };
         }
 
-        const updatedTwoFactorBackupCodes = [...twoFactor.backupCodes];
-        updatedTwoFactorBackupCodes.splice(backupValidation.index, 1);
-
         return {
             isValid: true,
             method: method!,
-            newBackupCodes: updatedTwoFactorBackupCodes,
+            usedBackupCodeHash: activeBackupCodes[backupValidation.index],
         };
     }
 

@@ -79,9 +79,7 @@ export class WorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }
@@ -136,7 +134,7 @@ export class WorkspaceInviteRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
         });
     }

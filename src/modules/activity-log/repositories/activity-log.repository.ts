@@ -22,9 +22,9 @@ import {
 
 @Injectable()
 export class ActivityLogRepository {
-    private readonly userScopedFilter: NonNullable<
-        Prisma.ActivityLogWhereInput['OR']
-    > = [{ workspaceId: null }, { workspaceId: { isSet: false } }];
+    private readonly userScopedFilter: Prisma.ActivityLogWhereInput = {
+        workspaceId: null,
+    };
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -37,11 +37,7 @@ export class ActivityLogRepository {
         where?: Prisma.ActivityLogWhereInput
     ): Prisma.ActivityLogWhereInput {
         return {
-            AND: [
-                ...(where ? [where] : []),
-                { userId },
-                { OR: this.userScopedFilter },
-            ],
+            AND: [...(where ? [where] : []), { userId }, this.userScopedFilter],
         };
     }
 

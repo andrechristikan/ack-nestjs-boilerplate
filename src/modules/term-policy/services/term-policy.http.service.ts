@@ -9,9 +9,10 @@ import {
 } from '@common/response/interfaces/response.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { ITermPolicyHttpService } from '@modules/term-policy/interfaces/term-policy.http.service.interface';
+import { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Injectable } from '@nestjs/common';
-import { Prisma, TermPolicy } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyHttpService implements ITermPolicyHttpService {
@@ -21,7 +22,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         const { data, ...others } = await this.termPolicyService.getListByAdmin(
             pagination,
             type,
@@ -36,7 +37,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         const { data, ...others } =
             await this.termPolicyService.getListPublished(pagination, type);
         return {
@@ -48,7 +49,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
     async createByAdmin(
         body: TermPolicyCreateRequestDto,
         createdBy: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<ITermPolicy>> {
         const created = await this.termPolicyService.createByAdmin(
             body,
             createdBy
@@ -57,13 +58,10 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         return { data: created };
     }
 
-    async deleteByAdmin(
-        termPolicyId: string
-    ): Promise<IResponseReturn<TermPolicy>> {
-        const deleted =
-            await this.termPolicyService.deleteByAdmin(termPolicyId);
+    async deleteByAdmin(termPolicyId: string): Promise<IResponseReturn<void>> {
+        await this.termPolicyService.deleteByAdmin(termPolicyId);
 
-        return { data: deleted };
+        return {};
     }
 
     async publishByAdmin(

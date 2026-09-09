@@ -31,7 +31,7 @@ model ApiKey {
 }
 
 model Role {
-  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  id          String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
   name        String
   description String?
   type        EnumRoleType @default(user)
@@ -416,16 +416,16 @@ model TermPolicy {
 }
 
 model TermPolicyContent {
-  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  termPolicyId String  @db.Uuid
-  language     String
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  termPolicyId String                 @db.Uuid
+  language     EnumMessageLanguage
   bucket       String
   key          String
   cdnUrl       String?
   completedUrl String
   mime         String
   extension    String
-  access       String
+  access       EnumAwsS3Accessibility
   size         Int
 
   termPolicy TermPolicy @relation(fields: [termPolicyId], references: [id], onDelete: Cascade)
@@ -793,6 +793,15 @@ enum EnumTermPolicyType {
   privacy
   cookies
   marketing
+}
+
+enum EnumMessageLanguage {
+  en
+}
+
+enum EnumAwsS3Accessibility {
+  public
+  private
 }
 
 enum EnumTermPolicyStatus {

@@ -1,4 +1,3 @@
-import { TwoFactor } from '@generated/prisma-client';
 import {
     IAuthTwoFactorBackupCodes,
     IAuthTwoFactorBackupCodesVerifyResult,
@@ -6,7 +5,7 @@ import {
     IAuthTwoFactorVerify,
     IAuthTwoFactorVerifyResult,
 } from '@modules/auth/interfaces/auth.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import { IUser, IUserTwoFactor } from '@modules/user/interfaces/user.interface';
 
 export interface IAuthTwoFactorService {
     generateSecret(): string;
@@ -20,7 +19,7 @@ export interface IAuthTwoFactorService {
     ): IAuthTwoFactorBackupCodesVerifyResult;
     verifyCode(secret: string, code: string): boolean;
     verifyTwoFactor(
-        twoFactor: TwoFactor,
+        twoFactor: IUserTwoFactor,
         verify: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult>;
     setupTwoFactor(email: string): Promise<IAuthTwoFactorSetup>;

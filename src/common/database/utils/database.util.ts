@@ -56,4 +56,19 @@ export class DatabaseUtil {
     toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
         return structuredClone(data) as N[];
     }
+
+    /**
+     * Nested-write fragment for a to-many relation that is rewritten wholesale:
+     * every existing row is deleted and the relation is repopulated from `rows`.
+     * An empty list produces a pure delete, so `createMany` is omitted.
+     */
+    replaceMany<T>(rows: T[]): {
+        deleteMany: Record<string, never>;
+        createMany?: { data: T[] };
+    } {
+        return {
+            deleteMany: {},
+            ...(rows.length > 0 ? { createMany: { data: rows } } : {}),
+        };
+    }
 }

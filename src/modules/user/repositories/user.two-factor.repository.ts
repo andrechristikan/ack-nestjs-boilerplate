@@ -6,6 +6,7 @@ import { EnumActivityLogAction, User } from '@generated/prisma-client';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import { TwoFactorActiveBackupCodesFilter } from '@modules/user/constants/user.constant';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -20,7 +21,7 @@ export class UserTwoFactorRepository {
 
     async verifyTwoFactor(
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        { method, usedBackupCodeHash }: IAuthTwoFactorVerifyResult,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<IUser> {
         const now = this.helperDateService.create();
@@ -30,10 +31,16 @@ export class UserTwoFactorRepository {
             data: {
                 twoFactor: {
                     update: {
-                        lastUsedAt: this.helperDateService.create(),
-                        ...(method === EnumAuthTwoFactorMethod.backupCodes && {
-                            backupCodes: newBackupCodes,
-                        }),
+                        lastUsedAt: now,
+                        ...(method === EnumAuthTwoFactorMethod.backupCodes &&
+                            usedBackupCodeHash && {
+                                backupCodes: {
+                                    updateMany: {
+                                        where: { codeHash: usedBackupCodeHash },
+                                        data: { usedAt: now },
+                                    },
+                                },
+                            }),
                     },
                 },
                 activityLogs: {
@@ -53,7 +60,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -95,7 +108,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -123,7 +142,11 @@ export class UserTwoFactorRepository {
                             enabled: true,
                             requiredSetup: false,
                             confirmedAt: twoFactor?.confirmedAt ?? now,
-                            backupCodes: backupCodesHashed,
+                            backupCodes: this.databaseUtil.replaceMany(
+                                backupCodesHashed.map(codeHash => ({
+                                    codeHash,
+                                }))
+                            ),
                             lastUsedAt: now,
                             updatedAt: now,
                             updatedBy: userId,
@@ -147,7 +170,13 @@ export class UserTwoFactorRepository {
                 },
                 include: {
                     role: { include: { policies: true } },
-                    twoFactor: true,
+                    twoFactor: {
+                        include: {
+                            backupCodes: {
+                                where: TwoFactorActiveBackupCodesFilter,
+                            },
+                        },
+                    },
                 },
             });
         });
@@ -166,7 +195,7 @@ export class UserTwoFactorRepository {
                     update: {
                         enabled: false,
                         requiredSetup: false,
-                        backupCodes: [],
+                        backupCodes: this.databaseUtil.replaceMany([]),
                         lastUsedAt: now,
                         secret: null,
                         iv: null,
@@ -205,7 +234,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -222,7 +257,9 @@ export class UserTwoFactorRepository {
             data: {
                 twoFactor: {
                     update: {
-                        backupCodes: backupCodesHashed,
+                        backupCodes: this.databaseUtil.replaceMany(
+                            backupCodesHashed.map(codeHash => ({ codeHash }))
+                        ),
                         updatedBy: userId,
                         updatedAt: now,
                     },
@@ -244,7 +281,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -263,7 +306,7 @@ export class UserTwoFactorRepository {
                     update: {
                         requiredSetup: true,
                         attempt: 0,
-                        backupCodes: [],
+                        backupCodes: this.databaseUtil.replaceMany([]),
                         secret: null,
                         iv: null,
                         updatedBy: updatedBy,
@@ -298,7 +341,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }
@@ -317,7 +366,13 @@ export class UserTwoFactorRepository {
             },
             include: {
                 role: { include: { policies: true } },
-                twoFactor: true,
+                twoFactor: {
+                    include: {
+                        backupCodes: {
+                            where: TwoFactorActiveBackupCodesFilter,
+                        },
+                    },
+                },
             },
         });
     }

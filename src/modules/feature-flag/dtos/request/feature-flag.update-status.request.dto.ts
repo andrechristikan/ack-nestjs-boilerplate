@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
 
 export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
     isEnable: z.boolean().meta({
