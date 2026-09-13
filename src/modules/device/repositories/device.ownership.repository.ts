@@ -261,38 +261,39 @@ export class DeviceOwnershipRepository {
     ): Promise<void> {
         const today = this.helperDateService.create();
 
-        await this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+        await this.databaseService.client.deviceOwnership.update({
+            where: {
+                id: deviceOwnershipId,
+                userId,
+            },
             data: {
-                updatedBy: userId,
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userDeviceRefresh,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.userDeviceRefresh
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: userId,
+                lastActiveAt: today,
+                device: {
+                    update: {
+                        name,
+                        platform,
+                        notificationProvider,
+                        notificationToken,
+                        lastActiveAt: today,
                     },
                 },
-                deviceOwnerships: {
+                user: {
                     update: {
-                        where: {
-                            id: deviceOwnershipId,
-                        },
-                        data: {
-                            lastActiveAt: today,
-                            device: {
-                                update: {
-                                    name,
-                                    platform,
-                                    notificationProvider,
-                                    notificationToken,
-                                    lastActiveAt: today,
-                                },
+                        activityLogs: {
+                            create: {
+                                action: EnumActivityLogAction.userDeviceRefresh,
+                                description:
+                                    this.activityLogUtil.getDescription(
+                                        EnumActivityLogAction.userDeviceRefresh
+                                    ),
+                                ipAddress,
+                                userAgent:
+                                    this.databaseUtil.toPlainObject(userAgent),
+                                geoLocation:
+                                    this.databaseUtil.toPlainObject(
+                                        geoLocation
+                                    ),
+                                createdBy: userId,
                             },
                         },
                     },
