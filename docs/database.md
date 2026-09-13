@@ -463,30 +463,34 @@ Represents a localized content file for a term policy document, stored in AWS S3
 
 ```prisma
 model TermPolicyContent {
-  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  termPolicyId String  @db.Uuid
-  language     String
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  termPolicyId String                 @db.Uuid
+  language     EnumMessageLanguage
   bucket       String
   key          String
   cdnUrl       String?
   completedUrl String
   mime         String
   extension    String
-  access       String
+  access       EnumAwsS3Accessibility
   size         Int
+
+  @@unique(fields: [termPolicyId, language])
 }
 ```
 
+One content row per language per term policy: `@@unique([termPolicyId, language])`.
+
 | Field | Type | Description |
 |---|---|---|
-| `language` | `String` | Language code (e.g. `"en"`) |
+| `language` | `EnumMessageLanguage` | Language code (e.g. `en`) |
 | `bucket` | `String` | S3 bucket name |
 | `key` | `String` | S3 object key |
 | `cdnUrl` | `String?` | Full CDN URL of the object, `null` for a bucket with no CDN configured |
 | `completedUrl` | `String` | Full S3 URL of the object |
 | `mime` | `String` | MIME type (e.g. `application/pdf`) |
 | `extension` | `String` | File extension (e.g. `pdf`) |
-| `access` | `String` | Access level (`public` or `private`) |
+| `access` | `EnumAwsS3Accessibility` | Access level (`public` or `private`) |
 | `size` | `Int` | File size in bytes |
 
 **Used in:**

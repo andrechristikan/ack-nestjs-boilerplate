@@ -116,7 +116,7 @@ A path param is validated by pipes on the param itself, not by a schema:
 ```typescript
 @Get('/get/:user')
 findOne(
-  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
+  @Param('user', RequestRequiredPipe, RequestIsValidUuidPipe) user: string
 ) {
   return this.userHttpService.get(user);
 }

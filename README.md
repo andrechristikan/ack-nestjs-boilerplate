@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **PostgreSQL**. Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -269,10 +269,10 @@ cp .env.example .env
 pnpm generate:keys
 pnpm db:generate
 
-# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
+# Start infrastructure (PostgreSQL + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Push the schema (needs the MongoDB replica set above already running)
+# Apply the database migrations
 pnpm db:migrate
 
 # Run the API on the host
@@ -295,7 +295,7 @@ To run the API inside Compose as well, start with the `apis` profile: `docker-co
 **Migration typically requires:**
 - Updating `prisma/schema.prisma` provider
 - Adjusting ID strategy and native types when changing providers. Update the `DatabaseUtil` helpers when request ID validation changes.
-- Running `pnpm prisma migrate dev`
+- Running `pnpm db:migrate`
 - Running `pnpm migration:seed`
 
 **Business logic stays unchanged** - services, controllers, and authentication work as-is.

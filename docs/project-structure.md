@@ -278,7 +278,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
+- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
 - **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
