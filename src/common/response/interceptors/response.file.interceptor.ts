@@ -13,6 +13,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { FileService } from '@common/file/services/file.service';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
+import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.exceed-max-size-export.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
 /**
@@ -21,6 +22,7 @@ import { ResponseMetadataService } from '@common/response/services/response.meta
 @Injectable()
 export class ResponseFileInterceptor implements NestInterceptor {
     private readonly filenameExportPattern: string;
+    private readonly maxSizeExportInBytes: number;
 
     constructor(
         private readonly fileService: FileService,
@@ -31,43 +33,9 @@ export class ResponseFileInterceptor implements NestInterceptor {
         this.filenameExportPattern = this.configService.get<string>(
             'response.filenameExportPattern'
         )!;
-    }
-
-    intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Observable<Promise<StreamableFile>> {
-        if (context.getType() === 'http') {
-            return next.handle().pipe(
-                map(async (res: Promise<Response>) => {
-                    const ctx = context.switchToHttp();
-                    const response: Response = ctx.getResponse();
-
-                    const responseData =
-                        (await res) as unknown as IResponseFileReturn;
-                    this.validateDataResponse(responseData);
-
-                    const fileBuffer: Buffer =
-                        this.handleFileResponse(responseData);
-                    const timestamp = this.createTimestamp();
-
-                    this.setFileHeaders(
-                        response,
-                        fileBuffer,
-                        timestamp,
-                        responseData.filename
-                    );
-                    this.responseMetadataService.setHeaders(
-                        response,
-                        this.responseMetadataService.create()
-                    );
-
-                    return new StreamableFile(fileBuffer);
-                })
-            );
-        }
-
-        return next.handle();
+        this.maxSizeExportInBytes = this.configService.get<number>(
+            'file.maxSizeExportInBytes'
+        )!;
     }
 
     private handleFileResponse(responseData: IResponseFileReturn): Buffer {
@@ -113,29 +81,65 @@ export class ResponseFileInterceptor implements NestInterceptor {
         return this.helperDateService.getTimestamp(today);
     }
 
-    /**
-     * Sets Content-Type/Disposition/Length; defaults the filename to `export-<ts>.csv`.
-     */
-    private setFileHeaders(
-        response: Response,
-        file: Buffer,
-        timestamp: number,
-        filename?: string
-    ): void {
-        filename =
-            filename ??
-            this.filenameExportPattern
-                .replace('{timestamp}', String(timestamp))
-                .replace('{extension}', EnumFileExtensionDocument.csv);
-        const mime =
-            this.fileService.extractMimeFromFilename(filename) ??
-            'application/octet-stream';
-        response
-            .setHeader('Content-Type', mime)
-            .setHeader(
-                'Content-Disposition',
-                `attachment; filename=${filename}`
-            )
-            .setHeader('Content-Length', file.length);
+    private createDefaultFilename(timestamp: number): string {
+        return this.filenameExportPattern
+            .replace('{timestamp}', String(timestamp))
+            .replace('{extension}', EnumFileExtensionDocument.csv);
+    }
+
+    private createDisposition(filename: string, fallback: string): string {
+        const ascii =
+            this.fileService.sanitizeFilename(filename) || fallback;
+
+        return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+    }
+
+    intercept(
+        context: ExecutionContext,
+        next: CallHandler
+    ): Observable<Promise<StreamableFile>> {
+        if (context.getType() === 'http') {
+            return next.handle().pipe(
+                map(async (res: Promise<Response>) => {
+                    const ctx = context.switchToHttp();
+                    const response: Response = ctx.getResponse();
+
+                    const responseData =
+                        (await res) as unknown as IResponseFileReturn;
+                    this.validateDataResponse(responseData);
+
+                    const fileBuffer: Buffer =
+                        this.handleFileResponse(responseData);
+
+                    if (fileBuffer.length > this.maxSizeExportInBytes) {
+                        throw new FileExceedMaxSizeExportException();
+                    }
+
+                    const timestamp = this.createTimestamp();
+                    const defaultFilename =
+                        this.createDefaultFilename(timestamp);
+                    const filename = responseData.filename ?? defaultFilename;
+                    const mime =
+                        this.fileService.extractMimeFromFilename(filename) ??
+                        'application/octet-stream';
+
+                    this.responseMetadataService.setHeaders(
+                        response,
+                        this.responseMetadataService.create()
+                    );
+
+                    return new StreamableFile(fileBuffer, {
+                        type: mime,
+                        disposition: this.createDisposition(
+                            filename,
+                            defaultFilename
+                        ),
+                        length: fileBuffer.length,
+                    });
+                })
+            );
+        }
+
+        return next.handle();
     }
 }

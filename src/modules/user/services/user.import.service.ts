@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
@@ -44,6 +45,7 @@ import { ConfigService } from '@nestjs/config';
 export class UserImportService implements IUserImportService {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
+    private readonly maxDataExport: number;
 
     constructor(
         private readonly userImportRepository: UserImportRepository,
@@ -65,6 +67,8 @@ export class UserImportService implements IUserImportService {
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
         )!;
+        this.maxDataExport =
+            this.configService.get<number>('user.maxDataExport')!;
     }
 
     async importByAdmin(
@@ -236,6 +240,17 @@ export class UserImportService implements IUserImportService {
         // - return aws s3 link
         // - think about how to show progress status to user with bullmq
 
-        return this.userImportRepository.findExport(status, roleId, countryId);
+        const users = await this.userImportRepository.findExport(
+            status ?? null,
+            roleId ?? null,
+            countryId ?? null,
+            this.maxDataExport + 1
+        );
+
+        if (users.length > this.maxDataExport) {
+            throw new FileExceedMaxDataExportException();
+        }
+
+        return users;
     }
 }

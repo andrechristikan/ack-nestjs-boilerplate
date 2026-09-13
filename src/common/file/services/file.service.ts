@@ -4,6 +4,7 @@ import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interfa
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import Mime from 'mime';
 import Papa from 'papaparse';
+import { fileTypeFromBuffer } from 'file-type';
 
 @Injectable()
 export class FileService implements IFileService {
@@ -60,5 +61,18 @@ export class FileService implements IFileService {
     extractFilenameFromPath(filePath: string): string {
         const parts = filePath.split('/');
         return parts[parts.length - 1];
+    }
+
+    sanitizeFilename(filename: string): string {
+        return filename
+            .replace(/[^ -~]/g, '')
+            .replace(/["\\/]/g, '')
+            .trim();
+    }
+
+    async sniffExtensionFromBuffer(buffer: Buffer): Promise<string | null> {
+        const sniffed = await fileTypeFromBuffer(buffer);
+
+        return sniffed?.ext ?? null;
     }
 }

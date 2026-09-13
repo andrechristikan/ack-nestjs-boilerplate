@@ -69,10 +69,10 @@ export class TermPolicyUtil {
         );
     }
 
-    getContentPublicPath(termPolicy: TermPolicy): string {
+    getContentPublicPath(type: EnumTermPolicyType, version: number): string {
         return this.contentPublicPath
-            .replace('{type}', termPolicy.type)
-            .replace('{version}', termPolicy.version.toString());
+            .replace('{type}', type)
+            .replace('{version}', version.toString());
     }
 
     mapActivityLogMetadata(termPolicy: TermPolicy): IActivityLogMetadata {

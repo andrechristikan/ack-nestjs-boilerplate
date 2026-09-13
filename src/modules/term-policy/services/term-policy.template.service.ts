@@ -1,3 +1,4 @@
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
@@ -16,6 +17,7 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
         process.cwd(),
         'src/modules/term-policy/templates'
     );
+    private readonly templateVersion = 1;
 
     constructor(
         private readonly termPolicyUtil: TermPolicyUtil,
@@ -29,26 +31,39 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 'term-policy.term.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
-            const randomKey =
-                this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    EnumTermPolicyType.termsOfService,
-                    1,
-                    EnumMessageLanguage.en,
-                    {
-                        extension: EnumFileExtensionTemplate.hbs,
-                    }
-                );
+            const key = this.termPolicyUtil.createRandomFilenameContentWithPath(
+                EnumTermPolicyType.termsOfService,
+                this.templateVersion,
+                EnumMessageLanguage.en,
+                {
+                    extension: EnumFileExtensionTemplate.hbs,
+                }
+            );
 
-            return this.awsS3Service.putItem(
+            const privateItem = await this.awsS3Service.putItem(
                 {
                     file: templateContent,
-                    key: randomKey,
+                    key,
                     size: templateContent.length,
                 },
                 {
                     forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
                 }
             );
+            if (!privateItem) {
+                return null;
+            }
+
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                EnumTermPolicyType.termsOfService,
+                this.templateVersion
+            );
+
+            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
+                accessFrom: EnumAwsS3Accessibility.private,
+                accessTo: EnumAwsS3Accessibility.public,
+            });
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to import terms of service');
 
@@ -63,26 +78,39 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 'term-policy.privacy.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
-            const randomKey =
-                this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    EnumTermPolicyType.privacy,
-                    1,
-                    EnumMessageLanguage.en,
-                    {
-                        extension: EnumFileExtensionTemplate.hbs,
-                    }
-                );
+            const key = this.termPolicyUtil.createRandomFilenameContentWithPath(
+                EnumTermPolicyType.privacy,
+                this.templateVersion,
+                EnumMessageLanguage.en,
+                {
+                    extension: EnumFileExtensionTemplate.hbs,
+                }
+            );
 
-            return this.awsS3Service.putItem(
+            const privateItem = await this.awsS3Service.putItem(
                 {
                     file: templateContent,
-                    key: randomKey,
+                    key,
                     size: templateContent.length,
                 },
                 {
                     forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
                 }
             );
+            if (!privateItem) {
+                return null;
+            }
+
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                EnumTermPolicyType.privacy,
+                this.templateVersion
+            );
+
+            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
+                accessFrom: EnumAwsS3Accessibility.private,
+                accessTo: EnumAwsS3Accessibility.public,
+            });
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to import privacy');
 
@@ -97,26 +125,39 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 'term-policy.cookies.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
-            const randomKey =
-                this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    EnumTermPolicyType.cookies,
-                    1,
-                    EnumMessageLanguage.en,
-                    {
-                        extension: EnumFileExtensionTemplate.hbs,
-                    }
-                );
+            const key = this.termPolicyUtil.createRandomFilenameContentWithPath(
+                EnumTermPolicyType.cookies,
+                this.templateVersion,
+                EnumMessageLanguage.en,
+                {
+                    extension: EnumFileExtensionTemplate.hbs,
+                }
+            );
 
-            return this.awsS3Service.putItem(
+            const privateItem = await this.awsS3Service.putItem(
                 {
                     file: templateContent,
-                    key: randomKey,
+                    key,
                     size: templateContent.length,
                 },
                 {
                     forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
                 }
             );
+            if (!privateItem) {
+                return null;
+            }
+
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                EnumTermPolicyType.cookies,
+                this.templateVersion
+            );
+
+            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
+                accessFrom: EnumAwsS3Accessibility.private,
+                accessTo: EnumAwsS3Accessibility.public,
+            });
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to import cookie');
 
@@ -131,26 +172,39 @@ export class TermPolicyTemplateService implements ITermPolicyTemplateService {
                 'term-policy.marketing.en.hbs'
             );
             const templateContent = readFileSync(templatePath);
-            const randomKey =
-                this.termPolicyUtil.createRandomFilenameContentWithPath(
-                    EnumTermPolicyType.marketing,
-                    1,
-                    EnumMessageLanguage.en,
-                    {
-                        extension: EnumFileExtensionTemplate.hbs,
-                    }
-                );
+            const key = this.termPolicyUtil.createRandomFilenameContentWithPath(
+                EnumTermPolicyType.marketing,
+                this.templateVersion,
+                EnumMessageLanguage.en,
+                {
+                    extension: EnumFileExtensionTemplate.hbs,
+                }
+            );
 
-            return this.awsS3Service.putItem(
+            const privateItem = await this.awsS3Service.putItem(
                 {
                     file: templateContent,
-                    key: randomKey,
+                    key,
                     size: templateContent.length,
                 },
                 {
                     forceUpdate: true,
+                    access: EnumAwsS3Accessibility.private,
                 }
             );
+            if (!privateItem) {
+                return null;
+            }
+
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                EnumTermPolicyType.marketing,
+                this.templateVersion
+            );
+
+            return this.awsS3Service.copyItem(privateItem, contentPublicPath, {
+                accessFrom: EnumAwsS3Accessibility.private,
+                accessTo: EnumAwsS3Accessibility.public,
+            });
         } catch (err: unknown) {
             this.logger.error(err, 'Failed to import marketing');
 

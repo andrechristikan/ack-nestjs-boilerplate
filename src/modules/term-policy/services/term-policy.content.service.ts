@@ -232,7 +232,7 @@ export class TermPolicyContentService implements ITermPolicyContentService {
 
         const awsPresign: IAwsS3Presign | null =
             await this.awsS3Service.presignGetItem(existContent.key, {
-                access: EnumAwsS3Accessibility.private,
+                access: existContent.access,
             });
 
         if (!awsPresign) {

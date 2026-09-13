@@ -21,7 +21,7 @@ export class HealthAwsS3BucketIndicator {
      */
     async isHealthy(
         key: string,
-        access?: EnumAwsS3Accessibility
+        access: EnumAwsS3Accessibility
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 

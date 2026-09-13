@@ -184,31 +184,27 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const contentPublicPath =
-                this.termPolicyUtil.getContentPublicPath(termPolicy);
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                termPolicy.type,
+                termPolicy.version
+            );
             const contents =
                 termPolicy.contents as unknown as ITermPolicyContent[];
 
-            const newItems = await this.awsS3Service.moveItems(
+            const newItems = await this.awsS3Service.copyItems(
                 contents,
                 contentPublicPath,
-                {}
+                { access: EnumAwsS3Accessibility.public }
             );
 
             const newContents = this.mapPublicContent(newItems, contents);
 
-            const contentPath = this.termPolicyUtil.getPath(termPolicy);
-            const [updated] = await Promise.all([
-                this.termPolicyRepository.publish(
-                    termPolicyId,
-                    termPolicy.type,
-                    newContents,
-                    updatedBy
-                ),
-                this.awsS3Service.deleteDir(contentPath, {
-                    access: EnumAwsS3Accessibility.private,
-                }),
-            ]);
+            const updated = await this.termPolicyRepository.publish(
+                termPolicyId,
+                termPolicy.type,
+                newContents,
+                updatedBy
+            );
 
             await this.notificationQueue.sendPublishTermPolicy(
                 {

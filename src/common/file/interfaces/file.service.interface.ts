@@ -12,4 +12,6 @@ export interface IFileService {
     extractExtensionFromFilename(filename: string): string;
     extractMimeFromFilename(filename: string): string | null;
     extractFilenameFromPath(filePath: string): string;
+    sanitizeFilename(filename: string): string;
+    sniffExtensionFromBuffer(buffer: Buffer): Promise<string | null>;
 }

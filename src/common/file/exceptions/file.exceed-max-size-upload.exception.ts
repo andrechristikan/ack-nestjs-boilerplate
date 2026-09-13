@@ -2,13 +2,13 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 
-export class FileRequiredExtractFirstException extends AppBaseException {
+export class FileExceedMaxSizeUploadException extends AppBaseException {
     readonly module = 'file';
-    readonly statusCode = EnumFileStatusCodeError.requiredExtractFirst;
+    readonly statusCode = EnumFileStatusCodeError.exceedMaxSizeUpload;
     readonly statusCodeKey = EnumFileStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+    readonly httpStatus = HttpStatus.PAYLOAD_TOO_LARGE;
 
     constructor() {
-        super('file.error.requiredExtractFirst');
+        super('file.error.exceedMaxSizeUpload');
     }
 }

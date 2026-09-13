@@ -69,14 +69,14 @@ Term policies follow a two-stage status:
 
 ### Published Status
 - Policy published by admin
-- Content files moved to **public S3 bucket**
+- Content files exist in both buckets: the private originals the draft was uploaded to, and a copy in the **public S3 bucket**
 - Cannot be edited or deleted
 - Visible to all users
 - **Invalidates all existing user acceptances** for that policy type
 - All active users must re-accept the new version
 - Key: `term-policies/{type}/v{version}/{language}.hbs` (from `termPolicy.contentPublicPath`)
 
-Both paths resolve to the same key. Publishing changes the bucket, not the key.
+Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
 
 **Important**: When a new version is published, `termPolicy[type]` is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
 
@@ -113,12 +113,8 @@ sequenceDiagram
     
     Admin->>API: Publish policy
     API->>Database: Reject an already-published policy, then a policy with no content
-    API->>S3 Public: Move all content files
-    par
-        API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to public keys,<br/>active users termPolicy[type] = false
-    and
-        API->>S3 Private: Delete the private content directory
-    end
+    API->>S3 Public: Copy all content files from the private bucket
+    API->>Database: One transaction: status = published, publishedAt = now,<br/>contents rewritten to the public items,<br/>active users termPolicy[type] = false
     API->>Users: Queue publishTermPolicy notification
     API->>Admin: Policy published
     
@@ -262,7 +258,7 @@ Get presigned URL to download policy content:
 GET /admin/term-policy/content/:termPolicyId/:language/get
 ```
 
-Works on draft and published policies alike, and always signs against the private bucket.
+Works on draft and published policies alike. The signature targets the bucket named by the stored content's own `access`: the private bucket for a draft, the public one for a published policy.
 
 ### Publish Policy
 
@@ -271,7 +267,7 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files live in the public bucket while the private copy is deleted.
+**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### List Policies
 
@@ -407,7 +403,7 @@ src/migration/seeds/migration.template-term-policy.seed.ts  # command: template-
 ```
 
 - `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
-- `template-termPolicy` is run on its own. It uploads the bundled `.hbs` documents to S3 and upserts a published version 1 record per type with a single `en` content entry. It throws when S3 is not initialized, and its `remove()` is a no-op.
+- `template-termPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
 For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
 

@@ -1,9 +1,15 @@
 {
     "error": {
         "required": "This field is required and cannot be left blank.",
-        "requiredParseFirst": "Please parse the data before proceeding.",
+        "requiredExtractFirst": "Please extract the data before proceeding.",
         "extensionInvalid": "The file extension is invalid.",
         "exceedMaxDataImport": "The number of data rows exceeds the maximum allowed for import.",
+        "exceedMaxDataExport": "The number of data rows exceeds the maximum allowed for export. Please narrow the filter and try again.",
+        "exceedMaxSizeExport": "The exported file exceeds the maximum allowed size. Please narrow the filter and try again.",
+        "exceedMaxSizeUpload": "The uploaded file exceeds the maximum allowed size.",
+        "exceedMaxFiles": "The number of uploaded files exceeds the maximum allowed.",
+        "fieldUnexpected": "The uploaded file was sent to a field this endpoint does not accept.",
+        "multipartInvalid": "The multipart request body is malformed.",
         "validationDto": "The imported data failed validation."
     }
 }
