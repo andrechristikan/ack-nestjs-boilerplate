@@ -250,9 +250,12 @@ installs them once:
 - **Build the correct shape and change every call site.** No deprecated-but-kept field, no
   `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent
   pattern.
-- Every project artifact is ENGLISH: code, identifiers, comments, commit messages,
-  `docs/*.md`, PR descriptions, and everything under `.claude/**` and `.superpowers/**`.
-  Conversation with the owner is Bahasa Indonesia; artifacts are never mixed.
+- **Reply language.** English is the default for this session, every skill, and every
+  agent that speaks to the owner. If the owner starts, asks, or runs the turn in another
+  language, match that language for the rest of the exchange. Artifacts stay English:
+  code, identifiers, comments, commit messages, `docs/*.md`, PR descriptions, and
+  everything under `.claude/**` and `.superpowers/**`. An agent hand-back to the session
+  stays English (`rules/agent-communication.md`).
 - When something is wrong, say so and give a recommendation. Never fix it silently, and never
   stay quiet about it.
 - State the assumption you are acting on. Ask when two readings would produce different work.
