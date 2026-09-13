@@ -21,20 +21,21 @@ export class CountryRepository {
         );
     }
 
-    async existById(id: string): Promise<{ id: string } | null> {
-        return this.databaseService.client.country.findUnique({
+    async existsById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.country.count({
             where: { id },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
-    async existByAlpha2Code(
-        alpha2Code: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.country.findUnique({
+    async findIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
+        const country = await this.databaseService.client.country.findUnique({
             where: { alpha2Code },
             select: { id: true },
         });
+
+        return country?.id ?? null;
     }
 
     async findOneById(id: string): Promise<Country | null> {

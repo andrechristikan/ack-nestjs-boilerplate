@@ -36,9 +36,10 @@ export class UserImportRepository {
     }
 
     async findExport(
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null,
+        take: number
     ): Promise<IUserExport[]> {
         return this.databaseService.client.user.findMany({
             where: {
@@ -51,6 +52,7 @@ export class UserImportRepository {
                 role: { select: { name: true } },
                 photo: true,
             },
+            take,
         });
     }
 }

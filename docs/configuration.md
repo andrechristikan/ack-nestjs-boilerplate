@@ -391,7 +391,7 @@ sentry: {
 **File**: `src/configs/request.config.ts`
 **Interface**: `IConfigRequest`
 
-This configuration handles HTTP request settings including body size limits, CORS, and rate limiting.
+This configuration handles HTTP request settings including body size limits, CORS, security headers, and rate limiting.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -440,6 +440,17 @@ cors: {
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
 > - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 > - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
+
+**`helmet`** - Strict-Transport-Security parameters for the Helmet profile
+```typescript
+helmet: {
+  maxAgeInSeconds: number;        // HSTS max-age in seconds (365d)
+  includeSubDomains: boolean;     // Appends the includeSubDomains directive (true)
+  preload: boolean;               // Appends the preload directive (false)
+}
+```
+
+> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object — which headers are on and which are off — is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript

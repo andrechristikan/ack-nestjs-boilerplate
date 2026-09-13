@@ -16,14 +16,12 @@ export class CountryService implements ICountryService {
         return this.countryRepository.findWithPaginationCursor(pagination);
     }
 
-    async existById(countryId: string): Promise<{ id: string } | null> {
-        return this.countryRepository.existById(countryId);
+    async existsById(countryId: string): Promise<boolean> {
+        return this.countryRepository.existsById(countryId);
     }
 
-    async existByAlpha2Code(
-        alpha2Code: string
-    ): Promise<{ id: string } | null> {
-        return this.countryRepository.existByAlpha2Code(alpha2Code);
+    async getIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
+        return this.countryRepository.findIdByAlpha2Code(alpha2Code);
     }
 
     async getOne(countryId: string): Promise<Country> {

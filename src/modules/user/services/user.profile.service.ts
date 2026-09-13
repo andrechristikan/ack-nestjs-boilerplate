@@ -1,5 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -81,7 +82,7 @@ export class UserProfileService implements IUserProfileService {
         const requestLog: IRequestLog =
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
-        const checkCountry = await this.countryService.existById(countryId);
+        const checkCountry = await this.countryService.existsById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
         }
@@ -125,6 +126,7 @@ export class UserProfileService implements IUserProfileService {
                 },
                 {
                     forceUpdate: true,
+                    access: EnumAwsS3Accessibility.public,
                 }
             );
 
@@ -143,10 +145,13 @@ export class UserProfileService implements IUserProfileService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         try {
-            const aws: IAwsS3 = this.awsS3Service.mapPresign({
-                key,
-                size,
-            });
+            const aws: IAwsS3 = this.awsS3Service.mapPresign(
+                {
+                    key,
+                    size,
+                },
+                { access: EnumAwsS3Accessibility.public }
+            );
 
             await this.userRepository.updatePhotoProfile(
                 userId,
@@ -181,11 +186,14 @@ export class UserProfileService implements IUserProfileService {
                 }
             );
 
-            const aws: IAwsS3 | null = await this.awsS3Service.putItem({
-                key,
-                size: file.size,
-                file: file.buffer,
-            });
+            const aws: IAwsS3 | null = await this.awsS3Service.putItem(
+                {
+                    key,
+                    size: file.size,
+                    file: file.buffer,
+                },
+                { access: EnumAwsS3Accessibility.public }
+            );
 
             if (aws) {
                 this.logger.debug(
@@ -225,7 +233,7 @@ export class UserProfileService implements IUserProfileService {
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
-            this.userRepository.existByUsername(username),
+            this.userRepository.existsByUsername(username),
         ]);
         if (checkUsername) {
             throw new UserUsernameNotAllowedException();

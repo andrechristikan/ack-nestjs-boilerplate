@@ -91,7 +91,7 @@ export class TermPolicyService implements ITermPolicyService {
         { contents, type, version }: ITermPolicyCreate,
         createdBy: string
     ): Promise<ITermPolicy> {
-        const isExist = await this.termPolicyRepository.existByVersionAndType(
+        const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
         );
@@ -183,13 +183,15 @@ export class TermPolicyService implements ITermPolicyService {
         }
 
         try {
-            const contentPublicPath =
-                this.termPolicyUtil.getContentPublicPath(termPolicy);
+            const contentPublicPath = this.termPolicyUtil.getContentPublicPath(
+                termPolicy.type,
+                termPolicy.version
+            );
 
-            const newItems = await this.awsS3Service.moveItems(
+            const newItems = await this.awsS3Service.copyItems(
                 termPolicy.contents,
                 contentPublicPath,
-                {}
+                { access: EnumAwsS3Accessibility.public }
             );
 
             const newContents = this.mapPublicContent(
@@ -197,18 +199,12 @@ export class TermPolicyService implements ITermPolicyService {
                 termPolicy.contents
             );
 
-            const contentPath = this.termPolicyUtil.getPath(termPolicy);
-            const [updated] = await Promise.all([
-                this.termPolicyRepository.publish(
-                    termPolicyId,
-                    termPolicy.type,
-                    newContents,
-                    updatedBy
-                ),
-                this.awsS3Service.deleteDir(contentPath, {
-                    access: EnumAwsS3Accessibility.private,
-                }),
-            ]);
+            const updated = await this.termPolicyRepository.publish(
+                termPolicyId,
+                termPolicy.type,
+                newContents,
+                updatedBy
+            );
 
             await this.notificationQueue.sendPublishTermPolicy(
                 {

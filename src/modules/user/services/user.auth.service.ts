@@ -194,7 +194,7 @@ export class UserAuthService implements IUserAuthService {
         let user = await this.userRepository.findOneWithRoleByEmail(email);
 
         if (!user && featureFlag?.signUpAllowed) {
-            const role = await this.roleService.existByName(this.userRoleName);
+            const role = await this.roleService.getByName(this.userRoleName);
             if (!role) {
                 throw new RoleNotFoundException();
             }
@@ -203,7 +203,7 @@ export class UserAuthService implements IUserAuthService {
                 await Promise.all([
                     this.userUtil.checkUsernamePattern(username),
                     this.userUtil.checkBadWord(username),
-                    this.userRepository.existByUsername(username),
+                    this.userRepository.existsByUsername(username),
                 ]);
             if (checkUsernamePattern) {
                 throw new UserUsernameNotAllowedException();
@@ -320,9 +320,9 @@ export class UserAuthService implements IUserAuthService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const [role, emailExist, checkCountry] = await Promise.all([
-            this.roleService.existByName(this.userRoleName),
-            this.userRepository.existByEmail(email),
-            this.countryService.existById(countryId),
+            this.roleService.getByName(this.userRoleName),
+            this.userRepository.existsByEmail(email),
+            this.countryService.existsById(countryId),
         ]);
         if (!role) {
             throw new RoleNotFoundException();
@@ -336,7 +336,7 @@ export class UserAuthService implements IUserAuthService {
             await Promise.all([
                 this.userUtil.checkUsernamePattern(username),
                 this.userUtil.checkBadWord(username),
-                this.userRepository.existByUsername(username),
+                this.userRepository.existsByUsername(username),
             ]);
         if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();

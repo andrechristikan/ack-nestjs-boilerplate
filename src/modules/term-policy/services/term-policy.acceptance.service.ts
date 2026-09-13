@@ -64,13 +64,13 @@ export class TermPolicyAcceptanceService implements ITermPolicyAcceptanceService
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const policy =
-            await this.termPolicyRepository.existLatestPublishedByType(type);
+            await this.termPolicyRepository.findLatestPublishedByType(type);
         if (!policy) {
             throw new TermPolicyNotFoundException();
         }
 
         const exist =
-            await this.termPolicyRepository.existAcceptanceByPolicyAndUser(
+            await this.termPolicyRepository.existsAcceptanceByPolicyAndUser(
                 user.id,
                 policy.id
             );

@@ -28,7 +28,7 @@ done
 | Range | Owner |
 |---|---|
 | `50000` | `src/app` — `EnumAppStatusCodeError` |
-| `50100`–`50103` | `src/common/file` |
+| `50100`–`50109` | `src/common/file` |
 | `50200`–`50215` | `src/common/pagination` |
 | `50300`–`50304` | `src/common/request` |
 | `50400`–`50401` | `session` |

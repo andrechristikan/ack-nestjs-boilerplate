@@ -174,9 +174,9 @@ export class UserService implements IUserService {
             this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleService.existById(roleId),
-            this.userRepository.existByEmail(email),
-            this.countryService.existById(countryId),
+            this.roleService.getById(roleId),
+            this.userRepository.existsByEmail(email),
+            this.countryService.existsById(countryId),
         ]);
 
         if (!checkRole) {
@@ -191,7 +191,7 @@ export class UserService implements IUserService {
             await Promise.all([
                 this.userUtil.checkUsernamePattern(username),
                 this.userUtil.checkBadWord(username),
-                this.userRepository.existByUsername(username),
+                this.userRepository.existsByUsername(username),
             ]);
         if (checkUsernamePattern) {
             throw new UserUsernameNotAllowedException();
@@ -343,12 +343,12 @@ export class UserService implements IUserService {
         const [checkUsername, checkBadWord, isExist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
-            this.userRepository.existByUsername(username),
+            this.userRepository.existsByUsername(username),
         ]);
 
         return {
             badWord: checkBadWord,
-            exist: !!isExist,
+            exist: isExist,
             pattern: checkUsername,
         };
     }
@@ -356,12 +356,12 @@ export class UserService implements IUserService {
     async checkEmail(email: string): Promise<IUserCheckEmail> {
         const [checkBadWord, isExist] = await Promise.all([
             this.userUtil.checkBadWord(email),
-            this.userRepository.existByEmail(email),
+            this.userRepository.existsByEmail(email),
         ]);
 
         return {
             badWord: checkBadWord,
-            exist: !!isExist,
+            exist: isExist,
         };
     }
 

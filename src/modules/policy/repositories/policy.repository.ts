@@ -14,24 +14,23 @@ export class PolicyRepository {
         });
     }
 
-    async existByRoleIdAndSubject(
+    async existsByRoleIdAndSubject(
         roleId: string,
         subject: EnumPolicySubject
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.policy.findUnique({
-            where: { roleId_subject: { roleId, subject } },
-            select: { id: true },
+    ): Promise<boolean> {
+        const count = await this.databaseService.client.policy.count({
+            where: { roleId, subject },
         });
+
+        return count > 0;
     }
 
-    async existByRoleIdAndId(
-        roleId: string,
-        id: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.policy.findFirst({
+    async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
+        const count = await this.databaseService.client.policy.count({
             where: { id, roleId },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
     async create(roleId: string, data: PolicyRequestDto): Promise<Policy> {

@@ -19,6 +19,11 @@ export interface IConfigRequest {
         allowedHeader: string[];
         exposedHeader: string[];
     };
+    helmet: {
+        maxAgeInSeconds: number;
+        includeSubDomains: boolean;
+        preload: boolean;
+    };
     throttle: {
         default: IRequestThrottlePolicy;
         user: IRequestThrottlePolicy;
@@ -94,6 +99,11 @@ export default registerAs('request', (): IConfigRequest => ({
             'X-RateLimit-Remaining-user',
             'X-RateLimit-Reset-user',
         ],
+    },
+    helmet: {
+        maxAgeInSeconds: ms('365d') / 1000,
+        includeSubDomains: true,
+        preload: false,
     },
     throttle: {
         default: {

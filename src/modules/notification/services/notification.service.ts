@@ -46,13 +46,13 @@ export class NotificationService implements INotificationService {
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
-        const checkExist = await this.notificationRepository.existById(
+        const notification = await this.notificationRepository.findIsReadById(
             userId,
             notificationId
         );
-        if (!checkExist) {
+        if (!notification) {
             throw new NotificationNotFoundException();
-        } else if (checkExist.isRead) {
+        } else if (notification.isRead) {
             throw new NotificationAlreadyReadException();
         }
 

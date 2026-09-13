@@ -192,7 +192,7 @@ Production-ready authentication system with multiple strategies and security lay
 - **RBAC & Policies** - Fine-grained role and permission system
 - **API Key Protection** - Secure external API access control
 - **Rate Limiting** - Redis-backed sliding window shared across instances: an always-on per-IP limit plus opt-in per-user and per-route tiers
-- **Security Headers** - Helmet integration for HTTP security
+- **Security Headers** - Helmet non-documents profile: HSTS, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies
 
 ### 📊 Database & Storage
 Modern ORM with relational database and file storage capabilities.

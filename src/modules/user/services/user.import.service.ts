@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationEqual,
@@ -45,6 +46,7 @@ import { ConfigService } from '@nestjs/config';
 export class UserImportService implements IUserImportService {
     private readonly userRoleName: string;
     private readonly userCountryName: string;
+    private readonly maxDataExport: number;
 
     constructor(
         private readonly userImportRepository: UserImportRepository,
@@ -66,6 +68,8 @@ export class UserImportService implements IUserImportService {
         this.userCountryName = this.configService.get<string>(
             'user.default.country'
         )!;
+        this.maxDataExport =
+            this.configService.get<number>('user.maxDataExport')!;
     }
 
     async importByAdmin(
@@ -86,13 +90,13 @@ export class UserImportService implements IUserImportService {
 
         const [
             checkRole,
-            checkCountry,
+            countryId,
             existingUsersByEmail,
             existingUsersByUsername,
             badWordChecks,
         ] = await Promise.all([
-            this.roleService.existByName(this.userRoleName),
-            this.countryService.existByAlpha2Code(this.userCountryName),
+            this.roleService.getByName(this.userRoleName),
+            this.countryService.getIdByAlpha2Code(this.userCountryName),
             this.userImportRepository.findByEmails(emails),
             this.userImportRepository.findByUsernames(usernames),
             Promise.all(
@@ -110,7 +114,7 @@ export class UserImportService implements IUserImportService {
             );
         } else if (!checkRole) {
             throw new RoleNotFoundException();
-        } else if (!checkCountry) {
+        } else if (countryId === null) {
             throw new CountryNotFoundException();
         } else if (existingUsersByUsername.length > 0) {
             throw new UserImportUsernameExistException(
@@ -147,7 +151,7 @@ export class UserImportService implements IUserImportService {
                     email,
                     name,
                     username: usernames[index],
-                    countryId: checkCountry.id,
+                    countryId,
                     roleId: checkRole.id,
                     signUpFrom: EnumUserSignUpFrom.admin,
                     signUpWith: EnumUserSignUpWith.credential,
@@ -237,6 +241,17 @@ export class UserImportService implements IUserImportService {
         // - return aws s3 link
         // - think about how to show progress status to user with bullmq
 
-        return this.userImportRepository.findExport(status, roleId, countryId);
+        const users = await this.userImportRepository.findExport(
+            status ?? null,
+            roleId ?? null,
+            countryId ?? null,
+            this.maxDataExport + 1
+        );
+
+        if (users.length > this.maxDataExport) {
+            throw new FileExceedMaxDataExportException();
+        }
+
+        return users;
     }
 }

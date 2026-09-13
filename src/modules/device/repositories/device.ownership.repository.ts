@@ -237,18 +237,19 @@ export class DeviceOwnershipRepository {
         });
     }
 
-    async existActive(
+    async existsActive(
         userId: string,
         deviceOwnershipId: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.deviceOwnership.findUnique({
+    ): Promise<boolean> {
+        const count = await this.databaseService.client.deviceOwnership.count({
             where: {
                 id: deviceOwnershipId,
                 userId,
                 isRevoked: false,
             },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
     async refresh(

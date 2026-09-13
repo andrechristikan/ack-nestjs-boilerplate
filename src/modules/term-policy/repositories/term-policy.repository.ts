@@ -117,7 +117,7 @@ export class TermPolicyRepository {
         });
     }
 
-    async existLatestPublishedByType(type: EnumTermPolicyType): Promise<{
+    async findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
         version: number;
@@ -138,35 +138,51 @@ export class TermPolicyRepository {
         });
     }
 
-    async existAcceptanceByPolicyAndUser(
+    async existsAcceptanceByPolicyAndUser(
         userId: string,
         termPolicyId: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.termPolicyUserAcceptance.findFirst({
-            where: {
-                userId,
-                termPolicyId,
-            },
-            select: {
-                id: true,
-            },
-        });
+    ): Promise<boolean> {
+        const count =
+            await this.databaseService.client.termPolicyUserAcceptance.count({
+                where: {
+                    userId,
+                    termPolicyId,
+                },
+            });
+
+        return count > 0;
     }
 
-    async existByVersionAndType(
+    async existsByVersionAndType(
         version: number,
         type: EnumTermPolicyType
-    ): Promise<Pick<TermPolicy, 'id' | 'status'> | null> {
-        return this.databaseService.client.termPolicy.findFirst({
+    ): Promise<boolean> {
+        const count = await this.databaseService.client.termPolicy.count({
             where: {
                 version,
                 type,
             },
-            select: {
-                id: true,
-                status: true,
-            },
         });
+
+        return count > 0;
+    }
+
+    async findStatusByVersionAndType(
+        version: number,
+        type: EnumTermPolicyType
+    ): Promise<EnumTermPolicyStatus | null> {
+        const termPolicy =
+            await this.databaseService.client.termPolicy.findFirst({
+                where: {
+                    version,
+                    type,
+                },
+                select: {
+                    status: true,
+                },
+            });
+
+        return termPolicy?.status ?? null;
     }
 
     async accept(

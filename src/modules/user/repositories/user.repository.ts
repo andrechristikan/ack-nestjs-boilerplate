@@ -184,18 +184,20 @@ export class UserRepository {
         });
     }
 
-    async existByEmail(email: string): Promise<{ id: string } | null> {
-        return this.databaseService.client.user.findFirst({
-            where: { email: email },
-            select: { id: true },
+    async existsByEmail(email: string): Promise<boolean> {
+        const count = await this.databaseService.client.user.count({
+            where: { email },
         });
+
+        return count > 0;
     }
 
-    async existByUsername(username: string): Promise<{ id: string } | null> {
-        return this.databaseService.client.user.findUnique({
+    async existsByUsername(username: string): Promise<boolean> {
+        const count = await this.databaseService.client.user.count({
             where: { username },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
     async updateStatusByAdmin(

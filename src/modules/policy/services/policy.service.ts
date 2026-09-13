@@ -8,6 +8,8 @@ import { IPolicyService } from '@modules/policy/interfaces/policy.service.interf
 import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleService } from '@modules/role/services/role.service';
 import { Injectable } from '@nestjs/common';
 import { EnumRoleType, Policy } from '@generated/prisma-client';
 import { IUser } from '@modules/user/interfaces/user.interface';
@@ -16,8 +18,18 @@ import { IUser } from '@modules/user/interfaces/user.interface';
 export class PolicyService implements IPolicyService {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly policyRepository: PolicyRepository
+        private readonly policyRepository: PolicyRepository,
+        private readonly roleService: RoleService
     ) {}
+
+    private async validateRoleExists(roleId: string): Promise<void> {
+        const roleExists = await this.roleService.existsById(roleId);
+        if (!roleExists) {
+            throw new RoleNotFoundException();
+        }
+
+        return;
+    }
 
     validatePolicyGuard(
         user: IUser | null,
@@ -51,6 +63,8 @@ export class PolicyService implements IPolicyService {
     }
 
     async findManyByRole(roleId: string): Promise<Policy[]> {
+        await this.validateRoleExists(roleId);
+
         return this.policyRepository.findManyByRoleId(roleId);
     }
 
@@ -58,7 +72,9 @@ export class PolicyService implements IPolicyService {
         roleId: string,
         data: PolicyRequestDto
     ): Promise<Policy> {
-        const exist = await this.policyRepository.existByRoleIdAndSubject(
+        await this.validateRoleExists(roleId);
+
+        const exist = await this.policyRepository.existsByRoleIdAndSubject(
             roleId,
             data.subject
         );
@@ -74,11 +90,13 @@ export class PolicyService implements IPolicyService {
         id: string,
         data: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        const policy = await this.policyRepository.existByRoleIdAndId(
+        await this.validateRoleExists(roleId);
+
+        const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,
             id
         );
-        if (!policy) {
+        if (!policyExists) {
             throw new PolicyNotFoundException();
         }
 
@@ -86,11 +104,13 @@ export class PolicyService implements IPolicyService {
     }
 
     async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
-        const policy = await this.policyRepository.existByRoleIdAndId(
+        await this.validateRoleExists(roleId);
+
+        const policyExists = await this.policyRepository.existsByRoleIdAndId(
             roleId,
             id
         );
-        if (!policy) {
+        if (!policyExists) {
             throw new PolicyNotFoundException();
         }
 

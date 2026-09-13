@@ -6,7 +6,7 @@ export interface ICountryService {
     getListCursor(
         pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePagingReturn<Country>>;
-    existById(countryId: string): Promise<{ id: string } | null>;
-    existByAlpha2Code(alpha2Code: string): Promise<{ id: string } | null>;
+    existsById(countryId: string): Promise<boolean>;
+    getIdByAlpha2Code(alpha2Code: string): Promise<string | null>;
     getOne(countryId: string): Promise<Country>;
 }

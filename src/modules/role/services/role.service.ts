@@ -64,16 +64,20 @@ export class RoleService implements IRoleService {
         );
     }
 
-    async existById(roleId: string): Promise<IRole | null> {
-        return this.roleRepository.existById(roleId);
+    async existsById(roleId: string): Promise<boolean> {
+        return this.roleRepository.existsById(roleId);
     }
 
-    async existByName(name: string): Promise<IRole | null> {
-        return this.roleRepository.existByName(name);
+    async getById(roleId: string): Promise<IRole | null> {
+        return this.roleRepository.findOneById(roleId);
+    }
+
+    async getByName(name: string): Promise<IRole | null> {
+        return this.roleRepository.findOneByName(name);
     }
 
     async getOne(id: string): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.findOneById(id);
+        const role = await this.roleRepository.findOneWithPoliciesById(id);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -82,7 +86,7 @@ export class RoleService implements IRoleService {
     }
 
     async createByAdmin(data: IRoleCreate): Promise<IRoleWithPolicies> {
-        const exist = await this.roleRepository.existByName(data.name);
+        const exist = await this.roleRepository.existsByName(data.name);
         if (exist) {
             throw new RoleExistException();
         }
@@ -98,8 +102,8 @@ export class RoleService implements IRoleService {
         id: string,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.existById(id);
-        if (!role) {
+        const roleExists = await this.roleRepository.existsById(id);
+        if (!roleExists) {
             throw new RoleNotFoundException();
         }
 
@@ -111,12 +115,12 @@ export class RoleService implements IRoleService {
     }
 
     async deleteByAdmin(id: string): Promise<Role> {
-        const [role, roleUsed] = await Promise.all([
-            this.roleRepository.existById(id),
-            this.roleRepository.used(id),
+        const [roleExists, roleUsed] = await Promise.all([
+            this.roleRepository.existsById(id),
+            this.roleRepository.isUsedById(id),
         ]);
 
-        if (!role) {
+        if (!roleExists) {
             throw new RoleNotFoundException();
         } else if (roleUsed) {
             throw new RoleUsedException();

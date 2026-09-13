@@ -24,15 +24,38 @@ elsewhere.
 | its enums, interfaces, constants, schemas | yes — compile-time only, no wiring needed |
 | its exceptions | yes — when the missing or invalid subject is ITS entity (`rules/exceptions.md`) |
 | a service it did not export | no |
-| its Prisma model through your own `DatabaseService` | no — that bypasses the owning repository |
+| its Prisma model through your own `DatabaseService` | yes — when the statement belongs to a unit of work yours owns; no when the owning domain service already answers it |
+
+## Reaching another module's MODEL
+
+A repository holds `DatabaseService`, and that client exposes every model. What decides the
+crossing is whether the statement belongs to a unit of work this repository OWNS.
+
+- **A cascade over the rows your own aggregate owns is one `$transaction`, and every statement
+  in it is issued by the repository that owns that transaction.** Soft-deleting a workspace also
+  soft-deletes its projects, its pending invites and its members. Splitting those statements
+  across the owning repositories either breaks atomicity or passes a transaction client across a
+  module boundary, and both cost more than the crossing.
+- **An audit row travels with the change it records** — written through the actor's
+  `activityLogs` relation, or as an `activityLog` create, in the same statement or the same
+  transaction as the change itself. A call issued afterwards can succeed against a change that
+  rolled back.
+- **A read that the same unit of work depends on** — resolving the row a write is about to use,
+  inside the transaction that writes it.
+
+Outside a unit of work of your own, the answer comes from the owning DOMAIN service. A policy
+write confirming that its role exists calls `RoleService`; it does not read `client.role` for
+itself, because nothing about that read has to be atomic with the write that follows. The other
+module's REPOSITORY class stays closed either way.
 
 ## A repository module belongs to its own feature (HARD)
 
 `<Feature>RepositoryModule` has exactly one importer: the `<feature>.module.ts` beside it. Data
 that another module needs is reached through the owning DOMAIN service, which is the layer that
-holds that feature's invariants — an outside caller reading or writing the rows directly skips
-every one of them, and the owning module can no longer change its own storage without hunting
-call sites in modules it does not know about.
+holds that feature's invariants — a caller holding the repository class skips every one of them,
+and the owning module can no longer change its own query shapes without hunting call sites in
+modules it does not know about. The model itself is a separate question, and it is answered
+above.
 
 When the domain service has no method for what the caller needs, ADD one there. A method on the
 owning service is the correct answer even when it is three lines long; importing the repository
