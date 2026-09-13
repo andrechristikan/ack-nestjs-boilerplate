@@ -70,6 +70,31 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 
 **Usage:** Automatically applied to all routes.
 
+Routes behind this chain answer with JSON or a file download (CSV or PDF via `ResponseFileInterceptor`, `Content-Disposition: attachment`). Neither is a browsing document, so `use` builds an explicit Helmet options object and runs `helmet(options)` on every request. Headers a browsing context acts on are off. Headers that still apply to a JSON body or an attachment are on, written in that same object rather than left to Helmet defaults.
+
+**On — set in the options object:**
+
+| Header | Value | Option |
+|---|---|---|
+| `Cross-Origin-Resource-Policy` | `same-origin` | `crossOriginResourcePolicy: { policy: 'same-origin' }` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | `strictTransportSecurity` from `request.helmet.*` |
+| `X-Content-Type-Options` | `nosniff` | `xContentTypeOptions: true` |
+| `X-Download-Options` | `noopen` | `xDownloadOptions: true` |
+| `X-Frame-Options` | `DENY` | `xFrameOptions: { action: 'deny' }` |
+| `X-Permitted-Cross-Domain-Policies` | `none` | `xPermittedCrossDomainPolicies: { permittedPolicies: 'none' }` |
+
+`X-Download-Options: noopen` is on because file routes return the bytes as an attachment.
+
+**Off — set to `false` in the same object:** `contentSecurityPolicy`, `crossOriginOpenerPolicy`, `originAgentCluster`, `referrerPolicy`, `xDnsPrefetchControl`, and `xXssProtection`. Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
+
+`Strict-Transport-Security` is the one directive driven by config: `request.helmet.maxAgeInSeconds` (365 days) is the `max-age`, and `request.helmet.includeSubDomains` and `request.helmet.preload` decide whether each directive is appended. See [Configuration][ref-doc-configuration].
+
+`X-Powered-By` appears on no response. Express is told not to write it in `src/main.ts`. The Helmet options object sets `xPoweredBy: false`, so Helmet leaves that header alone:
+
+```typescript
+app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
+```
+
 ## Trusted Proxy and Client IP
 
 Express `trust proxy` is set once at boot in `src/main.ts` from `app.http.trustedProxy`, which reads the optional `HTTP_TRUSTED_PROXY` environment variable.

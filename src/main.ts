@@ -54,6 +54,7 @@ async function bootstrap(): Promise<void> {
     app.getHttpAdapter()
         .getInstance<Express>()
         .set('trust proxy', trustedProxy);
+    app.getHttpAdapter().getInstance<Express>().disable('x-powered-by');
 
     if (versionEnable) {
         app.enableVersioning({
