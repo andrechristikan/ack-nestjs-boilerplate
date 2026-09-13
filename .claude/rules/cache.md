@@ -1,6 +1,6 @@
 # Cache
 
-Detail in `docs/cache.md`. This file is the rule set.
+This file is the rule set. Flow narrative: `docs/cache.md` — explorer or planner.
 
 ## One Redis connection, two databases
 
@@ -68,5 +68,5 @@ or say why nothing caches that read.
 ## Keys
 
 A cache or lock key is a `keyPattern` string in a config file. The shape of that string —
-`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/case-convention.md`
+`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/naming.md`
 → "Redis keys", and it is not restated here.

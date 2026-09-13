@@ -1,6 +1,6 @@
 # Database — Prisma + MongoDB
 
-Setup, seeding, and composite types are in `docs/database.md`. This file is the code rule set.
+This file is the code rule set. Flow narrative: `docs/database.md` — explorer or planner.
 
 ## Access
 

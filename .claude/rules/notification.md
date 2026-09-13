@@ -1,6 +1,8 @@
 # Notification — channels, templates, payloads
 
-Detail in `docs/notification.md`. Processor mechanics are governed by `rules/queue.md`; this file is the notification-specific rule set. Read `rules/queue.md` first — a notification processor is a BullMQ processor and every rule there applies.
+Processor mechanics are `rules/queue.md` — read that first. This file is the
+notification-specific rule set. Flow narrative: `docs/notification.md` — explorer or
+planner.
 
 ## Channels
 

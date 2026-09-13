@@ -1,7 +1,7 @@
 # Validation — zod schemas through the global pipe
 
-Detail in `docs/request-validation.md` and `docs/response.md`. Shapes and placement are
-`rules/dto.md`; OpenAPI annotation is `rules/swagger.md`.
+Shapes and placement are `rules/dto.md`; OpenAPI annotation is `rules/http.md`. Flow
+narrative: `docs/request-validation.md`, `docs/response.md` — explorer or planner.
 
 ## The pipe
 
@@ -30,7 +30,7 @@ exists to catch.
   `.toLowerCase()`, `.transform()` run at the boundary so every caller sees one canonical
   value.
 - Every field also carries `.meta({ description, example })`, which is what the OpenAPI
-  document is generated from (`rules/swagger.md`).
+  document is generated from (`rules/http.md`).
 - Shared custom checks live in `src/common/request/validations/`; module-specific ones go in
   `<module>/validations/`. Never inline a regex that duplicates one that exists.
 - Optional fields are `.optional()` — this is the ONE layer where `undefined` is legal

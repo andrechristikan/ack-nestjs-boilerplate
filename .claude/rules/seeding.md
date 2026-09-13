@@ -1,13 +1,16 @@
 # Seeding — initial data only
 
-Detail in `docs/database.md` (seeding section). This file is the rule set. Despite the folder name, `src/migration/` holds SEEDS, not schema migrations — the schema is `rules/prisma-schema.md`.
+This file is the rule set. Despite the folder name, `src/migration/` holds SEEDS, not
+schema migrations — the schema is `rules/prisma-schema.md`. Flow narrative:
+`docs/database.md` — explorer or planner.
 
 ## What `src/migration/` is — and is NOT
 
 `src/migration/` seeds **initial data only**: the reference and bootstrap rows an empty database needs to boot and be usable — roles, countries, the seed api-key, feature flags, term policies, notification/term templates, the aws-s3 config, and the seed user.
 
 - **MongoDB has NO migration files.** Schema shape is applied by `prisma db push` (`db:migrate`), not by versioned migration scripts. So there is no "write a migration" here — there is only "seed initial data".
-- **Not a data-backfill tool.** A one-off production data fix, a column re-compute, a historical import — none of those belong here. A seed populates the baseline an install starts from; it is re-runnable bootstrap, not a dated change record.
+- **A seed is re-runnable bootstrap.** It populates the baseline an empty install starts from.
+  A one-off production write, a column re-compute, or a historical import does not belong here.
 - **Not a place for business logic.** A seed writes rows; it does not compute business decisions.
 
 ## Anatomy of a seed

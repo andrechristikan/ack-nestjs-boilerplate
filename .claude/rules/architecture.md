@@ -116,7 +116,7 @@ Three tiers. Everything in a tier is open to every tier below it, and the revers
 
 | Tier | What is in it | Who may inject it |
 |---|---|---|
-| **1 — kit** | everything under `src/common/` | anyone: a repository, any service, any util — a util takes the in-memory part only, never `FileService` and never a cache |
+| **1 — kit** | the `src/common/` modules `CommonModule` composes | anyone: a repository, any service, any util — a util takes the in-memory part only, never `FileService` and never a cache. `AwsModule` lives under `src/common/aws/` and is imported where it is used |
 | **2 — global feature** | a module under `src/modules/` carrying `@Global()` | anyone, exactly like tier 1 — with the same carve-out, and a util is never injected by another module's util |
 | **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its SERVICE layer and its exported queue class, injected by a service layer |
 
@@ -220,11 +220,14 @@ do not remove a service interface as a cleanup side effect of an unrelated chang
 | path aliases, `Promise.all` on independent awaits, mirrored types | `rules/code-style.md` |
 | transactions, atomicity, idempotency | `rules/concurrency.md` |
 
-## No backward compatibility — ever
+## The correct shape
 
-No external client depends on this repo. **Breaking changes are the default, not the exception.**
+Build the correct shape and change every call site.
 
-- **A new feature carries NO backward-compatibility affordance.** No deprecated-but-kept field, no `v2` variant beside a `v1`, no optional flag preserving the old behavior, no bridging shim between old and new. Build the correct shape and change every call site.
-- When an existing design is wrong, replace it. Never keep a worse design because something already uses it.
-- **Best practice outranks the existing pattern.** Default to current community best practice for NestJS, Prisma, and TypeScript, and pick the clean shape over the incumbent one.
-- Use existing code only as a divergence check: when best practice clashes HARD with an established pattern here, WARN the owner before applying — do not apply silently. Minor local divergence: just proceed.
+- No deprecated-but-kept field, no `v2` beside a `v1`, no optional flag preserving an older
+  behaviour, no bridging shim.
+- When an existing design is wrong, replace it.
+- Best practice outranks the incumbent pattern. Default to current community best practice for
+  NestJS, Prisma, and TypeScript.
+- Use existing code as a divergence check: when best practice clashes HARD with an established
+  pattern here, WARN the owner before applying. Minor local divergence: just proceed.

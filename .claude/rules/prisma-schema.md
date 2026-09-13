@@ -3,7 +3,8 @@
 **`prisma/schema.prisma` is editable. Applying it to MongoDB is not.** The line runs between
 what touches files and what opens a connection.
 
-Detail in `docs/database.md`. Query and access rules are `rules/database.md`.
+Query and access rules are `rules/database.md`. Flow narrative: `docs/database.md` —
+explorer or planner.
 
 ## What you may run
 
@@ -52,7 +53,7 @@ Read the existing models before editing; match them.
   carrying `@updatedAt`. A soft-deletable model adds `deletedAt` / `deletedBy`. The audit
   columns are stamped by the extended client, not by hand (`rules/database.md`).
 - `@@map("<PluralPascalCase>")` names the collection; the model name is singular PascalCase.
-- Fields are camelCase (`rules/case-convention.md`); relation scalars are `String @db.ObjectId`.
+- Fields are camelCase (`rules/naming.md`); relation scalars are `String @db.ObjectId`.
 - Enums are declared in the schema and imported from `@generated/prisma-client`, never
   re-declared in a module (`rules/enum.md`).
 - Every index is declared for a query that exists. A new index that duplicates an existing

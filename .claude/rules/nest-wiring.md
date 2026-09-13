@@ -31,6 +31,10 @@ There are exactly three, and no fourth is invented:
 module owned a second instance. The same holds for a `@Global()` feature module: it is tier 2
 (`rules/architecture.md`), reachable without an import.
 
+`AwsModule` lives under `src/common/aws/` and is not in that composed set. A feature that
+injects `AwsS3Service` or `AwsSESService` imports `AwsModule`. `src/common/doc/` has no
+module.
+
 `forRoot()` is called ONCE, at the composition root. A `forRoot()` inside a feature module is a
 second instance of something that is supposed to be shared.
 
@@ -109,7 +113,8 @@ export class WorkspaceProcessorModule {}           // processor classes + their 
 | another feature's data | `<Feature>Module` — its domain service reads and writes it |
 | another feature's util, feature not `@Global()` | `<Feature>Module`, which exports it |
 | another feature's queue class, to enqueue onto its queue | `<Feature>Module`, which exports it |
-| anything from a `@Global()` feature, or from `src/common/` | nothing — it is already reachable |
+| anything from a `@Global()` feature, or from a `src/common/` module composed in `CommonModule` | nothing — it is already reachable |
+| `AwsS3Service` / `AwsSESService` | `AwsModule` |
 
 `<Feature>RepositoryModule`, `<Feature>HttpModule` and `<Feature>ProcessorModule` are never a
 legitimate import target outside their own feature — the first stops at its own

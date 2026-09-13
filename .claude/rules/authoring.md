@@ -96,8 +96,11 @@ other languages semantically, so English examples cost nothing.
   `—` as a separator: match it rather than breaking the pattern on one line.
 - Simple, firm, and pointed. Bullets first, prose where prose is needed. Keep the existing
   section structure intact rather than reorganizing around a small correction.
+- **No filler.** No throat-clearing (`it is important to note`, `in order to`, `this ensures
+  that`), no rhetorical questions, no synonym stacking. Name the thing and state what it does.
+- **A flow, a stack, or a hand-off is a mermaid diagram.** Prefer `flowchart`,
+  `sequenceDiagram`, or `stateDiagram-v2`. Do not invent a second diagram syntax.
 
 ## What is NOT here
 
-Comment policy is `rules/comments.md`. Class member layout is `rules/code-style.md`. Neither
-is restated here.
+Comment policy and class member layout are `rules/code-style.md`. Neither is restated here.

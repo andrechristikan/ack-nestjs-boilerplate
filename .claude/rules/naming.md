@@ -153,8 +153,42 @@ another name.
 
 ## Case
 
-Every casing decision — camelCase on the wire, PascalCase types and constants, kebab paths and
-folders, Redis key patterns — is `rules/case-convention.md`.
+**Everything on the wire and in the code is camelCase.** Request DTO fields, response DTO
+fields, query params, route params, Prisma columns, BullMQ job payload fields, i18n keys, and
+feature-flag keys. Types stay PascalCase; enum types keep the `Enum` prefix.
+
+| Surface | Case | Example |
+|---|---|---|
+| request / response DTO field | camelCase | `mobileNumber`, `perPage` |
+| query param, route param | camelCase | `?perPage=10`, `:workspaceId` |
+| Prisma column | camelCase | `deletedAt`, `createdBy` |
+| BullMQ job payload field | camelCase | `userId`, `templateName` |
+| i18n key segment | camelCase | `user.error.notFound` |
+| feature-flag key and metadata key | camelCase | `loginWithGoogle` |
+| enum key AND enum string value | camelCase | `notFound`, `superAdmin` |
+| class, interface, enum type, DTO | PascalCase | `UserService`, `IUser`, `EnumQueue` |
+| constant of any kind | PascalCase | `UserDefaultAvailableSearch` |
+| route path segment | kebab-case | `/mobile-number`, `/join-request` |
+| folder | kebab-case | `feature-flag/`, `term-policy/` |
+| file segment | kebab-case within a dot segment | `user.mobile-number.dto.ts` |
+
+**`UPPER_SNAKE_CASE` exists nowhere** — not for enum keys, not for enum values, not for
+constants, not for DI tokens.
+
+**The kebab ↔ camel mapping is one-to-one.** A route segment `mobile-number` is the field
+`mobileNumber`. Never collapse a kebab segment to a single lowercase word (`signup`).
+
+### Redis keys
+
+A Redis key is a full `keyPattern` string in a config file, with `{placeholder}` tokens the
+consumer fills via `.replace('{token}', value)`. Canonical form:
+`'User:{userId}:Session:{sessionId}'`.
+
+- **Every segment is `PascalCase`.** Never `user:...:session:...` and never an inline
+  lowercase segment like `` `${prefix}:lock:${id}` ``.
+- **No prefix-append.** Store the whole pattern in config; when one prefix backs two shapes,
+  store two patterns.
+- Keyv / BullMQ library `namespace` options (`'Cache'`, `'Queue'`) are not app-built keys.
 
 ## Everything is renameable — best practice wins
 

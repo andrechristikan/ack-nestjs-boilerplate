@@ -1,6 +1,7 @@
 # Exceptions, status codes, and messages
 
-Detail in `docs/handling-error.md` and `docs/message.md`.
+This file is the rule set. Flow narrative: `docs/handling-error.md`, `docs/message.md` —
+explorer or planner.
 
 ## The hierarchy
 

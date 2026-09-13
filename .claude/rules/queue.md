@@ -1,6 +1,8 @@
 # Queues — BullMQ
 
-Detail in `docs/queue.md`. Redis `db:1` carries BullMQ; `db:0` carries the cache (`rules/cache.md`). **One Redis connection, shared** — never open a second.
+Redis `db:1` carries BullMQ; `db:0` carries the cache (`rules/cache.md`). **One Redis
+connection, shared** — never open a second. Flow narrative: `docs/queue.md` — explorer or
+planner.
 
 ## Where things live
 

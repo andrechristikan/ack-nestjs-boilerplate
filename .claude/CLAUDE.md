@@ -1,8 +1,8 @@
 # ACK NestJS Boilerplate
 
 `ack-nestjs-boilerplate` — an opinionated, production-shaped NestJS starter. It is a
-BOILERPLATE: no external client depends on it, so a breaking change is cheap and the clean
-design always wins over the compatible one. Four domain groups: identity and auth (JWT with
+BOILERPLATE: no external client depends on it. Build the correct shape and change every
+call site. Four domain groups: identity and auth (JWT with
 JWKS, social sign-in, API keys, sessions, devices, two-factor), access control (roles, CASL
 policy abilities, term-policy gating, feature flags), workspace and project (mandatory
 multi-workspace, invites, join requests, workspace-scoped projects), and platform
@@ -26,23 +26,11 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 
 ## Layout
 
-Feature modules live in `src/modules/<feature>/` and all carry ONE shape — the repository
-pattern, `Controller → HTTP Service → Domain Service → Repository` with `Processor → Processor
-Service` joining at the domain service, and flat folder-per-concern directories
-(`controllers/`, `services/`, `repositories/`, `dtos/request/`, `dtos/response/`, `enums/`,
-`exceptions/`, `interfaces/`, `constants/`, `utils/`, and `decorators/` `docs/` `guards/`
-`factories/` `indicators/` `interceptors/` `processors/` `queues/` `templates/` where the
-feature needs them). There is no layered folder scheme on top of it and no second shape to
-detect — do not invent one.
-
-Each layer gets its own Nest module in the feature folder, and only the ones with something to
-provide exist: `<feature>.repository.module.ts`, `<feature>.module.ts` (domain services, utils
-and queue classes — the only one another feature consumes), `<feature>.http.module.ts` and
-`<feature>.processor.module.ts`. A repository module imports nothing and is imported by its own
-feature only; another feature reaches the data through the owning domain service. `src/common/`
-and every `@Global()` module are injectable from any layer including a repository; a non-global
-feature's util stops at another module's service layer. Full rules:
-`.claude/rules/architecture.md` and `.claude/rules/nest-wiring.md`.
+Feature modules live in `src/modules/<feature>/` and all carry one shape:
+`Controller → HTTP Service → Domain Service → Repository`, with
+`Processor → Processor Service` joining at the domain service. Rules:
+`.claude/rules/architecture.md` and `.claude/rules/nest-wiring.md`. Folder map for
+humans: `docs/project-structure.md` — not a standing read.
 
 ```
 src/
@@ -100,13 +88,9 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 
 | Skill | For |
 |---|---|
-| `ack-feature` | NEW behaviour, end to end — interrogate, then spec → plan → execute through `planner` and `coder`, offer reviews, all checks green |
-| `ack-fix` | repair EXISTING behaviour, end to end — pin the symptom, find the cause, brainstorm, then spec → plan → execute through `planner` and `coder`, offer reviews |
+| `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
-| `ack-seed` | initial-data seeders under `src/migration/` |
-| `ack-gate` | the compliance pass — the whole rule set, then every mechanical check, one verdict |
-| `ack-docs` | check and repair `docs/*.md` |
-| `ack-pr-doc` | write the PR description document — runs alone, at the end |
+| `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
 | `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from
@@ -115,38 +99,31 @@ The roster prints to the terminal at session start — a `SessionStart` hook der
 Each skill ends with a **Next** section naming what usually follows it. Nothing chains
 automatically: a skill never invokes another skill, so every hop is the owner's call.
 
-```
-   /ack-fix     ──→ /ack-docs
-   /ack-feature ──→ /ack-docs
-   /ack-seed    ──→ /ack-docs
-
-   /ack-spec            alone — specs only, and the only skill that runs the full suite
-   /ack-gate            alone — the owner's compliance pass, started by nothing else
-   /ack-pr-doc          alone, at the end — it fetches and moves a local ref
-   /ack-claude-config   alone — the subject is the configuration an agent would read
+```mermaid
+flowchart LR
+  code["/ack-code"] --> docs["/ack-docs"]
+  code --> spec["/ack-spec"]
+  spec --> code
+  docs --> code
+  config["/ack-claude-config"]
 ```
 
-**`/ack-feature` and `/ack-fix` are the same shape on opposite subjects.** Both interrogate,
-brainstorm, then run the same three-artifact pipeline — **spec, then plan, then execute** —
-offer the reviews, and end green. `feature` starts from a requirement for behaviour that does
-not exist; `fix` starts from a symptom in behaviour that does, and spends its first four steps
-turning that symptom into a reproduced cause. Breadth picks neither: a one-line repair is still
-`fix`, and a small addition is still `feature`.
+**`/ack-code` interrogates, then runs explorer → planner → coder**, then offers
+`reviewer`, `reviewer-e2e`, and `doc-writer`. A request that only judges the checkout skips
+to the offer and the mechanical checks. `explorer` locates, researches, and brainstorms.
+`planner` writes the spec and the plan. `coder` writes `src/`, test-first. The spec and the
+plan are never written by the session and never by `coder`. `planner` runs twice — once in
+`SPEC` mode, once in `PLAN` mode against the approved spec — and the owner approves the spec
+before the plan is written. When the work touches `prisma/*` or `src/migration/**`, `coder`
+dispatches `seed-writer`.
 
-**In both, the spec and the plan are written by `planner`, never by the session and never by
-`coder`.** `planner` runs twice — once in `SPEC` mode for the settled behaviour, once in `PLAN`
-mode against the approved spec — and the owner approves the spec before the plan is written.
-`coder` then builds test-first from the plan; the failing unit spec under `test/` is a different
-artifact from the `.superpowers/` spec.
+When a suite is red: the code is wrong → `/ack-code`; the spec is wrong → `/ack-spec`.
 
-When a suite is red: the code is wrong → `/ack-fix`; the spec is wrong → `/ack-spec`.
-
-**The reviews are OFFERED, never automatic.** `ack-feature` and `ack-fix` end by asking the
-owner which of `reviewer-rules`, `reviewer-e2e` and `verifier` to run, once the work is done
-and the diff is visible. `ack-seed` offers `reviewer-rules` only. **`reviewer-e2e` never runs
-unasked, anywhere**, including inside `ack-fix` where it is the natural tool for tracing a
-symptom. `ack-spec`, `ack-docs`, `ack-pr-doc` and `ack-claude-config` run no review of their
-own. `ack-gate` IS the review, and there both halves are mandatory.
+**The close-out is OFFERED, never automatic.** `/ack-code` asks once which of `reviewer`,
+`reviewer-e2e`, and `doc-writer` to run. Nothing picked means nothing dispatched.
+`reviewer-e2e` never runs unasked. `ack-spec`, `ack-docs` and `ack-claude-config` run no
+review of their own. A docs-only pass is `/ack-docs`; a docs update after a code run is the
+`doc-writer` offer.
 
 **A test run is always scoped to the module the work actually CHANGED** —
 `pnpm test --testPathPatterns '<module>'`. No skill except `/ack-spec` runs the full
@@ -156,17 +133,17 @@ suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
 spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
 not the exit code and not the global summary.
 
-**A coverage gap is never closed silently.** In `ack-feature`, `ack-fix` and `ack-seed`, a
-touched file short of 100% stops the run and goes to the owner: another `test-writer` pass on
-those files, or leave the gap. Both are the owner's to pick, in that exchange. `/ack-spec` is
-the exception — 100% is the bar it exists to reach, so it keeps dispatching until the per-file
+**A coverage gap is never closed silently.** `/ack-spec` is the skill that writes specs —
+100% is the bar it exists to reach, so it keeps dispatching `test-writer` until the per-file
 rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
+`ack-code` does not dispatch `test-writer`. `coder` writes the TDD spec for the behaviour
+in its plan; `/ack-spec` writes every other spec.
 A commit touching `src/` or `test/` goes through the hooks, and `pre-commit` does not collect
 coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
-`planner`, `coder`, `test-writer`, `seed-writer`, `explorer`, `researcher`, `reviewer-rules`,
-`reviewer-e2e`, `verifier`, `doc-writer`, `pr-doc-writer`.
+`explorer`, `planner`, `coder`, `seed-writer`, `reviewer`, `reviewer-e2e`, `doc-writer`,
+`test-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
 project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
@@ -175,9 +152,9 @@ and `general-purpose` is `allow` in `.claude/settings.json`: an external skill s
 `graphify` dispatches it for work no project agent covers. **They are not part of any project
 skill's flow.** A project skill dispatches the agents in `.claude/agents/` and nothing else;
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
-`coder` is the only agent holding the `Agent` tool, and it dispatches `test-writer` and
-nothing else — at most once per spec, so a spec that comes back still wrong becomes an open
-item instead of a third dispatch.
+`coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
+work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched
+only by `/ack-spec`.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
@@ -186,7 +163,7 @@ line in the hand-back, never a finding and never a change.
 **No agent can ask you anything** — not one of them carries `AskUserQuestion`. An agent that
 is missing something stops, does nothing, and hands the question back; the session that
 dispatched it asks you and dispatches again. That is why a dispatch carries the mode, the
-scope and the expected outcomes up front, and why `verifier` never starts a container it
+scope and the expected outcomes up front, and why `reviewer` never starts a container it
 found stopped.
 
 External skills this project relies on. They live outside the repository, so each machine
@@ -216,30 +193,15 @@ installs them once:
   glob, so it sees `pnpm db:migrate` and not `PORT=1 pnpm db:migrate`, `env PORT=1 pnpm
   db:migrate` or `pnpm -s run db:migrate`. The list is the statement of what belongs to the
   owner, not a fence that holds on its own — never reach for a spelling it misses.
-- **The permission posture is "inward is silent, outward asks".** Everything that stays in
-  this repository — pnpm, the local toolchain, shell reads and writes, `git add`, `git commit`
-  — is `allow` in `.claude/settings.json` and raises no prompt. What leaves the directory or
-  the machine is `ask`: `git push`, `git pull`, the writing `gh` subcommands, `pnpm publish`,
-  `pnpm dlx`, `vault:pull`, `ssh`, `scp`, `rsync`, a writing `curl`, `rm -rf`,
-  `git reset --hard`, `git clean`, a docker removal, and edits to `~/.claude/**`. An `ask`
-  rule prompts even under `bypassPermissions`, so the list is deliberately short — the prompt
-  is the permission system doing its job, never a formality to route around by widening
-  `settings.local.json`.
-- Coding rules live in `.claude/rules/`. They are NOT loaded into this session — whoever needs a
-  rule reads it. **`rules/orientation.md` is the map**: the six rules every task reads, and a
-  table of which rule governs which surface. Every agent and every skill takes its rule list
-  from there, so there is one list to keep true. Two rules are split by WHO reads them:
-  `testing.md` (where specs live, jest facts) versus `testing-spec-style.md` (how a spec is
-  written — `test-writer` only).
-- **A shape decided in conversation is bound by the same rules as the code.** Answering "which
-  layer owns this", "which module's exception names this subject", "what may a repository
-  receive" without opening the rule for that surface commits the violation earlier than any
-  agent could, and in a form the next reader treats as settled.
-- `docs/` **and the root `README.md`** are documentation written for people to read, describing
-  how the system behaves today. Both are tracked in git, never loaded automatically, and written
-  only by the `doc-writer` agent. `README.md` is the front page and carries what no file under
-  `docs/` does — the version table, the prerequisites, the Quick Start sequence — so an upgrade
-  dates it first.
+- **This project starts in `bypassPermissions`.** The daily `allow` map and the `deny` /
+  `ask` lists live in `.claude/settings.json`. `deny` wins for migrate / studio / `mongosh`
+  / `redis-cli`. An `ask` rule prompts even under `bypassPermissions`. The VS Code and
+  Cursor extensions ignore a project's `defaultMode`.
+- Coding rules live in `.claude/rules/` and are not loaded into this session.
+  **`rules/orientation.md` is the map.** Whoever needs a rule reads that file, then the
+  named rule. `docs/*.md` is not session payload. explorer and planner open one named doc
+  only when a rule's flow-narrative pointer is the question and the rule does not settle
+  it. `doc-writer` is the exception: those files are its subject.
 - Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
   for agent reports and PR description documents, `graphify-out/` for the knowledge graph.
 - **A commit message is one conventional subject line**, `<type>(<scope>): <description>`,
@@ -277,10 +239,17 @@ installs them once:
 
 ## How to work here
 
-- **No backward compatibility, ever.** No external client depends on this repo, so a breaking
-  change is the default. A new feature carries no deprecated-but-kept field, no `v1`/`v2`
-  pair, no compat flag, no bridging shim. Build the correct shape and change every call site.
-  Best practice outranks the incumbent pattern.
+- **TDD is a hard rule on `/ack-code` and `coder`.** Write the failing spec first, watch it
+  fail because the behaviour is absent, then implement. `coder` carries
+  `superpowers:test-driven-development` and writes that spec itself. `/ack-spec` is the
+  other half: the code already exists and it wins.
+- **This checkout has no `test/**/*.spec.ts`.** While that is true, `/ack-code` may dispatch
+  `coder` with the suite waiver and land `src/` without a red spec. The moment any unit spec
+  exists, TDD is mandatory and that waiver is gone. Seeds, controllers, and repositories
+  never have a TDD cycle.
+- **Build the correct shape and change every call site.** No deprecated-but-kept field, no
+  `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent
+  pattern.
 - Every project artifact is ENGLISH: code, identifiers, comments, commit messages,
   `docs/*.md`, PR descriptions, and everything under `.claude/**` and `.superpowers/**`.
   Conversation with the owner is Bahasa Indonesia; artifacts are never mixed.
@@ -298,11 +267,4 @@ installs them once:
   runs the LOCAL binary.
 - Do not re-create a deleted service or module without reading git history first.
 - **Final state only, in `docs/*.md` and `.claude/**` alike.** Both trees describe how the
-  project works NOW. No issue, no bug, no bug fix, no change, no decision or its reasoning, no
-  rejected alternative, no date, no version, no changelog. The ban is on comparing against a
-  FORMER state, not on a vocabulary — "rather than" contrasting two options a reader picks
-  between today is fine. The test: would this sentence exist if the thing had
-  ALWAYS been this way? If it only makes sense because something used to be different, it is
-  history, and history lives in `git log`, the PR description, and the issue tracker. A negation
-  is allowed when it states a CONTRACT (what a caller does not send, what a guard does not do)
-  and banned when it rebuts a former state. Full rule and the rewrite table: `rules/authoring.md`.
+  project works now. The test and the rewrite table: `rules/authoring.md`.

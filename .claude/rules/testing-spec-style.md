@@ -73,7 +73,7 @@ The rules the skeleton encodes:
   asserts on a log line is asserting on the one thing that is allowed to change freely
   (`rules/logging.md`).
 - **Mock variable names mirror the DI param they replace — `camelCase`.** Fixture and data
-  locals are `camelCase` too (`rules/case-convention.md`). There is no snake_case surface in
+  locals are `camelCase` too (`rules/naming.md`). There is no snake_case surface in
   this project, including in specs.
 - **Injection is by class.** Repositories and services are provided as `{ provide: SessionRepository,
   useValue: sessionRepository }`, never behind a port token (`rules/architecture.md`).
@@ -224,7 +224,7 @@ await expect(service.findOneById(id)).rejects.toMatchObject({
 matcher compares `.message` only, so `statusCode` / `statusCodeKey` never get checked.
 
 Response body keys on the WIRE are camelCase (`statusCode`, `messagePath`) — including in
-specs (`rules/case-convention.md`). A `status_code` fixture is a defect on sight.
+specs (`rules/naming.md`). A `status_code` fixture is a defect on sight.
 
 For a sync throw, prefer catching and reading the instance:
 

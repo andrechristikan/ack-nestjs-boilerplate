@@ -1,73 +1,84 @@
 ---
 name: ack-docs
-description: Check docs/*.md and the root README.md against the code on this checkout and repair what has gone stale. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for PR descriptions (ack-pr-doc), NOT for feature code.
+description: Check docs/*.md and the root README.md against the code on this checkout and repair what has gone stale. Final state only. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for feature code.
 disable-model-invocation: true
 ---
 
-One dispatch to `doc-writer`, the only agent that may write `docs/*.md` and the root `README.md`.
+One dispatch to `doc-writer`, the only agent that may write `docs/*.md` and the root
+`README.md`.
+
+## Rules
+
+Read `.claude/rules/orientation.md` and `.claude/rules/authoring.md` before dispatching. A
+claim is bound by the same surface row that binds the code it describes. `authoring.md` is
+the prose contract: final state, indicative, no filler, mermaid for flows.
 
 ## Scope
 
-**The current checkout as it sits — never a comparison between two branches.** Ask the owner
-whether they want everything, or named files: `docs/` holds around thirty files and a full pass
-is a long run.
+**The current checkout as it sits.** Ask the owner whether they want everything, or named
+files: `docs/` holds around thirty files and a full pass is a long run.
 
-**The root `README.md` is in scope and is easy to forget**, because it sits outside `docs/`. It
-carries the version table, the prerequisites and the Quick Start sequence, so an upgrade dates it
-faster than anything under `docs/`. A pass the owner asked for in whole-tree words includes it;
-name it in the dispatch either way, so its absence is a decision rather than an oversight.
+**The root `README.md` is in scope.** It carries the version table, the prerequisites, and
+the Quick Start sequence. A pass the owner asked for in whole-tree words includes it; name
+it in the dispatch either way.
 
 Git stays read-only.
 
 ## Dispatch
 
-`doc-writer`, with the file list and, when the owner knows it, what changed recently — that is
-where staleness concentrates.
+`doc-writer`, with the file list and, when the owner knows it, what changed recently.
 
 ## What comes back
 
-Claims classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, and CONFLICT. The first five
-are repaired. **CONFLICT is never resolved by the agent** — it means the doc and the code
-disagree about a DECISION and which is wrong is not obvious.
+Claims classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, and CONFLICT. The first
+five are repaired. **CONFLICT is never resolved by the agent.**
 
-**Every CONFLICT goes to the owner with the git evidence for both sides.** Do not pick a side
-here. When the evidence suggests the CODE is wrong — a guard removed in a commit that does not
-mention it, a doc newer than the change, a disagreement about authorization, credentials, or
-session invalidation — that is a suspected defect, and it belongs in an `/ack-fix` run, not a
-doc edit.
+**Every CONFLICT goes to the owner with the git evidence for both sides.** When the evidence
+suggests the CODE is wrong — a guard removed in a commit that does not mention it, a doc
+newer than the change, a disagreement about authorization, credentials, or session
+invalidation — that is a suspected defect, and it belongs in an `/ack-code` run, not a doc
+edit.
 
-## Read the repair, not just the report
+## Read the repair
 
-A repair can be accurate and still wrong, because the agent arrives knowing what the doc used to
-say and writes the correction as a rebuttal of it. **`docs/` is final state only**
-(`rules/authoring.md`), so read the diff for sentences that exist only because something used to
-be different:
+A repair states what IS. The test: would this sentence exist if the system had always been
+this way. Send back any sentence that exists only because something used to be different:
 
-- a negation that rebuts rather than states a contract — `there is no explicit $transaction`,
-  `the count is not stored on the model`
-- a `whether or not` / `even though` clause defending the claim against the old one
-- an explanation of why two things are the same or differ, where the reader only needs what they
-  are
+- a negation that rebuts rather than states a contract
+- a clause defending the claim against an older one
+- an explanation of why two things differ, where the reader only needs what they are
 
-Send those back. The rule is not "is it true" — it is "would this sentence exist if the system
-had always been this way".
+## Prose
+
+`rules/authoring.md` binds every line:
+
+- indicative — a fact plus a pointer to the rule, never an obligation
+- no em-dash in documentation prose
+- no filler, no throat-clearing, no rhetorical questions
+- a flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, or
+  `stateDiagram-v2`)
+- match the section structure already on the page
 
 ## Boundaries
 
 - `docs/status-codes.md` is the human catalog, updated from the report of whichever change
   touched a status-code enum. It is not re-derived here as a routine pass.
 - No `src/`, no `test/`, no `.claude/`, no `prisma/`.
-- No schema, DB, or seed commands. Never stage or commit unless the owner asks in that exchange.
-- `Edit(docs/**)` is `allow` in `.claude/settings.json`, so a repair raises no prompt. Nothing
-  mechanical stops a doc edit the owner did not ask for; the scope of the dispatch does.
+- No schema, DB, or seed commands. Never stage or commit unless the owner asks in that
+  exchange.
 
 ## Hand back
 
-What was found by class, what was repaired, and every CONFLICT — unresolved, with its evidence.
+What was found by class, what was repaired, and every CONFLICT — unresolved, with its
+evidence.
 
 ## Next
 
+```mermaid
+flowchart LR
+  docs["/ack-docs"] --> code["/ack-code"]
+```
+
 | Then run | When |
 |---|---|
-| `/ack-fix` | a CONFLICT resolved as "the CODE is wrong" — that is a defect, not a doc edit |
-| `/ack-pr-doc` | the branch is settled and needs its description |
+| `/ack-code` | a CONFLICT resolved as the CODE is wrong |

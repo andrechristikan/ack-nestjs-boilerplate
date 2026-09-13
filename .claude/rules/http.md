@@ -1,6 +1,9 @@
 # HTTP layer — controllers, guards, docs
 
-Detail lives in `docs/authorization.md`, `docs/response.md`, `docs/doc.md`, `docs/security-and-middleware.md`. This file is the rule set.
+This file is the rule set. Flow narrative lives in `docs/authorization.md`,
+`docs/response.md`, `docs/doc.md`, `docs/security-and-middleware.md`,
+`docs/activity-log.md` — explorer or planner opens the named file when the behaviour is
+not settled here. No other agent reads those docs as a standing step.
 
 ## Decorator order (HARD — exact, never reorder)
 
@@ -32,9 +35,10 @@ Reordering is a defect even when the app still boots: the order encodes which ga
 - **`@HttpCode` belongs ONLY on `@Post`.** Nest defaults POST to `201 Created` and every other method to `200 OK`, so `@HttpCode(HttpStatus.OK)` above a `@Get` / `@Put` / `@Patch` / `@Delete` is a no-op that reads as if the route were doing something unusual. Delete it — and delete the `HttpCode` / `HttpStatus` imports when the file has no `@Post` left that needs them.
 - **`@RequestThrottle({...})` sits OUTSIDE this order.** It mounts an interceptor, not a guard, and interceptors run after every guard regardless of declaration order or class-versus-method placement. Place it consistently and move on — no position silently degrades it.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret. See `docs/activity-log.md`.
+- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret.
 - `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
-- Guard and protection semantics live in `docs/authorization.md`. Read it before adding a new `@<X>Protected()`.
+- A new `@<X>Protected()` follows the stack in this file. Flow narrative for the existing
+  guards: `docs/authorization.md` — explorer or planner.
 
 ### Admin scope carries NO workspace or project guard (HARD)
 
@@ -219,10 +223,33 @@ A guard is a transport gate. It reads transport inputs (JWT payload, params, ref
 @ResponseFile()                      // CSV / PDF     → IResponseFileReturn
 ```
 
-The argument is the i18n message path, not a literal message. The handler's return type must match the decorator — a `@Response` route returning a bare DTO instead of `IResponseReturn<T>` breaks the interceptor contract. A route with nothing to return is `Promise<void>` (see "Controllers" above). See `docs/response.md`.
+The argument is the i18n message path, not a literal message. The handler's return type must match the decorator — a `@Response` route returning a bare DTO instead of `IResponseReturn<T>` breaks the interceptor contract. A route with nothing to return is `Promise<void>` (see "Controllers" above).
 
 ## Swagger docs
 
-Every endpoint has a doc factory in `<module>/docs/<module>.<scope>.doc.ts`, and it sits at the
-TOP of the decorator stack. The full rule set — the `Doc*` primitives, the `*.doc.constant.ts`
-constants, and the paginated-route obligations — is `rules/swagger.md`.
+Every endpoint has a matching decorator factory in `<module>/docs/<module>.<scope>.doc.ts`,
+named `<Module><Scope><Action>Doc`, composed with `applyDecorators` from the `Doc*`
+primitives in `src/common/doc/decorators/doc.decorator.ts`. The factory sits at the TOP of
+the decorator stack, above `@Response`. The doc file mirrors the controller: one factory per
+endpoint, same order.
+
+Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
+`DocResponse`, `DocResponsePaging`, `DocResponseFile`, `DocDefault`, `DocOneOf`, `DocAnyOf`,
+`DocAllOf`). A bare `@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+
+`@ApiQuery` / `@ApiParam` arrays live as PascalCase constants in
+`<module>/constants/<module>.doc.constant.ts`. Never an inline array, never generated from
+the request DTO.
+
+The route template, the `@Param('…')` key, and the `name` in the Swagger param constant must
+agree. A mismatch between the first two makes the param silently `undefined`.
+
+`DocResponsePaging` takes the SAME allow-list constants the controller's `@Pagination*Query`
+decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).
+
+`DocResponse<T>` / `DocResponsePaging<T>` take the response SCHEMA in `options.schema`. A
+hand-written schema object beside a zod schema is a mirror. Every field carries
+`.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
+
+Doc factories carry no method JSDoc. Flow narrative: `docs/doc.md` — explorer or planner
+opens it when the annotation question is not settled by this section.
