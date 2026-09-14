@@ -34,7 +34,21 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         private readonly paginationService: PaginationService
     ) {}
 
-    private ownershipInclude(today: Date): Prisma.DeviceOwnershipInclude {
+    private ownershipInclude(today: Date): {
+        device: true;
+        user: { select: typeof UserRefSelect };
+        revokedBy: { select: typeof UserRefSelect };
+        _count: {
+            select: {
+                sessions: {
+                    where: {
+                        isRevoked: false;
+                        expiredAt: { gt: Date };
+                    };
+                };
+            };
+        };
+    } {
         return {
             device: true,
             user: {

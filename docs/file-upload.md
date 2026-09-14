@@ -212,7 +212,7 @@ Understanding the flow of CSV file processing helps you implement robust data im
 ```mermaid
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
-    B --> B2{RequestRequiredPipe}
+    B --> B2{FileRequiredPipe()}
     
     B2 -->|Missing File| B3[Throw RequestParamRequiredException]
     B2 -->|Present| C{FileExtensionPipe}
@@ -278,7 +278,7 @@ The live example is `POST /shared/user/profile/photo/upload` on `UserSharedContr
 async uploadPhotoProfile(
   @AuthJwtPayload('userId') userId: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([
       EnumFileExtensionImage.jpeg,
       EnumFileExtensionImage.png,
@@ -399,7 +399,7 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 async import(
   @AuthJwtPayload('userId') createdBy: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
     FileCsvValidationPipe(UserImportRequestSchema, {

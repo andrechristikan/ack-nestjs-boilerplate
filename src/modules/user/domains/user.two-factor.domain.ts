@@ -9,7 +9,6 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import {
     EnumActivityLogAction,
     EnumUserStatus,
-    TwoFactor,
 } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
@@ -34,6 +33,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import {
     IUser,
+    IUserTwoFactor,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -187,7 +187,7 @@ export class UserTwoFactorDomain {
         }
     }
 
-    getTwoFactorStatus(user: IUser): TwoFactor {
+    getTwoFactorStatus(user: IUser): IUserTwoFactor {
         return user.twoFactor!;
     }
 
@@ -432,11 +432,13 @@ export class UserTwoFactorDomain {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<TwoFactor> {
-        return this.userTwoFactorRepository.createDisabledInTx(
+    ): Promise<IUserTwoFactor> {
+        const twoFactor = await this.userTwoFactorRepository.createDisabledInTx(
             tx,
             userId,
             createdBy
         );
+
+        return { ...twoFactor, backupCodes: [] };
     }
 }

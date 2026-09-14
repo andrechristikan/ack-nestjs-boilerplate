@@ -38,8 +38,8 @@ exists to catch.
 
 ## Params and queries
 
-- A path param is validated by pipes on the param itself — `RequestRequiredPipe`,
-  `RequestIsValidObjectIdPipe` — not by a schema (`rules/http.md`).
+- A path param is validated by the schema on the binding, such as `RequestUuidSchema`
+  (`rules/http.md`).
 - Pagination and filtering come from the `@Pagination*` decorators in
   `src/common/pagination/` (`rules/pagination.md`), not from hand-rolled `@Query` parsing.
   Reach for a query schema when an endpoint has its own non-pagination filter set; otherwise

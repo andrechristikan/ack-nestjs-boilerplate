@@ -7,9 +7,10 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { FeatureFlag, Prisma } from '@generated/prisma-client';
+import { FeatureFlag, FeatureFlagUser, Prisma } from '@generated/prisma-client';
 
 @Injectable()
 export class FeatureFlagRepository implements IFeatureFlagRepository {
@@ -36,11 +37,14 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         >(this.databaseService.client.featureFlag, pagination);
     }
 
-    async findOneByKey(key: string): Promise<FeatureFlag | null> {
+    async findOneByKey(
+        key: string
+    ): Promise<IFeatureFlagWithTargetUsers | null> {
         return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
             },
+            include: { targetUsers: true },
         });
     }
 
@@ -54,11 +58,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
     async updateStatus(
         id: string,
-        {
-            isEnable,
-            rolloutPercent,
-            targetUserIds,
-        }: FeatureFlagUpdateStatusRequestDto
+        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag> {
         return this.databaseService.client.featureFlag.update({
             where: {
@@ -67,7 +67,6 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
             data: {
                 isEnable,
                 rolloutPercent,
-                targetUserIds,
             },
         });
     }
@@ -82,6 +81,37 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
             },
             data: {
                 metadata,
+            },
+        });
+    }
+
+    async addTargetUser(
+        featureFlagId: string,
+        userId: string
+    ): Promise<FeatureFlagUser> {
+        return this.databaseService.client.featureFlagUser.upsert({
+            where: {
+                featureFlagId_userId: {
+                    featureFlagId,
+                    userId,
+                },
+            },
+            create: {
+                featureFlagId,
+                userId,
+            },
+            update: {},
+        });
+    }
+
+    async removeTargetUser(
+        featureFlagId: string,
+        userId: string
+    ): Promise<Prisma.BatchPayload> {
+        return this.databaseService.client.featureFlagUser.deleteMany({
+            where: {
+                featureFlagId,
+                userId,
             },
         });
     }

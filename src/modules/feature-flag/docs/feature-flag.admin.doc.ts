@@ -10,6 +10,7 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     FeatureFlagDocParamsId,
+    FeatureFlagDocParamsTargetUser,
     FeatureFlagDocQueryList,
 } from '@modules/feature-flag/constants/feature-flag.doc';
 import {
@@ -75,6 +76,45 @@ export function FeatureFlagAdminUpdateMetadataDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse<FeatureFlagResponseDto>('featureFlag.updateMetadata', {
+            schema: FeatureFlagResponseSchema,
+        })
+    );
+}
+
+export function FeatureFlagAdminAddTargetUserDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'admin add target user to Feature Flag',
+        }),
+        DocRequest({
+            params: FeatureFlagDocParamsId,
+            bodyType: EnumDocRequestBodyType.json,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse<FeatureFlagResponseDto>('featureFlag.addTargetUser', {
+            schema: FeatureFlagResponseSchema,
+        })
+    );
+}
+
+export function FeatureFlagAdminRemoveTargetUserDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'admin remove target user from Feature Flag',
+        }),
+        DocRequest({
+            params: FeatureFlagDocParamsTargetUser,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse<FeatureFlagResponseDto>('featureFlag.removeTargetUser', {
             schema: FeatureFlagResponseSchema,
         })
     );

@@ -25,7 +25,7 @@ ACK NestJS Boilerplate integrates with various third-party services and provider
 - [Firebase](#firebase)
 - [Sentry](#sentry)
 - [Redis](#redis)
-- [MongoDB](#mongodb)
+- [PostgreSQL](#postgresql)
 - [Social Authentication](#social-authentication)
   - [Google OAuth](#google-oauth)
   - [Apple Sign In](#apple-sign-in)
@@ -166,9 +166,9 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 
 For cache implementation, see [Cache][ref-doc-cache]. For queue details, see [Queue][ref-doc-queue].
 
-## MongoDB
+## PostgreSQL
 
-[MongoDB][ref-mongodb] with [Prisma][ref-prisma] as the primary database.
+[PostgreSQL][ref-postgresql] with [Prisma][ref-prisma] as the primary database.
 
 **Packages:**
 - `@prisma/client`
@@ -176,13 +176,14 @@ For cache implementation, see [Cache][ref-doc-cache]. For queue details, see [Qu
 
 **Environment Variables:**
 ```dotenv
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 DATABASE_DEBUG=true
 ```
 
 **Features:**
-- Replica set support
 - Transaction support
+- Relational constraints and indexes
+- UUIDv7 primary keys
 - Type-safe queries via Prisma
 
 For database setup and usage, see [Database][ref-doc-database].
@@ -242,7 +243,7 @@ For authentication flow details, see [Authentication][ref-doc-authentication].
 [ref-firebase]: https://firebase.google.com/docs/admin/setup
 [ref-sentry]: https://sentry.io
 [ref-redis]: https://redis.io
-[ref-mongodb]: https://docs.mongodb.com/
+[ref-postgresql]: https://www.postgresql.org/docs/
 [ref-prisma]: https://www.prisma.io
 [ref-google-oauth]: https://developers.google.com/identity/protocols/oauth2
 [ref-apple-signin]: https://developer.apple.com/sign-in-with-apple/

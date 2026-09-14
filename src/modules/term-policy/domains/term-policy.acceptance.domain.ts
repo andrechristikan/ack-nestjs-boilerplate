@@ -15,6 +15,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyRequiredInvalidException } from '@modules/term-policy/exceptions/term-policy.required-invalid.exception';
+import { TermPolicyAcceptedColumnMap } from '@modules/term-policy/constants/term-policy.constant';
 import { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { IUser } from '@modules/user/interfaces/user.interface';
@@ -42,8 +43,6 @@ export class TermPolicyAcceptanceDomain {
             throw new AuthJwtAccessTokenInvalidException();
         }
 
-        const { termPolicy } = user;
-
         const defaultTermPolicies = [
             EnumTermPolicyType.termsOfService,
             EnumTermPolicyType.privacy,
@@ -53,7 +52,11 @@ export class TermPolicyAcceptanceDomain {
                 ? defaultTermPolicies
                 : requiredTermPolicies;
 
-        if (!requiredTermPolicies.every(type => termPolicy[type])) {
+        if (
+            !requiredTermPolicies.every(
+                type => user[TermPolicyAcceptedColumnMap[type]]
+            )
+        ) {
             throw new TermPolicyRequiredInvalidException();
         }
     }

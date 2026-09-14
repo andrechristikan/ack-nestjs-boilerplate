@@ -111,12 +111,12 @@ Each request schema lives in `<module>/dtos/request/` and exports the `<Module><
 
 ### Path Parameters Validation
 
-A path param is validated by pipes on the param itself, not by a schema:
+A path param is validated by a schema on the param binding:
 
 ```typescript
 @Get('/get/:user')
 findOne(
-  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
+  @Param('user', { schema: RequestUuidSchema }) user: string
 ) {
   return this.userHttpService.get(user);
 }
@@ -124,7 +124,7 @@ findOne(
 
 ### Query Parameters
 
-Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a pipe:
+Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema:
 
 ```typescript
 @Get('/list')
@@ -134,7 +134,7 @@ async list(
     availableOrderBy: ProjectDefaultAvailableOrderBy,
   })
   pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-  @Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+  @Query('workspaceId', { schema: RequestUuidSchema.optional() })
   workspaceId?: string
 ) {
   return this.projectHttpService.getListForAdmin(pagination, workspaceId);
@@ -228,25 +228,13 @@ A module-specific check goes in that module's `validations/` folder instead.
 
 Pipes validate a single param, body field, or query value. A multi-field payload uses a schema.
 
-**RequestRequiredPipe**
-Throws `RequestParamRequiredException` when the value is missing or empty:
+**RequestUuidSchema**
+Validates UUID path and query parameters:
 
 ```typescript
-@Get('/get/:user')
-findOne(@Param('user', RequestRequiredPipe) user: string) {
-  return this.userHttpService.get(user);
-}
-```
-
-**RequestIsValidObjectIdPipe**
-Validates a MongoDB ObjectId, throwing `RequestIsMongoIdException` otherwise. Instantiate it with `{ optional: true }` to let an absent value pass through as `undefined`:
-
-```typescript
-@Get('/get/:user')
-findOne(
-  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
-) {
-  return this.userHttpService.get(user);
+@Get(':userId')
+findOne(@Param('userId', { schema: RequestUuidSchema }) userId: string) {
+  return this.userService.findById(userId);
 }
 ```
 
@@ -259,7 +247,7 @@ A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer i
 
 ```typescript
 @UploadedFile(
-  RequestRequiredPipe,
+  FileRequiredPipe(),
   FileExtensionPipe([EnumFileExtensionDocument.csv]),
   FileCsvParsePipe,
   FileCsvValidationPipe(UserImportRequestSchema, {

@@ -8,7 +8,7 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import {
-    ITermPolicyContent,
+    ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -72,31 +72,29 @@ export interface ITermPolicyRepository {
     ): Promise<ITermPolicyUserAcceptance>;
     create(
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[],
+        contents: ITermPolicyContentCreate[],
         createdBy: string
     ): Promise<TermPolicy>;
     delete(termPolicyId: string): Promise<TermPolicy>;
     updateContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        content: ITermPolicyContent,
+        content: ITermPolicyContentCreate,
         updatedBy: string
     ): Promise<TermPolicy>;
     addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContent,
+        newContent: ITermPolicyContentCreate,
         updatedBy: string
     ): Promise<TermPolicy>;
     removeContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto,
         updatedBy: string
     ): Promise<TermPolicy>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[],
+        contents: ITermPolicyContentCreate[],
         updatedBy: string
     ): Promise<TermPolicy>;
 }

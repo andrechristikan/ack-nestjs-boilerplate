@@ -1,7 +1,7 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
@@ -63,7 +63,7 @@ export class ActivityLogAdminController {
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByUser(
@@ -98,9 +98,9 @@ export class ActivityLogAdminController {
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
-        @Query('userId', { schema: RequestMongoIdSchema.optional() })
+        @Query('userId', { schema: RequestUuidSchema.optional() })
         userId?: string
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         return this.activityLogHttpService.getListOffsetByWorkspace(

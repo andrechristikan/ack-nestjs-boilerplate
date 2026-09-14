@@ -58,6 +58,7 @@ import {
     IUserContact,
     IUserCreateByAdmin,
     IUserCreateWithWorkspaceInput,
+    IUserList,
     IUserOnboardingVerificationRow,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
@@ -143,7 +144,7 @@ export class UserDomain {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,

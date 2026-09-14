@@ -1,4 +1,1 @@
-export enum EnumAwsS3Accessibility {
-    public = 'public',
-    private = 'private',
-}
+export { EnumAwsS3Accessibility } from '@generated/prisma-client';

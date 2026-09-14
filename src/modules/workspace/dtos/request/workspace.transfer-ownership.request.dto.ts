@@ -8,7 +8,7 @@ export const WorkspaceTransferOwnershipRequestSchema = z.strictObject({
         .meta({
             description:
                 'User to transfer ownership to; must already be a workspace member',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
 });
 

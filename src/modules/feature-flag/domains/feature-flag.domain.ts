@@ -4,6 +4,9 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlag, Prisma } from '@generated/prisma-client';
+import { FeatureFlagTargetUserRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.target-user.request';
+import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
@@ -11,11 +14,7 @@ import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/featur
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
 import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
 import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
-import {
-    IFeatureFlagMetadata,
-    IFeatureFlagUpdateMetadata,
-    IFeatureFlagUpdateStatus,
-} from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagUtil } from '@modules/feature-flag/utils/feature-flag.util';
@@ -80,7 +79,10 @@ export class FeatureFlagDomain {
         }
 
         if (userId) {
-            if (featureFlag.targetUserIds.includes(userId)) {
+            const targetUserIds = featureFlag.targetUsers.map(
+                targetUser => targetUser.userId
+            );
+            if (targetUserIds.includes(userId)) {
                 return;
             }
 
@@ -137,7 +139,7 @@ export class FeatureFlagDomain {
 
     async updateStatusByAdmin(
         id: string,
-        data: IFeatureFlagUpdateStatus
+        data: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
@@ -154,7 +156,7 @@ export class FeatureFlagDomain {
 
     async updateMetadataByAdmin(
         id: string,
-        data: IFeatureFlagUpdateMetadata
+        data: FeatureFlagUpdateMetadataRequestDto
     ): Promise<FeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
@@ -175,5 +177,39 @@ export class FeatureFlagDomain {
         ]);
 
         return updated;
+    }
+
+    async addTargetUserByAdmin(
+        id: string,
+        { userId }: FeatureFlagTargetUserRequestDto
+    ): Promise<FeatureFlag> {
+        const featureFlag = await this.featureFlagRepository.findOneById(id);
+        if (!featureFlag) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        await Promise.all([
+            this.featureFlagRepository.addTargetUser(id, userId),
+            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
+        ]);
+
+        return featureFlag;
+    }
+
+    async removeTargetUserByAdmin(
+        id: string,
+        userId: string
+    ): Promise<FeatureFlag> {
+        const featureFlag = await this.featureFlagRepository.findOneById(id);
+        if (!featureFlag) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        await Promise.all([
+            this.featureFlagRepository.removeTargetUser(id, userId),
+            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
+        ]);
+
+        return featureFlag;
     }
 }

@@ -49,7 +49,7 @@ Admin reads and writes ACROSS every workspace — that is what the scope means. 
 Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
 
 - Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated by `RequestIsValidObjectIdPipe` — never from the header.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `RequestUuidSchema` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
@@ -87,41 +87,23 @@ Write the roles that are actually checked — for a platform admin route that is
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
 - **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
-### `RequestRequiredPipe` and `RequestIsValidObjectIdPipe` are a PAIR (HARD)
+### UUID params use request schemas (HARD)
 
-An ObjectId param is always validated by both, in this order:
+A route or query parameter carrying a persisted row id uses `RequestUuidSchema` in the binding:
 
 ```typescript
-@Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+@Param('workspaceId', { schema: RequestUuidSchema })
+workspaceId: string
 ```
 
-Presence is checked before format. Never `RequestIsValidObjectIdPipe` on its own for an ObjectId.
-
-**This is deliberate, and it is about the error the caller receives, not about safety.**
-`RequestIsValidObjectIdPipe` does reject a falsy value on its own — but it reports it as
-`RequestIsMongoIdException`, which tells the caller their value is malformed when in fact they never
-sent one. `RequestRequiredPipe` first means an absent value returns `RequestParamRequiredException`
-and a present-but-wrong value returns `RequestIsMongoIdException`. Two different client mistakes, two
-different answers.
-
-On a `@Param` the distinction is currently unobservable — an absent path segment does not match the
-route, so the request 404s before any pipe runs. That does not make the pair decorative: it is the
-same contract wherever the value is bound, it is what makes the binding safe to move to a `@Query`
-later, and it states the intent for the next reader. **Do not "clean it up".**
-
-**The pair governs REQUIRED bindings.** An OPTIONAL ObjectId — a query filter the caller may omit —
-takes `new RequestIsValidObjectIdPipe({ optional: true })` alone, because `RequestRequiredPipe`
-would reject the very absence the binding permits, and an absent value is no longer a client mistake
-worth its own answer. An optional ObjectId query param with NO pipe is still a defect: the raw string
-reaches Prisma and a malformed value returns 500 instead of 400.
+Optional UUID filters use `.optional()` on the same schema:
 
 ```typescript
-@Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+@Query('workspaceId', { schema: RequestUuidSchema.optional() })
 workspaceId?: string
 ```
 
-A param that is NOT an ObjectId (a token, a language code) takes `RequestRequiredPipe` alone — do not
-invent a format validator it has no format for.
+A param that is not a UUID, such as a token or language code, uses the schema for its own shape.
 
 ## Route path shape (HARD)
 
