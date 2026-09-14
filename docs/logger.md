@@ -79,11 +79,11 @@ SENTRY_DSN=<your_sentry_dsn>
 
 | Variable | Description | Type | Default | Required |
 |----------|-------------|------|---------|----------|
-| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | No |
-| `LOGGER_LEVEL` | Minimum log level | `string` | `debug` | No |
-| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | No |
-| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | No |
-| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | No |
+| `LOGGER_ENABLE` | Enable/disable logging | `boolean` | `true` | Yes |
+| `LOGGER_LEVEL` | Minimum log level | `EnumLoggerLevel` | `debug` | Yes |
+| `LOGGER_INTO_FILE` | Write logs to files | `boolean` | `true` | Yes |
+| `LOGGER_PRETTIER` | Enable pretty-printing in console | `boolean` | `true` | Yes |
+| `LOGGER_AUTO` | Enable automatic HTTP request/response logging | `boolean` | `false` | Yes |
 | `SENTRY_DSN` | Sentry Data Source Name for error tracking | `string` | `null` | No |
 
 ### Configuration Interface
@@ -91,13 +91,13 @@ SENTRY_DSN=<your_sentry_dsn>
 | Option | Description | Default |
 |--------|-------------|---------|
 | `enable` | Enable/disable logging | `false` |
-| `level` | Minimum log level (`error`, `warn`, `info`, `verbose`, `debug`, `silly`) | `debug` |
+| `level` | Minimum log level, typed `EnumLoggerLevel` (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `debug` |
 | `intoFile` | Write logs to files | `false` |
 | `filePath` | Directory path for log files | `/logs` |
 | `auto` | Enable automatic HTTP request/response logging | `false` |
 | `prettier` | Enable pretty-printing in console | `false` |
 | `sentry.dsn` | Sentry DSN for error tracking | `null` |
-| `sentry.timeoutInMs` | Sentry request timeout | `ms('10s')` |
+| `sentry.timeoutInMs` | Timeout value carried on the config; `Sentry.init` is configured from `sentry.dsn` | `ms('10s')` |
 
 ## Usage
 
@@ -137,24 +137,30 @@ export class UserService {
 
 ### Log Levels
 
-Available log levels as defined in `EnumLoggerLevel`:
-
-```typescript
-this.logger.error('Error message');      // error level - Critical errors
-this.logger.warn('Warning message');     // warn level - Warning conditions
-this.logger.log('Info message');         // info level - General information
-this.logger.verbose('Verbose message');  // verbose level - Detailed information
-this.logger.debug('Debug message');      // debug level - Debug information
-```
+`EnumLoggerLevel` declares Pino's own level set. These six values are what `LOGGER_LEVEL` accepts:
 
 **Level Hierarchy (from highest to lowest priority):**
-1. `error` - Critical errors that need immediate attention
-2. `warn` - Warning conditions that should be reviewed
-3. `info` - General informational messages
-4. `verbose` - Detailed informational messages
+1. `fatal` - Unrecoverable failures that end the process or the job
+2. `error` - Critical errors that need immediate attention
+3. `warn` - Warning conditions that should be reviewed
+4. `info` - General informational messages
 5. `debug` - Debug-level messages for development
+6. `trace` - Fine-grained tracing, the most verbose level
 
-**Note:** Setting `LOGGER_LEVEL=warn` will log only `error` and `warn` messages, filtering out `info`, `verbose`, and `debug`.
+The `Logger` from `@nestjs/common` is backed by `nestjs-pino`, so its method names do not all match the level they emit:
+
+```typescript
+this.logger.fatal('Fatal message');      // fatal level
+this.logger.error('Error message');      // error level
+this.logger.warn('Warning message');     // warn level
+this.logger.log('Info message');         // info level  (method is log, not info)
+this.logger.debug('Debug message');      // debug level
+this.logger.verbose('Verbose message');  // trace level (method is verbose, not trace)
+```
+
+`log()` and `verbose()` are the two that differ. `verbose` and `silly` are Winston names; neither is a valid `LOGGER_LEVEL` value, and `LOGGER_LEVEL=verbose` is rejected by environment validation at startup.
+
+**Note:** Setting `LOGGER_LEVEL=warn` will log only `fatal`, `error`, and `warn` messages, filtering out `info`, `debug`, and `trace`.
 
 ### Log Severity
 
@@ -336,7 +342,7 @@ logs/
 When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"8.0.0"},"level":30}
+{"severity":"INFO","context":"UserService","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
 ```
 
 ### Example Usage
@@ -394,8 +400,8 @@ Routes excluded from auto-logging (defined in `logger.constant.ts`):
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
@@ -407,8 +413,8 @@ export const LoggerExcludedRoutes: string[] = [
 
 ### Pattern Matching Rules
 
-- **Exact match**: `/api/health` - matches only this exact path
-- **Wildcard suffix**: `/api/health/*` - matches `/api/health/status`, `/api/health/check`, etc.
+- **Exact match**: `/api/system/health` - matches only this exact path
+- **Wildcard suffix**: `/api/system/health/*` - matches `/api/system/health/database`, `/api/system/health/aws`, etc.
 - **Root path**: `/` - matches only the root endpoint
 - All patterns are **case-insensitive**
 
@@ -420,8 +426,8 @@ To exclude additional routes, modify the constant in `src/common/logger/constant
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',
@@ -461,7 +467,7 @@ INFO [2025-12-29 15:18:54.496 +0700]: [UserService] Creating new user
     service: {
       "name": "ACKNestJs",
       "environment": "local",
-      "version": "8.0.0"
+      "version": "9.0.0"
     }
     additionalData: {
       "userId": "user-123",
@@ -496,7 +502,7 @@ LOGGER_LEVEL=debug
 Production-optimized structured JSON for log aggregation and analysis tools:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"8.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
+{"severity":"INFO","context":"UserService","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
 ```
 
 **Features:**
@@ -622,7 +628,7 @@ Error-level logs are forwarded to Sentry Logs only; they are NOT duplicated as S
 - `AppGeneralFilter`: reports all unhandled exceptions (catch-all 500).
 - `QueueProcessorBase`: reports fatal queue job failures on the last retry attempt.
 
-A non-fatal `QueueException` is dropped in `beforeSend` and never becomes a Sentry Issue.
+`beforeSend` is the last filter every Issue passes through, and it drops four kinds of event: a non-fatal `QueueException`, an event whose `request.url` matches `LoggerExcludedRoutes`, an event whose response status code is below 500, and an event at `info` or `debug` level. Outside production it also attaches the original exception under `event.extra`. `tracesSampler` applies the same excluded-route match to transactions, returning a `0` sample rate for them.
 
 ### Sentry Configuration
 
@@ -640,11 +646,11 @@ The Sentry configuration is defined in `src/configs/logger.config.ts`:
 ```typescript
 sentry: {
     dsn: string | null;  // Sentry Data Source Name, null when SENTRY_DSN is unset
-    timeout: number;     // Request timeout in milliseconds (default: 10000ms = 10s)
+    timeoutInMs: number; // ms('10s')
 }
 ```
 
-**Default timeout:** 10 seconds (`10000ms`)
+`instrument.ts` reads `sentry.dsn` and skips `Sentry.init` entirely when it is `null`. The rest of the initializer options (sample rates, `normalizeDepth`, `maxValueLength`, `maxBreadcrumbs`, `attachStacktrace`, `sendDefaultPii`) are literals in `instrument.ts`, and the sample rates are the only ones that branch on `app.env`.
 
 ### Disabling Sentry
 

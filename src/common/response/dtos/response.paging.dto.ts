@@ -1,166 +1,56 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, PickType } from '@nestjs/swagger';
+import { ResponseSchema } from '@common/response/dtos/response.dto';
 import {
-    ResponseDto,
-    ResponseMetadataDto,
-} from '@common/response/dtos/response.dto';
+    ResponsePagingMetadataDto,
+    ResponsePagingMetadataSchema,
+} from '@common/response/dtos/response.paging-metadata.dto';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
-import { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 /**
- * Response metadata extended with pagination state (search, filters, order, page/cursor stats).
+ * Paginated response envelope without `data`. A route documenting a page adds it with
+ * `.extend({ data: z.array(item) })`.
  */
-export class ResponsePagingMetadataDto extends ResponseMetadataDto {
-    @ApiProperty({
-        required: false,
-        description: 'Active search query string.',
-        example: faker.person.fullName(),
-    })
-    search?: string;
-
-    @ApiProperty({
-        required: false,
-        description: 'Active filter conditions applied to the query.',
-    })
-    filters?: Record<
-        string,
-        string | number | boolean | Array<string | number | boolean> | Date
-    >;
-
-    @ApiProperty({
-        required: true,
-        description: 'Number of items per page.',
-        example: 20,
-    })
-    perPage: number;
-
-    @ApiProperty({
-        required: false,
-        description: 'Current page number. Present only for offset pagination.',
-        example: 1,
-    })
-    page?: number;
-
-    @ApiProperty({
-        required: false,
-        description:
-            'Total number of pages. Present only for offset pagination.',
-        example: 5,
-    })
-    totalPage?: number;
-
-    @ApiProperty({
-        required: false,
-        description: 'Total number of matching records.',
-        example: 100,
-    })
-    count?: number;
-
-    @ApiProperty({
-        required: false,
-        description:
-            'Next page number. Present only for offset pagination when hasNext is true.',
-        example: 2,
-    })
-    nextPage?: number;
-
-    @ApiProperty({
-        required: false,
-        description:
-            'Previous page number. Present only for offset pagination when hasPrevious is true.',
-        example: 1,
-    })
-    previousPage?: number;
-
-    @ApiProperty({
-        required: false,
-        description:
-            'Encoded cursor token for the next page. Present only for cursor pagination when hasNext is true.',
-        example: faker.string.alphanumeric(16),
-    })
-    nextCursor?: string;
-
-    @ApiProperty({
-        required: false,
-        description:
-            'Encoded cursor token for the previous page. Reserved for future use.',
-        example: faker.string.alphanumeric(16),
-    })
-    previousCursor?: string;
-
-    @ApiProperty({
-        required: true,
-        description: 'Indicates whether a next page exists.',
-        example: true,
-    })
-    hasNext: boolean;
-
-    @ApiProperty({
-        required: true,
-        description:
-            'Indicates whether a previous page exists. Always false for cursor pagination.',
-        example: false,
-    })
-    hasPrevious: boolean;
-
-    @ApiProperty({
-        required: true,
-        isArray: true,
-        description:
-            'Active sort order applied to the query. Each entry is a single-key object with direction.',
-        example: [
-            {
-                createdAt: EnumPaginationOrderDirectionType.desc,
-            },
-        ],
-    })
-    orderBy: IPaginationOrderBy[];
-
-    @ApiProperty({
-        required: true,
-        description: 'Fields available for search.',
-        example: ['name'],
-    })
-    availableSearch: string[];
-
-    @ApiProperty({
-        required: true,
-        description: 'Fields available for ordering.',
-        example: ['createdAt', 'updatedAt'],
-    })
-    availableOrderBy: string[];
-
-    @ApiProperty({
-        required: true,
-        type: String,
-        enum: EnumPaginationType,
-        description: 'Pagination strategy used for this response.',
-        example: EnumPaginationType.offset,
-    })
-    type: EnumPaginationType;
-}
+export const ResponsePagingSchema = ResponseSchema.extend({
+    metadata: ResponsePagingMetadataSchema.meta({
+        description: 'Contain metadata about API',
+        example: {
+            language: EnumMessageLanguage.en,
+            timestamp: 1660190937231,
+            timezone: 'Asia/Jakarta',
+            version: '1',
+            repoVersion: '1.0.0',
+            requestId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+            correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
+            search: faker.person.fullName(),
+            filters: {},
+            perPage: 20,
+            page: 1,
+            totalPage: 5,
+            count: 100,
+            nextPage: 2,
+            previousPage: 1,
+            nextCursor: faker.string.alphanumeric(16),
+            previousCursor: faker.string.alphanumeric(16),
+            hasNext: true,
+            hasPrevious: false,
+            orderBy: [`createdAt:${EnumPaginationOrderDirectionType.desc}`],
+            availableSearch: ['name'],
+            availableOrderBy: ['createdAt', 'updatedAt'],
+            type: EnumPaginationType.offset,
+        },
+    }),
+});
 
 /**
  * Paginated response envelope: statusCode, message, paging metadata, and a `data` array.
  */
-export class ResponsePagingDto<T> extends PickType(ResponseDto, [
-    'statusCode',
-    'message',
-] as const) {
-    @ApiProperty({
-        name: 'metadata',
-        required: true,
-        description: 'Contain metadata about API',
-        type: ResponsePagingMetadataDto,
-    })
+export type ResponsePagingDto<T> = {
+    statusCode: number;
+    message: string;
     metadata: ResponsePagingMetadataDto;
-
-    @ApiProperty({
-        required: true,
-        isArray: true,
-    })
     data: T[];
-}
+};

@@ -1,352 +1,143 @@
-import { FirebaseService } from '@common/firebase/services/firebase.service';
-import { HelperService } from '@common/helper/services/helper.service';
-import { MessageService } from '@common/message/services/message.service';
-import { EnumNotificationChannel } from '@generated/prisma-client';
-import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
     INotificationTemporaryPasswordPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
-import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { NotificationPushUtil } from '@modules/notification/utils/notification.push.util';
+import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
+import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
+import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationPushProcessorService
-    implements INotificationPushProcessorService, OnModuleInit
-{
+export class NotificationPushProcessorService implements OnModuleInit {
     constructor(
-        private readonly firebaseService: FirebaseService,
-        private readonly notificationRepository: NotificationRepository,
-        private readonly messageService: MessageService,
-        private readonly helperService: HelperService,
-        private readonly notificationPushUtil: NotificationPushUtil,
-        private readonly deviceOwnershipRepository: DeviceOwnershipRepository
+        private readonly notificationPushSecurityDomain: NotificationPushSecurityDomain,
+        private readonly notificationPushWorkspaceDomain: NotificationPushWorkspaceDomain,
+        private readonly notificationPushMaintenanceDomain: NotificationPushMaintenanceDomain,
+        private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
     async onModuleInit(): Promise<void> {
-        await this.notificationPushUtil.sendCleanupStaleTokens();
+        await this.notificationPushQueue.sendCleanupStaleTokens();
     }
 
     async processNewDeviceLogin({
-        data: {
-            send: { notificationTokens, username, notificationId, userId },
-            data,
-        },
+        data: { send, data },
     }: Job<
         INotificationPushQueuePayload<INotificationNewDeviceLoginPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
-            return {
-                message:
-                    'Firebase not initialized, skipping new login notification',
-            };
-        }
-
-        const notification = await this.notificationRepository.updateProcessAt(
-            userId,
-            notificationId,
-            EnumNotificationChannel.push
+        return this.notificationPushSecurityDomain.processNewDeviceLogin(
+            send,
+            data!
         );
-        if (!notification) {
-            return {
-                message:
-                    'Notification not found, skipping new login notification',
-            };
-        }
-
-        const device = this.helperService.resolveDevice(
-            data!.requestLog.userAgent
-        );
-        const city = this.helperService.resolveCity(
-            data!.requestLog.geoLocation ?? undefined
-        );
-        const loginAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data!.loginAt)
-        );
-        const title = this.messageService.setMessage(notification.title);
-        const body = this.messageService.setMessage(notification.body, {
-            properties: { device, city, username, loginAt },
-        });
-
-        const result = await this.firebaseService.sendMulticast(
-            notificationTokens,
-            {
-                title,
-                body,
-            }
-        );
-
-        await Promise.allSettled([
-            this.notificationPushUtil.sendCleanupTokens(
-                userId,
-                result.failureTokens
-            ),
-            this.notificationRepository.updateSentAt(
-                userId,
-                notificationId,
-                EnumNotificationChannel.push,
-                result.failureTokens
-            ),
-        ]);
-
-        return {
-            message: 'New login notification processed',
-            result,
-        };
     }
 
     async processResetTwoFactorByAdmin({
-        data: {
-            send: { notificationTokens, username, notificationId, userId },
-        },
+        data: { send },
     }: Job<
         INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
-            return {
-                message:
-                    'Firebase not initialized, skipping reset two-factor notification',
-            };
-        }
-
-        const notification = await this.notificationRepository.updateProcessAt(
-            userId,
-            notificationId,
-            EnumNotificationChannel.push
+        return this.notificationPushSecurityDomain.processResetTwoFactorByAdmin(
+            send
         );
-        if (!notification) {
-            return {
-                message:
-                    'Notification not found, skipping reset two-factor notification',
-            };
-        }
-
-        const title = this.messageService.setMessage(notification.title);
-        const body = this.messageService.setMessage(notification.body, {
-            properties: { username },
-        });
-
-        const result = await this.firebaseService.sendMulticast(
-            notificationTokens,
-            {
-                title,
-                body,
-            }
-        );
-
-        await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
-                userId,
-                result.failureTokens
-            ),
-            this.notificationRepository.updateSentAt(
-                userId,
-                notificationId,
-                EnumNotificationChannel.push,
-                result.failureTokens
-            ),
-        ]);
-
-        return {
-            message: 'Reset two-factor notification processed',
-            result,
-        };
     }
 
     async processTemporaryPasswordByAdmin({
-        data: {
-            send: { notificationTokens, username, notificationId, userId },
-            data,
-        },
+        data: { send, data },
     }: Job<
         INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
-            return {
-                message:
-                    'Firebase not initialized, skipping temporary password notification',
-            };
-        }
-
-        const notification = await this.notificationRepository.updateProcessAt(
-            userId,
-            notificationId,
-            EnumNotificationChannel.push
+        return this.notificationPushSecurityDomain.processTemporaryPasswordByAdmin(
+            send,
+            data!
         );
-        if (!notification) {
-            return {
-                message:
-                    'Notification not found, skipping temporary password notification',
-            };
-        }
-
-        const passwordExpiredAt = this.helperService.dateFormatToRFC2822(
-            this.helperService.dateCreateFromIso(data!.passwordExpiredAt)
-        );
-
-        const title = this.messageService.setMessage(notification.title);
-        const body = this.messageService.setMessage(notification.body, {
-            properties: { username, passwordExpiredAt },
-        });
-
-        const result = await this.firebaseService.sendMulticast(
-            notificationTokens,
-            {
-                title,
-                body,
-            }
-        );
-
-        await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
-                userId,
-                result.failureTokens
-            ),
-            this.notificationRepository.updateSentAt(
-                userId,
-                notificationId,
-                EnumNotificationChannel.push,
-                result.failureTokens
-            ),
-        ]);
-
-        return {
-            message: 'Temporary password notification processed',
-            result,
-        };
     }
 
     async processResetPassword({
-        data: {
-            send: { notificationTokens, username, notificationId, userId },
-        },
+        data: { send },
     }: Job<
         INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
-            return {
-                message:
-                    'Firebase not initialized, skipping reset password notification',
-            };
-        }
-
-        const notification = await this.notificationRepository.updateProcessAt(
-            userId,
-            notificationId,
-            EnumNotificationChannel.push
-        );
-        if (!notification) {
-            return {
-                message:
-                    'Notification not found, skipping reset password notification',
-            };
-        }
-
-        const title = this.messageService.setMessage(notification.title);
-        const body = this.messageService.setMessage(notification.body, {
-            properties: { username },
-        });
-
-        const result = await this.firebaseService.sendMulticast(
-            notificationTokens,
-            {
-                title,
-                body,
-            }
-        );
-
-        await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
-                userId,
-                result.failureTokens
-            ),
-            this.notificationRepository.updateSentAt(
-                userId,
-                notificationId,
-                EnumNotificationChannel.push,
-                result.failureTokens
-            ),
-        ]);
-
-        return {
-            message: 'Reset password notification processed',
-            result,
-        };
+        return this.notificationPushSecurityDomain.processResetPassword(send);
     }
 
     async processForgotPassword({
-        data: {
-            send: { notificationTokens, username, notificationId, userId },
-        },
+        data: { send },
     }: Job<
         INotificationPushQueuePayload,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
-            return {
-                message:
-                    'Firebase not initialized, skipping forgot password notification',
-            };
-        }
+        return this.notificationPushSecurityDomain.processForgotPassword(send);
+    }
 
-        const notification = await this.notificationRepository.updateProcessAt(
-            userId,
-            notificationId,
-            EnumNotificationChannel.push
+    async processWorkspaceInvite({
+        data: { send, data },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        return this.notificationPushWorkspaceDomain.processWorkspaceInvite(
+            send,
+            data!
         );
-        if (!notification) {
-            return {
-                message:
-                    'Notification not found, skipping forgot password notification',
-            };
-        }
+    }
 
-        const title = this.messageService.setMessage(notification.title);
-        const body = this.messageService.setMessage(notification.body, {
-            properties: { username },
-        });
-
-        const result = await this.firebaseService.sendMulticast(
-            notificationTokens,
-            {
-                title,
-                body,
-            }
+    async processWorkspaceJoinRequest({
+        data: { send, data },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRequest(
+            send,
+            data!
         );
+    }
 
-        await Promise.all([
-            this.notificationPushUtil.sendCleanupTokens(
-                userId,
-                result.failureTokens
-            ),
-            this.notificationRepository.updateSentAt(
-                userId,
-                notificationId,
-                EnumNotificationChannel.push,
-                result.failureTokens
-            ),
-        ]);
+    async processWorkspaceJoinAccepted({
+        data: { send, data },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinAccepted(
+            send,
+            data!
+        );
+    }
 
-        return {
-            message: 'Forgot password notification processed',
-            result,
-        };
+    async processWorkspaceJoinRejected({
+        data: { send, data },
+    }: Job<
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
+        IQueueResponse,
+        EnumNotificationPushProcess
+    >): Promise<IQueueResponse> {
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRejected(
+            send,
+            data!
+        );
     }
 
     async processCleanupTokens({
@@ -358,25 +149,13 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        const result = await this.deviceOwnershipRepository.cleanupTokens(
+        return this.notificationPushMaintenanceDomain.processCleanupTokens(
             userId,
             failureTokens
         );
-
-        return {
-            message: `Processed token cleanup for invalid tokens`,
-            countRequestedTokens: failureTokens.length,
-            countRemovedTokens: result.count,
-        };
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        const staleTokens =
-            await this.deviceOwnershipRepository.cleanupStaleTokens();
-
-        return {
-            message: `Processed stale token cleanup`,
-            countRemovedTokens: staleTokens.count,
-        };
+        return this.notificationPushMaintenanceDomain.processCleanupStaleTokens();
     }
 }

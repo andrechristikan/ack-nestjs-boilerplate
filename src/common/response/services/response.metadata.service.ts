@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -10,7 +10,7 @@ import {
     RequestLanguageStoreKey,
     RequestVersionStoreKey,
 } from '@common/request/constants/request.constant';
-import { ResponseMetadataDto } from '@common/response/dtos/response.dto';
+import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import { IResponseMetadataService } from '@common/response/interfaces/response.metadata.service.interface';
 
 /**
@@ -25,7 +25,7 @@ export class ResponseMetadataService implements IResponseMetadataService {
     constructor(
         private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperDateService: HelperDateService
     ) {
         this.defaultLanguage =
             this.configService.get<EnumMessageLanguage>('message.language')!;
@@ -36,15 +36,15 @@ export class ResponseMetadataService implements IResponseMetadataService {
     }
 
     create(): ResponseMetadataDto {
-        const today = this.helperService.dateCreate();
+        const today = this.helperDateService.create();
 
         return {
             language:
                 (this.requestStoreService.get<string>(
                     RequestLanguageStoreKey
                 ) as EnumMessageLanguage) ?? this.defaultLanguage,
-            timestamp: this.helperService.dateGetTimestamp(today),
-            timezone: this.helperService.dateGetZone(today),
+            timestamp: this.helperDateService.getTimestamp(today),
+            timezone: this.helperDateService.getZone(today),
             version:
                 this.requestStoreService.get<string>(RequestVersionStoreKey) ??
                 this.urlVersion,

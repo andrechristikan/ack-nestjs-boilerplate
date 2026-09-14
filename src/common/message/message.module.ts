@@ -18,6 +18,7 @@ export class MessageModule {
             exports: [MessageService],
             imports: [
                 I18nModule.forRootAsync({
+                    imports: [],
                     loader: I18nJsonLoader,
                     inject: [ConfigService],
                     resolvers: [new HeaderResolver(['x-custom-lang'])],

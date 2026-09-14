@@ -287,7 +287,7 @@ Update in Vault, then re-pull. Auth with the root token from `init.json`:
 ```bash
 docker compose --profile vault exec vault sh -c '
   export VAULT_TOKEN=$(sed -n "s/.*\"root_token\": *\"\([^\"]*\)\".*/\1/p" /vault/init/init.json)
-  vault kv patch ack-nestjs-boilerplate/development APP_DEBUG=true
+  vault kv patch ack-nestjs-boilerplate/development DATABASE_DEBUG=true
 '
 ```
 
@@ -355,7 +355,7 @@ Defaults work out of the box. Override via environment variables if needed.
 |---|---|---|---|
 | `VAULT_CONFIG` | `entrypoint.sh` | `/vault/config.hcl` | Server config file path |
 | `INIT_FILE` | `entrypoint.sh` / `bootstrap.sh` | `/vault/init/init.json` | Init output (unseal key + root token) |
-| `VAULT_ADDR` | `bootstrap.sh` | `http://vault:8200` | Vault API address (network alias) |
+| `VAULT_ADDR` | `bootstrap.sh` / `entrypoint.sh` | `http://vault:8200` (bootstrap), `http://127.0.0.1:8200` (entrypoint) | Vault API address (network alias from bootstrap, in-container loopback from the entrypoint) |
 | `KV_MOUNT` | `bootstrap.sh` / `pull.sh` | `ack-nestjs-boilerplate` | kv-v2 mount path (the project) |
 | `KV_ENVS` | `bootstrap.sh` | `production staging development` | Environments to provision |
 | `KV_SEED_ENV` | `bootstrap.sh` | `development` | The only env seeded from `.env.example` |

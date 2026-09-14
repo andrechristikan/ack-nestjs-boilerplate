@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "extends": "./tsconfig.json",
+    "include": ["src/**/*"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "coverage",
+        "logs",
+        "keys",
+        ".warmup",
+        ".nyc_output",
+        "generated",
+        "test",
+        "scripts",
+        "src/metadata.ts",
+        "swagger.json",
+        "**/**/templates/*"
+    ]
+}

@@ -1,8 +1,10 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperService } from '@common/helper/services/helper.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { RequestContextService } from '@common/request/services/request.context.service';
 import {
     LoggerAutoContext,
     LoggerExcludedRoutes,
@@ -14,7 +16,10 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { Response } from 'express';
 import { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
 import stripAnsi from 'strip-ansi';
-import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
+import {
+    EnumLoggerLevel,
+    EnumLoggerSeverity,
+} from '@common/logger/enums/logger.enum';
 import { Options } from 'pino-http';
 
 @Injectable()
@@ -26,7 +31,7 @@ export class LoggerOptionService {
     private readonly autoLogger: boolean;
 
     private readonly enable: boolean;
-    private readonly level: string;
+    private readonly level: EnumLoggerLevel;
     private readonly intoFile: boolean;
     private readonly filePath: string;
     private readonly prettier: boolean;
@@ -36,7 +41,9 @@ export class LoggerOptionService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
+        private readonly requestContextService: RequestContextService
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.name = this.configService.get<string>('app.name')!;
@@ -45,7 +52,7 @@ export class LoggerOptionService {
         this.autoLogger = this.configService.get<boolean>('logger.auto')!;
 
         this.enable = this.configService.get<boolean>('logger.enable')!;
-        this.level = this.configService.get<string>('logger.level')!;
+        this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
         this.intoFile = this.configService.get<boolean>('logger.intoFile')!;
         this.filePath = this.configService.get<string>('logger.filePath')!;
         this.prettier = this.configService.get<boolean>('logger.prettier')!;
@@ -62,6 +69,7 @@ export class LoggerOptionService {
 
     async createOptions(): Promise<Params> {
         return {
+            forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
                 genReqId: this.getReqId,
                 formatters: {
@@ -158,8 +166,8 @@ export class LoggerOptionService {
     ) => Record<string, unknown> {
         return (obj: Record<string, unknown>) => {
             const pid = process.pid;
-            const hostname = this.helperService.getHostname();
-            const today = this.helperService.dateCreate();
+            const hostname = this.requestContextService.getHostname();
+            const today = this.helperDateService.create();
 
             const {
                 time: _time,
@@ -413,12 +421,11 @@ export class LoggerOptionService {
     }
 
     private createAutoLoggingConfig():
-        | { ignore: (req: IRequestApp) => boolean }
-        | boolean {
+        { ignore: (req: IRequestApp) => boolean } | boolean {
         return this.autoLogger === true
             ? {
                   ignore: (req: IRequestApp) =>
-                      this.helperService.checkUrlMatchesPatterns(
+                      this.helperStringService.checkUrlMatchesPatterns(
                           req.url,
                           LoggerExcludedRoutes
                       ),

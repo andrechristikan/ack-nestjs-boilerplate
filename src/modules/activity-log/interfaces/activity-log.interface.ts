@@ -1,10 +1,11 @@
-import { ActivityLog, User } from '@generated/prisma-client';
+import { ActivityLog } from '@generated/prisma-client';
+import { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IActivityLog extends ActivityLog {
-    user: User;
+    user: IUserRef;
 }
 
 export type IActivityLogMetadata = Record<
     string,
-    string | number | Date | boolean
+    string | number | boolean | Date
 >;

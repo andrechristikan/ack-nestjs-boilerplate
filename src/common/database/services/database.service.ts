@@ -9,7 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client';
 import { DatabaseClientToken } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
-import { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import {
+    IDatabaseClient,
+    IDatabaseTransactionClient,
+} from '@common/database/interfaces/database.client.interface';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -47,6 +50,15 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
+     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client.
+     */
+    async withTransaction<T>(
+        fn: (tx: IDatabaseTransactionClient) => Promise<T>
+    ): Promise<T> {
+        return this.client.$transaction(async tx => fn(tx));
+    }
+
+    /**
      * Opens the connection and rethrows on failure, so boot fails loudly rather than serving a
      * process with no database.
      */
@@ -61,7 +73,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Closes the connection.
+     * Closes the connection. A failure is logged and swallowed, because throwing here would abort
+     * the shutdown sequence and leave the process alive with its signal handlers already consumed.
      */
     private async disconnect(): Promise<void> {
         try {
@@ -69,7 +82,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             this.logger.log('Successfully disconnected from the database');
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to disconnect from the database');
-            throw error;
         }
     }
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ValidationError } from 'class-validator';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
+import Case from 'case';
 import { I18nService } from 'nestjs-i18n';
 import {
     IMessageErrorOptions,
@@ -10,6 +11,7 @@ import {
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
 import { IMessageService } from '@common/message/interfaces/message.service.interface';
+import { MessageValidationIssueFallbackKey } from '@common/message/constants/message.constant';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 @Injectable()
@@ -28,6 +30,56 @@ export class MessageService implements IMessageService {
         )!;
     }
 
+    private resolveIssueKey(issue: StandardSchemaV1.Issue): string {
+        const code: unknown = 'code' in issue ? issue.code : undefined;
+
+        if (typeof code !== 'string') {
+            return MessageValidationIssueFallbackKey;
+        }
+
+        return Case.camel(code);
+    }
+
+    private resolveIssueProperty(issue: StandardSchemaV1.Issue): string {
+        const path = issue.path ?? [];
+
+        if (path.length === 0) {
+            return 'Unknown';
+        }
+
+        return path
+            .map(segment =>
+                typeof segment === 'object'
+                    ? String(segment.key)
+                    : String(segment)
+            )
+            .join('.');
+    }
+
+    private createValidationMessage(
+        issue: StandardSchemaV1.Issue,
+        options?: IMessageErrorOptions
+    ): IMessageValidationError {
+        const key = this.resolveIssueKey(issue);
+        const property = this.resolveIssueProperty(issue);
+        const lastProperty = property.split('.').pop() ?? 'Unknown';
+        const properties: IMessageSetOptions = {
+            customLanguage: options?.customLanguage,
+            properties: { property: lastProperty },
+        };
+
+        const overridden = this.setMessage(issue.message, properties);
+
+        return {
+            key,
+            property,
+            message:
+                overridden === issue.message
+                    ? this.setMessage(`request.error.${key}`, properties)
+                    : overridden,
+        };
+    }
+
     filterLanguage(customLanguage: string): string {
         return this.availableLanguage.find(e => e === customLanguage)!;
     }
@@ -44,37 +96,12 @@ export class MessageService implements IMessageService {
     }
 
     setValidationMessage(
-        errors: ValidationError[],
+        issues: readonly StandardSchemaV1.Issue[],
         options?: IMessageErrorOptions
     ): IMessageValidationError[] {
-        const messages: IMessageValidationError[] = [];
-
-        for (const error of errors) {
-            let property = error.property;
-            let constraints: Record<string, string> = error.constraints!;
-            let constraintKeys = constraints ? Object.keys(constraints) : [];
-
-            if (constraintKeys.length === 0) {
-                const nestedResult = this.processNestedValidationError(error);
-                property = nestedResult.property;
-                constraints = nestedResult.constraints;
-                constraintKeys = Object.keys(nestedResult.constraints);
-            }
-
-            for (const constraintKey of constraintKeys) {
-                messages.push(
-                    this.createValidationMessage(
-                        constraintKey,
-                        constraints[constraintKey],
-                        error.value,
-                        property,
-                        options
-                    )
-                );
-            }
-        }
-
-        return messages;
+        return issues.map(issue =>
+            this.createValidationMessage(issue, options)
+        );
     }
 
     setValidationImportMessage(
@@ -85,62 +112,5 @@ export class MessageService implements IMessageService {
             row: val.row,
             errors: this.setValidationMessage(val.errors, options),
         }));
-    }
-
-    private processNestedValidationError(error: ValidationError): {
-        property: string;
-        constraints: Record<string, string>;
-    } {
-        let property = error.property;
-        let children: ValidationError[] = error.children ?? [];
-        let lastConstraint: Record<string, string> = {};
-
-        while (children.length > 0) {
-            const child = children[0];
-            lastConstraint = child.constraints ?? {};
-            property = `${property}.${child.property}`;
-            children = children[0].children ?? [];
-        }
-
-        return {
-            property,
-            constraints: lastConstraint,
-        };
-    }
-
-    private createValidationMessage(
-        constraint: string,
-        rawMessage: string,
-        value: unknown,
-        property?: string,
-        options?: IMessageErrorOptions
-    ): IMessageValidationError {
-        const messagePath = `request.error.${constraint}`;
-        property = property ?? 'Unknown';
-        const lastProperty = property?.split('.')?.pop() ?? 'Unknown';
-
-        let message: string = this.setMessage(`request.error.${constraint}`, {
-            customLanguage: options?.customLanguage,
-            properties: {
-                property: lastProperty,
-                value: value as string | number,
-            },
-        });
-
-        if (message === messagePath) {
-            message = this.setMessage(rawMessage, {
-                customLanguage: options?.customLanguage,
-                properties: {
-                    property: lastProperty,
-                    value: value as string | number,
-                },
-            });
-        }
-
-        return {
-            key: constraint,
-            property,
-            message,
-        };
     }
 }

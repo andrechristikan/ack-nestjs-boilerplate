@@ -1,182 +1,68 @@
+import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 
-class HelloDateResponseDto {
-    @ApiProperty({
-        required: true,
-        example: faker.date.recent(),
-    })
-    date: Date;
-
-    @ApiProperty({
-        required: true,
+const HelloDateResponseSchema = z.object({
+    iso: z.string().meta({
+        description: 'Current server date as an ISO-8601 string',
         example: '2022-08-10T07:22:17.231Z',
-    })
-    iso: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    timestamp: z.number().meta({
+        description: 'Current server date as a Unix timestamp in milliseconds',
         example: 1660190937231,
-    })
-    timestamp: number;
-}
+    }),
+});
 
-class HelloAppResponseDto {
-    @ApiProperty({
-        required: true,
+const HelloAppResponseSchema = z.object({
+    name: z.string().meta({
+        description: 'Application name',
         example: 'Ack NestJS Boilerplate',
-    })
-    name: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    env: z.enum(EnumAppEnvironment).meta({
+        description: 'Runtime environment of the application',
         example: EnumAppEnvironment.development,
-        enum: EnumAppEnvironment,
-    })
-    env: EnumAppEnvironment;
-
-    @ApiProperty({
-        required: true,
+    }),
+    timezone: z.string().meta({
+        description: 'Timezone the application clock uses',
         example: 'UTC',
-    })
-    timezone: string;
-}
+    }),
+});
 
-class HelloAuthResponseDto {
-    @ApiProperty({
-        required: true,
-        example: true,
-    })
-    passwordAttempt: boolean;
-
-    @ApiProperty({
-        required: true,
-        example: 10,
-    })
-    passwordMaxAttempt: number;
-
-    @ApiProperty({
-        required: true,
-        example: 86400000,
-    })
-    passwordExpiredInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 3600000,
-    })
-    passwordExpiredTemporaryInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 31536000000,
-    })
-    passwordPeriodInMs: number;
-}
-
-class HelloMessageResponseDto {
-    @ApiProperty({
-        required: true,
+const HelloMessageResponseSchema = z.object({
+    availableLanguage: z.array(z.enum(EnumMessageLanguage)).meta({
+        description: 'Languages the application can serve messages in',
         example: Object.values(EnumMessageLanguage),
-        isArray: true,
-        enum: EnumMessageLanguage,
-    })
-    availableLanguage: EnumMessageLanguage[];
-
-    @ApiProperty({
-        required: true,
+    }),
+    defaultLanguage: z.enum(EnumMessageLanguage).meta({
+        description: 'Default language for application messages',
         example: EnumMessageLanguage.en,
-        enum: EnumMessageLanguage,
-    })
-    defaultLanguage: EnumMessageLanguage;
-}
+    }),
+});
 
-class HelloRequestResponseDto {
-    @ApiProperty({
-        required: true,
-        example: 5000,
-    })
-    timeoutInMs: number;
+/** Response shape of the public hello endpoint. */
+export const HelloResponseSchema = z.object({
+    date: HelloDateResponseSchema.meta({
+        description: 'Current server date in several representations',
+        example: {
+            iso: '2022-08-10T07:22:17.231Z',
+            timestamp: 1660190937231,
+        },
+    }),
+    app: HelloAppResponseSchema.meta({
+        description: 'Application identity and environment',
+        example: {
+            name: 'Ack NestJS Boilerplate',
+            env: EnumAppEnvironment.development,
+            timezone: 'UTC',
+        },
+    }),
+    message: HelloMessageResponseSchema.meta({
+        description: 'Message language configuration',
+        example: {
+            availableLanguage: Object.values(EnumMessageLanguage),
+            defaultLanguage: EnumMessageLanguage.en,
+        },
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyJsonLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyRawLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyTextLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyUrlencodedLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 1048576,
-    })
-    bodyApplicationOctetStreamLimitInBytes: number;
-
-    @ApiProperty({
-        required: true,
-        example: 60000,
-    })
-    throttleTtlInMs: number;
-
-    @ApiProperty({
-        required: true,
-        example: 100,
-    })
-    throttleLimit: number;
-}
-
-export class HelloResponseDto {
-    @ApiProperty({
-        required: true,
-        type: () => HelloDateResponseDto,
-    })
-    @Type(() => HelloDateResponseDto)
-    date: HelloDateResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: () => HelloAppResponseDto,
-    })
-    @Type(() => HelloAppResponseDto)
-    app: HelloAppResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: () => HelloAuthResponseDto,
-    })
-    @Type(() => HelloAuthResponseDto)
-    auth: HelloAuthResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: () => HelloMessageResponseDto,
-    })
-    @Type(() => HelloMessageResponseDto)
-    message: HelloMessageResponseDto;
-
-    @ApiProperty({
-        required: true,
-        type: () => HelloRequestResponseDto,
-    })
-    @Type(() => HelloRequestResponseDto)
-    request: HelloRequestResponseDto;
-}
+export type HelloResponseDto = z.infer<typeof HelloResponseSchema>;

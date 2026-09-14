@@ -9,8 +9,8 @@ export const LoggerAutoContext = 'LoggerAutoContext';
 export const LoggerExcludedRoutes: string[] = [
     '/api/public/hello',
     '/api/public/hello/*',
-    '/api/health',
-    '/api/health/*',
+    '/api/system/health',
+    '/api/system/health/*',
     '/metrics',
     '/metrics/*',
     '/favicon.ico',

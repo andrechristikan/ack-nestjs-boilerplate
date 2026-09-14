@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -7,33 +6,33 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { IRole } from '@modules/role/interfaces/role.interface';
+import {
+    IRole,
+    IRoleCreate,
+    IRoleUpdate,
+    IRoleWithPolicies,
+    IRoleWithPolicyCount,
+} from '@modules/role/interfaces/role.interface';
+import { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@generated/prisma-client';
 
 @Injectable()
-export class RoleRepository {
+export class RoleRepository implements IRoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findWithPaginationOffsetByAdmin(
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<Role>> {
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
-            Role,
-            Prisma.RoleSelect,
+            IRoleWithPolicyCount,
             Prisma.RoleWhereInput
         >(this.databaseService.client.role, {
             ...params,
@@ -41,22 +40,19 @@ export class RoleRepository {
                 ...where,
                 ...type,
             },
+            include: { _count: { select: { policies: true } } },
         });
     }
 
-    async findWithPaginationCursor(
+    async findWithPaginationCursorBySystem(
         {
             where,
             ...params
-        }: IPaginationQueryCursorParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<Role>> {
+    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor<
-            Role,
-            Prisma.RoleSelect,
+            IRoleWithPolicyCount,
             Prisma.RoleWhereInput
         >(this.databaseService.client.role, {
             ...params,
@@ -64,35 +60,51 @@ export class RoleRepository {
                 ...where,
                 ...type,
             },
+            include: { _count: { select: { policies: true } } },
         });
     }
 
-    async findOneById(id: string): Promise<Role | null> {
+    async findOneWithPoliciesById(
+        id: string
+    ): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
+            include: { policies: true },
         });
     }
 
-    async existByName(name: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findFirst({
-            where: {
-                name: name,
-            },
-            select: { id: true, type: true, name: true },
-        });
-    }
-
-    async existById(id: string): Promise<IRole | null> {
+    async findOneById(id: string): Promise<IRole | null> {
         return this.databaseService.client.role.findUnique({
-            where: {
-                id,
-            },
+            where: { id },
             select: { id: true, type: true, name: true },
         });
     }
 
-    async used(id: string): Promise<{ id: string } | null> {
+    async findOneByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
+            where: { name },
+            select: { id: true, type: true, name: true },
+        });
+    }
+
+    async existsById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
+            where: { id },
+        });
+
+        return count > 0;
+    }
+
+    async existsByName(name: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
+            where: { name },
+        });
+
+        return count > 0;
+    }
+
+    async isUsedById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
             where: {
                 users: {
                     some: {
@@ -100,34 +112,23 @@ export class RoleRepository {
                     },
                 },
             },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
-    async create({
-        name,
-        abilities,
-        ...others
-    }: RoleCreateRequestDto): Promise<Role> {
+    async create(data: IRoleCreate): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.create({
-            data: {
-                name: name,
-                abilities: this.databaseUtil.toPlainArray(abilities),
-                ...others,
-            },
+            data,
+            include: { policies: true },
         });
     }
 
-    async update(
-        id: string,
-        { abilities, ...others }: RoleUpdateRequestDto
-    ): Promise<Role> {
+    async update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.update({
             where: { id },
-            data: {
-                abilities: this.databaseUtil.toPlainArray(abilities),
-                ...others,
-            },
+            data,
+            include: { policies: true },
         });
     }
 

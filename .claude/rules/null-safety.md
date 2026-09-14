@@ -10,7 +10,7 @@ TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rule
 | Layer | Convention |
 |---|---|
 | Request / Query DTO (input boundary) | `field?: Type` |
-| Response DTO | `field?: Type` with `@Expose()` when optional; `field: Type \| null` when the value is always present-or-null |
+| Response schema | `.optional()` when the field is genuinely absent; `.nullable()` when the value is always present-or-null |
 | Module `I*` interface — data | `field: Type \| null` |
 | Module `I*` interface — request lifecycle or external spec (JWT, Prisma) | `field?: Type` |
 | Exception options / options bag | `field?: Type` |
@@ -34,3 +34,4 @@ A service signature that accepts `bio?: string` has pushed the ambiguity one lay
 - **No `any`.** Not as a param type, not as a cast, not as a generic argument. Where a shape is genuinely unknown, `unknown` plus a narrowing check is the answer.
 - **No ignored null checks.** A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and the compiler cannot see it — a `ConfigService.get` for a key the config module declares required is the canonical case. Anywhere else, handle the null.
 - **No `as` cast across a boundary** to silence a null mismatch. The mismatch is the finding.
+- **An `as` that narrows a value a third party hands in untyped is legitimate.** A library callback typed `unknown`, `object`, or an opaque marker interface gives the compiler nothing to work with, and the cast is where our knowledge of the real shape enters. What is a defect is `as` between two types WE own, forcing them to agree instead of fixing whichever one is wrong.

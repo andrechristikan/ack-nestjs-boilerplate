@@ -1,45 +1,36 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
 } from '@generated/prisma-client';
-import { IsBoolean, IsEnum, IsNotEmpty } from 'class-validator';
 
-export class NotificationUserSettingRequestDto {
-    @ApiProperty({
-        required: true,
-        enum: [
+export const NotificationUserSettingRequestSchema = z.strictObject({
+    channel: z
+        .enum([
             EnumNotificationChannel.email,
             EnumNotificationChannel.push,
             EnumNotificationChannel.inApp,
-        ],
-        example: EnumNotificationChannel.email,
-    })
-    @IsEnum([
-        EnumNotificationChannel.email,
-        EnumNotificationChannel.push,
-        EnumNotificationChannel.inApp,
-    ])
-    @IsNotEmpty()
-    channel: EnumNotificationChannel;
-
-    @ApiProperty({
-        required: true,
-        enum: [
+        ])
+        .meta({
+            description: 'Notification channel to update',
+            example: EnumNotificationChannel.email,
+        }),
+    type: z
+        .enum([
             EnumNotificationType.userActivity,
             EnumNotificationType.marketing,
-        ],
-        example: EnumNotificationType.userActivity,
-    })
-    @IsEnum([EnumNotificationType.userActivity, EnumNotificationType.marketing])
-    @IsNotEmpty()
-    type: EnumNotificationType;
-
-    @ApiProperty({
-        required: true,
+        ])
+        .meta({
+            description: 'Notification type to update',
+            example: EnumNotificationType.userActivity,
+        }),
+    isActive: z.boolean().meta({
+        description:
+            'Whether notifications of this type and channel are active',
         example: true,
-    })
-    @IsBoolean()
-    @IsNotEmpty()
-    isActive: boolean;
-}
+    }),
+});
+
+export type NotificationUserSettingRequestDto = z.infer<
+    typeof NotificationUserSettingRequestSchema
+>;

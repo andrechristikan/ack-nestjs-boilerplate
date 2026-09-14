@@ -8,8 +8,11 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
-import { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
+import {
+    TermPolicyUserAcceptanceResponseDto,
+    TermPolicyUserAcceptanceResponseSchema,
+} from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
@@ -25,7 +28,8 @@ export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
         DocResponsePaging<TermPolicyUserAcceptanceResponseDto>(
             'termPolicy.accepted',
             {
-                dto: TermPolicyUserAcceptanceResponseDto,
+                schema: TermPolicyUserAcceptanceResponseSchema,
+                availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
                 type: EnumPaginationType.cursor,
             }
         )
@@ -43,7 +47,6 @@ export function TermPolicySharedAcceptDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: EnumDocRequestBodyType.json,
-            dto: TermPolicyAcceptRequestDto,
         }),
         DocGuard({ termPolicy: true }),
         DocResponse('termPolicy.accept')

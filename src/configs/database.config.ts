@@ -5,10 +5,7 @@ export interface IConfigDatabase {
     debug: boolean;
 }
 
-export default registerAs(
-    'database',
-    (): IConfigDatabase => ({
-        url: process.env.DATABASE_URL!,
-        debug: process.env.DATABASE_DEBUG === 'true',
-    })
-);
+export default registerAs('database', (): IConfigDatabase => ({
+    url: process.env.DATABASE_URL!,
+    debug: process.env.DATABASE_DEBUG === 'true',
+}));

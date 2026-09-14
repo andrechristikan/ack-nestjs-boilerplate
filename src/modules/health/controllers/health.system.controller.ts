@@ -1,26 +1,35 @@
-import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
-import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
-import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    HealthCacheControlHeaderName,
+    HealthCacheControlHeaderValue,
+} from '@modules/health/constants/health.constant';
 import {
     HealthSystemCheckAwsDoc,
     HealthSystemCheckDatabaseDoc,
     HealthSystemCheckInstanceDoc,
     HealthSystemCheckThirdPartyDoc,
 } from '@modules/health/docs/health.system.doc';
-import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
-import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
-import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
-import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
-import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.sentry.response.dto';
+import {
+    HealthAwsResponseDto,
+    HealthAwsResponseSchema,
+} from '@modules/health/dtos/response/health.aws.response.dto';
+import {
+    HealthDatabaseResponseDto,
+    HealthDatabaseResponseSchema,
+} from '@modules/health/dtos/response/health.database.response.dto';
+import {
+    HealthInstanceResponseDto,
+    HealthInstanceResponseSchema,
+} from '@modules/health/dtos/response/health.instance.response.dto';
+import {
+    HealthThirdPartyResponseDto,
+    HealthThirdPartyResponseSchema,
+} from '@modules/health/dtos/response/health.third-party.response.dto';
+import { HealthHttpService } from '@modules/health/services/health.http.service';
+import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.system.health')
 @Controller({
@@ -28,87 +37,45 @@ import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/healt
     path: '/health',
 })
 export class HealthSystemController {
-    constructor(
-        private readonly health: HealthCheckService,
-        private readonly healthInstanceIndicator: HealthInstanceIndicator,
-        private readonly awsS3BucketIndicator: HealthAwsS3BucketIndicator,
-        private readonly awsSESIndicator: HealthAwsSESIndicator,
-        private readonly databaseIndicator: HealthDatabaseIndicator,
-        private readonly redisIndicator: HealthRedisIndicator,
-        private readonly sentryIndicator: HealthSentryIndicator
-    ) {}
+    constructor(private readonly healthHttpService: HealthHttpService) {}
 
     @HealthSystemCheckAwsDoc()
-    @Response('health.checkAws')
-    @HealthCheck()
+    @Response('health.checkAws', { schema: HealthAwsResponseSchema })
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/aws')
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const data = await this.health.check([
-            () =>
-                this.awsS3BucketIndicator.isHealthy(
-                    's3PublicBucket',
-                    EnumAwsS3Accessibility.public
-                ),
-            () =>
-                this.awsS3BucketIndicator.isHealthy(
-                    's3PrivateBucket',
-                    EnumAwsS3Accessibility.private
-                ),
-            () => this.awsSESIndicator.isHealthy('ses'),
-        ]);
-
-        return {
-            data: data as HealthAwsResponseDto,
-        };
+        return this.healthHttpService.checkAws();
     }
 
     @HealthSystemCheckDatabaseDoc()
-    @Response('health.checkDatabase')
-    @HealthCheck()
+    @Response('health.checkDatabase', { schema: HealthDatabaseResponseSchema })
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/database')
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        const data = await this.health.check([
-            () => this.databaseIndicator.isHealthy('database'),
-            () => this.redisIndicator.isHealthy('redis'),
-        ]);
-        return {
-            data: data as HealthDatabaseResponseDto,
-        };
+        return this.healthHttpService.checkDatabase();
     }
 
     @HealthSystemCheckThirdPartyDoc()
-    @Response('health.checkThirdParty')
-    @HealthCheck()
+    @Response('health.checkThirdParty', {
+        schema: HealthThirdPartyResponseSchema,
+    })
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/third-party')
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        const data = await this.health.check([
-            () => this.sentryIndicator.isHealthy('sentry'),
-        ]);
-        return {
-            data: data as HealthThirdPartyResponseDto,
-        };
+        return this.healthHttpService.checkThirdParty();
     }
 
     @HealthSystemCheckInstanceDoc()
-    @Response('health.checkInstance')
-    @HealthCheck()
+    @Response('health.checkInstance', { schema: HealthInstanceResponseSchema })
+    @Header(HealthCacheControlHeaderName, HealthCacheControlHeaderValue)
     @ApiKeySystemProtected()
     @Get('/instance')
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        const data = await this.health.check([
-            () => this.healthInstanceIndicator.isHealthyMemoryRss('memoryRss'),
-            () =>
-                this.healthInstanceIndicator.isHealthyMemoryHeap('memoryHeap'),
-            () => this.healthInstanceIndicator.isHealthyStorage('storage'),
-        ]);
-
-        return {
-            data: data as HealthInstanceResponseDto,
-        };
+        return this.healthHttpService.checkInstance();
     }
 }

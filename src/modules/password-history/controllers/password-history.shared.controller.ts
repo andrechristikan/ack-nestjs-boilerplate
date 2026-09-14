@@ -1,5 +1,6 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
@@ -8,9 +9,11 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistorySharedListDoc } from '@modules/password-history/docs/password-history.shared.doc';
-import { PasswordHistoryResponseDto } from '@modules/password-history/dtos/response/password-history.response.dto';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
+import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get } from '@nestjs/common';
@@ -23,24 +26,29 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class PasswordHistorySharedController {
     constructor(
-        private readonly passwordHistoryService: PasswordHistoryService
+        private readonly passwordHistoryHttpService: PasswordHistoryHttpService
     ) {}
 
     @PasswordHistorySharedListDoc()
-    @ResponsePaging('passwordHistory.list')
+    @ResponsePaging('passwordHistory.list', {
+        schema: PasswordHistoryResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery()
-        pagination: IPaginationQueryCursorParams<
-            Prisma.PasswordHistorySelect,
-            Prisma.PasswordHistoryWhereInput
-        >,
+        @PaginationCursorQuery({
+            availableOrderBy: PasswordHistoryCursorAvailableOrderBy,
+        })
+        pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<PasswordHistoryResponseDto>> {
-        return this.passwordHistoryService.getListCursor(userId, pagination);
+    ): Promise<IResponsePagingReturn<IPasswordHistory>> {
+        return this.passwordHistoryHttpService.getListCursor(
+            userId,
+            pagination
+        );
     }
 }

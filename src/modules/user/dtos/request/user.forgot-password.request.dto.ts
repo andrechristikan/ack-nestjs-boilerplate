@@ -1,7 +1,10 @@
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { PickType } from '@nestjs/swagger';
+import { z } from 'zod';
+import { UserLoginRequestSchema } from '@modules/user/dtos/request/user.login.request.dto';
 
-export class UserForgotPasswordRequestDto extends PickType(
-    UserLoginRequestDto,
-    ['email'] as const
-) {}
+export const UserForgotPasswordRequestSchema = UserLoginRequestSchema.pick({
+    email: true,
+});
+
+export type UserForgotPasswordRequestDto = z.infer<
+    typeof UserForgotPasswordRequestSchema
+>;

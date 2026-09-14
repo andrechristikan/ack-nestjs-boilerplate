@@ -10,6 +10,7 @@ import { RedisClientCachedProvider } from '@common/redis/constants/redis.constan
 export class RequestThrottlerStorageService implements ThrottlerStorage {
     private readonly keyPattern: string;
     private readonly blockKeyPattern: string;
+    private readonly sequenceKeyPattern: string;
     private readonly logger = new Logger(RequestThrottlerStorageService.name);
 
     constructor(
@@ -21,6 +22,9 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
         )!;
         this.blockKeyPattern = this.configService.get<string>(
             'request.throttle.blockKeyPattern'
+        )!;
+        this.sequenceKeyPattern = this.configService.get<string>(
+            'request.throttle.sequenceKeyPattern'
         )!;
     }
 
@@ -39,6 +43,19 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
         return store.getClient();
     }
 
+    private failOpenRecord(): ThrottlerStorageRecord {
+        return {
+            totalHits: 0,
+            timeToExpire: 0,
+            isBlocked: false,
+            timeToBlockExpire: 0,
+        };
+    }
+
+    private toSeconds(milliseconds: number): number {
+        return milliseconds > 0 ? Math.ceil(milliseconds / 1000) : 0;
+    }
+
     async increment(
         key: string,
         ttl: number,
@@ -52,59 +69,82 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
             throttlerName,
             key
         );
+        const sequenceKey = this.buildKey(
+            this.sequenceKeyPattern,
+            throttlerName,
+            key
+        );
 
+        // Every duration this script returns is in milliseconds.
         const script = `
             local redisKey = KEYS[1]
             local blockKey = KEYS[2]
+            local sequenceKey = KEYS[3]
             local ttl = tonumber(ARGV[1])
             local limit = tonumber(ARGV[2])
             local blockDuration = tonumber(ARGV[3])
 
-            local blockExists = redis.call('EXISTS', blockKey)
-            if blockExists == 1 then
+            local time = redis.call('TIME')
+            local seconds = tonumber(time[1])
+            local microseconds = tonumber(time[2])
+            local nowMs = (seconds * 1000) + math.floor(microseconds / 1000)
+            local nowUs = (seconds * 1000000) + microseconds
+
+            local function windowRemaining()
+                local oldest = redis.call('ZRANGE', redisKey, 0, 0, 'WITHSCORES')
+                if not oldest[2] then
+                    return 0
+                end
+
+                local remaining = ttl - (nowMs - tonumber(oldest[2]))
+                if remaining < 0 then
+                    return 0
+                end
+
+                return remaining
+            end
+
+            if redis.call('EXISTS', blockKey) == 1 then
                 local blockTtl = redis.call('PTTL', blockKey)
-                local currentCount = redis.call('GET', redisKey)
-                return {
-                    tonumber(currentCount) or (limit + 1),
-                    0,
-                    1,
-                    blockTtl > 0 and blockTtl or 0
-                }
+                if blockTtl < 0 then
+                    blockTtl = 0
+                end
+
+                return {limit + 1, 0, 1, blockTtl}
             end
 
-            local count = redis.call('INCR', redisKey)
+            redis.call('ZREMRANGEBYSCORE', redisKey, 0, nowMs - ttl)
+            local count = redis.call('ZCARD', redisKey)
 
-            local existingTtl = redis.call('PTTL', redisKey)
-            if existingTtl == -1 then
-                redis.call('PEXPIRE', redisKey, ttl)
-            end
+            if count + 1 > limit then
+                local blockTtl = 0
+                if blockDuration > 0 then
+                    local setResult = redis.call('SET', blockKey, '1', 'PX', blockDuration, 'NX')
 
-            local currentTtl = redis.call('PTTL', redisKey)
-            if currentTtl < 0 then
-                currentTtl = ttl
-            end
-
-            if count > limit and blockDuration > 0 then
-                local setResult = redis.call('SET', blockKey, '1', 'PX', blockDuration, 'NX')
-
-                local blockTtl = blockDuration
-                if not setResult then
-                    blockTtl = redis.call('PTTL', blockKey)
-                    if blockTtl <= 0 then
-                        blockTtl = blockDuration
+                    blockTtl = blockDuration
+                    if not setResult then
+                        blockTtl = redis.call('PTTL', blockKey)
+                        if blockTtl <= 0 then
+                            blockTtl = blockDuration
+                        end
                     end
                 end
 
-                return {count, currentTtl, 1, blockTtl}
+                return {count + 1, windowRemaining(), 1, blockTtl}
             end
 
-            return {count, currentTtl, 0, 0}
+            local sequence = redis.call('INCR', sequenceKey)
+            redis.call('PEXPIRE', sequenceKey, ttl)
+            redis.call('ZADD', redisKey, nowMs, string.format('%d-%d', nowUs, sequence))
+            redis.call('PEXPIRE', redisKey, ttl)
+
+            return {count + 1, windowRemaining(), 0, 0}
         `;
 
         try {
             const client = await this.getClient();
             const results = await client.eval(script, {
-                keys: [redisKey, blockKey],
+                keys: [redisKey, blockKey, sequenceKey],
                 arguments: [
                     ttl.toString(),
                     limit.toString(),
@@ -119,12 +159,8 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
                     ),
                     `Throttler got an invalid response, allowing request. Key: ${key}`
                 );
-                return {
-                    totalHits: 0,
-                    timeToExpire: 0,
-                    isBlocked: false,
-                    timeToBlockExpire: 0,
-                };
+
+                return this.failOpenRecord();
             }
 
             const parsed = (results as unknown[]).map(r => Number(r));
@@ -135,20 +171,18 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
                     ),
                     `Throttler got a non-numeric value, allowing request. Key: ${key}`
                 );
-                return {
-                    totalHits: 0,
-                    timeToExpire: 0,
-                    isBlocked: false,
-                    timeToBlockExpire: 0,
-                };
+
+                return this.failOpenRecord();
             }
-            const [totalHits, currentTtl, isBlockedNum, blockTtlNum] = parsed;
+
+            const [totalHits, remainingInMs, isBlockedNum, blockTtlInMs] =
+                parsed;
 
             return {
                 totalHits,
-                timeToExpire: currentTtl > 0 ? currentTtl : 0,
+                timeToExpire: this.toSeconds(remainingInMs),
                 isBlocked: isBlockedNum === 1,
-                timeToBlockExpire: blockTtlNum > 0 ? blockTtlNum : 0,
+                timeToBlockExpire: this.toSeconds(blockTtlInMs),
             };
         } catch (error: unknown) {
             const message =
@@ -158,12 +192,7 @@ export class RequestThrottlerStorageService implements ThrottlerStorage {
                 `Redis unavailable for throttling, allowing request. Key: ${key}`
             );
 
-            return {
-                totalHits: 0,
-                timeToExpire: 0,
-                isBlocked: false,
-                timeToBlockExpire: 0,
-            };
+            return this.failOpenRecord();
         }
     }
 }

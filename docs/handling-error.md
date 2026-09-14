@@ -121,8 +121,8 @@ All errors are formatted into `ResponseErrorDto`:
 | Field | Source | Fallback |
 |-------|--------|----------|
 | `language` | Request store `RequestLanguageStoreKey` | Config `message.language` |
-| `timestamp` | `HelperService.dateGetTimestamp()` | - |
-| `timezone` | `HelperService.dateGetZone()` | - |
+| `timestamp` | `HelperDateService.getTimestamp()` | - |
+| `timezone` | `HelperDateService.getZone()` | - |
 | `version` | Request store `RequestVersionStoreKey` | Config `app.urlVersion.version` |
 | `repoVersion` | Config `app.version` | - |
 | `requestId` | Request store `RequestIdStoreKey` | - |
@@ -141,6 +141,8 @@ x-repo-version: 1.0.0
 x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
+
+A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (the global throttler guard, the per-route guard, or the per-user interceptor) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 
@@ -201,8 +203,6 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 
 **Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 
-**Path validation**: Redirects invalid paths (not starting with `globalPrefix` or `docPrefix`) to `{globalPrefix}/public/hello` with HTTP 308. The redirect returns before Sentry reporting and before the error envelope is built.
-
 **Message**: Resolves the message path `http.{statusCode}` via the [Message System][ref-doc-message]
 
 **statusCodeKey and module**: Taken from the `HttpException` response object when it carries those fields; otherwise `statusCodeKey` is the camelCase `HttpStatus` name and `module` is `'http'`
@@ -220,13 +220,24 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 }
 ```
 
+**Rate-limited response**: a breached rate limit throws `ThrottlerException`, which is a framework `HttpException`, so this filter builds its envelope from `HttpStatus.TOO_MANY_REQUESTS` with no application status code involved. The response also carries a `Retry-After` header in seconds.
+```json
+{
+  "statusCode": 429,
+  "statusCodeKey": "tooManyRequests",
+  "module": "http",
+  "message": "Too Many Request",
+  "metadata": { ... }
+}
+```
+
 ### AppValidationFilter
 
 **Location**: `src/app/filters/app.validation.filter.ts`
 
 **Catches**: `@Catch(RequestValidationException)` - request validation errors
 
-**Use case**: Request body, query parameters, and path parameters validation failures using [class-validator][ref-class-validator]
+**Use case**: Request body, query parameters, and path parameters that fail their route's zod schema
 
 **Behavior**:
 - Formats field-specific validation errors
@@ -242,9 +253,9 @@ x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
   "message": "There are validation errors.",
   "errors": [
     {
-      "key": "isEmail",
+      "key": "invalidFormat",
       "property": "email",
-      "message": "email should be a valid email address."
+      "message": "email does not match the expected format."
     }
   ],
   "metadata": { ... }
@@ -259,7 +270,7 @@ See [Request Validation][ref-doc-request-validation] for details.
 
 **Catches**: `@Catch(FileImportException)` - file import validation errors
 
-**Use case**: CSV file import validation failures using [class-validator][ref-class-validator]
+**Use case**: CSV file import rows that fail their zod schema
 
 **Behavior**:
 - Formats row-level validation errors
@@ -278,9 +289,9 @@ See [Request Validation][ref-doc-request-validation] for details.
       "row": 2,
       "errors": [
         {
-          "key": "isEmail",
+          "key": "invalidFormat",
           "property": "email",
-          "message": "email should be a valid email address."
+          "message": "email does not match the expected format."
         }
       ]
     }
@@ -325,12 +336,16 @@ super('auth.error.passwordMustNew', { messageProperties: { period } });
 
 ### Error wrapping a cause
 
-For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body:
+For a caught error, pass the cause. It is reported to Sentry for 5xx errors and never serialized into the response body. A service that wraps a caught error lets a typed one through first, so a domain exception raised inside the `try` reaches the client with its own status code instead of the generic 500:
 
 ```typescript
 try {
   // ...
 } catch (err: unknown) {
+  if (err instanceof AppBaseException) {
+    throw err;
+  }
+
   throw new AppUnknownException(err);
 }
 ```
@@ -356,7 +371,6 @@ export class ExampleSomethingException extends AppBaseException {
 
 <!-- REFERENCES -->
 
-[ref-class-validator]: https://github.com/typestack/class-validator
 [ref-nestjs-exception-filters]: https://docs.nestjs.com/exception-filters
 
 [ref-doc-response]: response.md
@@ -364,3 +378,4 @@ export class ExampleSomethingException extends AppBaseException {
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-message]: message.md
 [ref-doc-logger]: logger.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

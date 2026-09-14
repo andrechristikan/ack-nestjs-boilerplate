@@ -33,11 +33,6 @@ export const DocStandardErrorResponse = {
         statusCode: EnumRequestStatusCodeError.validation,
         messagePath: 'request.error.validation',
     }),
-    paramRequired: DocDefault({
-        httpStatus: HttpStatus.BAD_REQUEST,
-        statusCode: EnumRequestStatusCodeError.paramRequired,
-        messagePath: 'request.error.paramRequired',
-    }),
     envForbidden: DocDefault({
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumRequestStatusCodeError.envForbidden,
@@ -152,8 +147,38 @@ export const DocFileErrorResponses = {
     }),
     requiredExtractFirst: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-        messagePath: 'file.error.requiredParseFirst',
+        messagePath: 'file.error.requiredExtractFirst',
         statusCode: EnumFileStatusCodeError.requiredExtractFirst,
+    }),
+    exceedMaxDataExport: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.exceedMaxDataExport',
+        statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
+    }),
+    exceedMaxSizeExport: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.exceedMaxSizeExport',
+        statusCode: EnumFileStatusCodeError.exceedMaxSizeExport,
+    }),
+    exceedMaxSizeUpload: DocDefault({
+        httpStatus: HttpStatus.PAYLOAD_TOO_LARGE,
+        messagePath: 'file.error.exceedMaxSizeUpload',
+        statusCode: EnumFileStatusCodeError.exceedMaxSizeUpload,
+    }),
+    exceedMaxFiles: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.exceedMaxFiles',
+        statusCode: EnumFileStatusCodeError.exceedMaxFiles,
+    }),
+    fieldUnexpected: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.fieldUnexpected',
+        statusCode: EnumFileStatusCodeError.fieldUnexpected,
+    }),
+    multipartInvalid: DocDefault({
+        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+        messagePath: 'file.error.multipartInvalid',
+        statusCode: EnumFileStatusCodeError.multipartInvalid,
     }),
 };
 

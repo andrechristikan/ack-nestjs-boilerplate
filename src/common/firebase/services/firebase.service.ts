@@ -7,10 +7,10 @@ import {
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
 import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.interface';
-import { HelperService } from '@common/helper/services/helper.service';
+import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createPrivateKey } from 'crypto';
 import * as firebaseAdmin from 'firebase-admin';
 import { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
@@ -28,7 +28,8 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperService: HelperService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly firebaseUtil: FirebaseUtil
     ) {
         this.projectId = this.configService.get<string | null>(
             'firebase.projectId'
@@ -37,19 +38,9 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
             'firebase.clientEmail'
         )!;
 
-        const rawKey = this.configService.get<string | null>(
-            'firebase.privateKey'
-        )!;
-        if (rawKey) {
-            const privateKeyBuffer = Buffer.from(rawKey, 'base64');
-            this.privateKey = createPrivateKey({
-                key: privateKeyBuffer,
-                format: 'der',
-                type: 'pkcs8',
-            }).export({ type: 'pkcs8', format: 'pem' }) as string;
-        } else {
-            this.privateKey = null;
-        }
+        this.privateKey = this.firebaseUtil.normalizePrivateKey(
+            this.configService.get<string | null>('firebase.privateKey')!
+        );
     }
 
     async onModuleInit(): Promise<void> {
@@ -152,7 +143,7 @@ export class FirebaseService implements IFirebaseService, OnModuleInit {
             );
         }
 
-        const chunkedTokens = this.helperService.arrayChunk(tokens, chunkSize);
+        const chunkedTokens = this.helperArrayService.chunk(tokens, chunkSize);
 
         const promises = chunkedTokens.map(chunk =>
             this.messaging!.sendEachForMulticast({

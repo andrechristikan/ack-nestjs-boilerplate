@@ -9,6 +9,6 @@ export class FileRequiredExtractFirstException extends AppBaseException {
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
     constructor() {
-        super('file.error.requiredParseFirst');
+        super('file.error.requiredExtractFirst');
     }
 }

@@ -1,58 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { HealthCheckStatus, HealthIndicatorResult } from '@nestjs/terminus';
+import { z } from 'zod';
+import { HealthResponseSchema } from '@modules/health/dtos/response/health.response.dto';
+import {
+    EnumHealthIndicatorStatus,
+    EnumHealthStatus,
+} from '@modules/health/enums/health.enum';
 
-export class HealthAwsResponseDto {
-    @ApiProperty({
-        required: true,
-        examples: ['error', 'ok', 'shutting_down'],
-    })
-    status: HealthCheckStatus;
-
-    @ApiProperty({
-        required: true,
+/** Response shape of the AWS health check. */
+export const HealthAwsResponseSchema = HealthResponseSchema.extend({
+    status: HealthResponseSchema.shape.status.meta({
+        description: 'Overall health status of the checked AWS indicators',
+        examples: Object.values(EnumHealthStatus),
+    }),
+    info: HealthResponseSchema.shape.info.meta({
+        description: 'AWS indicators that reported up or degraded',
         example: {
-            awsPublicBucket: {
-                status: 'up',
+            s3PublicBucket: {
+                status: EnumHealthIndicatorStatus.up,
             },
-            awsPrivateBucket: {
-                status: 'up',
+            s3PrivateBucket: {
+                status: EnumHealthIndicatorStatus.up,
             },
             ses: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
-    })
-    info?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    error: HealthResponseSchema.shape.error.meta({
+        description: 'AWS indicators that reported down',
         example: {
-            awsPublicBucket: {
-                status: 'down',
+            s3PublicBucket: {
+                status: EnumHealthIndicatorStatus.down,
             },
-            awsPrivateBucket: {
-                status: 'down',
+            s3PrivateBucket: {
+                status: EnumHealthIndicatorStatus.down,
             },
             ses: {
-                status: 'down',
+                status: EnumHealthIndicatorStatus.down,
             },
         },
-    })
-    error?: HealthIndicatorResult;
-
-    @ApiProperty({
-        required: true,
+    }),
+    details: HealthResponseSchema.shape.details.meta({
+        description: 'Combined AWS indicator results for this check',
         example: {
-            awsPublicBucket: {
-                status: 'up',
+            s3PublicBucket: {
+                status: EnumHealthIndicatorStatus.up,
             },
-            awsPrivateBucket: {
-                status: 'up',
+            s3PrivateBucket: {
+                status: EnumHealthIndicatorStatus.up,
             },
             ses: {
-                status: 'up',
+                status: EnumHealthIndicatorStatus.up,
             },
         },
-    })
-    details: HealthIndicatorResult;
-}
+    }),
+});
+
+export type HealthAwsResponseDto = z.infer<typeof HealthAwsResponseSchema>;

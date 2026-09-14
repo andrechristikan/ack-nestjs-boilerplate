@@ -1,40 +1,18 @@
-import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-    ArrayNotEmpty,
-    ArrayUnique,
-    IsNotEmpty,
-    IsObject,
-    IsString,
-    ValidateNested,
-} from 'class-validator';
+import { z } from 'zod';
+import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
+import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 
-export class TermPolicyContentRequestDto extends PickType(
-    TermPolicyContentPresignRequestDto,
-    ['language', 'size'] as const
-) {
-    @ApiProperty({
-        required: true,
-        description: 'Key of the term document in storage',
-        example: 'terms/privacy/en/terms_privacy_en_v1.hbs',
-    })
-    @IsString()
-    @IsNotEmpty()
-    readonly key: string;
-}
+export const TermPolicyContentRequestSchema =
+    TermPolicyContentPresignRequestSchema.pick({
+        language: true,
+        size: true,
+    }).extend({
+        key: AwsS3PresignRequestSchema.shape.key.meta({
+            description: 'Key of the term document in storage',
+            example: 'term-policies/privacy/v1/en.hbs',
+        }),
+    });
 
-export class TermPolicyContentsRequestDto {
-    @ApiProperty({
-        description: 'Contents of the terms policy',
-        type: [TermPolicyContentRequestDto],
-        isArray: true,
-    })
-    @Type(() => TermPolicyContentRequestDto)
-    @IsNotEmpty({ each: true })
-    @ValidateNested({ each: true })
-    @ArrayUnique((content: TermPolicyContentRequestDto) => content.language)
-    @ArrayNotEmpty()
-    @IsObject({ each: true })
-    readonly contents: TermPolicyContentRequestDto[];
-}
+export type TermPolicyContentRequestDto = z.infer<
+    typeof TermPolicyContentRequestSchema
+>;

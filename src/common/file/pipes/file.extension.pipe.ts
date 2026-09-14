@@ -1,11 +1,12 @@
 import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
 import { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
+import { FileExtensionSignatures } from '@common/file/constants/file.constant';
 import { FileService } from '@common/file/services/file.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
 /**
- * Builds a pipe that rejects uploaded files whose extension is outside `allowedExtensions`.
+ * Builds a pipe that rejects uploaded files whose declared extension or magic bytes fall outside `allowedExtensions`.
  */
 export function FileExtensionPipe(
     allowedExtensions: EnumFileExtension[]
@@ -16,25 +17,43 @@ export function FileExtensionPipe(
             allowedExtensions
         );
 
-        constructor(private readonly fileService: FileService) {}
+        private readonly signedExtensions: ReadonlySet<string>;
 
-        async transform(value: IFileInput): Promise<IFileInput> {
-            if (!value) {
-                return value;
-            }
-            const fileToValidate = this.extractFilesToValidate(value);
-            if (!fileToValidate) {
-                return value;
-            }
-            this.validate(fileToValidate);
-            return value;
+        private readonly signaturelessExtensions: ReadonlySet<string>;
+
+        constructor(private readonly fileService: FileService) {
+            this.signedExtensions = new Set(
+                allowedExtensions.flatMap(
+                    extension => this.signaturesOf(extension) ?? []
+                )
+            );
+            this.signaturelessExtensions = new Set(
+                allowedExtensions.filter(extension => {
+                    const signatures = this.signaturesOf(extension);
+
+                    return signatures !== undefined && signatures.length === 0;
+                })
+            );
         }
 
-        private extractFilesToValidate(value: IFileInput): IFile | null {
-            if (this.isEmptyValue(value)) {
-                return null;
+        private signaturesOf(
+            extension: EnumFileExtension
+        ): readonly string[] | undefined {
+            if (!(extension in FileExtensionSignatures)) {
+                return undefined;
             }
-            return value as IFile;
+
+            return FileExtensionSignatures[
+                extension as keyof typeof FileExtensionSignatures
+            ];
+        }
+
+        private extractFilesToValidate(value: IFileInput): IFile[] {
+            if (this.isEmptyValue(value)) {
+                return [];
+            }
+
+            return Array.isArray(value) ? value : [value];
         }
 
         private isEmptyValue(value: unknown): boolean {
@@ -47,19 +66,43 @@ export function FileExtensionPipe(
             );
         }
 
-        private validate(file: IFile): void {
+        private async validate(file: IFile): Promise<void> {
             if (!file?.originalname) {
                 throw new FileExtensionInvalidException();
             }
-            this.validateExtension(file.originalname);
-        }
 
-        private validateExtension(originalname: string): void {
-            const extension =
-                this.fileService.extractExtensionFromFilename(originalname);
-            if (!this.extensions.has(extension)) {
+            const declared = this.fileService.extractExtensionFromFilename(
+                file.originalname
+            );
+            if (!this.extensions.has(declared)) {
                 throw new FileExtensionInvalidException();
             }
+
+            const sniffed = await this.fileService.sniffExtensionFromBuffer(
+                file.buffer
+            );
+            if (sniffed === null) {
+                if (!this.signaturelessExtensions.has(declared)) {
+                    throw new FileExtensionInvalidException();
+                }
+
+                return;
+            }
+
+            if (!this.signedExtensions.has(sniffed)) {
+                throw new FileExtensionInvalidException();
+            }
+        }
+
+        async transform(value: IFileInput): Promise<IFileInput> {
+            if (!value) {
+                return value;
+            }
+
+            const filesToValidate = this.extractFilesToValidate(value);
+            await Promise.all(filesToValidate.map(file => this.validate(file)));
+
+            return value;
         }
     }
 

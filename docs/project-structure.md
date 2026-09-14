@@ -49,7 +49,7 @@ Each folder serves a specific purpose, supporting modularity and maintainability
 **Location:** `src/app/app.module.ts`
 
 The App Module is the root module and entry point for the ACK NestJS Boilerplate application. It orchestrates the core setup by:
-- Importing essential modules: `CommonModule` (shared utilities), `RouterModule` (API routing), and `QueueModule` (background jobs).
+- Importing two modules: `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount).
 - Registering five global exception filters for handling application exceptions, general, HTTP, validation, and import validation errors.
 - Following NestJS best practices for modular architecture and separation of concerns.
 
@@ -91,26 +91,27 @@ The languages folder provides internationalization (i18n) resources for multi-la
 The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
-- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, term policies, and users
+- Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
+- Ships three on-demand commands that are not part of `pnpm migration:seed`: `aws-s3-config`, `template-email-notification`, and `template-termPolicy`
 
 ## Queues
 
 **Location:** `src/queues/`
 
-The queues folder implements background job processing using BullMQ and Redis. It includes:
-- `queue.module.ts`: Composition root that provides the processor classes
-- `queue.register.module.ts`: Global module holding every `BullModule.registerQueue` call and the per-queue job defaults
+The queues folder is the BullMQ framework layer. It includes:
+- `queue.register.module.ts`: Global module holding every `BullModule.registerQueueAsync` call, the two BullMQ root connections (queue and processor), and the per-queue job defaults read from `queue.config.ts`
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
-- Processor files live in their owning feature module (`<module>/processors/`); only their registration lives here
+- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`; the queue registration lives here
 - Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
 
 ## Router
 
 **Location:** `src/router/`
 
-The router folder defines API routing by access level. It includes:
-- `router.module.ts`: Main router module for API route orchestration
-- `routes/`: Subfolder organizing endpoints by access level (admin, public, user, system, shared)
+The router folder mounts everything the application exposes. It includes:
+- `router.module.ts`: Root router that imports the five access-level modules and registers their path prefixes through `RouterModule.register` from `@nestjs/core`, plus the processor mount
+- `http/`: One module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need. `router.http.public.module.ts` mounts under `/public`, `router.http.system.module.ts` under `/system`, `router.http.admin.module.ts` under `/admin`, `router.http.user.module.ts` under `/user`, and `router.http.shared.module.ts` under `/shared`
+- `processor/router.processor.module.ts`: Aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application
 - Ensures clear separation of concerns and robust access control for all API endpoints
 
 ## Instrument
@@ -120,7 +121,8 @@ The router folder defines API routing by access level. It includes:
 The instrument file configures observability and monitoring for the application using **Sentry**. It is imported at the very beginning of the application bootstrap to ensure all errors and transactions are properly tracked. Key responsibilities include:
 - Initializing Sentry with DSN and configuration based on the environment
 - Configuring sampling rates for traces and profiles (higher in development, lower in production)
-- Implementing custom filtering logic to exclude non-fatal worker exceptions and protected routes from Sentry reporting
+- Implementing custom filtering logic in `beforeSend` to drop non-fatal `QueueException` events, requests to the excluded noise routes (`LoggerExcludedRoutes`: health, docs, hello, metrics, favicon, root), responses with a status code below 500, and events at `info` or `debug` level
+- Forwarding Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
 - Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
 - Ensuring sensitive data (PII) is not sent to Sentry
 
@@ -156,11 +158,30 @@ modules
   ├── notification
   ├── password-history
   ├── policy
+  ├── project
   ├── role
   ├── session
   ├── term-policy
-  └── user
+  ├── user
+  └── workspace
 ```
+
+**Per-layer Nest modules:**
+
+Each layer of a feature gets its own Nest module file at the root of the feature folder, and only the ones with something to provide exist:
+
+```
+modules/<feature>
+  ├── <feature>.repository.module.ts  # repositories
+  ├── <feature>.module.ts             # domain services, utils and queue classes
+  │                                   #   (the only one another feature consumes)
+  ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
+  └── <feature>.processor.module.ts   # processors and their processor services
+```
+
+`<feature>.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
+
+**Folders:**
 
 No module contains every folder below. Each module includes only the folders its feature needs. The folders fall into three tiers:
 
@@ -185,8 +206,8 @@ module
   ├── indicators
   ├── interceptors
   ├── processors
-  ├── templates
-  └── validations
+  ├── queues
+  └── templates
 ```
 
 This structure ensures each feature is isolated, testable, and easy to maintain.
@@ -232,6 +253,9 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 ### Processors
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
+### Queues
+The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.module.ts`.
+
 ### Repositories
 Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for services.
 
@@ -242,10 +266,7 @@ Business logic and core functionality of the module. Services interact with repo
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
-Utility functions and helpers specific to the module, such as formatting, calculations, or domain-specific operations.
-
-### Validations
-Validation logic for DTOs and other data structures, often using class-validator or custom validation rules.
+Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a service.
 
 
 ## Other Modules
@@ -257,14 +278,14 @@ Below are explanations for the root folders and files outside `src/`:
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles, the JWKS server nginx config, and the Vault bootstrap scripts and policies.
+- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated output: the Prisma client, the Swagger JSON, and the Vault init material. Not tracked by git.
+- **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
 - **scripts/**: Utility scripts for tasks like key generation.
-- **test/**: Jest configuration (`jest.json`) and the spec suite, mirroring `src/`.
+- **test/**: Jest configuration (`jest.json`). The spec suite is meant to mirror `src/`, but no spec files are committed, so `pnpm test` passes through `--passWithNoTests`.
 
 ### Files
 
@@ -282,8 +303,9 @@ Below are explanations for the root folders and files outside `src/`:
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
-- **pnpm-workspace.yaml**: pnpm workspace configuration for monorepo support.
-- **tsconfig.json**: TypeScript configuration file, specifying compiler options and the path aliases (`@app/*`, `@common/*`, `@config`, `@configs/*`, `@modules/*`, `@queues/*`, `@routes/*`, `@router`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@package`).
+- **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
+- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by `ts-prune` through `pnpm deadcode` (`--project tsconfig.json`), and by the editor. Its `include` covers `src/**/*`, `test/**/*`, and `scripts/**/*`, and it carries the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
+- **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test` and `scripts`.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

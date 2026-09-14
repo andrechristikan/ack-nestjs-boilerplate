@@ -1,38 +1,17 @@
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { EnumApiKeyType } from '@generated/prisma-client';
-import { Exclude, Expose } from 'class-transformer';
-import { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
+import { z } from 'zod';
+import { faker } from '@faker-js/faker';
+import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
 
-export class ApiKeyCreateResponseDto extends ApiKeyResponseDto {
-    @ApiProperty({
+/**
+ * Api-key shape returned once at creation and reset, carrying the plain secret.
+ */
+export const ApiKeyCreateResponseSchema = ApiKeyResponseSchema.extend({
+    secret: z.string().meta({
         description: 'Secret key of ApiKey, only show at once',
-        example: true,
-        required: true,
-    })
-    @Expose()
-    secret: string;
+        example: faker.string.alphanumeric(20),
+    }),
+});
 
-    @ApiHideProperty()
-    @Exclude()
-    isActive: boolean;
-
-    @ApiHideProperty()
-    @Exclude()
-    startAt?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    endAt?: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    name: string;
-
-    @ApiHideProperty()
-    @Exclude()
-    type: EnumApiKeyType;
-
-    @ApiHideProperty()
-    @Exclude()
-    key: string;
-}
+export type ApiKeyCreateResponseDto = z.infer<
+    typeof ApiKeyCreateResponseSchema
+>;
