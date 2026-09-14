@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumRoleType,
     EnumUserGender,
@@ -35,10 +33,8 @@ import type {
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserAuthDomain } from '@modules/user/domains/user.auth.domain';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
-import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 
 describe('UserAuthDomain', () => {
@@ -75,12 +71,6 @@ describe('UserAuthDomain', () => {
     const helperDateService = {
         create: vi.fn<HelperDateService['create']>(),
     } satisfies Pick<HelperDateService, 'create'>;
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-    } satisfies Pick<RequestStoreService, 'get'>;
     const configGet = vi.fn((_key: string): unknown => undefined);
     const configService = {
         get<T>(key: string): T | undefined {
@@ -91,18 +81,10 @@ describe('UserAuthDomain', () => {
     const countryService = createMock<CountryDomain>();
     const userUtil = createMock<UserUtil>();
     const userVerificationService = createMock<UserVerificationDomain>();
-    const userOnboardingUtil = createMock<UserOnboardingUtil>();
-    const userOnboardingService = createMock<UserOnboardingDomain>();
-    const helperHashService = createMock<HelperHashService>();
     const databaseUtil = createMock<DatabaseUtil>();
     const notificationQueue = createMock<NotificationQueue>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const requestLog = {
-        userAgent: { ua: 'browser' },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
     const tokens = {
         tokenType: 'Bearer',
         roleType: EnumRoleType.user,
@@ -172,7 +154,6 @@ describe('UserAuthDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        requestStoreGet.mockReturnValue(requestLog);
         configGet.mockImplementation((key: string) => {
             const values = {
                 'user.default.role': 'User',
@@ -194,22 +175,13 @@ describe('UserAuthDomain', () => {
             providers: [
                 UserAuthDomain,
                 { provide: UserRepository, useValue: userRepository },
-                {
-                    provide: UserPasswordDomain,
-                    useValue: userPasswordDomain,
-                },
+                { provide: UserPasswordDomain, useValue: userPasswordDomain },
                 { provide: RoleDomain, useValue: roleService },
                 { provide: CountryDomain, useValue: countryService },
                 { provide: UserUtil, useValue: userUtil },
                 {
                     provide: UserVerificationDomain,
                     useValue: userVerificationService,
-                },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
-                {
-                    provide: UserOnboardingDomain,
-                    useValue: userOnboardingService,
                 },
                 { provide: UserLoginDomain, useValue: userLoginService },
                 { provide: AuthPasswordUtil, useValue: authPasswordService },
@@ -220,13 +192,9 @@ describe('UserAuthDomain', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ConfigService, useValue: configService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
+        }).compile();
         service = moduleRef.get(UserAuthDomain);
     });
 

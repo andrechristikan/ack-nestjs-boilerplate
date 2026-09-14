@@ -93,7 +93,7 @@ describe('Application error filters', () => {
             response,
             metadata
         );
-        expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+        expect(status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(json).toHaveBeenCalledWith({
             statusCode: exception.statusCode,
             statusCodeKey: exception.statusCodeKey,

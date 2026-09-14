@@ -13,6 +13,8 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseService } from '@common/database/services/database.service';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import {
     EnumAwsS3Accessibility,
     EnumUserGender,
@@ -26,6 +28,10 @@ import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.u
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 
 describe('UserProfileDomain', () => {
     const userRepository = {
@@ -70,6 +76,7 @@ describe('UserProfileDomain', () => {
             return requestStoreGet(key) as T | null;
         },
     } satisfies Pick<RequestStoreService, 'get'>;
+    const databaseService = createDatabaseServiceMock();
     const configGet = vi.fn((_key: string): unknown => undefined);
     const configService = {
         get<T>(key: string): T | undefined {
@@ -104,6 +111,7 @@ describe('UserProfileDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         requestStoreGet.mockReturnValue(requestLog);
         configGet.mockImplementation((key: string) => {
             const values = {
@@ -128,6 +136,11 @@ describe('UserProfileDomain', () => {
             providers: [
                 UserProfileDomain,
                 { provide: UserRepository, useValue: userRepository },
+                {
+                    provide: ActivityLogDomain,
+                    useValue: createMock<ActivityLogDomain>(),
+                },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: CountryDomain, useValue: countryService },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: AwsS3Service, useValue: awsS3Service },
@@ -135,10 +148,7 @@ describe('UserProfileDomain', () => {
                 { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ConfigService, useValue: configService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
+        }).compile();
         service = moduleRef.get(UserProfileDomain);
     });
 
@@ -164,13 +174,13 @@ describe('UserProfileDomain', () => {
                 'country-id'
             );
             expect(userRepository.updateProfileInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
                 {
                     countryId: 'country-id',
                     gender: EnumUserGender.male,
                     name: 'User',
-                },
-                requestLog
+                }
             );
         });
 
@@ -206,7 +216,10 @@ describe('UserProfileDomain', () => {
                     key: aws.key,
                     size: 100,
                 },
-                { forceUpdate: true }
+                {
+                    forceUpdate: true,
+                    access: EnumAwsS3Accessibility.public,
+                }
             );
         });
 
@@ -229,14 +242,14 @@ describe('UserProfileDomain', () => {
                 size: 100,
             });
 
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith({
-                key: aws.key,
-                size: 100,
-            });
+            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
+                { key: aws.key, size: 100 },
+                { access: EnumAwsS3Accessibility.public }
+            );
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
-                aws,
-                requestLog
+                aws
             );
         });
     });
@@ -254,15 +267,14 @@ describe('UserProfileDomain', () => {
             expect(
                 fileService.extractExtensionFromFilename
             ).toHaveBeenCalledWith('avatar.png');
-            expect(awsS3Service.putItem).toHaveBeenCalledWith({
-                key: aws.key,
-                size: 100,
-                file: file.buffer,
-            });
+            expect(awsS3Service.putItem).toHaveBeenCalledWith(
+                { key: aws.key, size: 100, file: file.buffer },
+                { access: EnumAwsS3Accessibility.public }
+            );
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
-                aws,
-                requestLog
+                aws
             );
         });
 
@@ -287,9 +299,9 @@ describe('UserProfileDomain', () => {
             await service.claimUsername('user-id', 'newname');
 
             expect(userRepository.claimUsernameInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
-                { username: 'newname' },
-                requestLog
+                { username: 'newname' }
             );
         });
 

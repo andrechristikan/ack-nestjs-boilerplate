@@ -3,6 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
@@ -10,7 +11,13 @@ import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserMobileNumberDomain } from '@modules/user/domains/user.mobile-number.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 
 describe('UserMobileNumberDomain', () => {
     const userMobileNumberRepository = {
@@ -41,6 +48,9 @@ describe('UserMobileNumberDomain', () => {
             return requestStoreGet(key) as T | null;
         },
     } satisfies Pick<RequestStoreService, 'get'>;
+    const databaseService = createDatabaseServiceMock();
+    const userDomain = createMock<UserDomain>();
+    const activityLogDomain = createMock<ActivityLogDomain>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const requestLog = {
@@ -80,6 +90,7 @@ describe('UserMobileNumberDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         requestStoreGet.mockReturnValue(requestLog);
         countryService.getOne.mockResolvedValue(country);
         userUtil.checkMobileNumber.mockReturnValue(true);
@@ -101,14 +112,14 @@ describe('UserMobileNumberDomain', () => {
                     provide: UserMobileNumberRepository,
                     useValue: userMobileNumberRepository,
                 },
+                { provide: UserDomain, useValue: userDomain },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: CountryDomain, useValue: countryService },
                 { provide: UserUtil, useValue: userUtil },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
+        }).compile();
         service = moduleRef.get(UserMobileNumberDomain);
     });
 
@@ -133,13 +144,13 @@ describe('UserMobileNumberDomain', () => {
                 number: mobileNumber.number,
             });
             expect(userMobileNumberRepository.addInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
                 {
                     countryId: country.id,
                     phoneCode: '+62',
                     number: mobileNumber.number,
-                },
-                requestLog
+                }
             );
         });
 
@@ -196,19 +207,15 @@ describe('UserMobileNumberDomain', () => {
                 mobileNumber.id
             );
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 'user-id',
-                {
-                    id: mobileNumber.id,
-                    number: mobileNumber.number,
-                    phoneCode: mobileNumber.phoneCode,
-                    isVerified: mobileNumber.isVerified,
-                },
+                mobileNumber.id,
                 {
                     countryId: country.id,
                     phoneCode: '+62',
                     number: '89999999999',
                 },
-                requestLog
+                false
             );
         });
 
@@ -234,9 +241,8 @@ describe('UserMobileNumberDomain', () => {
             ).resolves.toEqual(mobileNumber);
 
             expect(userMobileNumberRepository.deleteInTx).toHaveBeenCalledWith(
-                'user-id',
-                mobileNumber.id,
-                requestLog
+                expect.any(Object),
+                mobileNumber.id
             );
         });
 

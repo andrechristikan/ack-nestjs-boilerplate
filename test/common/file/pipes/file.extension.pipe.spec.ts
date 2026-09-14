@@ -1,3 +1,4 @@
+import { createMock } from '@golevelup/ts-vitest';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Readable } from 'stream';
@@ -10,10 +11,13 @@ import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileService } from '@common/file/services/file.service';
 
 describe('FileExtensionPipe', () => {
-    const fileService = {
-        extractExtensionFromFilename:
-            vi.fn<FileService['extractExtensionFromFilename']>(),
-    } satisfies Pick<FileService, 'extractExtensionFromFilename'>;
+    const fileService =
+        createMock<
+            Pick<
+                FileService,
+                'extractExtensionFromFilename' | 'sniffExtensionFromBuffer'
+            >
+        >();
     const metadata: ArgumentMetadata = { type: 'body' };
 
     beforeEach(() => vi.resetAllMocks());
@@ -30,6 +34,7 @@ describe('FileExtensionPipe', () => {
         const pipe = await createPipe();
         const file = createFile('avatar.png');
         fileService.extractExtensionFromFilename.mockReturnValue('png');
+        fileService.sniffExtensionFromBuffer.mockResolvedValue('png');
 
         await expect(pipe.transform(file, metadata)).resolves.toBe(file);
     });

@@ -3,6 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumRoleType,
@@ -14,6 +15,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client';
+import type { Session } from '@generated/prisma-client';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
@@ -24,6 +26,7 @@ import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionCache } from '@modules/session/caches/session.cache';
@@ -32,9 +35,15 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { UserTwoFactorRepository } from '@modules/user/repositories/user.two-factor.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('UserLoginDomain', () => {
     const userSessionRepository =
@@ -43,6 +52,7 @@ describe('UserLoginDomain', () => {
             ReturnType<typeof vi.fn>
         >;
     const userTwoFactorRepository = createMock<UserTwoFactorRepository>();
+    const userRepository = createMock<UserRepository>();
     const userVerificationRepository = createMock<UserVerificationRepository>();
     const payloadToken = vi.fn((_token: string): unknown => null);
     const authJwtService = createMock<AuthJwtDomain>({
@@ -59,12 +69,16 @@ describe('UserLoginDomain', () => {
     const userVerificationService = createMock<UserVerificationDomain>();
     const featureFlagService = createMock<FeatureFlagDomain>();
     const deviceUtil = createMock<DeviceUtil>();
+    const deviceDomain = createMock<DeviceDomain>();
+    const createdSession = createMock<Session>();
+    const activityLogDomain = createMock<ActivityLogDomain>();
     const requestStoreGet = vi.fn((_key: string): unknown => null);
     const requestStoreService = {
         get<T>(key: string): T | null {
             return requestStoreGet(key) as T | null;
         },
     } satisfies Pick<RequestStoreService, 'get'>;
+    const databaseService = createDatabaseServiceMock();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-02-01T00:00:00.000Z');
     const tokens = {
@@ -176,15 +190,14 @@ describe('UserLoginDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         requestStoreGet.mockReturnValue(requestLog);
         authCacheService.getLockTwoFactorAttempt.mockResolvedValue(0);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserLoginDomain,
-                {
-                    provide: SessionRepository,
-                    useValue: userSessionRepository,
-                },
+                { provide: SessionRepository, useValue: userSessionRepository },
+                { provide: UserRepository, useValue: userRepository },
                 {
                     provide: UserTwoFactorRepository,
                     useValue: userTwoFactorRepository,
@@ -198,7 +211,10 @@ describe('UserLoginDomain', () => {
                     provide: UserVerificationDomain,
                     useValue: userVerificationService,
                 },
+                { provide: DeviceDomain, useValue: deviceDomain },
                 { provide: DeviceUtil, useValue: deviceUtil },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: AuthJwtDomain, useValue: authJwtService },
                 {
                     provide: AuthTwoFactorDomain,
@@ -208,20 +224,15 @@ describe('UserLoginDomain', () => {
                 { provide: SessionCache, useValue: sessionCacheService },
                 { provide: SessionDomain, useValue: sessionService },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                {
-                    provide: FeatureFlagDomain,
-                    useValue: featureFlagService,
-                },
+                { provide: FeatureFlagDomain, useValue: featureFlagService },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
+        }).compile();
         service = moduleRef.get(UserLoginDomain);
     });
 
-    it('creates the session cache, removes superseded logins, and notifies a new device', async () => {
+    it('creates the session cache and notifies a new device', async () => {
         authJwtService.createTokens.mockReturnValue({
             tokens,
             sessionId: 'session-id',
@@ -236,6 +247,13 @@ describe('UserLoginDomain', () => {
             isNewDevice: true,
             sessionShouldBeInactive: [{ id: 'old-session' }],
         });
+        deviceDomain.upsertForLoginInTx.mockResolvedValue({
+            isNewDevice: true,
+            deviceOwnership,
+            device,
+        });
+        sessionService.createInTx.mockResolvedValue(createdSession);
+        userRepository.updateLoginInTx.mockResolvedValue(user);
 
         await expect(
             service.createTokenAndSession(
@@ -252,10 +270,7 @@ describe('UserLoginDomain', () => {
             'jti',
             expiredAt
         );
-        expect(sessionCacheService.deleteAllLogins).toHaveBeenCalledWith(
-            user.id,
-            [{ id: 'old-session' }]
-        );
+        expect(sessionCacheService.deleteAllLogins).not.toHaveBeenCalled();
         expect(notificationQueue.sendNewDeviceLogin).toHaveBeenCalled();
     });
 

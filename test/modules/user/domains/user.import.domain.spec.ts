@@ -128,8 +128,9 @@ describe('UserImportDomain', () => {
         ).resolves.toEqual([]);
         expect(userRepository.findExport).toHaveBeenCalledWith(
             status,
-            undefined,
-            undefined
+            null,
+            null,
+            101
         );
     });
 });

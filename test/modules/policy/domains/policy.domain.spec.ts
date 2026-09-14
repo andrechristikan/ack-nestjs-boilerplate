@@ -1,5 +1,4 @@
 import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -18,6 +17,7 @@ import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/po
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyDomain } from '@modules/policy/domains/policy.domain';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('PolicyDomain', () => {
@@ -86,20 +86,17 @@ describe('PolicyDomain', () => {
         },
     ];
     const policyRepository = createMock<PolicyRepository>();
+    const policyAbilityFactory = new PolicyAbilityFactory();
+    const roleDomain = createMock<RoleDomain>();
 
     let service: PolicyDomain;
 
     beforeEach(async () => {
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                PolicyDomain,
-                PolicyAbilityFactory,
-                { provide: PolicyRepository, useValue: policyRepository },
-            ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-        service = moduleRef.get(PolicyDomain);
+        service = new PolicyDomain(
+            policyAbilityFactory,
+            policyRepository,
+            roleDomain
+        );
     });
 
     it('rejects a request without an authenticated user', () => {

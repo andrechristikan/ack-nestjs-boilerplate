@@ -7,12 +7,14 @@ import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     type TermPolicyContent,
 } from '@generated/prisma-client';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
@@ -20,6 +22,10 @@ import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.in
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 
 describe('TermPolicyDomain', () => {
     const termPolicyRepository = {
@@ -50,6 +56,8 @@ describe('TermPolicyDomain', () => {
         extractFilenameFromPath:
             vi.fn<FileService['extractFilenameFromPath']>(),
     } satisfies Pick<FileService, 'extractFilenameFromPath'>;
+    const databaseService = createDatabaseServiceMock();
+    const userDomain = createMock<UserDomain>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const content = {
         id: 'content-id',
@@ -81,6 +89,7 @@ describe('TermPolicyDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyDomain,
@@ -93,10 +102,10 @@ describe('TermPolicyDomain', () => {
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: FileService, useValue: fileService },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: UserDomain, useValue: userDomain },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
+        }).compile();
         service = moduleRef.get(TermPolicyDomain);
     });
 
@@ -159,14 +168,15 @@ describe('TermPolicyDomain', () => {
             service.publishByAdmin(draft.id, 'admin-id')
         ).resolves.toBeUndefined();
         expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
+            expect.anything(),
             draft.id,
-            EnumTermPolicyType.privacy,
             [{ ...publicItem, language: EnumMessageLanguage.en }],
             'admin-id'
         );
-        expect(awsS3Service.deleteDir).toHaveBeenCalledWith(
-            'private/privacy/1',
-            { access: EnumAwsS3Accessibility.private }
+        expect(awsS3Service.copyItems).toHaveBeenCalledWith(
+            draft.contents,
+            'public/privacy/1',
+            { access: EnumAwsS3Accessibility.public }
         );
         expect(notificationQueue.sendPublishTermPolicy).toHaveBeenCalledWith(
             { type: EnumTermPolicyType.privacy, version: 1 },

@@ -5,6 +5,7 @@ import { Duration } from 'luxon';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -27,6 +28,11 @@ import { UserVerificationEmailResendLimitExceededException } from '@modules/user
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 
 describe('UserVerificationDomain', () => {
     const userVerificationRepository = {
@@ -39,17 +45,24 @@ describe('UserVerificationDomain', () => {
             vi.fn<
                 UserVerificationRepository['findOneLatestByVerificationEmail']
             >(),
+        expireActiveByTypeInTx:
+            vi.fn<UserVerificationRepository['expireActiveByTypeInTx']>(),
         createInTx: vi.fn<UserVerificationRepository['createInTx']>(),
     } satisfies Pick<
         UserVerificationRepository,
         | 'findOneActiveByVerificationEmailToken'
         | 'markUsedInTx'
         | 'findOneLatestByVerificationEmail'
+        | 'expireActiveByTypeInTx'
         | 'createInTx'
     >;
     const userRepository = {
         findOneActiveByEmail: vi.fn<UserRepository['findOneActiveByEmail']>(),
-    } satisfies Pick<UserRepository, 'findOneActiveByEmail'>;
+        markVerifiedInTx: vi.fn<UserRepository['markVerifiedInTx']>(),
+    } satisfies Pick<
+        UserRepository,
+        'findOneActiveByEmail' | 'markVerifiedInTx'
+    >;
     const helperHashService = {
         sha256Hash: vi.fn<HelperHashService['sha256Hash']>(),
     } satisfies Pick<HelperHashService, 'sha256Hash'>;
@@ -92,6 +105,8 @@ describe('UserVerificationDomain', () => {
         aes256EncryptSimple:
             vi.fn<HelperEncryptionService['aes256EncryptSimple']>(),
     } satisfies Pick<HelperEncryptionService, 'aes256EncryptSimple'>;
+    const databaseService = createDatabaseServiceMock();
+    const activityLogDomain = createMock<ActivityLogDomain>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-01-01T01:00:00.000Z');
@@ -154,6 +169,7 @@ describe('UserVerificationDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         requestStoreGet.mockReturnValue(requestLog);
         configGet.mockImplementation((key: string) => {
             const values = {
@@ -202,6 +218,8 @@ describe('UserVerificationDomain', () => {
                     useValue: userVerificationRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperHashService, useValue: helperHashService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
@@ -214,10 +232,7 @@ describe('UserVerificationDomain', () => {
                     useValue: helperEncryptionService,
                 },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
+        }).compile();
         service = moduleRef.get(UserVerificationDomain);
     });
 
@@ -280,7 +295,11 @@ describe('UserVerificationDomain', () => {
             ).toHaveBeenCalledWith('hashed-token');
             expect(
                 userVerificationRepository.markUsedInTx
-            ).toHaveBeenCalledWith(verification.id, user.id, requestLog);
+            ).toHaveBeenCalledWith(
+                expect.any(Object),
+                verification.id,
+                expect.any(Date)
+            );
             expect(notificationQueue.sendVerifiedEmail).toHaveBeenCalledWith(
                 user.id,
                 { reference: verification.reference }
@@ -309,6 +328,7 @@ describe('UserVerificationDomain', () => {
                 user.email
             );
             expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
+                expect.any(Object),
                 user.id,
                 user.email,
                 expect.objectContaining({
@@ -317,7 +337,7 @@ describe('UserVerificationDomain', () => {
                     hashedToken: 'hashed-token',
                     encryptedLink: 'encrypted-link',
                 }),
-                requestLog
+                expect.any(Date)
             );
             expect(
                 notificationQueue.sendVerificationEmail

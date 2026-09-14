@@ -1,6 +1,5 @@
 import { createMock } from '@golevelup/ts-vitest';
 import { readFileSync } from 'fs';
-import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -15,28 +14,14 @@ vi.mock(import('fs'), () => ({
 }));
 
 describe('TermPolicyTemplateDomain', () => {
-    const termPolicyUtil = {
-        createRandomFilenameContentWithPath:
-            vi.fn<TermPolicyUtil['createRandomFilenameContentWithPath']>(),
-    } satisfies Pick<TermPolicyUtil, 'createRandomFilenameContentWithPath'>;
-    const awsS3Service = {
-        putItem: vi.fn<AwsS3Service['putItem']>(),
-    } satisfies Pick<AwsS3Service, 'putItem'>;
+    const termPolicyUtil = createMock<TermPolicyUtil>();
+    const awsS3Service = createMock<AwsS3Service>();
 
     let service: TermPolicyTemplateDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                TermPolicyTemplateDomain,
-                { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: AwsS3Service, useValue: awsS3Service },
-            ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-        service = moduleRef.get(TermPolicyTemplateDomain);
+        service = new TermPolicyTemplateDomain(termPolicyUtil, awsS3Service);
     });
 
     it('imports the privacy template under its generated storage key', async () => {
@@ -56,6 +41,8 @@ describe('TermPolicyTemplateDomain', () => {
             uploaded.key
         );
         awsS3Service.putItem.mockResolvedValue(uploaded);
+        termPolicyUtil.getContentPublicPath.mockReturnValue(uploaded.key);
+        awsS3Service.copyItem.mockResolvedValue(uploaded);
 
         await expect(service.importPrivacy()).resolves.toBe(uploaded);
         expect(
@@ -72,7 +59,18 @@ describe('TermPolicyTemplateDomain', () => {
                 key: uploaded.key,
                 size: template.length,
             },
-            { forceUpdate: true }
+            {
+                forceUpdate: true,
+                access: EnumAwsS3Accessibility.private,
+            }
+        );
+        expect(awsS3Service.copyItem).toHaveBeenCalledWith(
+            uploaded,
+            uploaded.key,
+            {
+                accessFrom: EnumAwsS3Accessibility.private,
+                accessTo: EnumAwsS3Accessibility.public,
+            }
         );
     });
 

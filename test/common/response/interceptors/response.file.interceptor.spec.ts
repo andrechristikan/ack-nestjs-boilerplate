@@ -27,8 +27,7 @@ describe('ResponseFileInterceptor', () => {
         get: vi.fn(),
     };
     const configGet = vi.mocked(configService.get);
-    const setHeader = vi.fn<Response['setHeader']>();
-    const response = createMock<Response>({ setHeader });
+    const response = createMock<Response>();
     let context: ExecutionContext;
 
     let interceptor: ResponseFileInterceptor;
@@ -56,7 +55,6 @@ describe('ResponseFileInterceptor', () => {
             requestId: 'request-id',
             correlationId: 'correlation-id',
         });
-        setHeader.mockReturnValue(response);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -92,12 +90,11 @@ describe('ResponseFileInterceptor', () => {
         await expect(readFile(result)).resolves.toEqual(
             Buffer.from('id,name\n1,Ada')
         );
-        expect(setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv');
-        expect(setHeader).toHaveBeenCalledWith(
-            'Content-Disposition',
-            'attachment; filename=export-123.csv'
-        );
-        expect(setHeader).toHaveBeenCalledWith('Content-Length', 13);
+        expect(result.options).toMatchObject({
+            type: 'text/csv',
+            disposition: expect.stringContaining('export-123.csv'),
+            length: 13,
+        });
         expect(responseMetadataService.setHeaders).toHaveBeenCalledWith(
             response,
             expect.objectContaining({ requestId: 'request-id' })
@@ -122,14 +119,11 @@ describe('ResponseFileInterceptor', () => {
         );
 
         await expect(readFile(result)).resolves.toEqual(data);
-        expect(setHeader).toHaveBeenCalledWith(
-            'Content-Type',
-            'application/octet-stream'
-        );
-        expect(setHeader).toHaveBeenCalledWith(
-            'Content-Disposition',
-            'attachment; filename=report.pdf'
-        );
+        expect(result.options).toMatchObject({
+            type: 'application/octet-stream',
+            disposition: expect.stringContaining('report.pdf'),
+            length: data.length,
+        });
     });
 
     it.each([
@@ -143,7 +137,7 @@ describe('ResponseFileInterceptor', () => {
         await expect(
             firstValueFrom(interceptor.intercept(context, next))
         ).rejects.toBeInstanceOf(Error);
-        expect(setHeader).not.toHaveBeenCalled();
+        expect(response.setHeader).not.toHaveBeenCalled();
     });
 
     it('passes non-HTTP execution through unchanged', async () => {
@@ -156,7 +150,7 @@ describe('ResponseFileInterceptor', () => {
         await expect(
             firstValueFrom(interceptor.intercept(rpcContext, next))
         ).resolves.toBe(payload);
-        expect(setHeader).not.toHaveBeenCalled();
+        expect(response.setHeader).not.toHaveBeenCalled();
     });
 
     async function readFile(file: StreamableFile): Promise<Buffer> {

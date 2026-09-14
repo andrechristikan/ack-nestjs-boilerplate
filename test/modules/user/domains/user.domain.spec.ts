@@ -11,6 +11,7 @@ import {
     type User,
 } from '@generated/prisma-client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -30,8 +31,9 @@ import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
-import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { createDatabaseServiceMock } from '@test/support/database.mock';
 
 describe('UserDomain', () => {
     const userRepository = {
@@ -40,19 +42,19 @@ describe('UserDomain', () => {
     const authPasswordService = {
         checkPasswordExpired: vi.fn<AuthPasswordUtil['checkPasswordExpired']>(),
     } satisfies Pick<AuthPasswordUtil, 'checkPasswordExpired'>;
-    const userOnboardingRepository = createMock<UserRepository>();
     const roleService = createMock<RoleDomain>();
     const countryService = createMock<CountryDomain>();
     const userUtil = createMock<UserUtil>();
     const userVerificationService = createMock<UserVerificationDomain>();
     const helperHashService = createMock<HelperHashService>();
-    const userOnboardingUtil = createMock<UserOnboardingUtil>();
     const userOnboardingService = createMock<UserOnboardingDomain>();
     const userLoginService = createMock<UserLoginDomain>();
     const databaseUtil = createMock<DatabaseUtil>();
     const notificationQueue = createMock<NotificationQueue>();
     const helperDateService = createMock<HelperDateService>();
     const requestStoreService = createMock<RequestStoreService>();
+    const activityLogDomain = createMock<ActivityLogDomain>();
+    const databaseService = createDatabaseServiceMock();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const userRow = {
@@ -116,10 +118,6 @@ describe('UserDomain', () => {
             providers: [
                 UserDomain,
                 { provide: UserRepository, useValue: userRepository },
-                {
-                    provide: UserRepository,
-                    useValue: userOnboardingRepository,
-                },
                 { provide: RoleDomain, useValue: roleService },
                 { provide: CountryDomain, useValue: countryService },
                 { provide: UserUtil, useValue: userUtil },
@@ -128,7 +126,6 @@ describe('UserDomain', () => {
                     useValue: userVerificationService,
                 },
                 { provide: HelperHashService, useValue: helperHashService },
-                { provide: UserOnboardingUtil, useValue: userOnboardingUtil },
                 {
                     provide: UserOnboardingDomain,
                     useValue: userOnboardingService,
@@ -139,11 +136,10 @@ describe('UserDomain', () => {
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: HelperDateService, useValue: helperDateService },
                 { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
+        }).compile();
         service = moduleRef.get(UserDomain);
     });
 

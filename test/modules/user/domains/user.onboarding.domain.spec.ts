@@ -1,5 +1,4 @@
 import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,27 +13,25 @@ import {
 } from '@modules/user/enums/user.enum';
 import type { IUserSignUpWorkspacePersonal } from '@modules/user/interfaces/user.interface';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserRepository } from '@modules/user/repositories/user.repository';
 
 describe('UserOnboardingDomain', () => {
     const activityLogUtil = {
         buildCreateManyUserData:
             vi.fn<ActivityLogUtil['buildCreateManyUserData']>(),
     } satisfies Pick<ActivityLogUtil, 'buildCreateManyUserData'>;
-    const databaseUtil = {
-        createId: vi.fn<DatabaseUtil['createId']>(),
-    } satisfies Pick<DatabaseUtil, 'createId'>;
+    const databaseUtil = createMock<DatabaseUtil>();
     const helperDateService = {
         create: vi.fn<HelperDateService['create']>(),
     } satisfies Pick<HelperDateService, 'create'>;
-    const helperStringService = {
-        generateSlug: vi.fn<HelperStringService['generateSlug']>(),
-    } satisfies Pick<HelperStringService, 'generateSlug'>;
-    const configGet = vi.fn((_key: string): unknown => undefined);
-    const configService = {
-        get<T>(key: string): T | undefined {
-            return configGet(key) as T | undefined;
-        },
-    } satisfies Pick<ConfigService, 'get'>;
+    const helperStringService = createMock<HelperStringService>();
+    const configService = new ConfigService({
+        'workspace.personalNamePattern': '{username} workspace',
+        'workspace.slugPrefix': 'ws',
+        'workspace.slugMaxLength': 12,
+        'workspace.slugMaxAttempts': 2,
+    });
+    const userRepository = createMock<UserRepository>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const personalContext = {
@@ -48,16 +45,6 @@ describe('UserOnboardingDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values = {
-                'workspace.personalNamePattern': '{username} workspace',
-                'workspace.slugPrefix': 'ws',
-                'workspace.slugMaxLength': 12,
-                'workspace.slugMaxAttempts': 2,
-            };
-
-            return values[key as keyof typeof values];
-        });
         databaseUtil.createId.mockReturnValue('workspace-id');
         helperStringService.generateSlug
             .mockReturnValueOnce('slug-a')
@@ -73,20 +60,12 @@ describe('UserOnboardingDomain', () => {
             })
         );
 
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                UserOnboardingDomain,
-                { provide: ActivityLogUtil, useValue: activityLogUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: ConfigService, useValue: configService },
-            ],
-        })
-            .useMocker(() => createMock())
-            .compile();
-
-        service = moduleRef.get(UserOnboardingDomain);
+        service = new UserOnboardingDomain(
+            userRepository,
+            databaseUtil,
+            helperStringService,
+            configService
+        );
     });
 
     it('builds personal workspace contexts with configured names and slug candidates', () => {

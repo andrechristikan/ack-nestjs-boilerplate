@@ -1,9 +1,12 @@
 import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Test, type TestingModule } from '@nestjs/testing';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -19,6 +22,10 @@ import { DeviceOwnershipRepository } from '@modules/device/repositories/device.o
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
+import {
+    createDatabaseServiceMock,
+    mockDatabaseServiceTransaction,
+} from '@test/support/database.mock';
 
 describe('DeviceDomain', () => {
     const deviceOwnershipRepository = {
@@ -40,7 +47,13 @@ describe('DeviceDomain', () => {
     const sessionService = {
         deleteLoginsByDeviceOwnership:
             vi.fn<SessionDomain['deleteLoginsByDeviceOwnership']>(),
-    } satisfies Pick<SessionDomain, 'deleteLoginsByDeviceOwnership'>;
+        revokeByDeviceOwnershipInTx:
+            vi.fn<SessionDomain['revokeByDeviceOwnershipInTx']>(),
+    } satisfies Pick<
+        SessionDomain,
+        'deleteLoginsByDeviceOwnership' | 'revokeByDeviceOwnershipInTx'
+    >;
+    const activityLogDomain = createMock<ActivityLogDomain>();
     const requestStoreGet = vi.fn((_key: string): unknown => null);
     const requestStoreService = {
         get<T>(key: string): T | null {
@@ -48,6 +61,8 @@ describe('DeviceDomain', () => {
         },
         merge: vi.fn<RequestStoreService['merge']>(),
     } satisfies Pick<RequestStoreService, 'get' | 'merge'>;
+    const databaseService = createDatabaseServiceMock();
+    const helperDateService = createMock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const requestLog = {
         userAgent: { ua: 'browser' },
@@ -103,7 +118,9 @@ describe('DeviceDomain', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        mockDatabaseServiceTransaction(databaseService);
         requestStoreGet.mockReturnValue(requestLog);
+        helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceDomain,
@@ -112,12 +129,13 @@ describe('DeviceDomain', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: SessionDomain, useValue: sessionService },
-                DeviceUtil,
+                { provide: DeviceUtil, useValue: new DeviceUtil() },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
+                { provide: DatabaseService, useValue: databaseService },
+                { provide: HelperDateService, useValue: helperDateService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
-        })
-            .useMocker(() => createMock())
-            .compile();
+        }).compile();
         service = moduleRef.get(DeviceDomain);
     });
 
@@ -165,11 +183,12 @@ describe('DeviceDomain', () => {
         ).resolves.toBeUndefined();
         expect(requestStoreGet).toHaveBeenCalledWith(RequestLogStoreKey);
         expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
+            expect.any(Object),
             'user-id',
             ownership.id,
             update,
             EnumDeviceNotificationProvider.apns,
-            requestLog
+            expect.any(Date)
         );
     });
 
@@ -193,7 +212,13 @@ describe('DeviceDomain', () => {
         expect(order).toEqual(['sessions', 'ownership']);
         expect(
             deviceOwnershipRepository.removeOwnershipInTx
-        ).toHaveBeenCalledWith('user-id', ownership.id, requestLog);
+        ).toHaveBeenCalledWith(
+            expect.any(Object),
+            'user-id',
+            ownership.id,
+            'user-id',
+            expect.any(Date)
+        );
     });
 
     it('invalidates sessions and records metadata for administrator removal', async () => {
@@ -208,7 +233,13 @@ describe('DeviceDomain', () => {
         ).toHaveBeenCalledWith('user-id', ownership.id);
         expect(
             deviceOwnershipRepository.removeOwnershipInTx
-        ).toHaveBeenCalledWith('user-id', ownership.id, 'admin-id', requestLog);
+        ).toHaveBeenCalledWith(
+            expect.any(Object),
+            'user-id',
+            ownership.id,
+            'admin-id',
+            expect.any(Date)
+        );
         expect(requestStoreService.merge).toHaveBeenCalled();
     });
 });
