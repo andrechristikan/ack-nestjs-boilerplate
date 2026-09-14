@@ -1,65 +1,24 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Project,
-} from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { Prisma, Project } from '@generated/prisma-client';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectRepository {
+export class ProjectRepository implements IProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService,
-        private readonly paginationService: PaginationService,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly paginationService: PaginationService
     ) {}
-
-    private async createWithSlug(
-        workspaceId: string,
-        actorId: string,
-        { name, description }: ProjectCreateRequestDto,
-        slug: string,
-        requestLog: IRequestLog
-    ): Promise<Project> {
-        const [project] = await this.databaseService.client.$transaction([
-            this.databaseService.client.project.create({
-                data: {
-                    workspaceId,
-                    name,
-                    slug,
-                    description,
-                    createdBy: actorId,
-                    deletedAt: null,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectCreated,
-                    requestLog
-                )
-            ),
-        ]);
-
-        return project;
-    }
 
     async findActiveByIdAndWorkspace(
         projectId: string,
@@ -142,113 +101,86 @@ export class ProjectRepository {
         );
     }
 
-    async createInWorkspace(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         actorId: string,
-        dto: ProjectCreateRequestDto,
-        slugCandidates: string[],
-        requestLog: IRequestLog
+        { name, description }: ProjectCreateRequestDto,
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.createWithSlug(
-                    workspaceId,
-                    actorId,
-                    dto,
-                    slug,
-                    requestLog
-                );
-            } catch (error: unknown) {
-                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return tx.project.create({
+            data: {
+                workspaceId,
+                name,
+                slug,
+                description,
+                createdBy: actorId,
+                deletedAt: null,
+            },
+        });
     }
 
-    async updateDetails(
+    async updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         projectId: string,
-        workspaceId: string,
         actorId: string,
-        { name, description }: ProjectUpdateRequestDto,
-        requestLog: IRequestLog
+        { name, description }: ProjectUpdateRequestDto
     ): Promise<Project> {
-        const [project] = await this.databaseService.client.$transaction([
-            this.databaseService.client.project.update({
-                where: { id: projectId },
-                data: {
-                    name,
-                    description,
-                    updatedBy: actorId,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectUpdated,
-                    requestLog
-                )
-            ),
-        ]);
-
-        return project;
+        return tx.project.update({
+            where: { id: projectId },
+            data: {
+                name,
+                description,
+                updatedBy: actorId,
+            },
+        });
     }
 
-    async updateSlug(
+    async updateSlugInTx(
+        tx: IDatabaseTransactionClient,
         projectId: string,
-        workspaceId: string,
         actorId: string,
-        slug: string,
-        requestLog: IRequestLog
+        slug: string
     ): Promise<Project> {
-        const [project] = await this.databaseService.client.$transaction([
-            this.databaseService.client.project.update({
-                where: { id: projectId },
-                data: {
-                    slug,
-                    updatedBy: actorId,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectUpdated,
-                    requestLog
-                )
-            ),
-        ]);
-
-        return project;
+        return tx.project.update({
+            where: { id: projectId },
+            data: {
+                slug,
+                updatedBy: actorId,
+            },
+        });
     }
 
-    async softDelete(
+    async softDeleteInTx(
+        tx: IDatabaseTransactionClient,
         projectId: string,
-        workspaceId: string,
         actorId: string,
-        requestLog: IRequestLog
+        deletedAt: Date
     ): Promise<void> {
-        const today = this.helperDateService.create();
+        await tx.project.update({
+            where: { id: projectId },
+            data: {
+                deletedAt,
+                updatedBy: actorId,
+            },
+        });
+    }
 
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.project.update({
-                where: { id: projectId },
-                data: {
-                    deletedAt: today,
-                    updatedBy: actorId,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectDeleted,
-                    requestLog
-                )
-            ),
-        ]);
+    async softDeleteByWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        actorId: string,
+        deletedAt: Date
+    ): Promise<void> {
+        await tx.project.updateMany({
+            where: {
+                workspaceId,
+                ...ProjectActiveFilter,
+            },
+            data: {
+                deletedAt,
+                updatedBy: actorId,
+            },
+        });
     }
 }

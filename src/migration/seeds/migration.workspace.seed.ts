@@ -1,14 +1,11 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RequestUtil } from '@common/request/utils/request.util';
-import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Prisma } from '@generated/prisma-client';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
-import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -43,9 +40,7 @@ export class MigrationWorkspaceSeed
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository,
-        private readonly requestUtil: RequestUtil
+        private readonly workspaceMemberRepository: WorkspaceMemberRepository
     ) {
         super();
 
@@ -98,11 +93,6 @@ export class MigrationWorkspaceSeed
         );
 
         try {
-            const userAgent = this.requestUtil.parseUserAgent(
-                faker.internet.userAgent()
-            );
-            const ipAddress = faker.internet.ip();
-
             await Promise.all(
                 seededUsers.map(async user => {
                     const ownedCount =
@@ -113,12 +103,20 @@ export class MigrationWorkspaceSeed
                         return;
                     }
 
-                    await this.workspaceRepository.createWithOwner(
-                        user.id,
-                        { name: `${user.username}'s Workspace` },
-                        this.drawSlugCandidates(),
-                        { userAgent, ipAddress }
-                    );
+                    await this.databaseService.client.$transaction(async tx => {
+                        const workspace = await tx.workspace.create({
+                            data: {
+                                name: `${user.username}'s Workspace`,
+                                slug: this.drawSlugCandidates()[0],
+                                createdBy: user.id,
+                            },
+                        });
+                        await this.workspaceMemberRepository.createOwnerInTx(
+                            tx,
+                            workspace.id,
+                            user.id
+                        );
+                    });
                 })
             );
         } catch (error: unknown) {

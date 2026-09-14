@@ -519,7 +519,9 @@ What that means for callers:
 
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
 - A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, `$queryRaw`, and `$executeRaw` all work on `client`.
-- `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes or must branch on an intermediate result. Both run on `client`, so audit stamping still fires inside them. In the callback form use the `tx` client for every operation; a call back to `databaseService.client` escapes the transaction.
+- `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes, must branch on an intermediate result, or spans more than one repository. Both run on `client`, so audit stamping still fires inside them. In the callback form every statement uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
+- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own. Another model's row is reached through that model's repository, composed by a domain service. `ActivityLog` is written by `ActivityLogRepository.create` and `createInTx`. Feature services record a log inside a caller-owned transaction through `ActivityLogDomain.recordInTx`.
+- When a write spans more than one repository, the domain service calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. The constraint when changing this: `rules/database.md`.
 - The PostgreSQL health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
@@ -535,9 +537,9 @@ For a caller this means a nested write needs no hand-written `createdBy` / `upda
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone, and their repositories (`WorkspaceRepository.softDelete`, `ProjectRepository.softDelete`) stamp it through a plain `update` inside a `$transaction` that also writes the activity log. The workspace transaction extends the same stamp to the rows it owns: its active projects get `deletedAt`, its pending invites become `expired`, and its pending join requests become `cancelled`.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceService.softDeleteWorkspace` opens the `$transaction` that also soft-deletes still-active projects (`ProjectService.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and records `workspaceDeleted` through `ActivityLogService.recordInTx`.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserRepository.deleteSelf` uses it to soft-delete the user, flip status to `inactive`, revoke the live sessions through a nested `updateMany`, and write the nested activity log in one call.
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserService.deleteSelf` revokes the live sessions, then opens a `$transaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`) and `ActivityLogService.recordInTx` (`userDeleteSelf`).
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
@@ -557,15 +559,15 @@ The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: t
 
 | Candidate source | Consumer | Retry unit |
 |---|---|---|
-| `WorkspaceService.drawSlugCandidates()` | `WorkspaceRepository.createWithOwner` | the private `createWithSlug` transaction: workspace, owner membership, activity log |
-| `ProjectService.drawSlugCandidates()` | `ProjectRepository.createInWorkspace` | the private `createWithSlug` transaction: project plus activity log |
-| `UserOnboardingService.buildPersonalWorkspaceContexts()` | `UserOnboardingRepository.createWithWorkspace` / `createManyWithWorkspace` | the whole onboarding transaction |
+| `WorkspaceService.drawSlugCandidates()` | `WorkspaceService.createWorkspace` | the `$transaction`: `createInTx` (workspace plus owner membership) and `recordInTx` |
+| `ProjectService.drawSlugCandidates()` | `ProjectService.createProject` | the `$transaction`: `ProjectRepository.createInTx` and `recordInTx` |
+| `UserOnboardingService.buildPersonalWorkspaceContexts()` | `WorkspaceService.commitOnboarding` | the whole onboarding `$transaction` |
 
 Three rules hold across all of them:
 
 - **A `P2002` on a value the repository did not draw is rethrown untouched.** `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error. Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`, turning a `username` collision into `UserUsernameExistException` and an `email` collision into `UserEmailExistException`.
 - **The candidate list is an argument, never a client field.** `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug, and the personal-workspace sign-up context carries `slugCandidates: string[]` that the onboarding repository indexes by attempt number.
-- **A batch retries as a batch.** `createManyWithWorkspace` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole transaction, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
+- **A batch retries as a batch.** `WorkspaceService.commitOnboarding` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `$transaction`, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
 
 ## Docker
 

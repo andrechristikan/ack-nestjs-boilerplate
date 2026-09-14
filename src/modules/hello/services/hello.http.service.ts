@@ -1,14 +1,13 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
-import { IHelloHttpService } from '@modules/hello/interfaces/hello.http.service.interface';
-import { HelloService } from '@modules/hello/services/hello.service';
+import { HelloUtil } from '@modules/hello/utils/hello.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class HelloHttpService implements IHelloHttpService {
+export class HelloHttpService {
     constructor(
-        private readonly helloService: HelloService,
+        private readonly helloUtil: HelloUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -23,8 +22,8 @@ export class HelloHttpService implements IHelloHttpService {
                     iso: dateIso,
                     timestamp: dateTimestamp,
                 },
-                app: this.helloService.getApp(),
-                message: this.helloService.getMessage(),
+                app: this.helloUtil.getApp(),
+                message: this.helloUtil.getMessage(),
             },
         };
     }

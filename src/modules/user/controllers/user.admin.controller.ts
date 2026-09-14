@@ -31,10 +31,7 @@ import {
     Prisma,
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import {
-    IUserList,
-    IUserProfile,
-} from '@modules/user/interfaces/user.interface';
+import { IUser, IUserProfile } from '@modules/user/interfaces/user.interface';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -61,8 +58,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserAdminCreateDoc,
@@ -92,6 +88,7 @@ import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decor
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
+import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
@@ -141,7 +138,7 @@ export class UserAdminController {
         roleId?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>> {
+    ): Promise<IResponsePagingReturn<IUser>> {
         return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
@@ -164,7 +161,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
         return this.userHttpService.getOne(userId);
@@ -207,7 +204,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
@@ -235,7 +232,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -260,7 +257,7 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Patch('/2fa/:userId/reset')
     async resetTwoFactorByAdmin(
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') updatedBy: string
     ): Promise<void> {
@@ -291,7 +288,7 @@ export class UserAdminController {
         @AuthJwtPayload('userId')
         createdBy: string,
         @UploadedFile(
-            RequestRequiredPipe,
+            FileRequiredPipe(),
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
             FileCsvParsePipe,
             FileCsvValidationPipe(UserImportRequestSchema, {

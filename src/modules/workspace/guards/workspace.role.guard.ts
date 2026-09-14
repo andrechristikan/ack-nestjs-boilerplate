@@ -1,10 +1,13 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumWorkspaceMemberRole, WorkspaceMember } from '@generated/prisma-client';
+import {
+    EnumWorkspaceMemberRole,
+    WorkspaceMember,
+} from '@generated/prisma-client';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -16,7 +19,7 @@ import { Reflector } from '@nestjs/core';
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -31,7 +34,7 @@ export class WorkspaceRoleGuard implements CanActivate {
             WorkspaceMemberStoreKey
         );
 
-        this.workspaceMemberService.validateWorkspaceRoleGuard(
+        this.workspaceMemberDomain.validateWorkspaceRoleGuard(
             member,
             allowedRoles
         );

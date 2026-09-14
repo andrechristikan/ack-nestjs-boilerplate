@@ -13,20 +13,21 @@ import { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/works
 import { WorkspaceUpdateIsPublicRequestDto } from '@modules/workspace/dtos/request/workspace.update-is-public.request.dto';
 import { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { IWorkspaceHttpService } from '@modules/workspace/interfaces/workspace.http.service.interface';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceHttpService implements IWorkspaceHttpService {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+export class WorkspaceHttpService {
+    constructor(private readonly workspaceDomain: WorkspaceDomain) {}
 
     async getListForMember(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
     ): Promise<IResponsePagingReturn<Workspace>> {
-        const { data, ...others } =
-            await this.workspaceService.getListForMember(userId, pagination);
+        const { data, ...others } = await this.workspaceDomain.getListForMember(
+            userId,
+            pagination
+        );
 
         return {
             data,
@@ -38,7 +39,7 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         userId: string,
         { name, description, isPublic }: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.createWorkspace(userId, {
+        const workspace = await this.workspaceDomain.createWorkspace(userId, {
             name,
             description,
             isPublic,
@@ -49,7 +50,7 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
 
     getCurrentWorkspace(workspace: Workspace): IResponseReturn<Workspace> {
         return {
-            data: this.workspaceService.getCurrentWorkspace(workspace),
+            data: this.workspaceDomain.getCurrentWorkspace(workspace),
         };
     }
 
@@ -58,7 +59,7 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.updateWorkspace(
+        const workspace = await this.workspaceDomain.updateWorkspace(
             workspaceId,
             actorId,
             { name, description }
@@ -72,7 +73,7 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         actorId: string,
         { isPublic }: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.updateWorkspaceIsPublic(
+        const workspace = await this.workspaceDomain.updateWorkspaceIsPublic(
             workspaceId,
             actorId,
             isPublic
@@ -86,7 +87,7 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         actorId: string,
         { slug }: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.updateWorkspaceSlug(
+        const workspace = await this.workspaceDomain.updateWorkspaceSlug(
             workspaceId,
             actorId,
             slug
@@ -99,21 +100,21 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         userId: string,
         { workspaceId }: WorkspaceSwitchRequestDto
     ): Promise<void> {
-        await this.workspaceService.switchWorkspace(userId, workspaceId);
+        await this.workspaceDomain.switchWorkspace(userId, workspaceId);
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
     ): Promise<void> {
-        await this.workspaceService.softDeleteWorkspace(workspaceId, actorId);
+        await this.workspaceDomain.softDeleteWorkspace(workspaceId, actorId);
     }
 
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
         isPublic?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<Workspace>> {
-        const { data, ...others } = await this.workspaceService.getListForAdmin(
+        const { data, ...others } = await this.workspaceDomain.getListForAdmin(
             pagination,
             isPublic
         );
@@ -128,13 +129,13 @@ export class WorkspaceHttpService implements IWorkspaceHttpService {
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
         const workspace =
-            await this.workspaceService.getByIdForAdmin(workspaceId);
+            await this.workspaceDomain.getByIdForAdmin(workspaceId);
 
         return { data: workspace };
     }
 
     async previewWorkspace(slug: string): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.previewWorkspace(slug);
+        const workspace = await this.workspaceDomain.previewWorkspace(slug);
 
         return { data: workspace };
     }

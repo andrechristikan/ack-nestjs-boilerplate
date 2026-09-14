@@ -360,7 +360,7 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 @Response('role.delete')
 @Delete('/delete/:role')
 async delete(
-  @Param('role', RequestRequiredPipe, RequestIsValidUuidPipe) role: string
+  @Param('role', { schema: RequestUuidSchema }) role: string
 ): Promise<void> {
   await this.roleHttpService.delete(role);
 }

@@ -6,7 +6,7 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { Algorithm } from 'jsonwebtoken';
 import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 /** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
@@ -15,7 +15,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
     AuthJwtAccessGuardKey
 ) {
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         configService: ConfigService
     ) {
         // jti is not validated here.
@@ -44,10 +44,10 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthService. */
+    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
-        return this.authService.validateJwtAccessStrategy(data);
+        return this.authDomain.validateJwtAccessStrategy(data);
     }
 }

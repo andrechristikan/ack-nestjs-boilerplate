@@ -1,6 +1,8 @@
 # Feature flags — keys, metadata, gating
 
-Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is governed by `rules/http.md` and `rules/security.md`; this file is the feature-flag-specific rule set.
+This file is the feature-flag-specific rule set. Decorator position is `rules/http.md`.
+Flow narrative: `docs/feature-flag.md` — explorer or planner opens it when the key or
+rollout question is not settled here.
 
 ## Naming — camelCase, and it is enforced
 
@@ -23,8 +25,6 @@ Detail in `docs/feature-flag.md`. Where the decorator sits in the stack is gover
 - A route is gated by `@FeatureFlagProtected('<key>')` — the bare key, never a bare `@UseGuards`. Where it sits in the decorator stack is `rules/http.md`.
 - **`@FeatureFlagProtected()` is NOT authentication.** It gates on flag state only; apply the auth guards separately when the route needs a user.
 - **A metadata sub-key is asserted in the SERVICE, never in the decorator (HARD).** The decorator answers only "is this feature on at all". Whether the feature currently permits this particular operation is a business condition, so it is a guard clause at the top of the service method — `await this.featureFlagService.validateFeatureFlagMetadata('<key>', '<metadataKey>')` before any work. Written into the decorator it would gate one route instead of every caller of the method, and `rules/http.md` already forbids a guard from holding a business rule.
-- Read `docs/feature-flag.md` before adding or changing a flag.
-
 ## Rollout and targeting
 
 - **`FeatureFlagUser` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.

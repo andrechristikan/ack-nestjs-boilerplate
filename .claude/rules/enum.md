@@ -11,7 +11,7 @@ export enum EnumUserStatus {
 
 - **Type name is `Enum` + PascalCase.** `EnumQueue`, `EnumPolicyAction`, `EnumUserStatus`.
 - **Keys AND string values are camelCase.** `UPPER_SNAKE_CASE` is wrong on both halves
-  (`rules/case-convention.md`).
+  (`rules/naming.md`).
 - A string enum's value normally equals its key. Diverging is allowed only when the wire value
   is genuinely different from the code name, and then it is worth a line saying which is which.
 

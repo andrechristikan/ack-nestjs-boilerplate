@@ -8,7 +8,7 @@ import {
 } from '@generated/prisma-client';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { TermPolicyTemplateService } from '@modules/term-policy/services/term-policy.template.service';
+import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-policy.template.domain';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 
@@ -27,7 +27,7 @@ export class MigrationTemplateTermPolicySeed
     private readonly logger = new Logger(MigrationTemplateTermPolicySeed.name);
 
     constructor(
-        private readonly termPolicyTemplateService: TermPolicyTemplateService,
+        private readonly termPolicyTemplateDomain: TermPolicyTemplateDomain,
         private readonly databaseService: DatabaseService,
         private readonly awsS3Service: AwsS3Service
     ) {
@@ -69,10 +69,10 @@ export class MigrationTemplateTermPolicySeed
                 cookieAsset,
                 marketingAsset,
             ] = await Promise.all([
-                this.termPolicyTemplateService.importTermsOfService(),
-                this.termPolicyTemplateService.importPrivacy(),
-                this.termPolicyTemplateService.importCookie(),
-                this.termPolicyTemplateService.importMarketing(),
+                this.termPolicyTemplateDomain.importTermsOfService(),
+                this.termPolicyTemplateDomain.importPrivacy(),
+                this.termPolicyTemplateDomain.importCookie(),
+                this.termPolicyTemplateDomain.importMarketing(),
             ]);
             if (
                 !termsOfServiceAsset ||
@@ -84,8 +84,7 @@ export class MigrationTemplateTermPolicySeed
                 return;
             }
 
-            const termsOfServiceContent =
-                this.mapContent(termsOfServiceAsset);
+            const termsOfServiceContent = this.mapContent(termsOfServiceAsset);
             const privacyContent = this.mapContent(privacyAsset);
             const cookieContent = this.mapContent(cookieAsset);
             const marketingContent = this.mapContent(marketingAsset);

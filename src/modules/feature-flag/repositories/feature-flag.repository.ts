@@ -8,11 +8,12 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { FeatureFlag, FeatureFlagUser, Prisma } from '@generated/prisma-client';
 
 @Injectable()
-export class FeatureFlagRepository {
+export class FeatureFlagRepository implements IFeatureFlagRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService

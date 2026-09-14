@@ -1,4 +1,4 @@
-import { DeviceModule } from '@modules/device/device.module';
+import { DeviceDomainModule } from '@modules/device/device.domain.module';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +6,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [DeviceHttpService],
     exports: [DeviceHttpService],
-    imports: [DeviceModule],
+    imports: [DeviceDomainModule],
 })
 export class DeviceHttpModule {}

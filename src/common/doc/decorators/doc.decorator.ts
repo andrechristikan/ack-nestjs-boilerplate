@@ -183,8 +183,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocStandardErrorResponse.internalServerError,
         DocStandardErrorResponse.requestTimeout,
         DocStandardErrorResponse.validationError,
-        DocStandardErrorResponse.envForbidden,
-        DocStandardErrorResponse.paramRequired
+        DocStandardErrorResponse.envForbidden
     );
 }
 

@@ -1,7 +1,7 @@
 # Config
 
-Detail in `docs/configuration.md`, `docs/environment.md`, and `docs/vault.md`. This file is the
-rule set.
+This file is the rule set. Flow narrative: `docs/configuration.md`, `docs/environment.md`,
+`docs/vault.md` — explorer or planner.
 
 ## Shape
 

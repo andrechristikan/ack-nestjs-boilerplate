@@ -79,11 +79,11 @@ criterion is "no obligation SENTENCE in `docs/` prose".
 ## Language
 
 Every artifact is written in ENGLISH — code, identifiers, comments, commit messages,
-`docs/*.md`, `.claude/**`, `.superpowers/**`, PR descriptions. Conversation with the owner
-may be Bahasa Indonesia; artifacts are never mixed. Something the owner said reaches an
-artifact only as the RULE or the FACT it produced, in English — never as a quote, never with
-a date, and never attributed. "Final state only" governs that: an artifact carries what is
-true, not who decided it or when.
+`docs/*.md`, `.claude/**`, `.superpowers/**`, PR descriptions. Reply language to the owner
+is `CLAUDE.md` → How to work here: English by default, match the language of the turn.
+Something the owner said reaches an artifact only as the RULE or the FACT it produced, in
+English — never as a quote, never with a date, and never attributed. "Final state only"
+governs that: an artifact carries what is true, not who decided it or when.
 
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
@@ -96,8 +96,11 @@ other languages semantically, so English examples cost nothing.
   `—` as a separator: match it rather than breaking the pattern on one line.
 - Simple, firm, and pointed. Bullets first, prose where prose is needed. Keep the existing
   section structure intact rather than reorganizing around a small correction.
+- **No filler.** No throat-clearing (`it is important to note`, `in order to`, `this ensures
+  that`), no rhetorical questions, no synonym stacking. Name the thing and state what it does.
+- **A flow, a stack, or a hand-off is a mermaid diagram.** Prefer `flowchart`,
+  `sequenceDiagram`, or `stateDiagram-v2`. Do not invent a second diagram syntax.
 
 ## What is NOT here
 
-Comment policy is `rules/comments.md`. Class member layout is `rules/code-style.md`. Neither
-is restated here.
+Comment policy and class member layout are `rules/code-style.md`. Neither is restated here.

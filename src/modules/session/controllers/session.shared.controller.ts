@@ -1,8 +1,7 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -62,7 +61,7 @@ export class SessionSharedController {
     @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
         @AuthJwtPayload('userId') userId: string
     ): Promise<void> {

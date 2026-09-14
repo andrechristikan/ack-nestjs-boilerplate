@@ -7,19 +7,18 @@ import { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.t
 import { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
 import { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import { IUserTwoFactorHttpService } from '@modules/user/interfaces/user.two-factor.http.service.interface';
 import {
     IUser,
     IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
-import { UserTwoFactorService } from '@modules/user/services/user.two-factor.service';
+import { UserTwoFactorDomain } from '@modules/user/domains/user.two-factor.domain';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
+export class UserTwoFactorHttpService {
     constructor(
-        private readonly userTwoFactorService: UserTwoFactorService,
+        private readonly userTwoFactorDomain: UserTwoFactorDomain,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -31,7 +30,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
     }: UserLoginVerifyTwoFactorRequestDto): Promise<
         IResponseReturn<IAuthToken>
     > {
-        const tokens = await this.userTwoFactorService.loginVerifyTwoFactor(
+        const tokens = await this.userTwoFactorDomain.loginVerifyTwoFactor(
             challengeToken,
             { code, backupCode, method }
         );
@@ -45,7 +44,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
     }: UserLoginSetupTwoFactorRequestDto): Promise<
         IResponseReturn<UserTwoFactorEnableResponseDto>
     > {
-        const backupCodes = await this.userTwoFactorService.loginSetupTwoFactor(
+        const backupCodes = await this.userTwoFactorDomain.loginSetupTwoFactor(
             challengeToken,
             code
         );
@@ -58,7 +57,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
     ): IResponseReturn<UserTwoFactorStatusResponseDto> {
         return {
             data: this.userUtil.mapTwoFactor(
-                this.userTwoFactorService.getTwoFactorStatus(user)
+                this.userTwoFactorDomain.getTwoFactorStatus(user)
             ),
         };
     }
@@ -66,7 +65,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
     async setupTwoFactor(
         user: IUser
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        const setup = await this.userTwoFactorService.setupTwoFactor(user);
+        const setup = await this.userTwoFactorDomain.setupTwoFactor(user);
 
         return { data: setup };
     }
@@ -75,7 +74,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
         user: IUser,
         { code }: UserTwoFactorEnableRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        const backupCodes = await this.userTwoFactorService.enableTwoFactor(
+        const backupCodes = await this.userTwoFactorDomain.enableTwoFactor(
             user,
             code
         );
@@ -87,7 +86,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
         user: IUser,
         { code, backupCode, method }: UserTwoFactorDisableRequestDto
     ): Promise<void> {
-        await this.userTwoFactorService.disableTwoFactor(user, {
+        await this.userTwoFactorDomain.disableTwoFactor(user, {
             code,
             backupCode,
             method,
@@ -99,7 +98,7 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
         { code }: UserTwoFactorRegenerateBackupCodeRequestDto
     ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
         const backupCodes =
-            await this.userTwoFactorService.regenerateTwoFactorBackupCodes(
+            await this.userTwoFactorDomain.regenerateTwoFactorBackupCodes(
                 user,
                 code
             );
@@ -111,9 +110,6 @@ export class UserTwoFactorHttpService implements IUserTwoFactorHttpService {
         userId: string,
         updatedBy: string
     ): Promise<void> {
-        await this.userTwoFactorService.resetTwoFactorByAdmin(
-            userId,
-            updatedBy
-        );
+        await this.userTwoFactorDomain.resetTwoFactorByAdmin(userId, updatedBy);
     }
 }

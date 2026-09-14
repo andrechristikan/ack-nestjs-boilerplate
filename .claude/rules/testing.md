@@ -85,18 +85,21 @@ A file whose suffix is NOT on that list is not measured at all — `*.module.ts`
 `*.repository.ts`, `*.controller.ts`. Adding a suffix to the list adds every existing file carrying it to the
 100% denominator at once.
 
-## TDD
+## TDD (HARD)
 
-**WHEN is decided by the kind of work, not by preference.**
+New behaviour and a repair go through TDD. Write the failing spec first, watch it fail
+because the behaviour is absent, then implement. `coder` writes both halves of that cycle.
+The skill is `superpowers:test-driven-development`.
 
-- **New behavior or a bug fix** (service method, guard, pipe, interceptor, filter, factory, …):
-  TDD is mandatory. Write the failing spec FIRST, watch it fail, then implement. The same head
-  that implements must watch the red — never split the test-first step onto a later pass.
-- **Coverage backfill against code that already exists:** there is no TDD. The existing `src/`
-  code wins (see Hard boundaries below).
+A spec lives at its final path under `test/` and stays as the regression net.
 
-- **A TDD spec IS the unit test.** It is written at its final path and stays as the regression
-  net. There is no separate later step and it is never thrown away.
+Seeds, controllers, and repositories have no TDD cycle (`collectCoverageFrom` does not
+measure them).
+
+## The code is the specification (`/ack-spec`)
+
+When the code already exists and the job is to cover it, `src/` wins. `/ack-spec` writes
+those specs through `test-writer` and never changes `src/`.
 
 ## Writing the spec itself
 
@@ -107,15 +110,13 @@ never done to reach green — which is what someone who only RUNS the suite need
 
 ## Hard boundaries
 
-Scope matters — these two kinds of work treat production code differently:
+Which skill is running decides who wins:
 
-- **TDD (new behavior / bug fix):** changing production code to turn a failing TDD spec green
-  **is the job**. The hard boundary below does **not** apply to that red→green step.
-- **Coverage backfill (existing code):** the existing `src/` code wins. **Do NOT change
-  production code to make a spec pass.** If the code is wrong, the failing spec IS the
-  deliverable: leave it red and report the defect with file and line. The only sanctioned
-  `src/` edit during backfill is a typo or syntax fix that cannot change behavior for any
-  input.
+- **TDD (`coder` / `/ack-code`):** changing `src/` to turn a failing spec green is the job.
+- **`/ack-spec`:** the existing `src/` wins. **Do NOT change production code to make a spec
+  pass.** If the code is wrong, pin the spec green against current behaviour and report the
+  defect with file and line. The only sanctioned `src/` edit on that path is a typo or syntax
+  fix that cannot change behavior for any input.
 
 Always:
 

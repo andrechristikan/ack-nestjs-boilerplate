@@ -9,23 +9,20 @@ import {
     INotificationWorkspaceJoinRejectedPayload,
     INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
-import { INotificationPushProcessorService } from '@modules/notification/interfaces/notification.push.processor.service.interface';
-import { NotificationPushMaintenanceService } from '@modules/notification/services/notification.push.maintenance.service';
-import { NotificationPushSecurityService } from '@modules/notification/services/notification.push.security.service';
-import { NotificationPushWorkspaceService } from '@modules/notification/services/notification.push.workspace.service';
+import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
+import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
+import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
-export class NotificationPushProcessorService
-    implements INotificationPushProcessorService, OnModuleInit
-{
+export class NotificationPushProcessorService implements OnModuleInit {
     constructor(
-        private readonly notificationPushSecurityService: NotificationPushSecurityService,
-        private readonly notificationPushWorkspaceService: NotificationPushWorkspaceService,
-        private readonly notificationPushMaintenanceService: NotificationPushMaintenanceService,
+        private readonly notificationPushSecurityDomain: NotificationPushSecurityDomain,
+        private readonly notificationPushWorkspaceDomain: NotificationPushWorkspaceDomain,
+        private readonly notificationPushMaintenanceDomain: NotificationPushMaintenanceDomain,
         private readonly notificationPushQueue: NotificationPushQueue
     ) {}
 
@@ -40,7 +37,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityService.processNewDeviceLogin(
+        return this.notificationPushSecurityDomain.processNewDeviceLogin(
             send,
             data!
         );
@@ -53,7 +50,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityService.processResetTwoFactorByAdmin(
+        return this.notificationPushSecurityDomain.processResetTwoFactorByAdmin(
             send
         );
     }
@@ -65,7 +62,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityService.processTemporaryPasswordByAdmin(
+        return this.notificationPushSecurityDomain.processTemporaryPasswordByAdmin(
             send,
             data!
         );
@@ -78,7 +75,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityService.processResetPassword(send);
+        return this.notificationPushSecurityDomain.processResetPassword(send);
     }
 
     async processForgotPassword({
@@ -88,7 +85,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushSecurityService.processForgotPassword(send);
+        return this.notificationPushSecurityDomain.processForgotPassword(send);
     }
 
     async processWorkspaceInvite({
@@ -98,7 +95,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceService.processWorkspaceInvite(
+        return this.notificationPushWorkspaceDomain.processWorkspaceInvite(
             send,
             data!
         );
@@ -111,7 +108,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceService.processWorkspaceJoinRequest(
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRequest(
             send,
             data!
         );
@@ -124,7 +121,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceService.processWorkspaceJoinAccepted(
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinAccepted(
             send,
             data!
         );
@@ -137,7 +134,7 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushWorkspaceService.processWorkspaceJoinRejected(
+        return this.notificationPushWorkspaceDomain.processWorkspaceJoinRejected(
             send,
             data!
         );
@@ -152,13 +149,13 @@ export class NotificationPushProcessorService
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceService.processCleanupTokens(
+        return this.notificationPushMaintenanceDomain.processCleanupTokens(
             userId,
             failureTokens
         );
     }
 
     async processCleanupStaleTokens(): Promise<IQueueResponse> {
-        return this.notificationPushMaintenanceService.processCleanupStaleTokens();
+        return this.notificationPushMaintenanceDomain.processCleanupStaleTokens();
     }
 }

@@ -13,14 +13,13 @@ import {
 } from '@generated/prisma-client';
 import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
 import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { IWorkspaceJoinRequestHttpService } from '@modules/workspace/interfaces/workspace.join-request.http.service.interface';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHttpService {
+export class WorkspaceJoinRequestHttpService {
     constructor(
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain
     ) {}
 
     async createJoinRequest(
@@ -28,7 +27,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         const joinRequest =
-            await this.workspaceJoinRequestService.createJoinRequest(userId, {
+            await this.workspaceJoinRequestDomain.createJoinRequest(userId, {
                 workspaceId,
                 message,
             });
@@ -42,7 +41,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
         const { data, ...others } =
-            await this.workspaceJoinRequestService.getJoinRequestsList(
+            await this.workspaceJoinRequestDomain.getJoinRequestsList(
                 workspaceId,
                 pagination,
                 status
@@ -59,7 +58,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<void> {
-        await this.workspaceJoinRequestService.acceptJoinRequest(
+        await this.workspaceJoinRequestDomain.acceptJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId
@@ -72,7 +71,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         workspaceJoinRequestId: string,
         { rejectReasonCode }: WorkspaceJoinRequestRejectRequestDto
     ): Promise<void> {
-        await this.workspaceJoinRequestService.rejectJoinRequest(
+        await this.workspaceJoinRequestDomain.rejectJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId,

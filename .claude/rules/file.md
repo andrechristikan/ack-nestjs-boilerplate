@@ -1,6 +1,8 @@
 # File — upload, CSV import, export, S3 presign
 
-Detail in `docs/file-upload.md` and `docs/presign.md`. `FileService`, the file pipes, and `AwsS3Service` are the shared kit in `src/common/file/` and `src/common/aws/`; a feature never re-implements them.
+`FileService`, the file pipes, and `AwsS3Service` are the shared kit in `src/common/file/`
+and `src/common/aws/`; a feature never re-implements them. Flow narrative:
+`docs/file-upload.md`, `docs/presign.md` — explorer or planner.
 
 ## Upload validation is a pipe, never inline
 

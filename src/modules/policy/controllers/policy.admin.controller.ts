@@ -1,6 +1,5 @@
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -69,7 +68,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);
@@ -83,14 +82,14 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminPolicyCreate)
+    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
@@ -106,16 +105,16 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminPolicyUpdate)
+    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Put('/update/:policyId')
     async update(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto
@@ -131,16 +130,16 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminPolicyDelete)
+    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Delete('/delete/:policyId')
     async delete(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyHttpService.deleteByAdmin(roleId, policyId);

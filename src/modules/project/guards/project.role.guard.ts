@@ -9,7 +9,7 @@ import {
     ProjectStoreKey,
     ProjectWorkspaceOwnerStoreKey,
 } from '@modules/project/constants/project.constant';
-import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -24,7 +24,7 @@ import { Reflector } from '@nestjs/core';
 export class ProjectRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly projectMemberService: ProjectMemberService,
+        private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -41,7 +41,7 @@ export class ProjectRoleGuard implements CanActivate {
         );
 
         const isWorkspaceOwner =
-            await this.projectMemberService.validateProjectRoleGuard(
+            await this.projectMemberDomain.validateProjectRoleGuard(
                 project?.id ?? null,
                 workspaceMember,
                 allowedRoles

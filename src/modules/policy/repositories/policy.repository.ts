@@ -2,10 +2,11 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPolicySubject, Policy } from '@generated/prisma-client';
 import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { IPolicyRepository } from '@modules/policy/interfaces/policy.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PolicyRepository {
+export class PolicyRepository implements IPolicyRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
     async findManyByRoleId(roleId: string): Promise<Policy[]> {

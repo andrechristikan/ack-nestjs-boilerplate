@@ -7,12 +7,12 @@ This documentation explains the features and usage of **Activity Log Module**: L
 Activity Log records audited user actions. There are two recording paths:
 
 1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method; after the handler runs the interceptor hands the action to `ActivityLogService.create()`, which writes one log for the authenticated actor. This document covers that path.
-2. **Repository-written** - a repository writes the log alongside the Prisma mutation it already performs, either as a nested `activityLogs.create` or as another operation of the same transaction, so the log lands with the mutation. Every `user*`, `workspace*`, and `project*` action in `EnumActivityLogAction` is recorded this way (`userLoginCredential`, `workspaceInviteAccepted`, `projectMemberAssigned`, and the rest), through `ActivityLogUtil.buildCreateArgs`, which resolves the description with the same `ActivityLogUtil.getDescription` and stamps the `workspaceId` the mutation belongs to.
+2. **Transaction-recorded** - a domain service calls `ActivityLogService.recordInTx` inside `this.databaseService.client.$transaction`. `ActivityLogRepository.createInTx` writes the `ActivityLog` row, with the description from `ActivityLogUtil.getDescription` and the `workspaceId` the caller passes. Every `user*`, `workspace*`, and `project*` action in `EnumActivityLogAction` is recorded this way (`userLoginCredential`, `workspaceInviteAccepted`, `projectMemberAssigned`, and the rest).
 
 **Notes:**
 
 - Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` is merged into `metadata`, and `description` gains ` - Error: <message>` followed by ` - Stack: <stack>` when the error carried a stack.
-- Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
+- Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A `recordInTx` log is part of the caller-owned transaction and rolls back with it.
 - `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
 - `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
 - Do not log secrets (password, token, apiKey) or large objects in metadata.
@@ -48,10 +48,10 @@ Activity Log records audited user actions. There are two recording paths:
 | `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
 | `ActivityLogInterceptor` | Reads the action off the handler, and on both the success and the error path calls `ActivityLogService.create(userId, action, rawError)` without awaiting it |
 | `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
-| `ActivityLogService` | Write side of the decorator path: reads the dynamic metadata and the request context (`IRequestLog`: IP, user agent, geo) from the request store, serializes any error, and writes the row. Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
+| `ActivityLogService` | Write side of both paths: `create` for the interceptor (reads metadata and `IRequestLog` from the request store, serializes any error, swallows a failed write); `recordInTx` for a caller-owned transaction (takes `IRequestLog` and `workspaceId`, rejects so the transaction rolls back). Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
-| `ActivityLogRepository` | Data access (Prisma), including the decorator path's `create` |
-| `ActivityLogUtil` | Builds the i18n description, and builds the create args and the nested `createMany` data a repository-written log is created from |
+| `ActivityLogRepository` | Data access (Prisma): `create` for the interceptor path, `createInTx` for the transaction path |
+| `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
 
 ## List Endpoints
 
@@ -177,7 +177,7 @@ Each log contains:
 - **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
 - **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
 - **metadata** - dynamic context from the request store (JSON, null when empty)
-- **workspaceId** - the workspace a repository-written log belongs to, taken from the mutation. An interceptor-written log carries none, which is what places it in the user-scoped lists
+- **workspaceId** - the workspace a `recordInTx` log belongs to, passed by the caller. An interceptor-written log carries none, which is what places it in the user-scoped lists
 - **createdAt** - timestamp
 
 ### Metadata

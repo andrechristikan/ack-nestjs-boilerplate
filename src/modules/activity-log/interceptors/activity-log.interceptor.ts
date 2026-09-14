@@ -10,7 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ActivityLogActionMetaKey } from '@modules/activity-log/constants/activity-log.constant';
 import { EnumActivityLogAction } from '@generated/prisma-client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 /**
  * Triggers an activity log write on both success and failure paths, non-blocking.
@@ -19,7 +19,7 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 export class ActivityLogInterceptor implements NestInterceptor {
     constructor(
         private readonly reflector: Reflector,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     private triggerLog(
@@ -43,7 +43,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         }
 
         // Not awaited: writing the log never delays the response.
-        this.activityLogService
+        this.activityLogDomain
             .create(user.userId, action, rawError)
             .catch(() => {});
     }

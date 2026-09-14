@@ -6,20 +6,21 @@ import {
 import { Notification, Prisma } from '@generated/prisma-client';
 import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
 import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
-import { INotificationHttpService } from '@modules/notification/interfaces/notification.http.service.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class NotificationHttpService implements INotificationHttpService {
-    constructor(private readonly notificationService: NotificationService) {}
+export class NotificationHttpService {
+    constructor(private readonly notificationDomain: NotificationDomain) {}
 
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
     ): Promise<IResponsePagingReturn<Notification>> {
-        const { data, ...others } =
-            await this.notificationService.getListCursor(userId, pagination);
+        const { data, ...others } = await this.notificationDomain.getListCursor(
+            userId,
+            pagination
+        );
 
         return {
             data,
@@ -31,7 +32,7 @@ export class NotificationHttpService implements INotificationHttpService {
         userId: string
     ): Promise<IResponseReturn<NotificationUserSettingResponseDto>> {
         const settings =
-            await this.notificationService.getListUserSetting(userId);
+            await this.notificationDomain.getListUserSetting(userId);
 
         return {
             data: {
@@ -44,13 +45,13 @@ export class NotificationHttpService implements INotificationHttpService {
         userId: string,
         notificationId: string
     ): Promise<IResponseReturn<void>> {
-        await this.notificationService.markAsRead(userId, notificationId);
+        await this.notificationDomain.markAsRead(userId, notificationId);
 
         return {};
     }
 
     async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
-        const count = await this.notificationService.markAllAsRead(userId);
+        const count = await this.notificationDomain.markAllAsRead(userId);
 
         return {
             metadata: {
@@ -65,7 +66,7 @@ export class NotificationHttpService implements INotificationHttpService {
         userId: string,
         data: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.notificationService.updateUserSetting(userId, data);
+        await this.notificationDomain.updateUserSetting(userId, data);
 
         return {};
     }

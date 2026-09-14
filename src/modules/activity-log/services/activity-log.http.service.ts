@@ -4,21 +4,20 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { IActivityLogHttpService } from '@modules/activity-log/interfaces/activity-log.http.service.interface';
 import { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ActivityLogHttpService implements IActivityLogHttpService {
-    constructor(private readonly activityLogService: ActivityLogService) {}
+export class ActivityLogHttpService {
+    constructor(private readonly activityLogDomain: ActivityLogDomain) {}
 
     async getListOffsetByUser(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         const { data, ...others } =
-            await this.activityLogService.getListOffsetByUser(
+            await this.activityLogDomain.getListOffsetByUser(
                 userId,
                 pagination
             );
@@ -34,7 +33,7 @@ export class ActivityLogHttpService implements IActivityLogHttpService {
         pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         const { data, ...others } =
-            await this.activityLogService.getListCursorByUser(
+            await this.activityLogDomain.getListCursorByUser(
                 userId,
                 pagination
             );
@@ -51,7 +50,7 @@ export class ActivityLogHttpService implements IActivityLogHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         const { data, ...others } =
-            await this.activityLogService.getListOffsetByWorkspace(
+            await this.activityLogDomain.getListOffsetByWorkspace(
                 workspaceId,
                 userId,
                 pagination
@@ -69,7 +68,7 @@ export class ActivityLogHttpService implements IActivityLogHttpService {
         pagination: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IResponsePagingReturn<IActivityLog>> {
         const { data, ...others } =
-            await this.activityLogService.getListCursorByWorkspace(
+            await this.activityLogDomain.getListCursorByWorkspace(
                 workspaceId,
                 userId,
                 pagination

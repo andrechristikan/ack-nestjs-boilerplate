@@ -6,7 +6,7 @@ import {
     ProjectMemberStoreKey,
     ProjectStoreKey,
 } from '@modules/project/constants/project.constant';
-import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
 /**
@@ -16,7 +16,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 @Injectable()
 export class ProjectMemberGuard implements CanActivate {
     constructor(
-        private readonly projectMemberService: ProjectMemberService,
+        private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -25,7 +25,7 @@ export class ProjectMemberGuard implements CanActivate {
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
 
         const member =
-            await this.projectMemberService.validateProjectMemberGuard(
+            await this.projectMemberDomain.validateProjectMemberGuard(
                 project?.id ?? null,
                 user?.id ?? null
             );
