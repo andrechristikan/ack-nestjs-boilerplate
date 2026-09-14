@@ -7,8 +7,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
     ResponsePaging,
@@ -79,7 +78,7 @@ export class DeviceAdminController {
             availableOrderBy: DeviceDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
@@ -113,13 +112,9 @@ export class DeviceAdminController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @Param(
-            'deviceOwnershipId',
-            RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
-        )
+        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceHttpService.removeByAdmin(

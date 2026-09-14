@@ -6,7 +6,7 @@ import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
 /**
@@ -16,20 +16,20 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
     constructor(
-        private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const workspace = this.requestStoreService.get<Workspace>(
-            WorkspaceStoreKey
-        );
+        const workspace =
+            this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
 
-        const member = await this.workspaceMemberService.validateWorkspaceMemberGuard(
-            workspace?.id ?? null,
-            user?.id ?? null
-        );
+        const member =
+            await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+                workspace?.id ?? null,
+                user?.id ?? null
+            );
 
         this.requestStoreService.set(WorkspaceMemberStoreKey, member);
 

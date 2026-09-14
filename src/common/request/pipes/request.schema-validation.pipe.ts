@@ -3,23 +3,58 @@ import {
     Injectable,
     StandardSchemaValidationPipe,
 } from '@nestjs/common';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { RequestSchemaMissingException } from '@common/request/exceptions/request.schema-missing.exception';
 
 /**
- * The global validation pipe, fail-closed on the body: a request body reaching a handler with no
- * schema attached is a wiring defect, and it stops here rather than reaching the handler
- * unchecked.
+ * The global validation pipe. Fail-closed on body and param: a value reaching
+ * a handler with no schema attached is a wiring defect. Query without a schema
+ * still passes. Empty Standard Schema issue paths are stamped with the bound
+ * argument name before exceptionFactory so errors[].property is the param name.
  */
 @Injectable()
 export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
+    private stampEmptyIssuePaths(
+        issues: readonly StandardSchemaV1.Issue[],
+        data: string | undefined
+    ): readonly StandardSchemaV1.Issue[] {
+        if (!data) {
+            return issues;
+        }
+
+        return issues.map(issue =>
+            issue.path?.length ? issue : { ...issue, path: [data] }
+        );
+    }
+
     async transform<T = unknown>(
         value: T,
         metadata: ArgumentMetadata
     ): Promise<T> {
-        if (metadata.type === 'body' && !metadata.schema) {
+        if (
+            (metadata.type === 'body' || metadata.type === 'param') &&
+            !metadata.schema
+        ) {
             throw new RequestSchemaMissingException();
         }
 
-        return super.transform(value, metadata);
+        const schema = metadata.schema;
+        if (!schema || !this.toValidate(metadata)) {
+            return value;
+        }
+
+        this.stripProtoKeys(value);
+        const result = await this.validate<T>(
+            value,
+            schema,
+            this.validateOptions
+        );
+        if (result.issues) {
+            throw this.exceptionFactory(
+                this.stampEmptyIssuePaths(result.issues, metadata.data)
+            );
+        }
+
+        return this.isTransformEnabled ? result.value : value;
     }
 }

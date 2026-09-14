@@ -9,19 +9,18 @@ import {
 import { FeatureFlag, Prisma } from '@generated/prisma-client';
 import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import { IFeatureFlagHttpService } from '@modules/feature-flag/interfaces/feature-flag.http.service.interface';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class FeatureFlagHttpService implements IFeatureFlagHttpService {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+export class FeatureFlagHttpService {
+    constructor(private readonly featureFlagDomain: FeatureFlagDomain) {}
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         const { data, ...others } =
-            await this.featureFlagService.getListByAdmin(pagination);
+            await this.featureFlagDomain.getListByAdmin(pagination);
 
         return {
             data,
@@ -33,7 +32,7 @@ export class FeatureFlagHttpService implements IFeatureFlagHttpService {
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePagingReturn<FeatureFlag>> {
         const { data, ...others } =
-            await this.featureFlagService.getListCursor(pagination);
+            await this.featureFlagDomain.getListCursor(pagination);
 
         return {
             data,
@@ -45,7 +44,7 @@ export class FeatureFlagHttpService implements IFeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const updated = await this.featureFlagService.updateStatusByAdmin(
+        const updated = await this.featureFlagDomain.updateStatusByAdmin(
             id,
             body
         );
@@ -59,7 +58,7 @@ export class FeatureFlagHttpService implements IFeatureFlagHttpService {
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const updated = await this.featureFlagService.updateMetadataByAdmin(
+        const updated = await this.featureFlagDomain.updateMetadataByAdmin(
             id,
             body
         );

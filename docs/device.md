@@ -91,17 +91,14 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 ## What Happens When a Device Ownership is Removed
 
-Removing a device ownership (device per user) issues one nested `deviceOwnership.update` (steps 1 to 4) alongside a Redis delete (step 5). The four database effects travel as a single Prisma nested write and land atomically.
+Removing a device ownership (device per user) is composed by `DeviceService.remove` (self-service) and `DeviceService.removeByAdmin` (admin). Redis is cleared first, then one `$transaction` lands the database effects atomically.
 
-1. **Updates the `DeviceOwnership` record** — marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user: the owner on the self-service path, the admin on the admin path) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity.
-2. **Updates the `Device` record** — clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`. These fields live on the shared `Device` row, not on the ownership, so the push token is invalidated for every user owning that device.
-3. **Revokes the active sessions** for that device-user pair in the database (`isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user)
-4. **Creates an activity log** entry with action `userRemoveDevice` against the device owner, inside the same nested write. Its `createdBy` is the acting user, so an admin removal is still traceable to the admin.
-5. **Deletes the session keys from Redis** — causing immediate 401 on any subsequent request using those tokens. This runs concurrently with the database write, over a session list read before that write starts.
+1. **Deletes the session keys from Redis** (`SessionService.deleteLoginsByDeviceOwnership`), causing immediate 401 on any subsequent request using those tokens. The session list is read before that delete.
+2. **Revokes the active sessions** for that device-user pair (`SessionService.revokeByDeviceOwnershipInTx`): `isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user.
+3. **Updates the `DeviceOwnership` record** (`DeviceOwnershipRepository.removeOwnershipInTx`): marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user: the owner on the self-service path, the admin on the admin path) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity. The same write updates the shared `Device` row: clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`, so the push token is invalidated for every user owning that device.
+4. **Creates an activity log** through `ActivityLogService.recordInTx` with action `userRemoveDevice`. Its `createdBy` is the acting user, so an admin removal is still traceable to the admin.
 
-`DeviceOwnershipRepository.remove()` backs the self-service path and `removeByAdmin()` the admin path. Both delegate to one private write that records action `userRemoveDevice` on the owner's activity log, with `createdBy` and `revokedById` set to the acting user.
-
-The admin endpoint carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`, and `ActivityLogInterceptor` writes that record against the admin after the handler returns, outside the nested write. One admin removal therefore leaves two activity-log records with different subjects: `userRemoveDevice` on the target user and `adminDeviceRemove` on the admin.
+The admin endpoint carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`, and `ActivityLogInterceptor` writes that record against the admin after the handler returns, outside the `$transaction`. One admin removal therefore leaves two activity-log records with different subjects: `userRemoveDevice` on the target user and `adminDeviceRemove` on the admin.
 
 ```mermaid
 sequenceDiagram
@@ -112,14 +109,8 @@ sequenceDiagram
 
     Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
     API->>Database: Read active sessions for this device-user pair
-    par Nested update
-        API->>Database: Update DeviceOwnership (isRevoked=true)
-        API->>Database: Update Device (clear notificationToken + notificationProvider)
-        API->>Database: Set isRevoked=true on active session for this device-user pair
-        API->>Database: Create activity log (userRemoveDevice)
-    and Redis
-        API->>Redis: Delete the session keys read above
-    end
+    API->>Redis: Delete the session keys read above
+    API->>Database: $transaction: revoke sessions,<br/>revoke DeviceOwnership + clear Device push token,<br/>recordInTx (userRemoveDevice)
     Note over Redis: Tokens for this device-user pair are now invalid
     API-->>Client: 200 OK
     Note over Client: Client using this device gets 401 on next request
@@ -133,7 +124,7 @@ sequenceDiagram
 - The ownership is looked up first. One that does not exist, belongs to another user, or is already revoked produces a 404 with status code `51300` (`EnumDeviceStatusCodeError.notFound`).
 - `notificationProvider` is re-derived from `platform` and written together with `name` and `notificationToken` on the shared `Device` row.
 - `lastActiveAt` is stamped on both the `DeviceOwnership` and the `Device`.
-- An activity log entry with action `userDeviceRefresh` is written for the user, and `updatedBy` is stamped on the user row.
+- `DeviceService.refresh` opens a `$transaction` that calls `DeviceOwnershipRepository.refreshInTx` and `ActivityLogService.recordInTx` (`userDeviceRefresh`).
 - The refresh write leaves `lastLoginAt` and `lastIPAddress` on `User` untouched; the login path stamps those.
 - The handler returns `200 OK` with no data payload.
 

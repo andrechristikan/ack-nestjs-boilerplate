@@ -1,6 +1,5 @@
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -69,7 +68,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);
@@ -90,7 +89,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
@@ -113,9 +112,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:policyId')
     async update(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
-        @Param('policyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto
@@ -138,9 +137,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:policyId')
     async delete(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
-        @Param('policyId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('policyId', { schema: RequestMongoIdSchema })
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyHttpService.deleteByAdmin(roleId, policyId);

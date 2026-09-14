@@ -1,8 +1,7 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { ResponsePaging } from '@common/response/decorators/response.decorator';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -61,7 +60,7 @@ export class PasswordHistoryAdminController {
             availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         return this.passwordHistoryHttpService.getListOffsetByAdmin(

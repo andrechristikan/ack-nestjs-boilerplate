@@ -5,7 +5,7 @@ import {
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
 import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { PolicyService } from '@modules/policy/services/policy.service';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import { IUser } from '@modules/user/interfaces/user.interface';
 import { Policy } from '@generated/prisma-client';
@@ -18,7 +18,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyService: PolicyService,
+        private readonly policyDomain: PolicyDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -31,7 +31,7 @@ export class PolicyGuard implements CanActivate {
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
         const policies = this.requestStoreService.get<Policy[]>(PolicyStoreKey);
-        return this.policyService.validatePolicyGuard(
+        return this.policyDomain.validatePolicyGuard(
             user,
             policies,
             requiredPolicies

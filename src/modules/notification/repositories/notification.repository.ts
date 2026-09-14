@@ -9,6 +9,7 @@ import {
     INotificationCreate,
     INotificationCreateEntry,
 } from '@modules/notification/interfaces/notification.interface';
+import { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,
@@ -17,7 +18,7 @@ import {
 } from '@generated/prisma-client';
 
 @Injectable()
-export class NotificationRepository {
+export class NotificationRepository implements INotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,

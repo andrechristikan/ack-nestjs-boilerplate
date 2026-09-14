@@ -12,19 +12,18 @@ import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.req
 import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleDto } from '@modules/role/dtos/role.dto';
-import { IRoleHttpService } from '@modules/role/interfaces/role.http.service.interface';
-import { RoleService } from '@modules/role/services/role.service';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class RoleHttpService implements IRoleHttpService {
-    constructor(private readonly roleService: RoleService) {}
+export class RoleHttpService {
+    constructor(private readonly roleDomain: RoleDomain) {}
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } = await this.roleService.getListOffsetByAdmin(
+        const { data, ...others } = await this.roleDomain.getListOffsetByAdmin(
             pagination,
             type
         );
@@ -45,8 +44,10 @@ export class RoleHttpService implements IRoleHttpService {
         pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        const { data, ...others } =
-            await this.roleService.getListCursorBySystem(pagination, type);
+        const { data, ...others } = await this.roleDomain.getListCursorBySystem(
+            pagination,
+            type
+        );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({
                 ...role,
@@ -61,7 +62,7 @@ export class RoleHttpService implements IRoleHttpService {
     }
 
     async getOne(id: string): Promise<IResponseReturn<RoleDto>> {
-        const role = await this.roleService.getOne(id);
+        const role = await this.roleDomain.getOne(id);
 
         return { data: role };
     }
@@ -69,7 +70,7 @@ export class RoleHttpService implements IRoleHttpService {
     async createByAdmin(
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const created = await this.roleService.createByAdmin(body);
+        const created = await this.roleDomain.createByAdmin(body);
 
         return { data: created };
     }
@@ -78,13 +79,13 @@ export class RoleHttpService implements IRoleHttpService {
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        const updated = await this.roleService.updateByAdmin(id, body);
+        const updated = await this.roleDomain.updateByAdmin(id, body);
 
         return { data: updated };
     }
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<void>> {
-        await this.roleService.deleteByAdmin(id);
+        await this.roleDomain.deleteByAdmin(id);
 
         return {};
     }

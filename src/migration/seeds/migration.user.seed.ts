@@ -7,8 +7,8 @@ import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
 import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
-import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -56,8 +56,8 @@ export class MigrationUserSeed
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authPasswordService: AuthPasswordService,
-        private readonly userVerificationService: UserVerificationService,
+        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly userVerificationDomain: UserVerificationDomain,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogUtil: ActivityLogUtil,
@@ -151,12 +151,12 @@ export class MigrationUserSeed
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authPasswordService.createPassword(
+                        this.authPasswordUtil.createPassword(
                             userId,
                             user.password
                         );
                     const { reference, hashedToken, type } =
-                        this.userVerificationService.verificationCreateVerification(
+                        this.userVerificationDomain.verificationCreateVerification(
                             userId,
                             EnumVerificationType.email
                         );

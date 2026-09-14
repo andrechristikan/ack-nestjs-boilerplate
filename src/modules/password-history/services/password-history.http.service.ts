@@ -4,15 +4,14 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client';
-import { IPasswordHistoryHttpService } from '@modules/password-history/interfaces/password-history.http.service.interface';
 import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PasswordHistoryHttpService implements IPasswordHistoryHttpService {
+export class PasswordHistoryHttpService {
     constructor(
-        private readonly passwordHistoryService: PasswordHistoryService
+        private readonly passwordHistoryDomain: PasswordHistoryDomain
     ) {}
 
     async getListOffsetByAdmin(
@@ -20,7 +19,7 @@ export class PasswordHistoryHttpService implements IPasswordHistoryHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         const { data, ...others } =
-            await this.passwordHistoryService.getListOffsetByAdmin(
+            await this.passwordHistoryDomain.getListOffsetByAdmin(
                 userId,
                 pagination
             );
@@ -36,7 +35,7 @@ export class PasswordHistoryHttpService implements IPasswordHistoryHttpService {
         pagination: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
     ): Promise<IResponsePagingReturn<IPasswordHistory>> {
         const { data, ...others } =
-            await this.passwordHistoryService.getListCursor(userId, pagination);
+            await this.passwordHistoryDomain.getListCursor(userId, pagination);
 
         return {
             data,

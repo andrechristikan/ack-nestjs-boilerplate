@@ -4,7 +4,7 @@ Five roles on the path a request takes, one reason to change each. Blurring them
 
 ```
 Controller ──▶ HTTP Service ──────┐
-                                  ├──▶ Domain Service ──▶ Repository ──▶ DatabaseService (Prisma)
+                                  ├──▶ Domain ──▶ Repository ──▶ DatabaseService (Prisma)
 Processor ───▶ Processor Service ─┘
 ```
 
@@ -17,35 +17,37 @@ its definition (`rules/nest-wiring.md`).
 ## Repository
 
 - **Data access ONLY.** Prisma queries, `select`, `where`, `orderBy`, pagination calls. No business rules, no HTTP concepts.
-- Injects `DatabaseService` directly as a class. No `@Inject`, no token, no interface — a repository has exactly one implementation and inventing a port for it is speculative abstraction.
-- **Model access goes through `databaseService.client`** (the audited extended Prisma client), which stamps `createdBy` / `updatedBy` / `deletedBy` from the CLS request actor. Soft delete is `client.<model>.softDelete(...)`, restore is `client.<model>.restore(...)`. See `rules/database.md`.
+- Injects `DatabaseService` directly as a class. No `@Inject`, no token — `DatabaseService` has exactly one implementation.
+- **Model access goes through `this.databaseService.client`, or through `tx` on an `*InTx` method.** `client` is the audited extended Prisma client, which stamps `createdBy` / `updatedBy` / `deletedBy` from the CLS request actor. Soft delete is `<client>.<model>.softDelete(...)`, restore is `<client>.<model>.restore(...)`. A method that runs inside a caller-owned transaction is named `*InTx` and takes `tx: IDatabaseTransactionClient` as its first parameter. A method that does not join one takes no `tx` and never reads one. See `rules/database.md`.
+- **It issues statements only against the model it owns.** Another model's row is reached through that model's repository, composed by a domain (`rules/cross-module.md`).
 - **The repository owns `null → {}` normalization** for filter params before they reach Prisma. Never in the caller. A service that spreads `filter ?? {}` into a repository call has taken over the repository's job.
 - Returns Prisma models or the module's `I<Module>*` interfaces. **It never returns a DTO** — a response shape belongs to one transport, and the repository answers to all of them.
-- **It MAY receive a request DTO.** Where the controller, the HTTP service and the domain service all carry the same shape unchanged down to the write, that shape travels as the DTO rather than being retyped at every layer for no gain. What decides is whether anything in between DERIVES: the moment a service merges, computes or validates the input into a different shape, that new shape is an `I<Module>*` interface, and it is the interface that reaches the repository. A repository parameter typed as a DTO says "nothing happened to this on the way down", and that has to be true.
+- **It MAY receive a request DTO.** Where the controller, the HTTP service and the domain all carry the same shape unchanged down to the write, that shape travels as the DTO rather than being retyped at every layer for no gain. What decides is whether anything in between DERIVES: the moment a layer merges, computes or validates the input into a different shape, that new shape is an `I<Module>*` interface, and it is the interface that reaches the repository. A repository parameter typed as a DTO says "nothing happened to this on the way down", and that has to be true.
 - **The signature says whether the method READS the DTO or FORWARDS it.** A method that reads individual fields destructures them in the parameter list (`{ name, description }: WorkspaceUpdateRequestDto`); a method that hands the shape on untouched — to a private sibling, or straight into the Prisma `data` — takes it whole as `dto`. A reader learns which fields a write actually touches from the signature alone, without opening the body.
-- **What else it may inject is the tier table below.** `src/common/` and every `@Global()` module are open to it, so `HelperDateService`, `PaginationService`, `DatabaseUtil` and `ActivityLogUtil` are injected directly. A util from a non-global module is not — including its OWN feature's util, which is provided by the service layer (`rules/nest-wiring.md`). What such a util built arrives as a parameter.
-- **`ConfigService` only for the mechanics of the write itself.** A transaction timeout, a batch size — the knobs on machinery this layer already owns — are read here. A value that expresses a business decision is not: `workspace.slugPrefix`, `project.slugMaxAttempts`, `user.personalWorkspaceNamePattern` belong to the domain service and arrive as parameters. The test is what the value decides, not where it is stored — both live in `src/configs/`. This is the "no business rules" line above, not a tier question: `ConfigModule` is global and every other global IS open.
+- **What else it may inject is the tier table below.** `src/common/` and every `@Global()` module are open to it, so `HelperDateService`, `PaginationService`, `DatabaseUtil` and `ActivityLogUtil` are injected directly. A util from a non-global module is not — including its OWN feature's util, which is provided by `<feature>.domain.module.ts` (`rules/nest-wiring.md`). What such a util built arrives as a parameter.
+- **`ConfigService` only for the mechanics of the write itself.** A transaction timeout, a batch size — the knobs on machinery this layer already owns — are read here. A value that expresses a business decision is not: `workspace.slugPrefix`, `project.slugMaxAttempts`, `user.personalWorkspaceNamePattern` belong to the domain and arrive as parameters. The test is what the value decides, not where it is stored — both live in `src/configs/`. This is the "no business rules" line above, not a tier question: `ConfigModule` is global and every other global IS open.
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
-- **Prefer `$transaction` for multi-step writes** so a failure rolls back as one unit. See `rules/database.md`.
-- **No `I*Repository` header.** Inject the class only.
+- **A multi-step write on this repository's own model may open a transaction here** through `this.databaseService.withTransaction` (`rules/database.md`). A write that also touches another repository's model is not opened here; the domain composes those repositories inside `this.databaseService.withTransaction`.
+- **A repository never injects or calls another repository.** Same-feature siblings are composed by the domain.
+- **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at `interfaces/<module>[.<concern>].repository.interface.ts`. Callers inject the class (`UserRepository`); Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs. ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a domain signature.
 
-## Domain service — `<module>[.<concern>].service.ts`
+## Domain — `<module>[.<concern>].domain.ts`
 
-- **Business logic ONLY.** Invariants, rule validation, typed exceptions, i18n message paths, orchestration across repositories and other domain services.
+- **Business logic ONLY.** Invariants, rule validation, typed exceptions, i18n message paths, orchestration across repositories and other domains.
 - **A `ResponseDto` never appears in a domain signature**, as a parameter or a return. Return values are `I<Module>*` interfaces, Prisma models, and primitives; assembling a response is the HTTP service's job, and the domain answers to the queue as well.
 - **A request DTO may travel through unchanged.** When the method takes the caller's input and hands it on without deriving anything from it, the DTO is the parameter type and no parallel interface is invented for it. When the method derives — merges two inputs, computes a value, resolves a reference, validates into a narrower shape — what it produces and passes on is an `I<Module>*` interface. The rule is about what the method DOES to the shape, not about which layer it sits in.
 - It knows nothing about HTTP or the queue: no `IRequestApp`, no `Job`, no response envelope, no pagination response assembly.
-- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain service, never from its repository (`rules/cross-module.md`). Injects other domain services, utils and queue classes by the tier table below.
-- **NEVER injects `DatabaseService`.** Data access goes through the repository, always. This is the single hardest rule in the file.
-- **NEVER opens a Prisma `$transaction`.** Transactions live in the repository (`rules/database.md`).
-- Provided by `<feature>.module.ts`, and it is the only layer another module ever consumes.
+- Injects the repositories of its OWN feature as classes — **one or many**. Another feature's data comes from that feature's domain, never from its repository (`rules/cross-module.md`). Injects other domains, utils and queue classes by the tier table below.
+- **Injects `DatabaseService` only to call `withTransaction`.** It never issues a model query on `client`. Feature data access still goes through a repository. This is the single hardest rule in the file.
+- **Opens a transaction when the work spans more than one repository.** It calls `this.databaseService.withTransaction` and passes the `tx` into each `*InTx` repository or domain method (`rules/database.md`). A single-repository write does not open one here.
+- Provided by `<feature>.domain.module.ts`, and it is the only layer another feature's domain, HTTP, or processor module ever consumes.
 
 ## HTTP service — `<module>[.<concern>].http.service.ts`
 
 - **The controller's only collaborator**, one per HTTP concern. It is where a response DTO is born and where the HTTP shape of a request stops mattering.
 - It translates: a request DTO into the domain call — passing it through when nothing derives from it, or into `I<Module>*` interface parameters when something does — then the domain result into a response DTO, and a list result into the pagination response the scope requires (`rules/pagination.md`).
-- **It owns no business rule and reaches no repository.** A check that would be equally true for a queued job belongs to the domain service; putting it here means the processor path silently skips it.
-- Injects domain services, and tier 1 / tier 2 kit for shaping. Provided by `<feature>.http.module.ts`.
+- **It owns no business rule and reaches no repository.** A check that would be equally true for a queued job belongs to the domain; putting it here means the processor path silently skips it.
+- Injects domains, and tier 1 / tier 2 kit for shaping. Provided by `<feature>.http.module.ts`.
 
 ## Processor service — `<module>[.<concern>].processor.service.ts`
 
@@ -58,7 +60,7 @@ its definition (`rules/nest-wiring.md`).
 
 - **Route delegation ONLY.** One endpoint maps to one HTTP service method. Decorators, param extraction, and the return value — nothing else.
 - Prefer passing the whole request DTO through. Normalize `undefined → null` only when a service param is `T | null` and the DTO field is optional (`rules/null-safety.md`).
-- No business rules, no domain service, no repository access, no pagination metadata assembled by hand.
+- No business rules, no domain, no repository access, no pagination metadata assembled by hand.
 - The FILE lives in the feature module; the REGISTRATION lives in `src/router/http/` (`rules/router.md`).
 
 ## Util — `<module>[.<concern>].util.ts`
@@ -66,12 +68,7 @@ its definition (`rules/nest-wiring.md`).
 - **A util SHAPES data and nothing else.** Mappers, predicates, format checks, pure transforms:
   arguments in, a value out. `UserUtil.checkUsernamePattern`, `ApiKeyUtil.isExpired`,
   `WorkspaceUtil.mapInvitePreview`, `SessionUtil.mapActivityLogMetadata`.
-- **It never DECIDES a business rule and it never does IO.** Token minting and lifetime,
-  password expiry and reuse policy, the forgot-password and verification lifecycles, credential
-  validation, attempt lockout, two-factor challenge and backup-code policy, rollout percentage —
-  each of those is a domain service in the same feature. **The test is what the code DOES**, not
-  what it injects: a method that reads state it was not handed, writes anywhere, or picks an
-  outcome the caller could not have computed from its own arguments belongs in a service.
+- **It never DECIDES a business rule and it never does IO.** A domain enforces token lifetime, password expiry and reuse, the forgot-password and verification lifecycles, credential rejection, attempt lockout, two-factor challenge and backup-code consumption, and rollout percentage. **The test is what the code DOES**, not what it injects: a method that reads state it was not handed, writes anywhere, throws a typed exception, or picks an outcome the caller could not have computed from its own arguments belongs in the domain. Hashing, encrypting, comparing, and computing dates from config that the caller still acts on are a util (`AuthPasswordUtil.createPassword`, `ApiKeyCredentialUtil.validateCredential`).
 - **What it MAY inject:** `ConfigService`, and the part of `src/common/` that computes in memory
   — the `Helper*` services, `MessageService`, `DatabaseUtil`.
 - **What it MUST NOT inject:** a cache, a repository, a BullMQ `Queue`, `RequestStoreService`,
@@ -80,8 +77,8 @@ its definition (`rules/nest-wiring.md`).
   (`rules/cross-module.md`).
 - **It maps an error to the module's exception and RETURNS it; the caller throws.** A util
   raises nothing itself (`rules/exceptions.md`).
-- Provided by `<feature>.module.ts` beside the domain services, and exported by it when another
-  module's service layer injects it. No header interface.
+- Provided by `<feature>.domain.module.ts` beside the domain classes, and exported by it when another
+  module's domain, HTTP, or processor layer injects it. No header interface.
 - **A util left with no members is deleted, together with its provider and export entries.** An
   empty class kept as a home for future helpers is structure nobody asked for.
 - `src/common/` carries utils of its own. Those are kit plumbing on tier 1 and their import
@@ -102,12 +99,15 @@ its definition (`rules/nest-wiring.md`).
   `@QueueProcessor(EnumQueue.<member>)` (`rules/queue.md`).
 - Injects the BullMQ `Queue` and `ConfigService` for the mechanics of the job itself — a cron
   pattern, a timezone, a deduplication TTL.
-- **It owns no business rule and reaches no repository.** Whether to notify is the domain
-  service's decision; the queue class carries out the enqueue that decision produced.
-- Provided AND exported by `<feature>.module.ts`. A domain service or a processor service
-  injects it, in its own feature or across a module boundary
-  (`rules/cross-module.md`); a controller and an HTTP service never touch it.
-- **No header interface**, on the same terms as a repository.
+- **It owns no business rule and reaches no repository.** Whether to notify is the domain's
+  decision; the queue class carries out the enqueue that decision produced.
+- Provided AND exported by `<feature>.domain.module.ts`. That module registers each owned queue
+  with `BullModule.registerQueueAsync({ name: EnumQueue.<member>, configKey: QueueConfigKey,
+  useClass: <Feature>[<Concern>]QueueFactory })` from `factories/` and exports `BullModule`. The factory never
+  sets `connection` (`rules/queue.md`). A domain or a processor service injects the queue class,
+  in its own feature or across a module boundary (`rules/cross-module.md`); a controller and an
+  HTTP service never touch it.
+- **No header interface.**
 - A queue injected to READ depth or health is a health indicator, which enqueues nothing.
 
 ## Import tiers — what may inject what (HARD)
@@ -118,23 +118,23 @@ Three tiers. Everything in a tier is open to every tier below it, and the revers
 |---|---|---|
 | **1 — kit** | the `src/common/` modules `CommonModule` composes | anyone: a repository, any service, any util — a util takes the in-memory part only, never `FileService` and never a cache. `AwsModule` lives under `src/common/aws/` and is imported where it is used |
 | **2 — global feature** | a module under `src/modules/` carrying `@Global()` | anyone, exactly like tier 1 — with the same carve-out, and a util is never injected by another module's util |
-| **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its SERVICE layer and its exported queue class, injected by a service layer |
+| **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its DOMAIN module and its exported queue class, injected by a domain, HTTP service, or processor service |
 
 - **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperDateService` does. `ActivityLogUtil` in sixteen repositories is correct, not a leak — the ban is on what a util INJECTS, not on who injects a util.
 - **A util never injects another module's util, `@Global()` or not.** Tier 2 widens who may reach a util; it does not widen what a util may reach. What one util needs from another module arrives as an argument from the service that called it.
 - **A tier 3 util never reaches ANOTHER module's repository.** It is injected by that module's services, and whatever it built arrives at the repository as a parameter. A util that genuinely belongs in several modules' repositories belongs in tier 1 or tier 2 — move it, do not widen the rule.
-- **A tier 3 util does not reach ANY repository, its own included.** Utils live beside the domain services in `<feature>.module.ts`, and `<feature>.repository.module.ts` imports nothing (`rules/nest-wiring.md`).
-- **A tier 3 repository is not reachable across modules at all.** `<Feature>RepositoryModule` stops at its own feature and the domain service is the crossing point (`rules/cross-module.md`); that is a separate question from this table, which governs UTILS and SERVICES.
+- **A tier 3 util does not reach ANY repository, its own included.** Utils live beside the domain classes in `<feature>.domain.module.ts`, and `<feature>.repository.module.ts` imports nothing (`rules/nest-wiring.md`).
+- **A tier 3 repository is not reachable across modules at all.** `<Feature>RepositoryModule` stops at its own feature and the domain is the crossing point (`rules/cross-module.md`); that is a separate question from this table, which governs UTILS, DOMAINS, and SERVICES.
 - **`src/common/` MUST NOT import a util, service, or repository from `src/modules/`.** Composition wiring in `common.module.ts` and compile-time enums are the only crossings (`rules/common.md`). A shared module that knows one feature's internals is no longer shared.
 - **Read tier 2 from the code, never from memory.** The test is `@Global()` on the module class, and the set changes.
 
 ## SOLID, applied here
 
-- **S** — the five roles above. A domain service method that builds a Prisma `where` has crossed into the repository; a repository that throws `UserNotFoundException` has crossed into the domain service; an HTTP service that checks a business rule has crossed into it too, and the queue path loses that check.
+- **S** — the five roles above. A domain method that builds a Prisma `where` has crossed into the repository; a repository that throws `UserNotFoundException` has crossed into the domain; an HTTP service that checks a business rule has crossed into it too, and the queue path loses that check.
 - **O** — extend with a new class, strategy, or decorator. Never add an `if (type === 'x')` branch to stable code to make it handle one more case.
 - **L** — a subclass or implementation must be drop-in for its base. No narrowing behavior, no surprise throws a caller cannot see coming.
-- **I** — a service exposes `I*Service` shaped by what callers need; repositories do not get an `I*Repository`. Data-shape interfaces stay consumer-driven.
-- **D** — inject services and repositories as **classes**. The service still `implements I*Service`. A DI token is only for a real swappable seam.
+- **I** — data-shape interfaces stay consumer-driven (`IUser`, payloads). A repository exposes `I*Repository` as the persistence port. A domain, HTTP service, and processor service do not get a header.
+- **D** — inject domains, services, and repositories as **classes**. A DI token is only for a real swappable seam.
 
 **DRY** — zero copy-paste logic. Written twice is a signal, written three times is a defect. One source of truth per config value, connection, and constant.
 
@@ -174,41 +174,31 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 - Do not raise "unused / dead code / YAGNI violation" against an export meeting the three conditions — in a review, a PR description, an audit, or a plan. If it fails one, name WHICH one and argue that. "It has no call sites" is not a finding, and neither is "it is new".
 - When the two axes genuinely both apply, **complexity wins**: reject the structure, keep the breadth. The answer is a flatter sibling, never a dropped one.
 
-## Service interface required; repository interface forbidden (HARD)
+## Header interfaces (HARD)
 
-**Every service MUST have a header interface**, in all three shapes — domain, HTTP and
-processor — at `interfaces/<feature>[.<concern>][.<layer>].service.interface.ts`, named
-`I<Feature>[<Concern>][<Layer>]Service`, and the class `implements` it:
+**A repository MUST have a header interface** — `I<Feature>[<Concern>]Repository` at
+`interfaces/<module>[.<concern>].repository.interface.ts` — and the class `implements` it.
+This is the persistence port: ID dialect (ObjectId versus UUID) and Prisma `where` shapes stay
+behind it. Callers inject the **class** (`userRepository: UserRepository`).
 
-| Class | Interface file |
-|---|---|
-| `UserService` | `user.service.interface.ts` |
-| `UserHttpService` | `user.http.service.interface.ts` |
-| `WorkspaceProcessorService` | `workspace.processor.service.interface.ts` |
-| `NotificationPushProcessorService` | `notification.push.processor.service.interface.ts` |
+**A domain, HTTP service, and processor service MUST NOT get a header interface.** Inject the
+class. One implementor, no token — an `IUserDomain` / `IUserHttpService` beside it is a twin
+that no constructor types against.
 
-Injection stays by **class** (`UserService`) unless a real DI token seam exists — the interface
-is still required.
+Do not confuse `I*Repository` with data-shape ports such as `IPaginationRepository` in
+`pagination.interface.ts` — those describe a duck type shared by many repositories, not one
+feature's persistence class.
 
-**A repository MUST NOT get a header interface.** Inject the repository class. One implementor,
-one Prisma surface — an `I<Feature>Repository` beside it is ceremony. Do not confuse that ban
-with data-shape ports such as `IPaginationRepository` in `pagination.interface.ts` — those
-describe a duck type, not a feature repository.
-
-**A queue class and a util get no header interface either**, for the same reason: one
-implementor, no seam, and an `I<Feature>Queue` beside `<Feature>Queue` is ceremony.
+**A queue class, a cache class, a util, and a factory class get no `I*` header**, for the same
+reason as domain. A queue factory `implements RegisterQueueOptionsFactory` (framework contract).
+`ISessionCache` is a data shape, not a header for `SessionCache`.
 
 An interface still earns a place for **data shapes** (`IUser`, payloads, option bags) and for a
 **real multi-implementor seam** (rare). Framework lifecycle contracts (`OnModuleInit`,
-`CanActivate`, …) stay required. Pure Nest plumbing that is not a business service
-(`DatabaseService`, `LoggerOptionService`, framework storage adapters) does not need an
-`I*Service`.
+`CanActivate`, …) stay required.
 
-**The test for repositories and data shapes:** if deleting the interface leaves every call site
-compiling unchanged **and** it is not a required `I*Service`, delete it.
-
-Every feature service already `implements I*Service`. Keep that. Do not add `I*Repository`, and
-do not remove a service interface as a cleanup side effect of an unrelated change.
+**The test:** if deleting the interface leaves every call site compiling unchanged, and it is
+not `I*Repository`, not a data shape, and not a framework contract, delete it.
 
 ## Where the rest lives
 

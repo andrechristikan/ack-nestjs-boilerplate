@@ -27,8 +27,8 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 ## Layout
 
 Feature modules live in `src/modules/<feature>/` and all carry one shape:
-`Controller → HTTP Service → Domain Service → Repository`, with
-`Processor → Processor Service` joining at the domain service. Rules:
+`Controller → HTTP Service → Domain → Repository`, with
+`Processor → Processor Service` joining at the domain. Rules:
 `.claude/rules/architecture.md` and `.claude/rules/nest-wiring.md`. Folder map for
 humans: `docs/project-structure.md` — not a standing read.
 
@@ -45,8 +45,9 @@ src/
 ├── languages/          # nestjs-i18n JSON, one file per module prefix
 ├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
-├── queues/             # BullMQ FRAMEWORK layer — enums, decorator, base, queue registration;
-│                       #   a feature's own queues/ folder holds its enqueue classes instead
+├── queues/             # BullMQ FRAMEWORK layer — enums, decorator, base, QueueModule.forRoot
+│                       #   (producer + processor Redis connections). Named queues are registered
+│                       #   by the owning feature domain module (`rules/queue.md`)
 └── router/             # http/ mounts controllers under /public /system /admin /user /shared;
                         #   processor/ aggregates every <feature>.processor.module.ts
 
@@ -178,6 +179,10 @@ installs them once:
 - `caveman` — the reply style every agent uses when reporting back. Install with
   `claude plugin marketplace add JuliusBrussee/caveman`, then
   `claude plugin install caveman@caveman`.
+- `avoid-ai-writing` — de-AI pass on `docs/*.md` and the root `README.md`, loaded only by
+  `doc-writer`. Install with `claude plugin marketplace add conorbronsdon/avoid-ai-writing`,
+  then `claude plugin install avoid-ai-writing@conorbronsdon-skills`. Enabling it in
+  `.claude/settings.json` does not install it.
 
 ## How work happens here
 

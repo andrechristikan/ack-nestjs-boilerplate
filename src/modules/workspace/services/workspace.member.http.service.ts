@@ -8,14 +8,13 @@ import { Prisma, WorkspaceMember } from '@generated/prisma-client';
 import { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
 import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { IWorkspaceMemberHttpService } from '@modules/workspace/interfaces/workspace.member.http.service.interface';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
+export class WorkspaceMemberHttpService {
     constructor(
-        private readonly workspaceMemberService: WorkspaceMemberService
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain
     ) {}
 
     async transferOwnership(
@@ -23,7 +22,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         { targetUserId }: WorkspaceTransferOwnershipRequestDto
     ): Promise<void> {
-        await this.workspaceMemberService.transferOwnership(
+        await this.workspaceMemberDomain.transferOwnership(
             workspaceId,
             actorMember,
             targetUserId
@@ -34,7 +33,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         workspaceId: string,
         member: WorkspaceMember
     ): Promise<void> {
-        await this.workspaceMemberService.leaveWorkspace(workspaceId, member);
+        await this.workspaceMemberDomain.leaveWorkspace(workspaceId, member);
     }
 
     async getMembersList(
@@ -43,7 +42,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         const { data, ...others } =
-            await this.workspaceMemberService.getMembersList(
+            await this.workspaceMemberDomain.getMembersList(
                 workspaceId,
                 pagination,
                 role
@@ -61,7 +60,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         targetMemberId: string,
         { role }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<void> {
-        await this.workspaceMemberService.updateMemberRole(
+        await this.workspaceMemberDomain.updateMemberRole(
             workspaceId,
             actorMember,
             targetMemberId,
@@ -74,7 +73,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<void> {
-        await this.workspaceMemberService.removeMember(
+        await this.workspaceMemberDomain.removeMember(
             workspaceId,
             actorMember,
             targetMemberId
@@ -86,7 +85,7 @@ export class WorkspaceMemberHttpService implements IWorkspaceMemberHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
     ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
         const { data, ...others } =
-            await this.workspaceMemberService.getMembersListForAdmin(
+            await this.workspaceMemberDomain.getMembersListForAdmin(
                 workspaceId,
                 pagination
             );

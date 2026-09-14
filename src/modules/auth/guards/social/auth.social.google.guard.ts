@@ -1,7 +1,7 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthSocialGoogleRequiredException } from '@modules/auth/exceptions/auth.social-google-required.exception';
 import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -12,7 +12,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
     private readonly googlePrefix: string;
 
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         private readonly configService: ConfigService
     ) {
         this.googleHeader =
@@ -34,7 +34,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
             throw new AuthSocialGoogleRequiredException();
         }
 
-        request.user = await this.authService.validateOAuthGoogle(
+        request.user = await this.authDomain.validateOAuthGoogle(
             requestHeaders[1]
         );
 

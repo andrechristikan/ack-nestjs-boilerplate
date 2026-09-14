@@ -60,7 +60,7 @@ payload against it before the envelope is sent.
   declares a route that returns no data; a handler that returns one anyway raises
   `ResponseSerializationException`, and so does a payload the schema rejects.
 - `@ResponsePaging` takes the schema of ONE item; the interceptor wraps the page around it.
-- Never hand a response schema to a domain service. It belongs to the transport
+- Never hand a response schema to a domain. It belongs to the transport
   (`rules/architecture.md`).
 
 ## The envelope, not the schema

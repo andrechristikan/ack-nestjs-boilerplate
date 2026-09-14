@@ -4,11 +4,11 @@ import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
+import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import { RequestTimeout } from '@common/request/decorators/request.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -238,7 +238,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @UploadedFile(
-            RequestRequiredPipe,
+            FileRequiredPipe(),
             FileExtensionPipe([
                 EnumFileExtensionImage.jpeg,
                 EnumFileExtensionImage.png,
@@ -297,11 +297,7 @@ export class UserSharedController {
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param(
-            'mobileNumberId',
-            RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
-        )
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
@@ -325,11 +321,7 @@ export class UserSharedController {
     @Delete('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param(
-            'mobileNumberId',
-            RequestRequiredPipe,
-            RequestIsValidObjectIdPipe
-        )
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.deleteMobileNumber(

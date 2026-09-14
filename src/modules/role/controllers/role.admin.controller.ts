@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
     ResponsePaging,
@@ -37,7 +37,6 @@ import {
     RoleUpdateRequestDto,
     RoleUpdateRequestSchema,
 } from '@modules/role/dtos/request/role.update.request.dto';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
     EnumActivityLogAction,
@@ -115,7 +114,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
         return this.roleHttpService.getOne(roleId);
@@ -157,7 +156,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:roleId')
     async update(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto
@@ -180,7 +179,7 @@ export class RoleAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
         return this.roleHttpService.deleteByAdmin(roleId);

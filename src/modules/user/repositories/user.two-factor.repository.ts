@@ -1,336 +1,172 @@
+import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { EnumActivityLogAction, User } from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import { TwoFactor } from '@generated/prisma-client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserTwoFactorRepository {
+export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogUtil: ActivityLogUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async verifyTwoFactor(
+    async createDisabledInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
-        const now = this.helperDateService.create();
-
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+        createdBy: string
+    ): Promise<TwoFactor> {
+        return tx.twoFactor.create({
             data: {
-                twoFactor: {
-                    update: {
-                        lastUsedAt: this.helperDateService.create(),
-                        ...(method === EnumAuthTwoFactorMethod.backupCodes && {
-                            backupCodes: newBackupCodes,
-                        }),
-                    },
-                },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userVerifyTwoFactor,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.userVerifyTwoFactor
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: userId,
-                        createdAt: now,
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                userId,
+                enabled: false,
+                requiredSetup: false,
+                createdBy,
             },
         });
     }
 
-    async setupTwoFactor(
+    async verifyTwoFactorInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        { method, newBackupCodes }: IAuthTwoFactorVerifyResult
+    ): Promise<TwoFactor> {
+        return tx.twoFactor.update({
+            where: { userId },
+            data: {
+                lastUsedAt: this.helperDateService.create(),
+                ...(method === EnumAuthTwoFactorMethod.backupCodes && {
+                    backupCodes: newBackupCodes,
+                }),
+            },
+        });
+    }
+
+    async setupTwoFactorInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         secretEncrypted: string,
-        iv: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
+        iv: string
+    ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+        return tx.twoFactor.update({
+            where: { userId },
             data: {
-                twoFactor: {
-                    update: {
-                        secret: secretEncrypted,
-                        iv,
-                        attempt: 0,
-                        updatedAt: now,
-                        updatedBy: userId,
-                    },
-                },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userSetupTwoFactor,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.userSetupTwoFactor
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: userId,
-                        createdAt: now,
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                secret: secretEncrypted,
+                iv,
+                attempt: 0,
+                updatedAt: now,
+                updatedBy: userId,
             },
         });
     }
 
-    async enableTwoFactor(
+    async enableTwoFactorInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        backupCodesHashed: string[],
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
+        backupCodesHashed: string[]
+    ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
+        const twoFactor = await tx.twoFactor.findUnique({
+            where: { userId },
+            select: {
+                confirmedAt: true,
+            },
+        });
 
-        return this.databaseService.client.$transaction<IUser>(async tx => {
-            const twoFactor = await tx.twoFactor.findUnique({
-                where: { userId },
-                select: {
-                    confirmedAt: true,
-                },
-            });
-
-            return tx.user.update({
-                where: { id: userId, deletedAt: null },
-                data: {
-                    twoFactor: {
-                        update: {
-                            enabled: true,
-                            requiredSetup: false,
-                            confirmedAt: twoFactor?.confirmedAt ?? now,
-                            backupCodes: backupCodesHashed,
-                            lastUsedAt: now,
-                            updatedAt: now,
-                            updatedBy: userId,
-                        },
-                    },
-                    activityLogs: {
-                        create: {
-                            action: EnumActivityLogAction.userEnableTwoFactor,
-                            description: this.activityLogUtil.getDescription(
-                                EnumActivityLogAction.userEnableTwoFactor
-                            ),
-                            ipAddress,
-                            userAgent:
-                                this.databaseUtil.toPlainObject(userAgent),
-                            geoLocation:
-                                this.databaseUtil.toPlainObject(geoLocation),
-                            createdBy: userId,
-                            createdAt: now,
-                        },
-                    },
-                },
-                include: {
-                    role: { include: { policies: true } },
-                    twoFactor: true,
-                },
-            });
+        return tx.twoFactor.update({
+            where: { userId },
+            data: {
+                enabled: true,
+                requiredSetup: false,
+                confirmedAt: twoFactor?.confirmedAt ?? now,
+                backupCodes: backupCodesHashed,
+                lastUsedAt: now,
+                updatedAt: now,
+                updatedBy: userId,
+            },
         });
     }
 
-    async disableTwoFactor(
+    async disableTwoFactorInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<TwoFactor> {
+        const now = this.helperDateService.create();
+
+        return tx.twoFactor.update({
+            where: { userId },
+            data: {
+                enabled: false,
+                requiredSetup: false,
+                backupCodes: [],
+                lastUsedAt: now,
+                secret: null,
+                iv: null,
+                updatedBy: userId,
+                updatedAt: now,
+            },
+        });
+    }
+
+    async regenerateTwoFactorBackupCodesInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
+        backupCodesHashed: string[]
+    ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+        return tx.twoFactor.update({
+            where: { userId },
             data: {
-                twoFactor: {
-                    update: {
-                        enabled: false,
-                        requiredSetup: false,
-                        backupCodes: [],
-                        lastUsedAt: now,
-                        secret: null,
-                        iv: null,
-                        updatedBy: userId,
-                        updatedAt: now,
-                    },
-                },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userDisableTwoFactor,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.userDisableTwoFactor
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: userId,
-                        createdAt: now,
-                    },
-                },
-                sessions: {
-                    updateMany: {
-                        where: {
-                            isRevoked: false,
-                            expiredAt: { gte: now },
-                        },
-                        data: {
-                            isRevoked: true,
-                            revokedAt: now,
-                            revokedById: userId,
-                            updatedBy: userId,
-                        },
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                backupCodes: backupCodesHashed,
+                updatedBy: userId,
+                updatedAt: now,
             },
         });
     }
 
-    async regenerateTwoFactorBackupCodes(
+    async resetTwoFactorByAdminInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        backupCodesHashed: string[],
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
+        updatedBy: string
+    ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+        return tx.twoFactor.update({
+            where: { userId },
             data: {
-                twoFactor: {
-                    update: {
-                        backupCodes: backupCodesHashed,
-                        updatedBy: userId,
-                        updatedAt: now,
-                    },
-                },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.userRegenerateTwoFactorBackupCodes
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: userId,
-                        createdAt: now,
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
+                requiredSetup: true,
+                attempt: 0,
+                backupCodes: [],
+                secret: null,
+                iv: null,
+                updatedBy,
+                updatedAt: now,
             },
         });
     }
 
-    async resetTwoFactorByAdmin(
-        userId: string,
-        updatedBy: string,
-        { ipAddress, userAgent, geoLocation }: IRequestLog
-    ): Promise<IUser> {
-        const now = this.helperDateService.create();
-
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+    async increaseTwoFactorAttempt(userId: string): Promise<TwoFactor> {
+        return this.databaseService.client.twoFactor.update({
+            where: { userId },
             data: {
-                twoFactor: {
-                    update: {
-                        requiredSetup: true,
-                        attempt: 0,
-                        backupCodes: [],
-                        secret: null,
-                        iv: null,
-                        updatedBy: updatedBy,
-                        updatedAt: now,
-                    },
+                attempt: {
+                    increment: 1,
                 },
-                activityLogs: {
-                    create: {
-                        action: EnumActivityLogAction.adminUserResetTwoFactor,
-                        description: this.activityLogUtil.getDescription(
-                            EnumActivityLogAction.adminUserResetTwoFactor
-                        ),
-                        ipAddress,
-                        userAgent: this.databaseUtil.toPlainObject(userAgent),
-                        geoLocation:
-                            this.databaseUtil.toPlainObject(geoLocation),
-                        createdBy: updatedBy,
-                        createdAt: now,
-                    },
-                },
-                sessions: {
-                    updateMany: {
-                        where: { isRevoked: false, expiredAt: { gte: now } },
-                        data: {
-                            isRevoked: true,
-                            revokedAt: now,
-                            revokedById: updatedBy,
-                            updatedBy: userId,
-                        },
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
             },
         });
     }
 
-    async increaseTwoFactorAttempt(userId: string): Promise<IUser> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
+    async resetTwoFactorAttempt(userId: string): Promise<TwoFactor> {
+        return this.databaseService.client.twoFactor.update({
+            where: { userId },
             data: {
-                twoFactor: {
-                    update: {
-                        attempt: {
-                            increment: 1,
-                        },
-                    },
-                },
-            },
-            include: {
-                role: { include: { policies: true } },
-                twoFactor: true,
-            },
-        });
-    }
-
-    async resetTwoFactorAttempt(userId: string): Promise<User> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                twoFactor: {
-                    update: {
-                        attempt: 0,
-                    },
-                },
+                attempt: 0,
             },
         });
     }

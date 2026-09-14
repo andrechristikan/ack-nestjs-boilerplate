@@ -2,11 +2,12 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ICountryRepository } from '@modules/country/interfaces/country.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Country, Prisma } from '@generated/prisma-client';
 
 @Injectable()
-export class CountryRepository {
+export class CountryRepository implements ICountryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService

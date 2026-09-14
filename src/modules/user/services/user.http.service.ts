@@ -15,19 +15,25 @@ import {
 } from '@modules/user/dtos/request/user.check.request.dto';
 import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { IUserHttpService } from '@modules/user/interfaces/user.http.service.interface';
 import {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { UserService } from '@modules/user/services/user.service';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserHttpService implements IUserHttpService {
-    constructor(private readonly userService: UserService) {}
+export class UserHttpService {
+    constructor(
+        private readonly userDomain: UserDomain,
+        private readonly userOnboardingDomain: UserOnboardingDomain,
+        private readonly workspaceDomain: WorkspaceDomain
+    ) {}
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
@@ -35,7 +41,7 @@ export class UserHttpService implements IUserHttpService {
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IUser>> {
-        return this.userService.getListOffsetByAdmin(
+        return this.userDomain.getListOffsetByAdmin(
             pagination,
             status,
             roleId,
@@ -44,7 +50,7 @@ export class UserHttpService implements IUserHttpService {
     }
 
     async getOne(id: string): Promise<IResponseReturn<IUserProfile>> {
-        const user = await this.userService.getOne(id);
+        const user = await this.userDomain.getOne(id);
 
         return { data: user };
     }
@@ -53,12 +59,26 @@ export class UserHttpService implements IUserHttpService {
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const id = await this.userService.createByAdmin(
+        const input = await this.userDomain.prepareCreateByAdmin(
             { countryId, email, name, roleId, username },
             createdBy
         );
+        const [created] = await this.workspaceDomain.commitOnboarding(
+            [input],
+            EnumUserCreateMode.admin,
+            this.userOnboardingDomain.getCreateTimeoutInMs()
+        );
+        if (input.password) {
+            await this.userDomain.notifyWelcomeByAdmin(
+                created.id,
+                input.password.passwordEncrypted,
+                input.password.passwordCreated,
+                input.password.passwordExpired,
+                createdBy
+            );
+        }
 
-        return { data: { id } };
+        return { data: { id: created.id } };
     }
 
     async updateStatusByAdmin(
@@ -66,7 +86,7 @@ export class UserHttpService implements IUserHttpService {
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.userService.updateStatusByAdmin(userId, status, updatedBy);
+        await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
 
         return {};
     }
@@ -76,16 +96,16 @@ export class UserHttpService implements IUserHttpService {
     }: UserCheckUsernameRequestDto): Promise<
         IResponseReturn<IUserCheckUsername>
     > {
-        return { data: await this.userService.checkUsername(username) };
+        return { data: await this.userDomain.checkUsername(username) };
     }
 
     async checkEmail({
         email,
     }: UserCheckEmailRequestDto): Promise<IResponseReturn<IUserCheckEmail>> {
-        return { data: await this.userService.checkEmail(email) };
+        return { data: await this.userDomain.checkEmail(email) };
     }
 
     async deleteSelf(userId: string): Promise<void> {
-        await this.userService.deleteSelf(userId);
+        await this.userDomain.deleteSelf(userId);
     }
 }

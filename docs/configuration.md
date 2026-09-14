@@ -541,13 +541,15 @@ default: {
 }
 ```
 
-**`onboarding`** - Prisma transaction timeouts for the user onboarding write
+**`onboarding`** - Prisma `$transaction` timeouts `WorkspaceService.commitOnboarding` applies to the onboarding compose
 ```typescript
 onboarding: {
-  createTimeoutInMs: number;      // Timeout `UserOnboardingRepository.createWithWorkspace` runs with (ms('10s'))
-  createBulkTimeoutInMs: number;  // Timeout `createManyWithWorkspace` runs with (ms('30s'))
+  createTimeoutInMs: number;      // Single-user compose (`WorkspaceService.commitOnboarding`) (ms('10s'))
+  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceService.commitOnboarding`) (ms('30s'))
 }
 ```
+
+> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceService.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
 

@@ -1,5 +1,4 @@
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -25,7 +24,7 @@ export class PolicySystemController {
     @ApiKeySystemProtected()
     @Get('/list')
     async listByRole(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);

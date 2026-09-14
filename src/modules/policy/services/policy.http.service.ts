@@ -3,18 +3,17 @@ import { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { IPolicyHttpService } from '@modules/policy/interfaces/policy.http.service.interface';
-import { PolicyService } from '@modules/policy/services/policy.service';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PolicyHttpService implements IPolicyHttpService {
-    constructor(private readonly policyService: PolicyService) {}
+export class PolicyHttpService {
+    constructor(private readonly policyDomain: PolicyDomain) {}
 
     async listByRole(
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        const policies = await this.policyService.findManyByRole(roleId);
+        const policies = await this.policyDomain.findManyByRole(roleId);
 
         return {
             data: { policies },
@@ -25,7 +24,7 @@ export class PolicyHttpService implements IPolicyHttpService {
         roleId: string,
         body: PolicyRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const created = await this.policyService.createByAdmin(roleId, body);
+        const created = await this.policyDomain.createByAdmin(roleId, body);
 
         return { data: created };
     }
@@ -35,11 +34,7 @@ export class PolicyHttpService implements IPolicyHttpService {
         id: string,
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        const updated = await this.policyService.updateByAdmin(
-            roleId,
-            id,
-            body
-        );
+        const updated = await this.policyDomain.updateByAdmin(roleId, id, body);
 
         return { data: updated };
     }
@@ -48,7 +43,7 @@ export class PolicyHttpService implements IPolicyHttpService {
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
-        await this.policyService.deleteByAdmin(roleId, id);
+        await this.policyDomain.deleteByAdmin(roleId, id);
 
         return {};
     }

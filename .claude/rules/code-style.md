@@ -36,8 +36,8 @@ call's latency together for no reason, and the cost is invisible in review becau
 looks correct on its own.
 
 The exceptions are real, so name them when they apply: an await whose argument uses an earlier
-result, a write that must not happen if an earlier step throws, and anything already inside a
-Prisma `$transaction` (which sequences by design). See `rules/concurrency.md`.
+result, a write that must not happen if an earlier step throws, and anything already inside
+`DatabaseService.withTransaction` (which sequences by design). See `rules/concurrency.md`.
 
 ## Never mirror a type that already has a name
 

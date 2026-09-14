@@ -7,9 +7,17 @@ planner.
 ## Where things live
 
 - **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`. It holds no module that provides a processor.
-- **`queue.register.module.ts`** — `@Global()`; every `BullModule.registerQueueAsync` and per-queue job default lives here, nowhere else.
-- **`<module>/queues/<module>[.<concern>].queue.ts`** — one `@Injectable()` queue class per registered queue, holding the `@InjectQueue` for it. Provided and exported by `<feature>.module.ts` (`rules/architecture.md`).
-- **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to, and importing `<Feature>Module` for the domain services behind them (`rules/nest-wiring.md`).
+- **`queue.module.ts`** — `QueueModule.forRoot()` in `common.module.ts`. Holds the two
+  `BullModule.forRootAsync` connections (`QueueConfigKey` producer, `QueueProcessorConfigKey`
+  worker). A feature never calls `forRoot` and never passes `connection` to
+  `registerQueueAsync`.
+- **`<feature>.domain.module.ts`** — `BullModule.registerQueueAsync({ name: EnumQueue.<member>,
+  configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })` in `imports`, and
+  `BullModule` in `exports`. Queue tokens are the `name` values. The factory lives at
+  `factories/<module>[.<concern>].queue.factory.ts` and implements `RegisterQueueOptionsFactory`;
+  it sets job defaults and never sets `connection`.
+- **`<module>/queues/<module>[.<concern>].queue.ts`** — one `@Injectable()` queue class per registered queue, holding the `@InjectQueue` for it. Provided and exported by `<feature>.domain.module.ts`. No header interface — unlike a repository (`rules/architecture.md`).
+- **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to. It imports `<Feature>DomainModule` when that feature is not `@Global()` (`rules/nest-wiring.md`).
 - **`src/router/processor/router.processor.module.ts`** — imports every `<Feature>ProcessorModule` and provides nothing itself. Do not invent a second aggregation site (`rules/router.md`).
 - **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`), and so does their registration. A `processors/` folder under `src/queues/` is drift.
 
@@ -29,7 +37,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 - Always `extends QueueProcessorBase` — the base owns the `failed` hook that reports to Sentry once, on the last attempt only, and only when the error is fatal. A processor extending `WorkerHost` directly loses that and double-reports across retries.
 - Always return `IQueueResponse`. An ad-hoc `{ ok: false }` or `{ applied: true }` shape breaks the contract the base and the board rely on.
 - `process()` dispatches by `job.name` to a handler; the handler's real work belongs in a `*.processor.service.ts`, not inline in the switch. A processor is a dispatcher, the same way a controller is.
-- **The processor service owns no business rule.** It translates the payload and calls a domain service, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
+- **The processor service owns no business rule.** It translates the payload and calls a domain, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
 - Mark a non-fatal failure with `QueueException`'s fatal flag so a retryable error does not page anyone.
 
 ## Payloads
@@ -42,7 +50,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 
 - **Every enqueue happens inside a queue class** — `<module>/queues/<module>[.<concern>].queue.ts`, one per registered queue. The ENQUEUE surface belongs to that class alone: `@InjectQueue`, the BullMQ `Queue` type, `EnumQueuePriority`, `jobId`, `deduplication`, `add` and `upsertJobScheduler` appear there and nowhere else under `src/modules/`, the health indicator's read-only `@InjectQueue` aside. `EnumQueue` and the job-name enum each reach one step further, in the processor's own shapes: `@QueueProcessor(EnumQueue.<member>)` names the queue a processor consumes, and the `job.name` switch matches the job-name members the queue class enqueued.
 - **The queue class is thick.** Its method takes domain arguments, builds the typed payload, and calls `add` or `upsertJobScheduler` with the job name, priority and options it owns. A caller passes domain values, never a job option.
-- **A domain service or a processor service injects the queue class and calls a named method**, from its own feature or from another one, importing `<Feature>Module` where the owner is not `@Global()` (`rules/cross-module.md`). **A controller and an HTTP service never enqueue** — whether to enqueue is a business rule, and the domain service is the layer that owns it (`rules/architecture.md`).
+- **A domain or a processor service injects the queue class and calls a named method**, from its own feature or from another one, importing `<Feature>DomainModule` where the owner is not `@Global()` (`rules/cross-module.md`). **A controller and an HTTP service never enqueue** — whether to enqueue is a business rule, and the domain is the layer that owns it (`rules/architecture.md`).
 - The queue class reads `ConfigService` for job mechanics: a cron pattern, a timezone, a deduplication TTL (`rules/config.md`).
 - Priority comes from `EnumQueuePriority` (`high` / `medium` / `low`), not a raw number.
 - **A queue injected to READ depth, counts or health belongs to a health indicator**, which enqueues nothing (`src/modules/health/indicators/health.queue.indicator.ts`).
@@ -50,7 +58,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 
 ## Retries make a job repeatable
 
-`queue.register.module.ts` sets `attempts` plus an exponential `backoff` per queue from config,
+The owning queue factory's `createRegisterQueueOptions` sets `attempts` plus an exponential `backoff` per queue from config,
 so a processor's work runs again on failure. A handler that is not safe to repeat needs the
 repeat to be harmless — a conditional write, an upsert, a state check (`rules/concurrency.md`).
 

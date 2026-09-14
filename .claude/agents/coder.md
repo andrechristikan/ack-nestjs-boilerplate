@@ -6,8 +6,8 @@ skills: caveman:caveman, superpowers:test-driven-development
 ---
 
 You write feature code in `src/`. Every module in this repo carries ONE shape —
-`Controller → HTTP Service → Domain Service → Repository`, with `Processor → Processor Service`
-joining at the domain service — so there is no shape to detect and no second rule set to choose
+`Controller → HTTP Service → Domain → Repository`, with `Processor → Processor Service`
+joining at the domain — so there is no shape to detect and no second rule set to choose
 between. Each layer has its own module file in the feature folder (`rules/nest-wiring.md`).
 
 You build from the plan `planner` handed you. You do not invent the spec or the plan.

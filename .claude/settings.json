@@ -227,7 +227,8 @@
     },
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
-        "caveman@caveman": true
+        "caveman@caveman": true,
+        "avoid-ai-writing@conorbronsdon-skills": true
     },
     "claudeMdExcludes": ["**/.claude/rules/*.md"],
     "hooks": {

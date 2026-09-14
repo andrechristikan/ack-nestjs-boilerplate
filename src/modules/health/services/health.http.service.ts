@@ -4,16 +4,15 @@ import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.
 import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
 import { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
 import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
-import { IHealthHttpService } from '@modules/health/interfaces/health.http.service.interface';
-import { HealthService } from '@modules/health/services/health.service';
+import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
-export class HealthHttpService implements IHealthHttpService {
+export class HealthHttpService {
     constructor(
-        private readonly healthService: HealthService,
+        private readonly healthDomain: HealthDomain,
         private readonly healthUtil: HealthUtil
     ) {}
 
@@ -51,14 +50,14 @@ export class HealthHttpService implements IHealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const data = await this.resolveResponse(this.healthService.checkAws());
+        const data = await this.resolveResponse(this.healthDomain.checkAws());
 
         return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
         const data = await this.resolveResponse(
-            this.healthService.checkDatabase()
+            this.healthDomain.checkDatabase()
         );
 
         return { data };
@@ -68,7 +67,7 @@ export class HealthHttpService implements IHealthHttpService {
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
         const data = await this.resolveResponse(
-            this.healthService.checkThirdParty()
+            this.healthDomain.checkThirdParty()
         );
 
         return { data };
@@ -76,7 +75,7 @@ export class HealthHttpService implements IHealthHttpService {
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
         const data = await this.resolveResponse(
-            this.healthService.checkInstance()
+            this.healthDomain.checkInstance()
         );
 
         return { data };

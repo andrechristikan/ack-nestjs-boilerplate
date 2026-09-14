@@ -13,11 +13,12 @@ import {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
+import { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@generated/prisma-client';
 
 @Injectable()
-export class RoleRepository {
+export class RoleRepository implements IRoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService

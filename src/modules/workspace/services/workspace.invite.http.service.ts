@@ -11,15 +11,14 @@ import { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/
 import { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
-import { IWorkspaceInviteHttpService } from '@modules/workspace/interfaces/workspace.invite.http.service.interface';
-import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
+export class WorkspaceInviteHttpService {
     constructor(
-        private readonly workspaceInviteService: WorkspaceInviteService,
+        private readonly workspaceInviteDomain: WorkspaceInviteDomain,
         private readonly workspaceUtil: WorkspaceUtil
     ) {}
 
@@ -29,7 +28,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
         const { data, ...others } =
-            await this.workspaceInviteService.getInvitesList(
+            await this.workspaceInviteDomain.getInvitesList(
                 workspaceId,
                 pagination,
                 status
@@ -52,7 +51,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        const invite = await this.workspaceInviteService.createInvite(
+        const invite = await this.workspaceInviteDomain.createInvite(
             workspace,
             actorId,
             { email, workspaceRole, projectId, projectRole, expiryDuration }
@@ -67,7 +66,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        const invite = await this.workspaceInviteService.resendInvite(
+        const invite = await this.workspaceInviteDomain.resendInvite(
             workspace,
             actorId,
             workspaceInviteId,
@@ -82,7 +81,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string
     ): Promise<void> {
-        await this.workspaceInviteService.revokeInvite(
+        await this.workspaceInviteDomain.revokeInvite(
             workspaceId,
             actorId,
             workspaceInviteId
@@ -94,7 +93,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         userEmail: string,
         { inviteToken }: WorkspaceInviteClaimRequestDto
     ): Promise<void> {
-        await this.workspaceInviteService.claimInvite(
+        await this.workspaceInviteDomain.claimInvite(
             userId,
             userEmail,
             inviteToken
@@ -105,7 +104,7 @@ export class WorkspaceInviteHttpService implements IWorkspaceInviteHttpService {
         inviteToken: string
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
         const { workspace, invite, inviter } =
-            await this.workspaceInviteService.previewInvite(inviteToken);
+            await this.workspaceInviteDomain.previewInvite(inviteToken);
 
         return {
             data: this.workspaceUtil.mapInvitePreview(

@@ -5,14 +5,14 @@ import {
     AuthJwtAccessGuardKey,
     AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
 /** Guard for JWT access token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
@@ -24,11 +24,7 @@ export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
         user: IAuthJwtAccessTokenPayload,
         info: Error
     ): T {
-        const payload = this.authService.validateJwtAccessGuard(
-            err,
-            user,
-            info
-        );
+        const payload = this.authDomain.validateJwtAccessGuard(err, user, info);
 
         this.requestStoreService.set(AuthPayloadStoreKey, payload);
 

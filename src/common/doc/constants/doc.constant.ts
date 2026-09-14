@@ -33,11 +33,6 @@ export const DocStandardErrorResponse = {
         statusCode: EnumRequestStatusCodeError.validation,
         messagePath: 'request.error.validation',
     }),
-    paramRequired: DocDefault({
-        httpStatus: HttpStatus.BAD_REQUEST,
-        statusCode: EnumRequestStatusCodeError.paramRequired,
-        messagePath: 'request.error.paramRequired',
-    }),
     envForbidden: DocDefault({
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumRequestStatusCodeError.envForbidden,

@@ -59,6 +59,10 @@ this way. Send back any sentence that exists only because something used to be d
   `stateDiagram-v2`)
 - match the section structure already on the page
 
+`doc-writer` then runs `avoid-ai-writing` in edit mode (`--context docs`, `--voice technical`)
+on every in-scope file. `rules/authoring.md` wins any conflict. The de-AI spans come back in
+the hand-back, separate from the claim classes.
+
 ## Boundaries
 
 - `docs/status-codes.md` is the human catalog, updated from the report of whichever change
@@ -69,8 +73,8 @@ this way. Send back any sentence that exists only because something used to be d
 
 ## Hand back
 
-What was found by class, what was repaired, and every CONFLICT — unresolved, with its
-evidence.
+What was found by class, what was repaired, every CONFLICT — unresolved, with its evidence —
+and the avoid-ai-writing spans touched.
 
 ## Next
 

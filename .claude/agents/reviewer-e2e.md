@@ -71,13 +71,13 @@ the registration (`rules/router.md`).
 
 ```
 request → middleware chain → global pipe → route guards → controller method
-        → HTTP service (DTO in, response DTO out) → domain service (business rules, exceptions)
+        → HTTP service (DTO in, response DTO out) → domain (business rules, exceptions)
         → repository → Prisma
         → back through the response interceptor → filter chain on the way out
 ```
 
 A flow that never reaches HTTP still has a deepest write. A job that lands in a processor is
-traced `processor → processor service → domain service → repository → Prisma` the same way.
+traced `processor → processor service → domain → repository → Prisma` the same way.
 
 ## The global hops bite precisely because they are never in the diff
 
@@ -112,7 +112,7 @@ flight.**
 
 | Hand-off | Follow it to |
 |---|---|
-| a queue class method — `<module>/queues/<module>[.<concern>].queue.ts` calling `add` or `upsertJobScheduler` | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, the processor service, the domain service, the repository, Prisma |
+| a queue class method — `<module>/queues/<module>[.<concern>].queue.ts` calling `add` or `upsertJobScheduler` | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, the processor service, the domain, the repository, Prisma |
 | a processor that enqueues again | the next processor, and what IT enqueues in turn |
 | a notification send | the email or push processor-service, the template it renders, and the SES / Firebase call |
 | a soft-delete cascade | every child `updateMany` inside the same transaction, and whether it filtered to live rows |

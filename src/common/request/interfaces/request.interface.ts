@@ -17,10 +17,6 @@ export interface IRequestLog {
     geoLocation?: GeoLocation | null;
 }
 
-export interface IRequestIsValidObjectIdPipeOptions {
-    optional: boolean;
-}
-
 export interface IRequestThrottlePolicy {
     ttlInMs: number;
     limit: number;

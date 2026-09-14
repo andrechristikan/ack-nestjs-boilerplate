@@ -8,14 +8,14 @@
 
 - Every file starts with the `<module>.` prefix. No exception — `user.not-found.exception.ts`, never `not-found.exception.ts`.
 - A dot separates segments. A dash appears ONLY inside one segment, for a compound noun: `user.mobile-number.dto.ts`, `notification.email.processor.ts`, `user.forgot-password-reset.request.dto.ts`.
-- Folders are lowercase kebab-case.
+- Folders are lowercase kebab-case. A folder that holds a kind of file is plural: `domains/`, `services/`, `caches/`, `queues/`, `factories/`, `utils/`, `repositories/`. Feature folders and kit modules keep the module name (`user/`, `src/common/cache/`).
 
 ### Role suffix (closed list)
 
 ```
-.service   .repository   .controller   .guard   .strategy   .decorator
+.domain    .service   .repository   .controller   .guard   .strategy   .decorator
 .interceptor   .filter   .middleware   .pipe   .processor   .indicator
-.factory   .validation   .util   .queue   .dto   .doc   .module
+.factory   .validation   .util   .queue   .cache   .dto   .doc   .module
 .enum   .constant   .interface   .exception
 ```
 
@@ -30,22 +30,42 @@ Four more are valid, but ONLY inside the one tree that owns them — they are no
 
 Anything else is invalid.
 
-### The layer segment on a service, and the module files
+### The layer files, and the module files
 
-A service file carries the LAYER it belongs to, and the layer decides which module provides it
+A class file carries the LAYER it belongs to, and the layer decides which module provides it
 (`rules/architecture.md`, `rules/nest-wiring.md`):
 
 ```
-<module>[.<concern>].service.ts             →  <Module>[<Concern>]Service            domain
+<module>[.<concern>].domain.ts              →  <Module>[<Concern>]Domain             domain
 <module>[.<concern>].http.service.ts        →  <Module>[<Concern>]HttpService        HTTP
 <module>[.<concern>].processor.service.ts   →  <Module>[<Concern>]ProcessorService   queue
 ```
 
+A repository is the persistence port (`rules/architecture.md`):
+
+```
+<module>[.<concern>].repository.ts            →  <Module>[<Concern>]Repository
+<module>[.<concern>].repository.interface.ts  →  I<Module>[<Concern>]Repository
+```
+
+Domain is a role of its own, not a `Service`. It lives under `domains/`, and it does not merge
+concerns into one class: `UserDomain` and `UserPasswordDomain` stay two classes.
+
+A cache class is not a service. Its file lives under the feature's `caches/` folder, not
+`services/`, and it has no `Service` in the name (`rules/cache.md`):
+
+```
+<module>[.<concern>].cache.ts               →  <Module>[<Concern>]Cache
+```
+
+`<feature>.domain.module.ts` still provides it (`rules/nest-wiring.md`).
+
 A queue class carries the queue it enqueues onto, and lives in the feature's `queues/` folder
-(`rules/queue.md`):
+(`rules/queue.md`). Its `RegisterQueueOptionsFactory` lives in `factories/`:
 
 ```
 <module>[.<concern>].queue.ts               →  <Module>[<Concern>]Queue
+<module>[.<concern>].queue.factory.ts       →  <Module>[<Concern>]QueueFactory
 ```
 
 A feature's modules are named for the layer they provide, and only the ones with something to
@@ -53,7 +73,7 @@ provide exist:
 
 ```
 <module>.repository.module.ts   →  <Module>RepositoryModule
-<module>.module.ts              →  <Module>Module
+<module>.domain.module.ts       →  <Module>DomainModule
 <module>.http.module.ts         →  <Module>HttpModule
 <module>.processor.module.ts    →  <Module>ProcessorModule
 ```
@@ -110,13 +130,15 @@ provide exist:
 
 | Type | Rule | Example |
 |---|---|---|
-| Class | PascalCase, module-prefixed | `UserService`, `UserHttpService`, `UserRepository`, `UserAdminController` |
+| Class | PascalCase, module-prefixed | `UserDomain`, `UserHttpService`, `UserRepository`, `UserAdminController` |
 | Queue class | `<Module>[<Concern>]Queue` | `NotificationQueue`, `NotificationEmailQueue`, `WorkspaceQueue` |
-| Interface | `I` + PascalCase | `IUser`, `IPaginationQuery`, `IRequestApp` |
+| Queue factory | `<Module>[<Concern>]QueueFactory` | `NotificationQueueFactory`, `WorkspaceQueueFactory` |
+| Interface | `I` + PascalCase | `IUser`, `IUserRepository`, `IPaginationQuery` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |
 | Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `UserDefaultAvailableSearch` |
 | Method / variable / field | camelCase | `findById`, `perPage` |
+| Injected field / constructor param | camelCase of the class | `authDomain: AuthDomain`, `sessionCache: SessionCache` |
 | Exception class | `<Module><Descriptor>Exception` | `UserNotFoundException` |
 | Request schema + type | `<Module>...RequestSchema` / `<Module>...RequestDto` | `UserCreateRequestSchema`, `UserCreateRequestDto` |
 | Response schema + type | `<Module>...ResponseSchema` / `<Module>...ResponseDto` | `UserProfileResponseSchema`, `UserProfileResponseDto` |
@@ -125,13 +147,15 @@ provide exist:
 
 ## Rules that get broken most often
 
-- **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Interfaces describe DATA here, not service behavior — see the header-interface rule in `rules/architecture.md`.
+- **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Data-shape interfaces describe DATA, not domain/HTTP/processor behavior. The one behavioral header is `I*Repository` — the persistence port (`rules/architecture.md`).
 - **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
+- **An injected field is the class name with the first letter lowercased.** Dropping a layer word is wrong: `authService: AuthDomain` is not the field; `authDomain` is. Same for every injectable — `UserHttpService` → `userHttpService`, `ActivityLogRepository` → `activityLogRepository`, `AuthPasswordUtil` → `authPasswordUtil`, `SessionCache` → `sessionCache`, `NotificationEmailQueue` → `notificationEmailQueue`.
 - **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).
 - **A method that asserts a boolean state answers `Promise<boolean>`, never a nullable row for the caller to truthiness-check.** Existence takes the `exists*` prefix — `existsById`, `existsByEmail`, `existsBySlug`; any other state names the state it asserts — `isUsedById`. A caller that needs the row calls the layer's read method instead: `get*` on a service, `find*` on a repository, with a `select` no wider than that caller reads.
+- **A method that runs inside a caller-owned transaction takes the `InTx` suffix** — `createInTx`, `softDeleteByWorkspaceInTx`, `recordInTx` — and a required `tx: IDatabaseTransactionClient` as its first argument. A method without that suffix takes no `tx`. The method that opens a transaction is `DatabaseService.withTransaction` (`rules/database.md`).
 - **Payload interface names put the KIND last:** `INotificationSendPushPayload`, never `INotificationPayloadSendPush`.
 
 ## `Pattern` and `Regex` on a config key
@@ -166,7 +190,7 @@ feature-flag keys. Types stay PascalCase; enum types keep the `Enum` prefix.
 | i18n key segment | camelCase | `user.error.notFound` |
 | feature-flag key and metadata key | camelCase | `loginWithGoogle` |
 | enum key AND enum string value | camelCase | `notFound`, `superAdmin` |
-| class, interface, enum type, DTO | PascalCase | `UserService`, `IUser`, `EnumQueue` |
+| class, interface, enum type, DTO | PascalCase | `UserDomain`, `IUser`, `EnumQueue` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch` |
 | route path segment | kebab-case | `/mobile-number`, `/join-request` |
 | folder | kebab-case | `feature-flag/`, `term-policy/` |

@@ -33,9 +33,10 @@ never `FileService` and never a cache, because a util shapes data and does no IO
   not even from a `@Global()` feature** — and MUST NOT bind a feature type as a generic
   default. **A shared module that knows one feature's internals is no longer shared.**
 
-`common.module.ts` does import feature modules today (`AuthModule`, `ApiKeyModule`,
-`RoleModule`, `PolicyModule`, `FeatureFlagModule`, `TermPolicyModule`, `SessionModule`,
-`ActivityLogModule`, `NotificationModule`) — that is the composition exception above, and it is
+`common.module.ts` does import feature domain modules today (`AuthDomainModule`,
+`ApiKeyDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `FeatureFlagDomainModule`,
+`TermPolicyDomainModule`, `SessionDomainModule`, `ActivityLogDomainModule`,
+`NotificationDomainModule`) — that is the composition exception above, and it is
 the reason those modules are reachable app-wide without a per-module import. Do not read it as
 a licence for a `src/common/` service to call one.
 
