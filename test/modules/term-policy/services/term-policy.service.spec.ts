@@ -1,0 +1,173 @@
+import { Test, type TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { FileService } from '@common/file/services/file.service';
+import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+    type TermPolicyContent,
+} from '@generated/prisma-client';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
+import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
+import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
+
+describe('TermPolicyService', () => {
+    const termPolicyRepository = {
+        findOneById: vi.fn<TermPolicyRepository['findOneById']>(),
+        publish: vi.fn<TermPolicyRepository['publish']>(),
+    } satisfies Pick<TermPolicyRepository, 'findOneById' | 'publish'>;
+    const awsS3Service = {
+        moveItems: vi.fn<AwsS3Service['moveItems']>(),
+        deleteDir: vi.fn<AwsS3Service['deleteDir']>(),
+    } satisfies Pick<AwsS3Service, 'moveItems' | 'deleteDir'>;
+    const termPolicyUtil = {
+        getContentPublicPath: vi.fn<TermPolicyUtil['getContentPublicPath']>(),
+        getPath: vi.fn<TermPolicyUtil['getPath']>(),
+        mapActivityLogMetadata:
+            vi.fn<TermPolicyUtil['mapActivityLogMetadata']>(),
+    } satisfies Pick<
+        TermPolicyUtil,
+        'getContentPublicPath' | 'getPath' | 'mapActivityLogMetadata'
+    >;
+    const notificationQueue = {
+        sendPublishTermPolicy:
+            vi.fn<NotificationQueue['sendPublishTermPolicy']>(),
+    } satisfies Pick<NotificationQueue, 'sendPublishTermPolicy'>;
+    const requestStoreService = {
+        merge: vi.fn<RequestStoreService['merge']>(),
+    } satisfies Pick<RequestStoreService, 'merge'>;
+    const fileService = {
+        extractFilenameFromPath:
+            vi.fn<FileService['extractFilenameFromPath']>(),
+    } satisfies Pick<FileService, 'extractFilenameFromPath'>;
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const content = {
+        id: 'content-id',
+        termPolicyId: 'term-id',
+        language: EnumMessageLanguage.en,
+        bucket: 'private-bucket',
+        key: 'private/privacy/1/en.hbs',
+        cdnUrl: null,
+        completedUrl: 'https://private/en.hbs',
+        mime: 'text/x-handlebars-template',
+        extension: 'hbs',
+        access: EnumAwsS3Accessibility.private,
+        size: 100,
+    } satisfies TermPolicyContent;
+    const draft = {
+        id: 'term-id',
+        type: EnumTermPolicyType.privacy,
+        version: 1,
+        status: EnumTermPolicyStatus.draft,
+        publishedAt: null,
+        createdAt: now,
+        createdBy: null,
+        updatedAt: now,
+        updatedBy: null,
+        contents: [content],
+    } satisfies ITermPolicy;
+
+    let service: TermPolicyService;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                TermPolicyService,
+                {
+                    provide: TermPolicyRepository,
+                    useValue: termPolicyRepository,
+                },
+                { provide: AwsS3Service, useValue: awsS3Service },
+                { provide: TermPolicyUtil, useValue: termPolicyUtil },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: FileService, useValue: fileService },
+            ],
+        }).compile();
+        service = moduleRef.get(TermPolicyService);
+    });
+
+    it('rejects publication of an unknown policy', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue(null);
+
+        await expect(
+            service.publishByAdmin('missing', 'admin-id')
+        ).rejects.toBeInstanceOf(TermPolicyNotFoundException);
+    });
+
+    it('rejects publication of an already published policy', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue({
+            ...draft,
+            status: EnumTermPolicyStatus.published,
+        });
+
+        await expect(
+            service.publishByAdmin(draft.id, 'admin-id')
+        ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
+    });
+
+    it('rejects publication of a draft without localized content', async () => {
+        termPolicyRepository.findOneById.mockResolvedValue({
+            ...draft,
+            contents: [],
+        });
+
+        await expect(
+            service.publishByAdmin(draft.id, 'admin-id')
+        ).rejects.toBeInstanceOf(TermPolicyContentEmptyException);
+    });
+
+    it('moves draft content public, persists it, cleans private files, and notifies', async () => {
+        const publicItem = {
+            bucket: 'public-bucket',
+            key: 'public/privacy/1/en.hbs',
+            cdnUrl: 'https://cdn/en.hbs',
+            completedUrl: 'https://public/en.hbs',
+            mime: content.mime,
+            extension: content.extension,
+            access: EnumAwsS3Accessibility.public,
+            size: content.size,
+        };
+        const published = {
+            ...draft,
+            status: EnumTermPolicyStatus.published,
+            publishedAt: now,
+        };
+        termPolicyRepository.findOneById.mockResolvedValue(draft);
+        termPolicyUtil.getContentPublicPath.mockReturnValue('public/privacy/1');
+        termPolicyUtil.getPath.mockReturnValue('private/privacy/1');
+        awsS3Service.moveItems.mockResolvedValue([publicItem]);
+        fileService.extractFilenameFromPath.mockImplementation(path =>
+            path.endsWith('en.hbs') ? 'en.hbs' : path
+        );
+        termPolicyRepository.publish.mockResolvedValue(published);
+
+        await expect(
+            service.publishByAdmin(draft.id, 'admin-id')
+        ).resolves.toBeUndefined();
+        expect(termPolicyRepository.publish).toHaveBeenCalledWith(
+            draft.id,
+            EnumTermPolicyType.privacy,
+            [{ ...publicItem, language: EnumMessageLanguage.en }],
+            'admin-id'
+        );
+        expect(awsS3Service.deleteDir).toHaveBeenCalledWith(
+            'private/privacy/1',
+            { access: EnumAwsS3Accessibility.private }
+        );
+        expect(notificationQueue.sendPublishTermPolicy).toHaveBeenCalledWith(
+            { type: EnumTermPolicyType.privacy, version: 1 },
+            'admin-id'
+        );
+    });
+});
