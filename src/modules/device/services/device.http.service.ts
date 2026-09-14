@@ -10,13 +10,12 @@ import {
 import { Prisma } from '@generated/prisma-client';
 import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { IDeviceHttpService } from '@modules/device/interfaces/device.http.service.interface';
-import { DeviceService } from '@modules/device/services/device.service';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class DeviceHttpService implements IDeviceHttpService {
-    constructor(private readonly deviceService: DeviceService) {}
+export class DeviceHttpService {
+    constructor(private readonly deviceDomain: DeviceDomain) {}
 
     async getListOffsetByAdmin(
         userId: string,
@@ -24,7 +23,7 @@ export class DeviceHttpService implements IDeviceHttpService {
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
         const { data, ...others } =
-            await this.deviceService.getListOffsetByAdmin(
+            await this.deviceDomain.getListOffsetByAdmin(
                 userId,
                 pagination,
                 isRevoked
@@ -48,7 +47,7 @@ export class DeviceHttpService implements IDeviceHttpService {
         sessionId: string,
         pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
-        const { data, ...others } = await this.deviceService.getListCursor(
+        const { data, ...others } = await this.deviceDomain.getListCursor(
             userId,
             sessionId,
             pagination
@@ -72,13 +71,13 @@ export class DeviceHttpService implements IDeviceHttpService {
         deviceOwnershipId: string,
         body: DeviceRefreshRequestDto
     ): Promise<void> {
-        await this.deviceService.refresh(userId, deviceOwnershipId, body);
+        await this.deviceDomain.refresh(userId, deviceOwnershipId, body);
 
         return;
     }
 
     async remove(userId: string, deviceOwnershipId: string): Promise<void> {
-        await this.deviceService.remove(userId, deviceOwnershipId);
+        await this.deviceDomain.remove(userId, deviceOwnershipId);
 
         return;
     }
@@ -88,7 +87,7 @@ export class DeviceHttpService implements IDeviceHttpService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.deviceService.removeByAdmin(
+        await this.deviceDomain.removeByAdmin(
             userId,
             deviceOwnershipId,
             removedBy

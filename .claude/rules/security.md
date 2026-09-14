@@ -1,6 +1,9 @@
 # Security
 
-Detail in `docs/authentication.md`, `docs/authorization.md`, `docs/two-factor.md`, `docs/security-and-middleware.md`, `docs/activity-log.md`.
+This file is the rule set. Flow narrative: `docs/authentication.md`,
+`docs/authorization.md`, `docs/two-factor.md`, `docs/security-and-middleware.md`,
+`docs/activity-log.md` — explorer or planner opens the named file when the behaviour is
+not settled here.
 
 ## Credentials
 
@@ -29,7 +32,7 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
 
 - **A guard reads transport inputs and delegates the decision.** Resolving an entity and deciding a business rule inline puts the rule where no other caller can reuse it and no test can reach it.
 - CASL abilities are built from the `Policy` rows attached to the caller's role — one row per `subject` carrying its `action` list; `@PolicyProtected` names the subject and actions a route requires. Do not re-implement an ability check by hand in a service.
-- Feature flags gate a route via `@FeatureFlagProtected('<key>')`; `rules/feature-flag.md` owns the key shape. Flags carry per-key salt rollout and user targeting; read `docs/feature-flag.md` before adding one.
+- Feature flags gate a route via `@FeatureFlagProtected('<key>')`; `rules/feature-flag.md` owns the key shape.
 
 ## Activity log
 

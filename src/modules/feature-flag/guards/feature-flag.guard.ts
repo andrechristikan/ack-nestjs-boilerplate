@@ -1,6 +1,6 @@
 import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
@@ -15,7 +15,7 @@ export class FeatureFlagGuard implements CanActivate {
     private readonly anonymousIdPattern: RegExp;
 
     constructor(
-        private readonly featureFlagService: FeatureFlagService,
+        private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly reflector: Reflector,
         private readonly configService: ConfigService
     ) {
@@ -46,7 +46,7 @@ export class FeatureFlagGuard implements CanActivate {
                 ? null
                 : rawAnonymousId;
 
-        await this.featureFlagService.validateFeatureFlag(
+        await this.featureFlagDomain.validateFeatureFlag(
             featureFlagKeyPath,
             request.user?.userId ?? null,
             anonymousId

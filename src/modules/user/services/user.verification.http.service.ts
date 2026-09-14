@@ -1,22 +1,21 @@
 import { UserSendEmailVerificationRequestDto } from '@modules/user/dtos/request/user.send-email-verification.request.dto';
 import { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
-import { IUserVerificationHttpService } from '@modules/user/interfaces/user.verification.http.service.interface';
-import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserVerificationHttpService implements IUserVerificationHttpService {
+export class UserVerificationHttpService {
     constructor(
-        private readonly userVerificationService: UserVerificationService
+        private readonly userVerificationDomain: UserVerificationDomain
     ) {}
 
     async verifyEmail({ token }: UserVerifyEmailRequestDto): Promise<void> {
-        await this.userVerificationService.verifyEmail(token);
+        await this.userVerificationDomain.verifyEmail(token);
     }
 
     async sendVerificationEmail({
         email,
     }: UserSendEmailVerificationRequestDto): Promise<void> {
-        await this.userVerificationService.sendVerificationEmail(email);
+        await this.userVerificationDomain.sendVerificationEmail(email);
     }
 }

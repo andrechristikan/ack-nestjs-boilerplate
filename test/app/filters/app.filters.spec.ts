@@ -12,7 +12,7 @@ import { AppValidationImportFilter } from '@app/filters/app.validation-import.fi
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { MessageService } from '@common/message/services/message.service';
-import { RequestIsUuidException } from '@common/request/exceptions/request.is-uuid.exception';
+import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import type { Response } from 'express';
@@ -80,17 +80,14 @@ describe('Application error filters', () => {
 
     it('renders an application exception without reporting a 4xx error', async () => {
         const filter = await resolveFilter(AppBaseExceptionFilter);
-        const exception = new RequestIsUuidException('userId');
+        const exception = new FileRequiredException();
 
         await filter.catch(exception, host);
 
         expect(Sentry.captureException).not.toHaveBeenCalled();
         expect(messageService.setMessage).toHaveBeenCalledWith(
             exception.messagePath,
-            {
-                customLanguage: 'en',
-                properties: { property: 'userId' },
-            }
+            { customLanguage: 'en' }
         );
         expect(responseMetadataService.setHeaders).toHaveBeenCalledWith(
             response,
@@ -100,7 +97,7 @@ describe('Application error filters', () => {
         expect(json).toHaveBeenCalledWith({
             statusCode: exception.statusCode,
             statusCodeKey: exception.statusCodeKey,
-            module: 'request',
+            module: 'file',
             message: 'localized message',
             metadata,
             data: undefined,

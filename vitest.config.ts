@@ -36,7 +36,7 @@ export default defineConfig({
                 'src/{app,common,modules,queues}/**/middlewares/**/*.ts',
                 'src/{app,common,modules,queues}/**/pipes/**/*.ts',
                 'src/{app,common,modules,queues}/**/processors/**/*.ts',
-                'src/{app,common,modules,queues}/**/services/**/*.ts',
+                'src/{app,common,modules,queues}/**/{caches,domains,services}/**/*.ts',
                 'src/{app,common,modules,queues}/**/strategies/**/*.ts',
                 'src/{app,common,modules,queues}/**/utils/**/*.ts',
                 'src/{app,common,modules,queues}/**/validations/**/*.ts',

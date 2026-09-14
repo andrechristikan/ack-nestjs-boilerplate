@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RequestStoreService } from '@common/request/services/request.store.service';
 import { TermPolicyRequiredGuardMetaKey } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyGuard } from '@modules/term-policy/guards/term-policy.guard';
-import type { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import type { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 
 describe('TermPolicyGuard', () => {
     const reflector = createMock<Reflector>();
     const termPolicyAcceptanceService =
-        createMock<TermPolicyAcceptanceService>();
+        createMock<TermPolicyAcceptanceDomain>();
     const requestStoreService = createMock<RequestStoreService>();
     let guard: TermPolicyGuard;
 

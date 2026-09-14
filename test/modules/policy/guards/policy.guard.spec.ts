@@ -15,13 +15,13 @@ import {
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
 import { PolicyGuard } from '@modules/policy/guards/policy.guard';
-import { PolicyService } from '@modules/policy/services/policy.service';
+import { PolicyDomain } from '@modules/policy/domains/policy.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 describe('PolicyGuard', () => {
     const reflector = createMock<Pick<Reflector, 'get'>>();
     const policyService =
-        createMock<Pick<PolicyService, 'validatePolicyGuard'>>();
+        createMock<Pick<PolicyDomain, 'validatePolicyGuard'>>();
     const requestStoreGet = vi.fn((_key: string): unknown => null);
     const requestStoreService = createMock<RequestStoreService>({
         get: <T>(key: string) => requestStoreGet(key) as T | null,
@@ -48,7 +48,7 @@ describe('PolicyGuard', () => {
             providers: [
                 PolicyGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: PolicyService, useValue: policyService },
+                { provide: PolicyDomain, useValue: policyService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();

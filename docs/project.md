@@ -40,8 +40,8 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
-| `workspaceId` | `String` | ObjectId, relation to `Workspace` |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
+| `workspaceId` | `String` | `@db.Uuid`, relation to `Workspace` |
 | `name` | `String` | |
 | `slug` | `String` | Unique per workspace |
 | `description` | `String?` | |
@@ -56,9 +56,9 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
-| `projectId` | `String` | ObjectId |
-| `userId` | `String` | ObjectId |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
+| `projectId` | `String` | `@db.Uuid` |
+| `userId` | `String` | `@db.Uuid` |
 | `role` | `EnumProjectMemberRole` | Required, no default |
 | `joinedAt` | `DateTime` | Defaults to now |
 | `createdAt` / `createdBy` | `DateTime` / `String?` | |
@@ -69,7 +69,7 @@ Projects carry their own membership with three roles (`admin`, `member`, `viewer
 
 `EnumProjectMemberRole`: `admin`, `member`, `viewer`.
 
-**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, which silently drops rows written before the field existed. Every active-only read uses the `OR` form instead.
+**Active filter.** `ProjectActiveFilter` (`src/modules/project/constants/project.constant.ts`) is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
 ## Endpoints
 
@@ -143,11 +143,11 @@ Admin routes carry no project or workspace guard. They take the project id from 
 
 ## Slug
 
-- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectService.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `ProjectRepository.createInWorkspace`. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
+- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectService.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
 - A slug sent to `update/:projectId/slug` is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
 - `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
-- `createInWorkspace` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `createProject` walks its candidates and, for each one, opens a `$transaction` that calls `ProjectRepository.createInTx` and `ActivityLogService.recordInTx` (`projectCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
@@ -168,7 +168,7 @@ Every membership change writes an activity log entry (`projectMemberAssigned`, `
 
 ## Soft Delete
 
-`ProjectRepository.softDelete` runs one transaction that stamps `deletedAt` and `updatedBy` on the project and writes a `projectDeleted` activity log. **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
+`ProjectService.softDeleteProject` opens one `$transaction` that calls `ProjectRepository.softDeleteInTx` (stamps `deletedAt` and `updatedBy`) and `ActivityLogService.recordInTx` (`projectDeleted`). **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
 
 After deletion the project disappears from `ProjectGuard` and from the user-scope list, but the admin routes still return it because they apply no active filter. There is no restore and no hard delete.
 

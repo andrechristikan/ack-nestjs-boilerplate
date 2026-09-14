@@ -7,8 +7,7 @@ import {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -77,7 +76,7 @@ export class SessionAdminController {
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
@@ -110,9 +109,9 @@ export class SessionAdminController {
     @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {

@@ -7,14 +7,18 @@ import {
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
-import { IUserImportHttpService } from '@modules/user/interfaces/user.import.http.service.interface';
-import { UserImportService } from '@modules/user/services/user.import.service';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { UserImportDomain } from '@modules/user/domains/user.import.domain';
+import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserImportHttpService implements IUserImportHttpService {
+export class UserImportHttpService {
     constructor(
-        private readonly userImportService: UserImportService,
+        private readonly userImportDomain: UserImportDomain,
+        private readonly userOnboardingDomain: UserOnboardingDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
         private readonly fileService: FileService
     ) {}
 
@@ -22,12 +26,23 @@ export class UserImportHttpService implements IUserImportHttpService {
         data: UserImportRequestDto[],
         createdBy: string
     ): Promise<void> {
-        await this.userImportService.importByAdmin(
-            data.map(({ email, name, username }) => ({
-                email,
-                name,
-                username,
-            })),
+        const { inputs, passwordHasheds } =
+            await this.userImportDomain.prepareImportByAdmin(
+                data.map(({ email, name, username }) => ({
+                    email,
+                    name,
+                    username,
+                })),
+                createdBy
+            );
+        const users = await this.workspaceDomain.commitOnboarding(
+            inputs,
+            EnumUserCreateMode.admin,
+            this.userOnboardingDomain.getCreateBulkTimeoutInMs()
+        );
+        await this.userImportDomain.notifyImported(
+            users,
+            passwordHasheds,
             createdBy
         );
     }
@@ -37,7 +52,7 @@ export class UserImportHttpService implements IUserImportHttpService {
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
     ): Promise<IResponseFileReturn> {
-        const data = await this.userImportService.exportByAdmin(
+        const data = await this.userImportDomain.exportByAdmin(
             status,
             roleId,
             countryId

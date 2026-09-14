@@ -13,11 +13,12 @@ import {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
+import { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@generated/prisma-client';
 
 @Injectable()
-export class RoleRepository {
+export class RoleRepository implements IRoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
@@ -63,33 +64,47 @@ export class RoleRepository {
         });
     }
 
-    async findOneById(id: string): Promise<IRoleWithPolicies | null> {
+    async findOneWithPoliciesById(
+        id: string
+    ): Promise<IRoleWithPolicies | null> {
         return this.databaseService.client.role.findUnique({
             where: { id },
             include: { policies: true },
         });
     }
 
-    async existByName(name: string): Promise<IRole | null> {
-        return this.databaseService.client.role.findFirst({
-            where: {
-                name: name,
-            },
-            select: { id: true, type: true, name: true },
-        });
-    }
-
-    async existById(id: string): Promise<IRole | null> {
+    async findOneById(id: string): Promise<IRole | null> {
         return this.databaseService.client.role.findUnique({
-            where: {
-                id,
-            },
+            where: { id },
             select: { id: true, type: true, name: true },
         });
     }
 
-    async used(id: string): Promise<{ id: string } | null> {
+    async findOneByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
+            where: { name },
+            select: { id: true, type: true, name: true },
+        });
+    }
+
+    async existsById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
+            where: { id },
+        });
+
+        return count > 0;
+    }
+
+    async existsByName(name: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
+            where: { name },
+        });
+
+        return count > 0;
+    }
+
+    async isUsedById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.role.count({
             where: {
                 users: {
                     some: {
@@ -97,8 +112,9 @@ export class RoleRepository {
                     },
                 },
             },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
     async create(data: IRoleCreate): Promise<IRoleWithPolicies> {

@@ -6,7 +6,8 @@ import { UserPasswordHttpService } from '@modules/user/services/user.password.ht
 import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
 import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
 import { UserVerificationHttpService } from '@modules/user/services/user.verification.http.service';
-import { UserModule } from '@modules/user/user.module';
+import { UserDomainModule } from '@modules/user/user.domain.module';
+import { WorkspaceDomainModule } from '@modules/workspace/workspace.domain.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -30,8 +31,8 @@ import { Module } from '@nestjs/common';
         UserTwoFactorHttpService,
         UserProfileHttpService,
         UserMobileNumberHttpService,
-        UserModule,
+        UserDomainModule,
     ],
-    imports: [UserModule],
+    imports: [UserDomainModule, WorkspaceDomainModule],
 })
 export class UserHttpModule {}

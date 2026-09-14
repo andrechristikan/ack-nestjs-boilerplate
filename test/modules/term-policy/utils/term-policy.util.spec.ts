@@ -43,7 +43,9 @@ describe('TermPolicyUtil', () => {
         } as TermPolicy;
 
         expect(util.getPath(termPolicy)).toBe('/terms/privacy/2');
-        expect(util.getContentPublicPath(termPolicy)).toBe('public/privacy/2');
+        expect(
+            util.getContentPublicPath(termPolicy.type, termPolicy.version)
+        ).toBe('public/privacy/2');
         expect(
             util.createRandomFilenameContentWithPath(
                 EnumTermPolicyType.privacy,

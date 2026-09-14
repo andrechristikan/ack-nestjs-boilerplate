@@ -49,7 +49,7 @@ The module covers four things: the workspace itself and its membership roles, in
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
 | `name` | `String` | |
 | `slug` | `String` | Globally unique |
 | `description` | `String?` | |
@@ -84,7 +84,7 @@ The module covers four things: the workspace itself and its membership roles, in
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
 | `EnumWorkspaceInviteExpiry` | `threeDays` (3), `sevenDays` (7), `twoWeeks` (14), `oneMonth` (30) |
 
-**Active filter.** `WorkspaceActiveFilter` is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, silently excluding rows written before the field existed. Every active-only read uses the `OR` form.
+**Active filter.** `WorkspaceActiveFilter` is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
 ## Selecting the Active Workspace
 
@@ -124,9 +124,9 @@ Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProte
 
 ## Personal Workspace
 
-`UserOnboardingService.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug, and `UserOnboardingRepository.createWithWorkspace` writes it together with an `owner` membership inside the same transaction as the user.
+`UserOnboardingService.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug. `WorkspaceService.commitOnboarding` opens the `$transaction`: `UserOnboardingService.createManyInTx` writes the User rows, `WorkspaceService.createOwnedForUsersInTx` / `createPersonalInTx` write each personal workspace plus its owner membership, `WorkspaceInviteService.acceptOnSignUpInTx` joins an invite-token sign-up, `TermPolicyAcceptanceService.acceptPublishedInTx` writes the accepted policies, and `ActivityLogService.recordInTx` records the onboarding actions. `UserAuthHttpService` (sign-up and social create) calls `WorkspaceInviteService.resolveForSignUp`, then forwards to `commitOnboarding`. `UserHttpService.createByAdmin` and `UserImportHttpService.importByAdmin` forward prepared inputs to the same composer. `UserHttpModule` imports `WorkspaceModule`; `UserModule` does not.
 
-`buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`. The create transaction runs with the first candidate; a unique collision on `slug` rolls the transaction back and the next candidate is tried, and running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error. Admin CSV import writes all its rows in one transaction through `createManyWithWorkspace`, which substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
+`buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`. The `$transaction` runs with the first candidate; a unique collision on `slug` rolls the transaction back and the next candidate is tried, and running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error. Admin CSV import writes all its rows in one `$transaction` through `WorkspaceService.commitOnboarding`, which substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
 | User-creation path | Personal workspace |
 |---|---|
@@ -253,22 +253,22 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 
 ## Slug
 
-- **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceService.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and hands them to `WorkspaceRepository.createWithOwner`. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
+- **Creation always generates the slug.** `WorkspaceCreateRequestDto` carries no slug field: `WorkspaceService.createWorkspace` draws `workspace.slugMaxAttempts` (5) candidates of `workspace.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/workspace/update/slug` is for.
 - A slug sent to `update/slug` is validated by `WorkspaceService.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
 - `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
-- `createWithOwner` walks its candidates and moves to the next one when the write raises a unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
+- `createWorkspace` walks its candidates and, for each one, opens a `$transaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`) and `ActivityLogService.recordInTx` (`workspaceCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
 - The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Soft Delete
 
-`DELETE /user/workspace/delete` requires `owner`. One transaction:
+`DELETE /user/workspace/delete` requires `owner`. `WorkspaceService.softDeleteWorkspace` opens one `$transaction`:
 
-1. Stamps `deletedAt` and `updatedBy` on the workspace.
-2. Soft-deletes every still-active project in it.
-3. Flips every `pending` invite to `expired`.
-4. Flips every `pending` join request to `cancelled`.
-5. Writes a `workspaceDeleted` activity log.
+1. `WorkspaceRepository.softDeleteInTx` stamps `deletedAt` and `updatedBy` on the workspace.
+2. `ProjectService.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it.
+3. `WorkspaceInviteRepository.expirePendingByWorkspaceInTx` flips every `pending` invite to `expired`.
+4. `WorkspaceJoinRequestRepository.cancelPendingByWorkspaceInTx` flips every `pending` join request to `cancelled`.
+5. `ActivityLogService.recordInTx` writes a `workspaceDeleted` activity log.
 
 **Not cascaded:** `WorkspaceMember` rows stay as they are, and `user.lastWorkspaceId` is not cleared for members still pointing at the deleted workspace. The slug also stays occupied. There is no restore.
 

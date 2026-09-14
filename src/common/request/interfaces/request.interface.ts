@@ -60,10 +60,6 @@ export interface IRequestLog {
     geoLocation?: IRequestGeoLocation | null;
 }
 
-export interface IRequestIsValidUuidPipeOptions {
-    optional: boolean;
-}
-
 export interface IRequestThrottlePolicy {
     ttlInMs: number;
     limit: number;

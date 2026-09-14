@@ -8,15 +8,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogActionMetaKey } from '@modules/activity-log/constants/activity-log.constant';
 import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('ActivityLogInterceptor', () => {
     const reflector = {
         get: vi.fn<Reflector['get']>(),
     } satisfies Pick<Reflector, 'get'>;
     const activityLogService = {
-        create: vi.fn<ActivityLogService['create']>(),
-    } satisfies Pick<ActivityLogService, 'create'>;
+        create: vi.fn<ActivityLogDomain['create']>(),
+    } satisfies Pick<ActivityLogDomain, 'create'>;
     const request = {
         user: {
             userId: 'user-id',
@@ -44,7 +44,7 @@ describe('ActivityLogInterceptor', () => {
             providers: [
                 ActivityLogInterceptor,
                 { provide: Reflector, useValue: reflector },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogDomain, useValue: activityLogService },
             ],
         }).compile();
 

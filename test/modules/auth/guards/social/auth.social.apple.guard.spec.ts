@@ -6,12 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthSocialAppleRequiredException } from '@modules/auth/exceptions/auth.social-apple-required.exception';
 import { AuthSocialAppleGuard } from '@modules/auth/guards/social/auth.social.apple.guard';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthSocialAppleGuard', () => {
     const authService = {
-        validateOAuthApple: vi.fn<AuthService['validateOAuthApple']>(),
-    } satisfies Pick<AuthService, 'validateOAuthApple'>;
+        validateOAuthApple: vi.fn<AuthDomain['validateOAuthApple']>(),
+    } satisfies Pick<AuthDomain, 'validateOAuthApple'>;
     const configService = createMock<ConfigService>({
         get: <T>(key: string) =>
             ({
@@ -27,7 +27,7 @@ describe('AuthSocialAppleGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialAppleGuard,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

@@ -7,17 +7,16 @@ import {
     UserUpdateProfilePhotoRequestDto,
     UserUpdateProfileRequestDto,
 } from '@modules/user/dtos/request/user.profile.request.dto';
-import { IUserProfileHttpService } from '@modules/user/interfaces/user.profile.http.service.interface';
 import { IUserProfile } from '@modules/user/interfaces/user.interface';
-import { UserProfileService } from '@modules/user/services/user.profile.service';
+import { UserProfileDomain } from '@modules/user/domains/user.profile.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserProfileHttpService implements IUserProfileHttpService {
-    constructor(private readonly userProfileService: UserProfileService) {}
+export class UserProfileHttpService {
+    constructor(private readonly userProfileDomain: UserProfileDomain) {}
 
     async getProfile(userId: string): Promise<IResponseReturn<IUserProfile>> {
-        const user = await this.userProfileService.getProfile(userId);
+        const user = await this.userProfileDomain.getProfile(userId);
 
         return { data: user };
     }
@@ -26,7 +25,7 @@ export class UserProfileHttpService implements IUserProfileHttpService {
         userId: string,
         { countryId, gender, name }: UserUpdateProfileRequestDto
     ): Promise<void> {
-        await this.userProfileService.updateProfile(userId, {
+        await this.userProfileDomain.updateProfile(userId, {
             countryId,
             gender,
             name,
@@ -38,7 +37,7 @@ export class UserProfileHttpService implements IUserProfileHttpService {
         { extension, size }: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
         const presign =
-            await this.userProfileService.generatePhotoProfilePresign(userId, {
+            await this.userProfileDomain.generatePhotoProfilePresign(userId, {
                 extension,
                 size,
             });
@@ -50,20 +49,20 @@ export class UserProfileHttpService implements IUserProfileHttpService {
         userId: string,
         { key, size }: UserUpdateProfilePhotoRequestDto
     ): Promise<void> {
-        await this.userProfileService.updatePhotoProfile(userId, {
+        await this.userProfileDomain.updatePhotoProfile(userId, {
             key,
             size,
         });
     }
 
     async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
-        await this.userProfileService.uploadPhotoProfile(userId, file);
+        await this.userProfileDomain.uploadPhotoProfile(userId, file);
     }
 
     async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<void> {
-        await this.userProfileService.claimUsername(userId, username);
+        await this.userProfileDomain.claimUsername(userId, username);
     }
 }

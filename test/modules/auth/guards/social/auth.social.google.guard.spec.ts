@@ -6,12 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthSocialGoogleRequiredException } from '@modules/auth/exceptions/auth.social-google-required.exception';
 import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.google.guard';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthSocialGoogleGuard', () => {
     const authService = {
-        validateOAuthGoogle: vi.fn<AuthService['validateOAuthGoogle']>(),
-    } satisfies Pick<AuthService, 'validateOAuthGoogle'>;
+        validateOAuthGoogle: vi.fn<AuthDomain['validateOAuthGoogle']>(),
+    } satisfies Pick<AuthDomain, 'validateOAuthGoogle'>;
     const configService = createMock<ConfigService>({
         get: <T>(key: string) =>
             ({
@@ -27,7 +27,7 @@ describe('AuthSocialGoogleGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialGoogleGuard,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

@@ -90,7 +90,7 @@ describe('AuthUtil', () => {
         });
     });
 
-    it('derives a refresh payload without access-only identity fields', () => {
+    it('derives a refreshInTx payload without access-only identity fields', () => {
         const accessPayload = util.createPayloadAccessToken(
             user,
             'session-id',

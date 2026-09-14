@@ -28,6 +28,7 @@ The module supports:
   - [FileUploadSingle](#fileuploadsingle)
   - [FileUploadMultiple](#fileuploadmultiple)
   - [FileUploadMultipleFields](#fileuploadmultiplefields)
+  - [Upload Transport Errors](#upload-transport-errors)
 - [Enums](#enums)
 - [Pipes](#pipes)
   - [FileExtensionPipe](#fileextensionpipe)
@@ -87,7 +88,7 @@ Handles multiple files from different form fields.
   - `maxFiles`: Maximum files for this field
 - `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
-The total number of files across all fields is capped at `FileMaxMultiple` (3), regardless of what the per-field `maxFiles` values add up to.
+The global `limits.files` is the sum of the declared per-field `maxFiles`, so the request-wide cap admits exactly what the per-field caps allow.
 
 **Example:**
 ```typescript
@@ -99,6 +100,19 @@ The total number of files across all fields is capped at `FileMaxMultiple` (3), 
   { fileSize: bytes('15mb') }
 )
 ```
+
+### Upload Transport Errors
+
+All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/interceptors/file.upload-error.interceptor.ts`) outermost, ahead of the multer interceptor it wraps. Multer and busboy signal a limit failure as a framework `HttpException` carrying a fixed message; the interceptor matches that message against Nest's `multerExceptions` / `busboyExceptions` and rethrows a typed file exception. The client message comes from the exception's own path (`file.error.exceedMaxSizeUpload`, …), not from a second catalog.
+
+| Condition | Framework message | Exception | statusCode | HTTP |
+|---|---|---|---|---|
+| A file exceeds `fileSize` | `File too large` | `FileExceedMaxSizeUploadException` | 50106 | 413 |
+| The request carries more files than the global `limits.files` | `Too many files` | `FileExceedMaxFilesException` | 50107 | 422 |
+| A file arrives on a field the route did not declare, or past that field's `maxFiles` | `Unexpected field` | `FileFieldUnexpectedException` | 50108 | 422 |
+| A malformed multipart body, or a part / field / nesting limit | `Multipart: Boundary not found`, `Too many parts`, `Field name too long`, and the rest of Nest's multipart messages | `FileMultipartInvalidException` | 50109 | 422 |
+
+The framework appends ` - <field>` to several of those messages, so the interceptor matches on the segment before the first ` - `. A message outside the table passes through untouched.
 
 ## Enums
 
@@ -132,17 +146,24 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 
 ### FileExtensionPipe
 
-A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. It reads the extension off `file.originalname` via `FileService.extractExtensionFromFilename` and throws when it is not in the allow-list. The pipe returns the file untouched; it never rewrites the value.
+A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. The declared extension and the bytes both have to agree with the allow-list. The pipe returns the value untouched; it never rewrites it.
+
+For each file:
+
+1. The declared extension comes off `file.originalname` through `FileService.extractExtensionFromFilename`, and has to be a member of `allowedExtensions`.
+2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package. The sniffed type is accepted when `FileExtensionSignatures` (`src/common/file/constants/file.constant.ts`) maps some member of the allow-list onto it.
+
+`csv` is the signature-less member of `FileExtensionSignatures`: its entry is an empty array. A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list, and rejected for every other member. `hbs` is not in the table; templates are not uploaded through this pipe. Adding an uploadable extension to a group enum means adding its row to that table.
 
 **Usage:**
-Pass an array of allowed file extensions from the enum constants. It validates the single uploaded file.
+Pass an array of allowed file extensions from the enum constants. A single file and an array of files are both accepted, and every element of an array is validated: one rejected file rejects the request.
 
 **Passes through without validating:**
 - A falsy value
 - An empty object or an empty array
 
 **Throws:**
-- `FileExtensionInvalidException`: When `originalname` is missing, or the extension is not in the allowed list
+- `FileExtensionInvalidException`: `originalname` is missing, the declared extension is not in the allow-list, the sniffed type maps to no member of the allow-list, or nothing was sniffed for an extension that carries a signature
 
 ### FileCsvParsePipe
 
@@ -191,7 +212,7 @@ Understanding the flow of CSV file processing helps you implement robust data im
 ```mermaid
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
-    B --> B2{RequestRequiredPipe}
+    B --> B2{FileRequiredPipe()}
     
     B2 -->|Missing File| B3[Throw RequestParamRequiredException]
     B2 -->|Present| C{FileExtensionPipe}
@@ -210,7 +231,7 @@ flowchart TD
     I -->|Within Cap| J[Run Each Row Through the Schema]
     J --> K[Collect the Standard Schema issues]
     
-    K -->|Validation Errors| L[Collect Errors with Row Context]
+    K -->|Row Issues| L[Collect Issues with Row Context]
     L --> M[Throw FileImportException]
     
     K -->|All Valid| N[Return Validated Data Array]
@@ -257,7 +278,7 @@ The live example is `POST /shared/user/profile/photo/upload` on `UserSharedContr
 async uploadPhotoProfile(
   @AuthJwtPayload('userId') userId: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([
       EnumFileExtensionImage.jpeg,
       EnumFileExtensionImage.png,
@@ -273,32 +294,44 @@ async uploadPhotoProfile(
 `UserProfileService.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
 
 ```typescript
-const extension = this.fileService.extractExtensionFromFilename(
-  file.originalname
-) as EnumFileExtensionImage;
+const extension: EnumFileExtensionImage =
+  this.fileService.extractExtensionFromFilename(
+    file.originalname
+  ) as EnumFileExtensionImage;
 
 const key: string = this.createRandomFilenamePhotoProfileWithPath(
   userId,
   { extension }
 );
 
-const aws: IAwsS3 | null = await this.awsS3Service.putItem({
-  key,
-  size: file.size,
-  file: file.buffer,
-});
+const aws: IAwsS3 | null = await this.awsS3Service.putItem(
+  {
+    key,
+    size: file.size,
+    file: file.buffer,
+  },
+  { access: EnumAwsS3Accessibility.public }
+);
 ```
 
-`putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case. The repository call that stores the S3 reference takes the `IRequestLog` the service reads from the request store under `RequestLogStoreKey`.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case. The repository call that stores the S3 reference takes the `IRequestLog` the service reads from the request store under `RequestLogStoreKey`.
 
 **Multiple Files Upload:**
 
-`@FileUploadMultiple` wires the interceptor for an array of files. `FileExtensionPipe` validates a single file, so validate each entry inside the handler.
+`@FileUploadMultiple` wires the interceptor for an array of files, and `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
 
 ```typescript
 @Post('/documents/upload')
 @FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
-async uploadDocuments(@UploadedFiles() files: IFile[]) {
+async uploadDocuments(
+  @UploadedFiles(
+    FileExtensionPipe([
+      EnumFileExtensionDocument.pdf,
+      EnumFileExtensionImage.png,
+    ])
+  )
+  files: IFile[]
+) {
   const uploadedFiles = [];
 
   for (const file of files) {
@@ -312,11 +345,14 @@ async uploadDocuments(@UploadedFiles() files: IFile[]) {
       extension,
     });
 
-    await this.awsS3Service.putItem({
-      key,
-      size: file.size,
-      file: file.buffer,
-    });
+    await this.awsS3Service.putItem(
+      {
+        key,
+        size: file.size,
+        file: file.buffer,
+      },
+      { access: EnumAwsS3Accessibility.private }
+    );
     uploadedFiles.push(key);
   }
 
@@ -363,7 +399,7 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 async import(
   @AuthJwtPayload('userId') createdBy: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
     FileCsvValidationPipe(UserImportRequestSchema, {
@@ -409,11 +445,14 @@ async uploadCompleteProfile(
         avatar.originalname
       ) as EnumFileExtension
     });
-    await this.awsS3Service.putItem({
-      key: filename,
-      size: avatar.size,
-      file: avatar.buffer,
-    });
+    await this.awsS3Service.putItem(
+      {
+        key: filename,
+        size: avatar.size,
+        file: avatar.buffer,
+      },
+      { access: EnumAwsS3Accessibility.private }
+    );
     result.avatar = filename;
   }
   
@@ -427,11 +466,14 @@ async uploadCompleteProfile(
           doc.originalname
         ) as EnumFileExtension
       });
-      await this.awsS3Service.putItem({
-        key: filename,
-        size: doc.size,
-        file: doc.buffer,
-      });
+      await this.awsS3Service.putItem(
+        {
+          key: filename,
+          size: doc.size,
+          file: doc.buffer,
+        },
+        { access: EnumAwsS3Accessibility.private }
+      );
       result.documents.push(filename);
     }
   }
@@ -444,7 +486,7 @@ async uploadCompleteProfile(
 
 ### FileImportException
 
-Thrown during CSV validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row and validation errors.
+Thrown during CSV validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row and its issues.
 
 **Exception Structure:**
 
@@ -472,14 +514,18 @@ Thrown during CSV validation with detailed error context. This exception provide
 
 | Error Type | Status Code | HTTP | Message | Description |
 |------------|-------------|------|---------|-------------|
-| Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | File extension not in allowed list |
+| Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | The declared extension is not in the allow-list, or the sniffed bytes disagree with it |
 | Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
-| Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
+| Extract First | 50102 | 422 | `file.error.requiredExtractFirst` | Validation pipe received no rows |
 | Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds the configured row cap |
+| Exceed Max Size Upload | 50106 | 413 | `file.error.exceedMaxSizeUpload` | A file exceeds the route's `fileSize` |
+| Exceed Max Files | 50107 | 422 | `file.error.exceedMaxFiles` | The request carries more files than the route's global `limits.files` |
+| Field Unexpected | 50108 | 422 | `file.error.fieldUnexpected` | A file arrived on a field the route does not accept |
+| Multipart Invalid | 50109 | 422 | `file.error.multipartInvalid` | The multipart body is malformed, or a part / field limit was hit |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 
-Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.
+Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`. The full catalog is [Status Codes](status-codes.md).
 
 **Error Response Examples:**
 
@@ -543,6 +589,8 @@ Add messages in `src/languages/<lang>/request.json`, one entry per zod issue cod
   }
 }
 ```
+
+`{property}` is substituted with the last segment of the issue path.
 
 See [Message Documentation][ref-doc-message] for complete language configuration details.
 

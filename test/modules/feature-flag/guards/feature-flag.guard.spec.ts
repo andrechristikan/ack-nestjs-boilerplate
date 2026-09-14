@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FeatureFlagKeyPathMetaKey } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 
 describe('FeatureFlagGuard', () => {
     const featureFlagService =
-        createMock<Pick<FeatureFlagService, 'validateFeatureFlag'>>();
+        createMock<Pick<FeatureFlagDomain, 'validateFeatureFlag'>>();
     const reflector = createMock<Pick<Reflector, 'get'>>();
 
     let guard: FeatureFlagGuard;
@@ -21,7 +21,7 @@ describe('FeatureFlagGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagGuard,
-                { provide: FeatureFlagService, useValue: featureFlagService },
+                { provide: FeatureFlagDomain, useValue: featureFlagService },
                 { provide: Reflector, useValue: reflector },
                 {
                     provide: ConfigService,

@@ -869,6 +869,9 @@ enum EnumActivityLogAction {
   adminRoleCreate
   adminRoleUpdate
   adminRoleDelete
+  adminPolicyCreate
+  adminPolicyUpdate
+  adminPolicyDelete
   adminTermPolicyCreate
   adminTermPolicyDelete
   adminTermPolicyUpdateContent

@@ -183,8 +183,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocStandardErrorResponse.internalServerError,
         DocStandardErrorResponse.requestTimeout,
         DocStandardErrorResponse.validationError,
-        DocStandardErrorResponse.envForbidden,
-        DocStandardErrorResponse.paramRequired
+        DocStandardErrorResponse.envForbidden
     );
 }
 
@@ -227,6 +226,10 @@ export function DocRequestFile(
         DocFileErrorResponses.extensionInvalid,
         DocFileErrorResponses.required,
         DocFileErrorResponses.requiredExtractFirst,
+        DocFileErrorResponses.exceedMaxSizeUpload,
+        DocFileErrorResponses.exceedMaxFiles,
+        DocFileErrorResponses.fieldUnexpected,
+        DocFileErrorResponses.multipartInvalid,
     ];
 
     if (options?.params?.length) {
@@ -459,6 +462,8 @@ export function DocResponseFile(
         ApiResponse({
             description: httpStatus.toString(),
             status: httpStatus,
-        })
+        }),
+        DocFileErrorResponses.exceedMaxDataExport,
+        DocFileErrorResponses.exceedMaxSizeExport
     );
 }

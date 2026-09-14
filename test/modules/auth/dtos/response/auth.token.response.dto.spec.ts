@@ -11,7 +11,7 @@ describe('AuthTokenResponseSchema', () => {
                 roleType: EnumRoleType.user,
                 expiresIn: 3600,
                 accessToken: 'access-token',
-                refreshToken: 'refresh-token',
+                refreshToken: 'refreshInTx-token',
                 password: 'password-hash',
                 twoFactorSecret: 'totp-secret',
                 jti: 'server-session-jti',
@@ -21,7 +21,7 @@ describe('AuthTokenResponseSchema', () => {
             roleType: EnumRoleType.user,
             expiresIn: 3600,
             accessToken: 'access-token',
-            refreshToken: 'refresh-token',
+            refreshToken: 'refreshInTx-token',
         });
     });
 });

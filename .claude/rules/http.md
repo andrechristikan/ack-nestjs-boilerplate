@@ -1,6 +1,9 @@
 # HTTP layer — controllers, guards, docs
 
-Detail lives in `docs/authorization.md`, `docs/response.md`, `docs/doc.md`, `docs/security-and-middleware.md`. This file is the rule set.
+This file is the rule set. Flow narrative lives in `docs/authorization.md`,
+`docs/response.md`, `docs/doc.md`, `docs/security-and-middleware.md`,
+`docs/activity-log.md` — explorer or planner opens the named file when the behaviour is
+not settled here. No other agent reads those docs as a standing step.
 
 ## Decorator order (HARD — exact, never reorder)
 
@@ -32,9 +35,10 @@ Reordering is a defect even when the app still boots: the order encodes which ga
 - **`@HttpCode` belongs ONLY on `@Post`.** Nest defaults POST to `201 Created` and every other method to `200 OK`, so `@HttpCode(HttpStatus.OK)` above a `@Get` / `@Put` / `@Patch` / `@Delete` is a no-op that reads as if the route were doing something unusual. Delete it — and delete the `HttpCode` / `HttpStatus` imports when the file has no `@Post` left that needs them.
 - **`@RequestThrottle({...})` sits OUTSIDE this order.** It mounts an interceptor, not a guard, and interceptors run after every guard regardless of declaration order or class-versus-method placement. Place it consistently and move on — no position silently degrades it.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret. See `docs/activity-log.md`.
+- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret.
 - `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
-- Guard and protection semantics live in `docs/authorization.md`. Read it before adding a new `@<X>Protected()`.
+- A new `@<X>Protected()` follows the stack in this file. Flow narrative for the existing
+  guards: `docs/authorization.md` — explorer or planner.
 
 ### Admin scope carries NO workspace or project guard (HARD)
 
@@ -45,7 +49,7 @@ Admin reads and writes ACROSS every workspace — that is what the scope means. 
 Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
 
 - Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated by `RequestIsValidObjectIdPipe` — never from the header.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `RequestUuidSchema` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
@@ -66,7 +70,7 @@ Write the roles that are actually checked — for a platform admin route that is
 
 ## Controllers
 
-- A controller is a pure HTTP → HTTP-service dispatcher. One endpoint, one `<Module>HttpService` method, including a trivial GET. It never reaches the domain service (`rules/architecture.md`).
+- A controller is a pure HTTP → HTTP-service dispatcher. One endpoint, one `<Module>HttpService` method, including a trivial GET. It never reaches the domain (`rules/architecture.md`).
 - **Security preconditions belong in the DOMAIN service, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
 - **Never build pagination metadata by hand.** The repository produces it through `PaginationService`; the HTTP service wraps it in the response envelope and the controller passes that through.
 - Prefer passing the whole request DTO; normalize `undefined → null` only when a service param is `T | null` (`rules/null-safety.md`).
@@ -83,41 +87,23 @@ Write the roles that are actually checked — for a platform admin route that is
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
 - **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
-### `RequestRequiredPipe` and `RequestIsValidObjectIdPipe` are a PAIR (HARD)
+### UUID params use request schemas (HARD)
 
-An ObjectId param is always validated by both, in this order:
+A route or query parameter carrying a persisted row id uses `RequestUuidSchema` in the binding:
 
 ```typescript
-@Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+@Param('workspaceId', { schema: RequestUuidSchema })
+workspaceId: string
 ```
 
-Presence is checked before format. Never `RequestIsValidObjectIdPipe` on its own for an ObjectId.
-
-**This is deliberate, and it is about the error the caller receives, not about safety.**
-`RequestIsValidObjectIdPipe` does reject a falsy value on its own — but it reports it as
-`RequestIsMongoIdException`, which tells the caller their value is malformed when in fact they never
-sent one. `RequestRequiredPipe` first means an absent value returns `RequestParamRequiredException`
-and a present-but-wrong value returns `RequestIsMongoIdException`. Two different client mistakes, two
-different answers.
-
-On a `@Param` the distinction is currently unobservable — an absent path segment does not match the
-route, so the request 404s before any pipe runs. That does not make the pair decorative: it is the
-same contract wherever the value is bound, it is what makes the binding safe to move to a `@Query`
-later, and it states the intent for the next reader. **Do not "clean it up".**
-
-**The pair governs REQUIRED bindings.** An OPTIONAL ObjectId — a query filter the caller may omit —
-takes `new RequestIsValidObjectIdPipe({ optional: true })` alone, because `RequestRequiredPipe`
-would reject the very absence the binding permits, and an absent value is no longer a client mistake
-worth its own answer. An optional ObjectId query param with NO pipe is still a defect: the raw string
-reaches Prisma and a malformed value returns 500 instead of 400.
+Optional UUID filters use `.optional()` on the same schema:
 
 ```typescript
-@Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+@Query('workspaceId', { schema: RequestUuidSchema.optional() })
 workspaceId?: string
 ```
 
-A param that is NOT an ObjectId (a token, a language code) takes `RequestRequiredPipe` alone — do not
-invent a format validator it has no format for.
+A param that is not a UUID, such as a token or language code, uses the schema for its own shape.
 
 ## Route path shape (HARD)
 
@@ -219,10 +205,33 @@ A guard is a transport gate. It reads transport inputs (JWT payload, params, ref
 @ResponseFile()                      // CSV / PDF     → IResponseFileReturn
 ```
 
-The argument is the i18n message path, not a literal message. The handler's return type must match the decorator — a `@Response` route returning a bare DTO instead of `IResponseReturn<T>` breaks the interceptor contract. A route with nothing to return is `Promise<void>` (see "Controllers" above). See `docs/response.md`.
+The argument is the i18n message path, not a literal message. The handler's return type must match the decorator — a `@Response` route returning a bare DTO instead of `IResponseReturn<T>` breaks the interceptor contract. A route with nothing to return is `Promise<void>` (see "Controllers" above).
 
 ## Swagger docs
 
-Every endpoint has a doc factory in `<module>/docs/<module>.<scope>.doc.ts`, and it sits at the
-TOP of the decorator stack. The full rule set — the `Doc*` primitives, the `*.doc.constant.ts`
-constants, and the paginated-route obligations — is `rules/swagger.md`.
+Every endpoint has a matching decorator factory in `<module>/docs/<module>.<scope>.doc.ts`,
+named `<Module><Scope><Action>Doc`, composed with `applyDecorators` from the `Doc*`
+primitives in `src/common/doc/decorators/doc.decorator.ts`. The factory sits at the TOP of
+the decorator stack, above `@Response`. The doc file mirrors the controller: one factory per
+endpoint, same order.
+
+Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
+`DocResponse`, `DocResponsePaging`, `DocResponseFile`, `DocDefault`, `DocOneOf`, `DocAnyOf`,
+`DocAllOf`). A bare `@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+
+`@ApiQuery` / `@ApiParam` arrays live as PascalCase constants in
+`<module>/constants/<module>.doc.constant.ts`. Never an inline array, never generated from
+the request DTO.
+
+The route template, the `@Param('…')` key, and the `name` in the Swagger param constant must
+agree. A mismatch between the first two makes the param silently `undefined`.
+
+`DocResponsePaging` takes the SAME allow-list constants the controller's `@Pagination*Query`
+decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).
+
+`DocResponse<T>` / `DocResponsePaging<T>` take the response SCHEMA in `options.schema`. A
+hand-written schema object beside a zod schema is a mirror. Every field carries
+`.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
+
+Doc factories carry no method JSDoc. Flow narrative: `docs/doc.md` — explorer or planner
+opens it when the annotation question is not settled by this section.

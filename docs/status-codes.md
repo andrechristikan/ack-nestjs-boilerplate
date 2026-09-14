@@ -11,7 +11,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | Base | Module | Range | Members |
 |---|---|---|---|
 | `50000` | `app` | `50000` | 1 |
-| `50100` | `file` | `50100`–`50103` | 4 |
+| `50100` | `file` | `50100`–`50109` | 10 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
 | `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
@@ -45,8 +45,14 @@ Next free hundred: `52000` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `required` | `50100` | `required` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.required` | This field is required and cannot be left blank. |
 | `extensionInvalid` | `50101` | `extensionInvalid` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `file.error.extensionInvalid` | The file extension is invalid. |
-| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredParseFirst` | Please parse the data before proceeding. |
+| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredExtractFirst` | Please extract the data before proceeding. |
 | `exceedMaxDataImport` | `50103` | `exceedMaxDataImport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataImport` | The number of data rows exceeds the maximum allowed for import. |
+| `exceedMaxDataExport` | `50104` | `exceedMaxDataExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataExport` | The number of data rows exceeds the maximum allowed for export. Please narrow the filter and try again. |
+| `exceedMaxSizeExport` | `50105` | `exceedMaxSizeExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxSizeExport` | The exported file exceeds the maximum allowed size. Please narrow the filter and try again. |
+| `exceedMaxSizeUpload` | `50106` | `exceedMaxSizeUpload` | 413 (`PAYLOAD_TOO_LARGE`) | `file.error.exceedMaxSizeUpload` | The uploaded file exceeds the maximum allowed size. |
+| `exceedMaxFiles` | `50107` | `exceedMaxFiles` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxFiles` | The number of uploaded files exceeds the maximum allowed. |
+| `fieldUnexpected` | `50108` | `fieldUnexpected` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.fieldUnexpected` | The uploaded file was sent to a field this endpoint does not accept. |
+| `multipartInvalid` | `50109` | `multipartInvalid` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.multipartInvalid` | The multipart request body is malformed. |
 
 ## `pagination`
 
@@ -84,7 +90,7 @@ Next free hundred: `52000` (verify by scanning enums before claiming).
 | exception | module | httpStatus | messagePath |
 |---|---|---|---|
 | `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
-| `RequestIsMongoIdException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isMongoId` |
+| `RequestIsUuidException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isUuid` |
 | `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
 
 Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.

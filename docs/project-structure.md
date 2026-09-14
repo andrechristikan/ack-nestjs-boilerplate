@@ -278,14 +278,14 @@ Below are explanations for the root folders and files outside `src/`:
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
+- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
 - **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema, plus PostgreSQL migration files under `prisma/migrations/*`.
 - **scripts/**: Utility scripts for tasks like key generation.
-- **test/**: Jest configuration (`jest.json`). The spec suite is meant to mirror `src/`, but no spec files are committed, so `pnpm test` passes through `--passWithNoTests`.
+- **test/**: Vitest specs mirroring `src/`; the runner is configured in the root `vitest.config.ts` and runs with `pnpm test`.
 
 ### Files
 
@@ -311,7 +311,6 @@ Below are explanations for the root folders and files outside `src/`:
 - **CODE_OF_CONDUCT.md**: Community code of conduct.
 - **SECURITY.md**: Supported versions and vulnerability reporting process.
 - **LICENSE.md**: Project license.
-
 
 
 

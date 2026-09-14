@@ -1,25 +1,27 @@
 # Cache
 
-Detail in `docs/cache.md`. This file is the rule set.
+This file is the rule set. Flow narrative: `docs/cache.md` — explorer or planner.
 
 ## One Redis connection, two databases
 
 Redis `db:0` is the cache, `db:1` is BullMQ. Both go through the modules that already own the
 connection — `RedisCacheModule.forRoot()` provides the shared Keyv client,
 `CacheMainModule.forRoot()` wires `@nestjs/cache-manager` on top of it, and
-`QueueRegisterModule.forRoot()` owns the BullMQ side. All three are global, composed once in
-`common.module.ts`.
+`QueueModule.forRoot()` owns the two BullMQ connections (`rules/queue.md`). Cache modules are
+global. `QueueModule` carries no `@Global()`; `BullModule.forRootAsync` is already `global: true`.
 
 **Never open a second Redis connection.** Not in a feature module, not in a util, not "just for
 this one lock".
 
-## A module's cache reads and writes live in a cache service
+## A module's cache reads and writes live in a cache class
 
-A feature that caches gets a `<module>[.<concern>].cache.service.ts` domain service holding the
-cache manager and the `keyPattern` it reads from config — `SessionCacheService`,
-`ApiKeyCacheService`, `FeatureFlagCacheService`, `AuthCacheService`. Every get, set and
-delete for that module goes through it, so one class owns the key shape and the invalidation
-path for a given pattern.
+A feature that caches gets a cache class at
+`src/modules/<feature>/caches/<module>[.<concern>].cache.ts` — `SessionCache`,
+`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`. It holds the cache manager and the
+`keyPattern` it reads from config. It is not a service: no `Service` in the class or file
+name, and it has no header interface (`rules/architecture.md`). `<feature>.domain.module.ts` still
+provides it (`rules/nest-wiring.md`). Every get, set and delete for that module goes
+through it, so one class owns the key shape and the invalidation path for a given pattern.
 
 **A util never touches the cache.** It shapes data and does no IO (`rules/architecture.md`), so
 the cached value reaches it as an argument.
@@ -68,5 +70,5 @@ or say why nothing caches that read.
 ## Keys
 
 A cache or lock key is a `keyPattern` string in a config file. The shape of that string —
-`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/case-convention.md`
+`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/naming.md`
 → "Redis keys", and it is not restated here.

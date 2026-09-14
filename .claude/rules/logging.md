@@ -1,8 +1,8 @@
 # Logging
 
-Detail in `docs/logger.md`. Pino sits behind Nest's `Logger` via `LoggerModule.forRoot()` and
+Pino sits behind Nest's `Logger` via `LoggerModule.forRoot()` and
 `LoggerOptionService`; Sentry is wired in `src/instrument.ts` and reported from the filter
-chain.
+chain. Flow narrative: `docs/logger.md` — explorer or planner.
 
 ## The logger instance
 

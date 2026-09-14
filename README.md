@@ -9,13 +9,13 @@
 [![Typescript][typescript-shield]][ref-typescript]
 [![PostgreSQL][postgresql-shield]][ref-postgresql]
 [![JWT][jwt-shield]][ref-jwt]
-[![Jest][jest-shield]][ref-jest]
+[![Vitest][vitest-shield]][ref-vitest]
 [![PNPM][pnpm-shield]][ref-pnpm]
 [![Docker][docker-shield]][ref-docker]
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **PostgreSQL**. Repository Design Pattern and Modular. Production-ready.
 
 _You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
 
@@ -121,7 +121,7 @@ This boilerplate is perfect for:
 - Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
 
 ### Test
-- [ ] Unit test suite: Jest is configured (`test/jest.json`, `pnpm test`) and `test/` holds **no spec files**, so `pnpm test` passes on `--passWithNoTests`
+- [x] Unit test suite: Vitest is configured (`vitest.config.ts`, `pnpm test`) and specs live under `test/`
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -192,7 +192,7 @@ Production-ready authentication system with multiple strategies and security lay
 - **RBAC & Policies** - Fine-grained role and permission system
 - **API Key Protection** - Secure external API access control
 - **Rate Limiting** - Redis-backed sliding window shared across instances: an always-on per-IP limit plus opt-in per-user and per-route tiers
-- **Security Headers** - Helmet integration for HTTP security
+- **Security Headers** - Helmet non-documents profile: HSTS, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies
 
 ### 📊 Database & Storage
 Modern ORM with relational database and file storage capabilities.
@@ -248,7 +248,7 @@ Multi-channel notification system for user engagement.
 ### 📝 Testing & Documentation
 Comprehensive testing framework and documentation.
 
-- **Jest Testing** - `test/jest.json` matches `test/**/*.spec.ts` and holds coverage at a global 100% threshold
+- **Vitest Testing** - `vitest.config.ts` matches `test/**/*.spec.ts`; run `pnpm test:cov` for V8 coverage
 - **Swagger UI** - Auto-generated API documentation
 - **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
 - **Docker Support** - Complete containerization with docker-compose
@@ -269,10 +269,10 @@ cp .env.example .env
 pnpm generate:keys
 pnpm db:generate
 
-# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
+# Start infrastructure (PostgreSQL + Redis + BullBoard + JWKS)
 docker-compose up -d
 
-# Push the schema (needs the MongoDB replica set above already running)
+# Apply the database migrations
 pnpm db:migrate
 
 # Run the API on the host
@@ -295,7 +295,7 @@ To run the API inside Compose as well, start with the `apis` profile: `docker-co
 **Migration typically requires:**
 - Updating `prisma/schema.prisma` provider
 - Adjusting ID strategy and native types when changing providers. Update the `DatabaseUtil` helpers when request ID validation changes.
-- Running `pnpm prisma migrate dev`
+- Running `pnpm db:migrate`
 - Running `pnpm migration:seed`
 
 **Business logic stays unchanged** - services, controllers, and authentication work as-is.
@@ -357,7 +357,7 @@ If you find this project helpful and would like to support its development, plea
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
 [postgresql-shield]: https://img.shields.io/badge/PostgreSQL-white?style=for-the-badge&logo=postgresql&logoColor=4169E1
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+[vitest-shield]: https://img.shields.io/badge/-vitest-%236E9F18?style=for-the-badge&logo=vitest&logoColor=white
 [pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
@@ -393,7 +393,7 @@ If you find this project helpful and would like to support its development, plea
 [ref-pnpm]: https://pnpm.io
 [ref-package-json]: package.json
 [ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
+[ref-vitest]: https://vitest.dev/guide/
 
 <!-- DOCS LINKS -->
 

@@ -1,6 +1,6 @@
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Workspace } from '@generated/prisma-client';
@@ -40,7 +40,7 @@ export class WorkspacePublicController {
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/invite/:inviteToken/preview')
     async invitePreview(
-        @Param('inviteToken', RequestRequiredPipe)
+        @Param('inviteToken', { schema: RequestRequiredStringSchema })
         inviteToken: string
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
         return this.workspaceInviteHttpService.previewInvite(inviteToken);
@@ -55,7 +55,7 @@ export class WorkspacePublicController {
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/preview/:slug')
     async preview(
-        @Param('slug', RequestRequiredPipe)
+        @Param('slug', { schema: RequestRequiredStringSchema })
         slug: string
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.previewWorkspace(slug);

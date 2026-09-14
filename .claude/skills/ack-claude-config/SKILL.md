@@ -76,8 +76,7 @@ patterns, not negations — a rule that must stay loaded belongs in `CLAUDE.md`,
 
 ## Hand back
 
-Files changed, what each now says that it did not, and every `src/` finding recorded rather than
-fixed.
+Files changed, what each file now says, and every `src/` finding recorded rather than fixed.
 
 ## Next
 

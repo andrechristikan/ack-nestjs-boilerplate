@@ -14,7 +14,6 @@ import {
     EnumUserSignUpWith,
     EnumVerificationType,
     EnumWorkspaceMemberRole,
-    Prisma,
     Role,
     TwoFactor,
     TwoFactorBackupCode,
@@ -140,18 +139,16 @@ export interface IUserSignUpWorkspaceInvite {
     workspaceId: string;
     workspaceInviteId: string;
     workspaceMemberRole: EnumWorkspaceMemberRole;
-    projectId?: string;
-    projectMemberRole?: EnumProjectMemberRole;
+    projectId: string | null;
+    projectMemberRole: EnumProjectMemberRole | null;
 }
 
 export type IUserSignUpWorkspaceContext =
     IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
 
-export interface IUserOnboardingWorkspaceRows {
-    workspace: Prisma.WorkspaceCreateArgs | null;
-    workspaceMember: Prisma.WorkspaceMemberCreateArgs;
-    workspaceInvite: Prisma.WorkspaceInviteUpdateArgs | null;
-    projectMember: Prisma.ProjectMemberCreateArgs | null;
+export interface IUserOnboardingActivity {
+    action: EnumActivityLogAction;
+    workspaceId: string | null;
 }
 
 export interface IUserOnboardingVerificationRow {
@@ -173,7 +170,7 @@ export interface IUserCreateModeRule {
 export interface IUserCreateWithWorkspaceInput {
     userId: string;
     email: string;
-    name?: string;
+    name: string | null;
     username: string;
     countryId: string;
     roleId: string;
@@ -185,9 +182,7 @@ export interface IUserCreateWithWorkspaceInput {
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
     verification: IUserOnboardingVerificationRow | null;
-    activityLogs: Prisma.ActivityLogCreateManyUserInput[];
     workspaceContext: IUserSignUpWorkspaceContext;
-    workspaceRows: IUserOnboardingWorkspaceRows;
     createdBy: string;
 }
 
@@ -212,6 +207,11 @@ export interface IUserImportRow {
     username: string;
     email: string;
     name?: string;
+}
+
+export interface IUserImportPrepared {
+    inputs: IUserCreateWithWorkspaceInput[];
+    passwordHasheds: IAuthPassword[];
 }
 
 export interface IUserUpdateProfile {

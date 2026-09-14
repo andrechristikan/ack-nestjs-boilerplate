@@ -14,12 +14,12 @@ import {
 import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { RoleGuard } from '@modules/role/guards/role.guard';
-import { RoleService } from '@modules/role/services/role.service';
+import { RoleDomain } from '@modules/role/domains/role.domain';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 
 describe('RoleGuard', () => {
     const reflector = createMock<Pick<Reflector, 'get'>>();
-    const roleService = createMock<Pick<RoleService, 'validateRoleGuard'>>();
+    const roleService = createMock<Pick<RoleDomain, 'validateRoleGuard'>>();
     const requestStoreGet = vi.fn((_key: string): unknown => null);
     const requestStoreService = createMock<RequestStoreService>({
         get: <T>(key: string) => requestStoreGet(key) as T | null,
@@ -45,7 +45,7 @@ describe('RoleGuard', () => {
             providers: [
                 RoleGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: RoleService, useValue: roleService },
+                { provide: RoleDomain, useValue: roleService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();

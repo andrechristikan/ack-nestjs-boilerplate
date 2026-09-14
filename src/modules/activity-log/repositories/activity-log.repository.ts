@@ -1,3 +1,7 @@
+import {
+    IDatabaseClient,
+    IDatabaseTransactionClient,
+} from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
@@ -13,6 +17,7 @@ import {
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
+import { IActivityLogRepository } from '@modules/activity-log/interfaces/activity-log.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     ActivityLog,
@@ -21,7 +26,7 @@ import {
 } from '@generated/prisma-client';
 
 @Injectable()
-export class ActivityLogRepository {
+export class ActivityLogRepository implements IActivityLogRepository {
     private readonly userScopedFilter: Prisma.ActivityLogWhereInput = {
         workspaceId: null,
     };
@@ -141,16 +146,19 @@ export class ActivityLogRepository {
         });
     }
 
-    async create(
+    private write(
+        client: IDatabaseClient | IDatabaseTransactionClient,
         userId: string,
         action: EnumActivityLogAction,
         description: string,
         { ipAddress, userAgent, geoLocation }: IRequestLog,
-        metadata?: IActivityLogMetadata
+        metadata?: IActivityLogMetadata,
+        workspaceId?: string | null
     ): Promise<ActivityLog> {
-        return this.databaseService.client.activityLog.create({
+        return client.activityLog.create({
             data: {
                 userId,
+                workspaceId,
                 action,
                 ipAddress,
                 userAgent: this.databaseUtil.toPlainObject(userAgent),
@@ -164,5 +172,42 @@ export class ActivityLogRepository {
                 createdBy: userId,
             },
         });
+    }
+
+    async create(
+        userId: string,
+        action: EnumActivityLogAction,
+        description: string,
+        requestLog: IRequestLog,
+        metadata?: IActivityLogMetadata
+    ): Promise<ActivityLog> {
+        return this.write(
+            this.databaseService.client,
+            userId,
+            action,
+            description,
+            requestLog,
+            metadata
+        );
+    }
+
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        action: EnumActivityLogAction,
+        description: string,
+        requestLog: IRequestLog,
+        metadata: IActivityLogMetadata | undefined,
+        workspaceId: string | null
+    ): Promise<ActivityLog> {
+        return this.write(
+            tx,
+            userId,
+            action,
+            description,
+            requestLog,
+            metadata,
+            workspaceId
+        );
     }
 }

@@ -326,7 +326,7 @@ pnpm migration:remove
 **Reset the database and reseed from scratch:**
 
 > [!WARNING]
-> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+> `migration:fresh` runs `prisma migrate reset --force`, which drops all existing data and re-applies every migration.
 
 ```bash
 pnpm migration:fresh
@@ -447,7 +447,6 @@ To verify everything is working correctly:
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
-[ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md

@@ -2,7 +2,7 @@ import { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { Workspace } from '@generated/prisma-client';
 import { ProjectStoreKey } from '@modules/project/constants/project.constant';
-import { ProjectService } from '@modules/project/services/project.service';
+import { ProjectDomain } from '@modules/project/domains/project.domain';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
@@ -14,7 +14,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 @Injectable()
 export class ProjectGuard implements CanActivate {
     constructor(
-        private readonly projectService: ProjectService,
+        private readonly projectDomain: ProjectDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -22,11 +22,10 @@ export class ProjectGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const projectId = request.params.projectId;
 
-        const workspace = this.requestStoreService.get<Workspace>(
-            WorkspaceStoreKey
-        );
+        const workspace =
+            this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
 
-        const project = await this.projectService.validateProjectGuard(
+        const project = await this.projectDomain.validateProjectGuard(
             workspace?.id ?? null,
             projectId ?? null
         );

@@ -11,7 +11,7 @@ import {
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
-import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 
 describe('ApiKeyXApiKeyTypeGuard', () => {
     const reflector = {
@@ -19,8 +19,8 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
     } satisfies Pick<Reflector, 'getAllAndOverride'>;
     const apiKeyService = {
         validateXApiKeyTypeGuard:
-            vi.fn<ApiKeyService['validateXApiKeyTypeGuard']>(),
-    } satisfies Pick<ApiKeyService, 'validateXApiKeyTypeGuard'>;
+            vi.fn<ApiKeyDomain['validateXApiKeyTypeGuard']>(),
+    } satisfies Pick<ApiKeyDomain, 'validateXApiKeyTypeGuard'>;
     const requestStoreGet = vi.fn((_key: string): unknown => null);
     const requestStoreService = {
         get<T>(key: string): T | null {
@@ -50,7 +50,7 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             providers: [
                 ApiKeyXApiKeyTypeGuard,
                 { provide: Reflector, useValue: reflector },
-                { provide: ApiKeyService, useValue: apiKeyService },
+                { provide: ApiKeyDomain, useValue: apiKeyService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();

@@ -362,7 +362,7 @@ Endpoint: `POST /shared/user/logout`. Protected by `@AuthJwtAccessProtected`, `@
 The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
 
 1. Verifies the session is still active (`404 session.error.notFound` otherwise) and deletes its Redis key.
-2. Issues one nested database write that revokes the session record, writes the `userLogout` activity log, and clears `notificationToken` and `notificationProvider` on the device behind `deviceOwnershipId`.
+2. `UserLoginService.logout` opens `this.databaseService.client.$transaction` and composes `SessionService.revokeInTx`, `DeviceService.clearNotificationInTx`, and `ActivityLogService.recordInTx` (`userLogout`).
 
 ```mermaid
 sequenceDiagram
@@ -376,7 +376,7 @@ sequenceDiagram
     API->>Database: Find active session by userId:sessionId
     alt Session active
         API->>Redis: Delete session login key
-        API->>Database: One nested write: revoke session record,<br/>create userLogout activity log,<br/>clear the device push token
+        API->>Database: $transaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
         API-->>Client: 200 OK (user.logout)
     else Session not found
         API-->>Client: 404 Not Found (SessionNotFoundException)

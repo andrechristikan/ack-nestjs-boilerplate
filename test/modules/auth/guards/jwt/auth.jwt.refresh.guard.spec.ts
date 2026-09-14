@@ -7,11 +7,11 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtRefreshGuard', () => {
     const authService =
-        createMock<Pick<AuthService, 'validateJwtRefreshGuard'>>();
+        createMock<Pick<AuthDomain, 'validateJwtRefreshGuard'>>();
     const requestStoreService = createMock<Pick<RequestStoreService, 'set'>>();
     const payload = {
         userId: 'user-id',
@@ -31,14 +31,14 @@ describe('AuthJwtRefreshGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshGuard,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
         guard = moduleRef.get(AuthJwtRefreshGuard);
     });
 
-    it('stores and returns the validated refresh principal', () => {
+    it('stores and returns the validated refreshInTx principal', () => {
         authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
         expect(

@@ -4,21 +4,20 @@ import { IResponseReturn } from '@common/response/interfaces/response.interface'
 import { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import { ITermPolicyContentHttpService } from '@modules/term-policy/interfaces/term-policy.content.http.service.interface';
-import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
+import { TermPolicyContentDomain } from '@modules/term-policy/domains/term-policy.content.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class TermPolicyContentHttpService implements ITermPolicyContentHttpService {
+export class TermPolicyContentHttpService {
     constructor(
-        private readonly termPolicyContentService: TermPolicyContentService
+        private readonly termPolicyContentDomain: TermPolicyContentDomain
     ) {}
 
     async generateContentPresignByAdmin(
         body: TermPolicyContentPresignRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
         const presign =
-            await this.termPolicyContentService.generateContentPresignByAdmin(
+            await this.termPolicyContentDomain.generateContentPresignByAdmin(
                 body
             );
 
@@ -30,7 +29,7 @@ export class TermPolicyContentHttpService implements ITermPolicyContentHttpServi
         body: TermPolicyContentRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentService.updateContentByAdmin(
+        await this.termPolicyContentDomain.updateContentByAdmin(
             termPolicyId,
             body,
             updatedBy
@@ -44,7 +43,7 @@ export class TermPolicyContentHttpService implements ITermPolicyContentHttpServi
         body: TermPolicyContentRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentService.addContentByAdmin(
+        await this.termPolicyContentDomain.addContentByAdmin(
             termPolicyId,
             body,
             updatedBy
@@ -58,7 +57,7 @@ export class TermPolicyContentHttpService implements ITermPolicyContentHttpServi
         { language }: TermPolicyRemoveContentRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyContentService.removeContentByAdmin(
+        await this.termPolicyContentDomain.removeContentByAdmin(
             termPolicyId,
             language,
             updatedBy
@@ -71,7 +70,7 @@ export class TermPolicyContentHttpService implements ITermPolicyContentHttpServi
         termPolicyId: string,
         language: EnumMessageLanguage
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        const presign = await this.termPolicyContentService.getContentByAdmin(
+        const presign = await this.termPolicyContentDomain.getContentByAdmin(
             termPolicyId,
             language
         );

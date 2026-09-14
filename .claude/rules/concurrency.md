@@ -13,7 +13,7 @@ Three exceptions, each real. Name the one that applies:
 
 - an await whose argument uses an earlier result,
 - a write that must not happen if an earlier step throws,
-- anything already inside a Prisma `$transaction`, which sequences by design.
+- anything already inside `DatabaseService.withTransaction`, which sequences by design.
 
 ## An awaited promise is handled by `try`/`catch`, never by `.catch()` (HARD)
 
@@ -56,21 +56,20 @@ Two forms are NOT this rule, because neither has an `await` to attach a `try` to
 Everything else — every service, util, repository, guard, interceptor and processor — uses
 `try`/`catch`.
 
-## Atomicity is the repository's job
+## Atomicity belongs to whoever composes the write
 
-A multi-step write that must not leave a half-applied state goes in a `$transaction`, in the
-REPOSITORY. A service does not open one (`rules/architecture.md`).
+A multi-step write that must not leave a half-applied state goes in
+`DatabaseService.withTransaction`. Who opens it is `rules/database.md`: the repository, when
+every statement is on its own model; the domain, when the write spans more than one
+repository.
 
-**The array form of `$transaction` accepts only `PrismaPromise`s.** `client.<model>.softDelete`
-is an `async` wrapper around a single-row `update`, so it returns a plain `Promise` and cannot
-be an element of one. A cascade that must not leave a half-deleted window belongs in the array
-as a plain `update` / `updateMany`, with `updatedBy` stamped by hand and the rows filtered to
-those still live — an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and
-destroys their real deletion time.
-
-Use the **callback form** when the work branches, needs a read between writes, or depends on an
-intermediate result. Inside it, every call goes through the `tx` client; reaching back to
-`databaseService.client` silently escapes the transaction.
+Inside `withTransaction`, every collaborator is an `*InTx(tx, ...)` method that issues
+statements on `tx`. Reaching back to `databaseService.client` silently escapes the
+transaction. A single-row delete that must stay atomic with other writes is
+`tx.<model>.softDelete(...)`. A multi-row delete on this repository's own model is one
+`updateMany`, with `updatedBy` stamped by hand and the rows filtered to those still live —
+an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their
+real deletion time.
 
 ## A generated unique value retries, then throws
 

@@ -1,6 +1,7 @@
 # Pagination
 
-Full API in `docs/pagination.md`. `PaginationService` is global and offers two strategies: `offset(...)` and `cursor(...)`.
+`PaginationService` is global and offers two strategies: `offset(...)` and `cursor(...)`.
+Flow narrative: `docs/pagination.md` — explorer or planner.
 
 ## The route scope decides the strategy
 

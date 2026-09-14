@@ -13,6 +13,12 @@ export interface IDeviceIdentity {
     notificationToken?: string;
 }
 
+export interface IDeviceLoginUpsert {
+    device: Device;
+    deviceOwnership: DeviceOwnership;
+    isNewDevice: boolean;
+}
+
 export interface IDeviceOwnership extends DeviceOwnership {
     device: Device;
     user: IUserRef;

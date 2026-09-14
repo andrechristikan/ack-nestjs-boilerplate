@@ -20,21 +20,21 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 
 ## AWS S3 Presigned URL Get Capability
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentService.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes `access: EnumAwsS3Accessibility.private`, so term policy content is signed against the private bucket. There is no request DTO: `termPolicyId` and `language` are path params.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentService.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in. There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 
 ```typescript
 async presignGetItem(
   key: string,
-  options?: IAwsS3PresignGetItemOptions
+  options: IAwsS3PresignGetItemOptions
 ): Promise<IAwsS3Presign | null>
 ```
 
 ### Parameters
 
 - `key`: the S3 object key. It must not start with `/`; the method throws when it does.
-- `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`. It selects which configured bucket is signed against. When omitted the bucket resolves to `public`.
+- `options.access`: `EnumAwsS3Accessibility.public` or `EnumAwsS3Accessibility.private`, required. It selects which configured bucket is signed against, and the compiler refuses a call that leaves it out.
 - `options.expiredInSeconds`: signature lifetime in seconds. When omitted it falls back to `aws.s3.presignExpiredInSeconds`, defined in `aws.config.ts` as `ms('30m') / 1000` and handed to the signer as it stands.
 
 ### Behaviour
@@ -159,7 +159,7 @@ export class UserProfileService {
 
     const aws: IAwsS3Presign | null = await this.awsS3Service.presignPutItem(
       { key, size },
-      { forceUpdate: true }
+      { forceUpdate: true, access: EnumAwsS3Accessibility.public }
     );
 
     if (!aws) {
@@ -177,7 +177,10 @@ export class UserProfileService {
       this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
     try {
-      const aws: IAwsS3 = this.awsS3Service.mapPresign({ key: photoKey, size });
+      const aws: IAwsS3 = this.awsS3Service.mapPresign(
+        { key: photoKey, size },
+        { access: EnumAwsS3Accessibility.public }
+      );
       await this.userRepository.updatePhotoProfile(userId, aws, requestLog);
 
       return;
@@ -194,10 +197,12 @@ export class UserProfileService {
 
 Two things follow from the options actually passed:
 
-- No `access` is passed, so both `presignPutItem` and `mapPresign` fall back to `EnumAwsS3Accessibility.public`. The photo is signed against, and stored in, the public bucket.
+- `presignPutItem` and `mapPresign` both name `EnumAwsS3Accessibility.public`, so the photo is signed against, and stored in, the public bucket. `access` is a required option on both, so the value a call means is always written at the call site.
 - No `expiredInSeconds` is passed, so the signature lives for `aws.s3.presignExpiredInSeconds`, which is 30 minutes.
 
 `presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
+
+`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileService`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
 
 **Step 4 - Client-Side Upload:**
 ```typescript
@@ -257,7 +262,7 @@ async function uploadPhotoSimple(file: File) {
 ### Configuration Options
 ```typescript
 interface IAwsS3PresignPutItemOptions {
-  access?: EnumAwsS3Accessibility; // public or private
+  access: EnumAwsS3Accessibility; // public or private, required
   expiredInSeconds?: number; // Expiration time in seconds (default from config)
   forceUpdate?: boolean; // Allow overwriting existing files
 }
@@ -293,7 +298,7 @@ sequenceDiagram
     Backend->>UserProfileService: createRandomFilenamePhotoProfileWithPath()
     UserProfileService-->>Backend: unique S3 key
     
-    Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true})
+    Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true, access: public})
     Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
     AwsS3Service->>S3: Request presigned URL
     S3-->>AwsS3Service: Presigned URL (expires per config, default 30 min)
@@ -308,7 +313,7 @@ sequenceDiagram
         S3-->>Client: 200 OK
         
         Client->>Backend: PUT /profile/photo/update<br/>{photoKey: key, size}
-        Backend->>AwsS3Service: mapPresign({ key, size })
+        Backend->>AwsS3Service: mapPresign({ key, size }, { access: public })
         AwsS3Service-->>Backend: IAwsS3
         
         Backend->>Repository: updatePhotoProfile(userId, aws)
@@ -354,7 +359,9 @@ The second presign endpoint signs a term policy content upload. `TermPolicyAdmin
 
 ```typescript
 @TermPolicyAdminGenerateContentPresignDoc()
-@Response('termPolicy.generateContentPresign')
+@Response('termPolicy.generateContentPresign', {
+  schema: AwsS3PresignResponseSchema,
+})
 @TermPolicyAcceptanceProtected()
 @PolicyProtected({
   subject: EnumPolicySubject.termPolicy,
@@ -388,7 +395,7 @@ async generate(
 
 ### Multipart Part Presign
 
-`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options?)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`). It shares the same `access` and `expiredInSeconds` option handling, and returns `null` when S3 credentials are not configured. No controller exposes it, so there is no multipart presign route.
+`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`). It takes the same required `access` and optional `expiredInSeconds` as the other presign methods, and returns `null` when S3 credentials are not configured. No controller exposes it, so there is no multipart presign route.
 
 
 <!-- REFERENCES -->

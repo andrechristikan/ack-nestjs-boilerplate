@@ -1,6 +1,8 @@
 # Notification — channels, templates, payloads
 
-Detail in `docs/notification.md`. Processor mechanics are governed by `rules/queue.md`; this file is the notification-specific rule set. Read `rules/queue.md` first — a notification processor is a BullMQ processor and every rule there applies.
+Processor mechanics are `rules/queue.md` — read that first. This file is the
+notification-specific rule set. Flow narrative: `docs/notification.md` — explorer or
+planner.
 
 ## Channels
 
@@ -9,7 +11,7 @@ Two delivery channels, each with its own queue, processor, and processor-service
 - **Email** — SES via `AwsSESService`. Enqueued as an email job; sent by `NotificationEmailProcessorService`.
 - **Push** — Firebase via `FirebaseService`. Enqueued as a push job; sent by `NotificationPushProcessorService`.
 
-A channel is always **async through BullMQ** — a request never sends an email or push inline. The domain service decides and calls the queue class, the queue class enqueues, and the processor sends. Delivery loss of a notification is loss-tolerable, which is exactly why it rides a durable queue rather than blocking the request.
+A channel is always **async through BullMQ** — a request never sends an email or push inline. The domain decides and calls the queue class, the queue class enqueues, and the processor sends. Delivery loss of a notification is loss-tolerable, which is exactly why it rides a durable queue rather than blocking the request.
 
 ## Payload naming — kind is `Queue`, and it is LAST (HARD)
 
@@ -30,7 +32,7 @@ A notification job payload is a BullMQ `job.data` shape, so its interface follow
 
 The notification module carries more moving parts than most; keep the roles distinct:
 
-- **`*.queue.ts`** builds the typed queue payload from caller inputs and enqueues it — `NotificationQueue`, `NotificationEmailQueue`, `NotificationPushQueue`, one per queue in `queues/`. This is where a caller-facing "send X" entry point lives, and `NotificationModule` exports all three so a caller in another module injects the class directly (`rules/queue.md`).
+- **`*.queue.ts`** builds the typed queue payload from caller inputs and enqueues it — `NotificationQueue`, `NotificationEmailQueue`, `NotificationPushQueue`, one per queue in `queues/`. This is where a caller-facing "send X" entry point lives, and `NotificationDomainModule` exports all three so a caller injects the class directly (`rules/queue.md`).
 - **`*.processor.ts`** is the BullMQ dispatcher — `extends QueueProcessorBase`, switches on `job.name`, returns `IQueueResponse` (`rules/queue.md`). No sending logic inline.
 - **`*.processor.service.ts`** does the real work for one channel: resolve tokens/recipients, render the template, call `AwsSESService` / `FirebaseService`.
 - A recipient with no token/address is a no-op the processor-service handles, not an exception — a missing push token is not a failed job.

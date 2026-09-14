@@ -5,19 +5,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { AuthJwtRefreshStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
 import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtRefreshStrategy', () => {
     const authService = {
         validateJwtRefreshStrategy:
-            vi.fn<AuthService['validateJwtRefreshStrategy']>(),
-    } satisfies Pick<AuthService, 'validateJwtRefreshStrategy'>;
+            vi.fn<AuthDomain['validateJwtRefreshStrategy']>(),
+    } satisfies Pick<AuthDomain, 'validateJwtRefreshStrategy'>;
     const configService = new ConfigService({
         'auth.jwt.prefix': 'Bearer',
         'auth.jwt.audience': 'ACK',
         'auth.jwt.issuer': 'https://example.com',
         'auth.jwt.refreshToken.jwksUri':
-            'https://example.com/.well-known/refresh-jwks.json',
+            'https://example.com/.well-known/refreshInTx-jwks.json',
         'auth.jwt.refreshToken.algorithm': 'ES512',
     });
     const payload = {
@@ -36,14 +36,14 @@ describe('AuthJwtRefreshStrategy', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtRefreshStrategy,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         strategy = moduleRef.get(AuthJwtRefreshStrategy);
     });
 
-    it('delegates a signature-verified payload to refresh validation', async () => {
+    it('delegates a signature-verified payload to refreshInTx validation', async () => {
         authService.validateJwtRefreshStrategy.mockResolvedValue(payload);
 
         await expect(strategy.validate(payload)).resolves.toBe(payload);

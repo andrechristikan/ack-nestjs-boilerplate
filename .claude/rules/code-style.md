@@ -1,7 +1,7 @@
 # Code style
 
-Mechanical style. Naming is `rules/naming.md`, casing is `rules/case-convention.md`, comments
-are `rules/comments.md`, layer placement is `rules/architecture.md`.
+Mechanical style. Naming and casing are `rules/naming.md`. Layer placement is
+`rules/architecture.md`.
 
 ## NestJS idiomatic — no hand-rolled substitutes
 
@@ -36,8 +36,8 @@ call's latency together for no reason, and the cost is invisible in review becau
 looks correct on its own.
 
 The exceptions are real, so name them when they apply: an await whose argument uses an earlier
-result, a write that must not happen if an earlier step throws, and anything already inside a
-Prisma `$transaction` (which sequences by design). See `rules/concurrency.md`.
+result, a write that must not happen if an earlier step throws, and anything already inside
+`DatabaseService.withTransaction` (which sequences by design). See `rules/concurrency.md`.
 
 ## Never mirror a type that already has a name
 
@@ -55,3 +55,26 @@ copy. No → inline is fine.
 Zero copy-paste logic. Written twice is a signal, written three times is a defect. One source
 of truth per config value, connection, and constant. **Duplication still beats the wrong
 abstraction** — do not abstract to satisfy DRY against YAGNI (`rules/architecture.md`).
+
+## Comments
+
+**Default zero comments.** Types, names, and structure are the contract.
+
+Every comment states FINAL STATE only — what the symbol IS or DOES, present tense. No
+history, no decision, no changelog. Deprecation is the one exception, and only with a real
+`@deprecated` marker.
+
+`// @note:` is banned. Delete it on sight.
+
+JSDoc is where a written explanation belongs. Optional one-line class JSDoc when the class
+name does not say what the provider is. Method JSDoc is the exception. No JSDoc on
+interfaces. Banned tags: `@example` `@param` `@returns` `@template` `@throws` `@private`
+`@export` `@class` `@implements` `@constraint` `@remarks`.
+
+Inline `//` is rare: something a reader cannot see from that statement and that causes real
+damage when missed. Zero per file is normal. No trailing comments.
+
+`TODO` and `FIXME` are work markers and are allowed. `NOTE`, `XXX`, and `HACK` are not used.
+
+After a change lands, re-test every comment it touched. Delete the ones whose subject is
+gone.

@@ -7,13 +7,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumApiKeyType, type ApiKey } from '@generated/prisma-client';
 import { ApiKeyStoreKey } from '@modules/api-key/constants/api-key.constant';
-import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 
 describe('ApiKeyXApiKeyGuard', () => {
     const apiKeyService = {
-        validateXApiKey: vi.fn<ApiKeyService['validateXApiKey']>(),
-    } satisfies Pick<ApiKeyService, 'validateXApiKey'>;
+        validateXApiKey: vi.fn<ApiKeyDomain['validateXApiKey']>(),
+    } satisfies Pick<ApiKeyDomain, 'validateXApiKey'>;
     const requestStoreService = {
         set: vi.fn<RequestStoreService['set']>(),
     } satisfies Pick<RequestStoreService, 'set'>;
@@ -39,7 +39,7 @@ describe('ApiKeyXApiKeyGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyXApiKeyGuard,
-                { provide: ApiKeyService, useValue: apiKeyService },
+                { provide: ApiKeyDomain, useValue: apiKeyService },
                 { provide: RequestStoreService, useValue: requestStoreService },
                 {
                     provide: ConfigService,

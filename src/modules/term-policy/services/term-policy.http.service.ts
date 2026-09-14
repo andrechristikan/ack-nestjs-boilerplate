@@ -8,22 +8,21 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { ITermPolicyHttpService } from '@modules/term-policy/interfaces/term-policy.http.service.interface';
 import { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma, TermPolicy } from '@generated/prisma-client';
 
 @Injectable()
-export class TermPolicyHttpService implements ITermPolicyHttpService {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+export class TermPolicyHttpService {
+    constructor(private readonly termPolicyDomain: TermPolicyDomain) {}
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ITermPolicy>> {
-        const { data, ...others } = await this.termPolicyService.getListByAdmin(
+        const { data, ...others } = await this.termPolicyDomain.getListByAdmin(
             pagination,
             type,
             status
@@ -39,7 +38,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ITermPolicy>> {
         const { data, ...others } =
-            await this.termPolicyService.getListPublished(pagination, type);
+            await this.termPolicyDomain.getListPublished(pagination, type);
         return {
             data,
             ...others,
@@ -50,7 +49,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         body: TermPolicyCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<ITermPolicy>> {
-        const created = await this.termPolicyService.createByAdmin(
+        const created = await this.termPolicyDomain.createByAdmin(
             body,
             createdBy
         );
@@ -58,17 +57,19 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         return { data: created };
     }
 
-    async deleteByAdmin(termPolicyId: string): Promise<IResponseReturn<void>> {
-        await this.termPolicyService.deleteByAdmin(termPolicyId);
+    async deleteByAdmin(
+        termPolicyId: string
+    ): Promise<IResponseReturn<TermPolicy>> {
+        const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
 
-        return {};
+        return { data: deleted };
     }
 
     async publishByAdmin(
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyService.publishByAdmin(termPolicyId, updatedBy);
+        await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 
         return {};
     }

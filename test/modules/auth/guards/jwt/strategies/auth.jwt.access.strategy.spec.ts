@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
 import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.jwt.access.strategy';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtAccessStrategy', () => {
     const authService = {
         validateJwtAccessStrategy:
-            vi.fn<AuthService['validateJwtAccessStrategy']>(),
-    } satisfies Pick<AuthService, 'validateJwtAccessStrategy'>;
+            vi.fn<AuthDomain['validateJwtAccessStrategy']>(),
+    } satisfies Pick<AuthDomain, 'validateJwtAccessStrategy'>;
     const configService = new ConfigService({
         'auth.jwt.prefix': 'Bearer',
         'auth.jwt.audience': 'ACK',
@@ -39,7 +39,7 @@ describe('AuthJwtAccessStrategy', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessStrategy,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

@@ -4,8 +4,9 @@ A DTO is the module's transport shape, and here a DTO is a **zod schema plus the
 from it**. A request DTO enters at the controller and travels as far down as the shape is still
 unchanged — that can be the repository (`rules/architecture.md`); a response shape is declared
 on the route and applied by `ResponseInterceptor`. Request-side validation is
-`rules/validation.md`; OpenAPI annotation is `rules/swagger.md`; this file is the shape and
-placement rule set. Detail in `docs/request-validation.md` and `docs/response.md`.
+`rules/validation.md`; OpenAPI annotation is `rules/http.md`; this file is the shape and
+placement rule set. Flow narrative: `docs/request-validation.md`, `docs/response.md` —
+explorer or planner.
 
 ## Placement
 
@@ -59,7 +60,7 @@ payload against it before the envelope is sent.
   declares a route that returns no data; a handler that returns one anyway raises
   `ResponseSerializationException`, and so does a payload the schema rejects.
 - `@ResponsePaging` takes the schema of ONE item; the interceptor wraps the page around it.
-- Never hand a response schema to a domain service. It belongs to the transport
+- Never hand a response schema to a domain. It belongs to the transport
   (`rules/architecture.md`).
 
 ## The envelope, not the schema
@@ -78,7 +79,7 @@ returned object, and a bare payload has none. A handler with nothing to return i
 
 ## Field names
 
-Field names are the JSON keys, and they are camelCase (`rules/case-convention.md`). **Rename
+Field names are the JSON keys, and they are camelCase (`rules/naming.md`). **Rename
 them freely when the current name is wrong** — no client compatibility is owed here. A body
 field MUST NOT duplicate a path param; the path is authoritative (`rules/http.md`).
 

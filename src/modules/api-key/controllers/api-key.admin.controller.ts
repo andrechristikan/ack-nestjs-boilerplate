@@ -15,7 +15,7 @@ import {
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -72,7 +72,6 @@ import {
     EnumRoleType,
     Prisma,
 } from '@generated/prisma-client';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
@@ -164,7 +163,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         return this.apiKeyHttpService.resetByAdmin(apiKeyId);
@@ -189,7 +188,7 @@ export class ApiKeyAdminController {
     async update(
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto,
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
@@ -214,7 +213,7 @@ export class ApiKeyAdminController {
     async updateDate(
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
@@ -237,7 +236,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
@@ -262,7 +261,7 @@ export class ApiKeyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
-        @Param('apiKeyId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKey>> {
         return this.apiKeyHttpService.deleteByAdmin(apiKeyId);

@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RequestStoreService } from '@common/request/services/request.store.service';
 import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
-import type { UserService } from '@modules/user/services/user.service';
+import type { UserDomain } from '@modules/user/domains/user.domain';
 import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 describe('UserGuard', () => {
     const reflector = createMock<Reflector>();
-    const userService = createMock<UserService>();
+    const userService = createMock<UserDomain>();
     const requestStoreService = createMock<RequestStoreService>();
     let guard: UserGuard;
 

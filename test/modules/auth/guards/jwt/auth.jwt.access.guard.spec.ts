@@ -7,11 +7,11 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { AuthPayloadStoreKey } from '@modules/auth/constants/auth.constant';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
 
 describe('AuthJwtAccessGuard', () => {
     const authService =
-        createMock<Pick<AuthService, 'validateJwtAccessGuard'>>();
+        createMock<Pick<AuthDomain, 'validateJwtAccessGuard'>>();
     const requestStoreService = createMock<Pick<RequestStoreService, 'set'>>();
     const payload = {
         userId: 'user-id',
@@ -34,14 +34,14 @@ describe('AuthJwtAccessGuard', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessGuard,
-                { provide: AuthService, useValue: authService },
+                { provide: AuthDomain, useValue: authService },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
         guard = moduleRef.get(AuthJwtAccessGuard);
     });
 
-    it('stores and returns the principal accepted by AuthService', () => {
+    it('stores and returns the principal accepted by AuthDomain', () => {
         authService.validateJwtAccessGuard.mockReturnValue(payload);
         const passportUser = { ...payload, jti: 'untrusted-jti' };
 
