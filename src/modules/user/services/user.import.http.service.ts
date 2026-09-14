@@ -5,7 +5,10 @@ import {
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { EnumTermPolicyType } from '@generated/prisma-client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyType,
+} from '@generated/prisma-client';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -39,7 +42,8 @@ export class UserImportHttpService {
         const users = await this.workspaceDomain.commitOnboarding(
             inputs,
             EnumUserCreateMode.admin,
-            this.userOnboardingDomain.getCreateBulkTimeoutInMs()
+            this.userOnboardingDomain.getCreateBulkTimeoutInMs(),
+            EnumActivityLogAction.adminUserImport
         );
         await this.userImportDomain.notifyImported(
             users,

@@ -23,7 +23,6 @@ import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
-    EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
@@ -84,7 +83,6 @@ import {
     UserUpdateStatusRequestDto,
     UserUpdateStatusRequestSchema,
 } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
@@ -175,7 +173,6 @@ export class UserAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminUserCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -197,7 +194,6 @@ export class UserAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminUserUpdateStatus)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -225,7 +221,6 @@ export class UserAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminUserUpdatePassword)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -250,7 +245,6 @@ export class UserAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminUserResetTwoFactor)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -275,7 +269,6 @@ export class UserAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminUserImport)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

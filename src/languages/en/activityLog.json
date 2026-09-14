@@ -55,6 +55,7 @@
     "userSetupTwoFactor": "Your two-factor authentication has been set up",
     "userEnableTwoFactor": "Your two-factor authentication has been enabled",
     "userDisableTwoFactor": "Your two-factor authentication has been disabled",
+    "userResetTwoFactorByAdmin": "Your two-factor authentication has been reset by admin",
     "userVerifyTwoFactor": "Your two-factor authentication has been verified",
     "userRegenerateTwoFactorBackupCodes": "Your two-factor backup codes have been regenerated",
     "userDeviceRefresh": "Your device session has been refreshed",
@@ -83,5 +84,8 @@
     "adminUserUpdatePassword": "User password has been updated",
     "adminUserResetTwoFactor": "User two-factor authentication has been reset",
     "adminUserImport": "Users have been imported",
-    "adminDeviceRemove": "User device has been removed"
+    "adminDeviceRemove": "User device has been removed",
+    "error": {
+        "contractInvalid": "Activity log contract validation failed"
+    }
 }

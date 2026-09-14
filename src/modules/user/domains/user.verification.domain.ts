@@ -5,9 +5,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumActivityLogAction,
     EnumVerificationType,
@@ -53,7 +50,6 @@ export class UserVerificationDomain {
         private readonly helperHashService: HelperHashService,
         private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly helperNumberService: HelperNumberService,
@@ -155,9 +151,6 @@ export class UserVerificationDomain {
     }
 
     async verifyEmail(token: string): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const hashedToken = this.helperHashService.sha256Hash(token);
         const verification =
             await this.userVerificationRepository.findOneActiveByVerificationEmailToken(
@@ -169,7 +162,7 @@ export class UserVerificationDomain {
 
         try {
             const verifiedAt = this.helperDateService.create();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.markUsedInTx(
                     tx,
                     verification.id,
@@ -180,13 +173,10 @@ export class UserVerificationDomain {
                     verification.userId,
                     verifiedAt
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    verification.userId,
-                    EnumActivityLogAction.userVerifiedEmail,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: verification.userId,
+                });
             });
 
             await this.notificationQueue.sendVerifiedEmail(
@@ -207,9 +197,6 @@ export class UserVerificationDomain {
     }
 
     async sendVerificationEmail(email: string): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
             throw new UserNotFoundException();
@@ -244,7 +231,7 @@ export class UserVerificationDomain {
             ) as IUserVerificationEmailCreate;
 
             const today = this.helperDateService.create();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.expireActiveByTypeInTx(
                     tx,
                     user.id,
@@ -258,13 +245,10 @@ export class UserVerificationDomain {
                     emailVerification,
                     today
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userSendVerificationEmail,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    userId: user.id,
+                });
             });
 
             await this.notificationQueue.sendVerificationEmail(user.id, {
@@ -287,19 +271,14 @@ export class UserVerificationDomain {
     }
 
     async markVerified(userId: string): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const verifiedAt = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.userVerifiedEmail,
-                requestLog,
-                null
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userVerifiedEmail,
+                userId: userId,
+            });
         });
     }
 
@@ -308,11 +287,9 @@ export class UserVerificationDomain {
         email: string,
         verification: IUserVerificationCreate
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const today = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userVerificationRepository.expireActiveByTypeInTx(
                 tx,
                 userId,
@@ -326,13 +303,10 @@ export class UserVerificationDomain {
                 verification,
                 today
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.userSendVerificationEmail,
-                requestLog,
-                null
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userSendVerificationEmail,
+                userId: userId,
+            });
         });
     }
 

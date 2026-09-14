@@ -1,16 +1,25 @@
 import { ActivityLogRepositoryModule } from '@modules/activity-log/activity-log.repository.module';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { Global, Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 /**
- * Global so the activity log domain service and util are injectable wherever `@ActivityLog`
- * is used, including from another module's repository.
+ * Global so the activity log domain, util, and always-on flush interceptor are
+ * injectable across the HTTP stack.
  */
 @Global()
 @Module({
     controllers: [],
-    providers: [ActivityLogDomain, ActivityLogUtil],
+    providers: [
+        ActivityLogDomain,
+        ActivityLogUtil,
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: ActivityLogInterceptor,
+        },
+    ],
     exports: [ActivityLogDomain, ActivityLogUtil],
     imports: [ActivityLogRepositoryModule],
 })

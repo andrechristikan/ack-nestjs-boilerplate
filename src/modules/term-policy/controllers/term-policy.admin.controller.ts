@@ -20,7 +20,6 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -79,7 +78,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
@@ -148,7 +146,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -172,7 +169,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -222,7 +218,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyUpdateContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -250,7 +245,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyAddContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -278,7 +272,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyRemoveContent)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -333,7 +326,6 @@ export class TermPolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminTermPolicyPublish)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

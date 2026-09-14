@@ -4,9 +4,6 @@ import { IDatabaseTransactionClient } from '@common/database/interfaces/database
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -27,7 +24,6 @@ export class TermPolicyAcceptanceDomain {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly notificationQueue: NotificationQueue,
-        private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
@@ -94,9 +90,6 @@ export class TermPolicyAcceptanceDomain {
     }
 
     async userAccept(user: IUser, type: EnumTermPolicyType): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const policy =
             await this.termPolicyRepository.findLatestPublishedByType(type);
         if (!policy) {
@@ -113,7 +106,7 @@ export class TermPolicyAcceptanceDomain {
         }
 
         try {
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.termPolicyRepository.acceptInTx(
                     tx,
                     user.id,
@@ -122,13 +115,9 @@ export class TermPolicyAcceptanceDomain {
                     this.helperDateService.create()
                 );
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userAcceptTermPolicy,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userAcceptTermPolicy,
+                });
             });
 
             await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {

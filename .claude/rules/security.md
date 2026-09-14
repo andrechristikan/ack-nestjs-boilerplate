@@ -36,12 +36,20 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
 
 ## Activity log
 
-- `@ActivityLog(EnumActivityLogAction.<action>)` requires `@AuthJwtAccessProtected` and logs both success and failure.
-- Metadata is attached with `RequestStoreService.merge(ActivityLogMetadataStoreKey, …)` — **never** returned in the response shape.
+- Feature domains enqueue with `ActivityLogDomain.stage`. The global `ActivityLogInterceptor`
+  (`APP_INTERCEPTOR`) awaits flush when the CLS stage queue is non-empty.
+- Default `stage` is success-path only (call after business success). `stage({ onError: true })`
+  is one call that covers both paths: flushed on success and on error — do not stage again in a
+  catch. Error-path flush writes only events with `onError: true`; other staged events are
+  discarded.
+- Per-action contracts resolve `user` / `workspace` (`payload` | `target` | `none`) and validate
+  metadata with zod; contract failure throws.
+- `workspace=payload` reads only `WorkspaceStoreKey`.
+- Activity metadata is never returned in response DTOs.
 - **Never log a secret into activity metadata.** It is durable storage, queried by admins.
 
 ## Request store
 
-Per-request state lives in one CLS-backed `RequestStoreService` in `@common`, keyed by constants (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `ActivityLogMetadataStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
+Per-request state lives in one CLS-backed `RequestStoreService` in `@common`, keyed by constants (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `ActivityLogStageStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
 
 Geo-location and user-agent are resolved once per request into `RequestLogStoreKey` as an `IRequestLog`, then threaded to the repository as the last method parameter. Do not re-parse them downstream.

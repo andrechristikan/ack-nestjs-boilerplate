@@ -3,11 +3,15 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { EnumRoleType, Policy, Prisma, Role } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    Policy,
+    Prisma,
+    Role,
+} from '@generated/prisma-client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
@@ -31,16 +35,14 @@ export class RoleDomain {
     constructor(
         private readonly roleRepository: RoleRepository,
         private readonly roleUtil: RoleUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
-    private storeActivityLogMetadata(role: Role): void {
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.roleUtil.mapActivityLogMetadata(role)
-        );
-
-        return;
+    private stageActivityLog(action: EnumActivityLogAction, role: Role): void {
+        this.activityLogDomain.stage({
+            action,
+            metadata: this.roleUtil.mapActivityLogMetadata(role),
+        });
     }
 
     async getListOffsetByAdmin(
@@ -92,7 +94,7 @@ export class RoleDomain {
 
         const created = await this.roleRepository.create(data);
 
-        this.storeActivityLogMetadata(created);
+        this.stageActivityLog(EnumActivityLogAction.adminRoleCreate, created);
 
         return created;
     }
@@ -108,7 +110,7 @@ export class RoleDomain {
 
         const updated = await this.roleRepository.update(id, data);
 
-        this.storeActivityLogMetadata(updated);
+        this.stageActivityLog(EnumActivityLogAction.adminRoleUpdate, updated);
 
         return updated;
     }
@@ -127,7 +129,7 @@ export class RoleDomain {
 
         const deleted = await this.roleRepository.delete(id);
 
-        this.storeActivityLogMetadata(deleted);
+        this.stageActivityLog(EnumActivityLogAction.adminRoleDelete, deleted);
 
         return deleted;
     }

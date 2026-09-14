@@ -835,6 +835,7 @@ enum EnumActivityLogAction {
   userSetupTwoFactor
   userEnableTwoFactor
   userDisableTwoFactor
+  userResetTwoFactorByAdmin
   userVerifyTwoFactor
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh

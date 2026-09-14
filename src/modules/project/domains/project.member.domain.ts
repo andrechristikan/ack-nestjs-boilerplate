@@ -1,8 +1,6 @@
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -139,9 +137,6 @@ export class ProjectMemberDomain {
         targetMember: WorkspaceMember | null,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         this.assertProjectMemberPeerAllowed(
             this.currentActorIsWorkspaceOwner(),
             role
@@ -160,7 +155,7 @@ export class ProjectMemberDomain {
             throw new ProjectMemberAlreadyAssignedException();
         }
 
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const member = await this.projectMemberRepository.createInTx(
                 tx,
                 project.id,
@@ -168,13 +163,11 @@ export class ProjectMemberDomain {
                 role,
                 actorId
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectMemberAssigned,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectMemberAssigned,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
 
             return member;
         });
@@ -186,9 +179,6 @@ export class ProjectMemberDomain {
         targetMemberId: string,
         newRole: EnumProjectMemberRole
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -204,20 +194,18 @@ export class ProjectMemberDomain {
             newRole
         );
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.projectMemberRepository.updateRoleInTx(
                 tx,
                 targetMember.id,
                 newRole,
                 actorId
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectMemberRoleUpdated,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectMemberRoleUpdated,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
         });
     }
 
@@ -226,9 +214,6 @@ export class ProjectMemberDomain {
         actorId: string,
         targetMemberId: string
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -247,34 +232,27 @@ export class ProjectMemberDomain {
             targetMember.role
         );
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.projectMemberRepository.removeMemberInTx(
                 tx,
                 targetMember.id
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectMemberRemoved,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectMemberRemoved,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
         });
     }
 
     async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.projectMemberRepository.removeMemberInTx(tx, member.id);
-            await this.activityLogDomain.recordInTx(
-                tx,
-                member.userId,
-                EnumActivityLogAction.projectMemberLeft,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectMemberLeft,
+                userId: member.userId,
+                workspaceId: project.workspaceId,
+            });
         });
     }
 }

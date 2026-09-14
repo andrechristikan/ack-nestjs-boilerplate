@@ -1,8 +1,5 @@
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -35,8 +32,7 @@ export class WorkspaceMemberDomain {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly databaseService: DatabaseService
     ) {}
 
     private assertPeerActionAllowed(
@@ -128,9 +124,6 @@ export class WorkspaceMemberDomain {
         actorMember: WorkspaceMember,
         targetUserId: string
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (targetUserId === actorMember.userId) {
             throw new WorkspaceSelfTransferException();
         }
@@ -144,20 +137,18 @@ export class WorkspaceMemberDomain {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberRepository.transferOwnershipInTx(
                 tx,
                 actorMember.id,
                 targetMember.id,
                 actorMember.userId
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorMember.userId,
-                EnumActivityLogAction.workspaceOwnershipTransferred,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceOwnershipTransferred,
+                userId: actorMember.userId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
@@ -165,9 +156,6 @@ export class WorkspaceMemberDomain {
         workspaceId: string,
         member: WorkspaceMember
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (member.role === EnumWorkspaceMemberRole.owner) {
             const ownerCount =
                 await this.workspaceMemberRepository.countOwners(workspaceId);
@@ -176,18 +164,16 @@ export class WorkspaceMemberDomain {
             }
         }
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberRepository.removeMemberInTx(
                 tx,
                 member.id
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                member.userId,
-                EnumActivityLogAction.workspaceMemberLeft,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceMemberLeft,
+                userId: member.userId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
@@ -209,9 +195,6 @@ export class WorkspaceMemberDomain {
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
@@ -223,20 +206,18 @@ export class WorkspaceMemberDomain {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberRepository.updateRoleInTx(
                 tx,
                 actorMember.userId,
                 targetMember.id,
                 newRole
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorMember.userId,
-                EnumActivityLogAction.workspaceMemberRoleUpdated,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceMemberRoleUpdated,
+                userId: actorMember.userId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
@@ -245,9 +226,6 @@ export class WorkspaceMemberDomain {
         actorMember: WorkspaceMember,
         targetMemberId: string
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
@@ -263,18 +241,16 @@ export class WorkspaceMemberDomain {
 
         this.assertPeerActionAllowed(actorMember, targetMember);
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberRepository.removeMemberInTx(
                 tx,
                 targetMember.id
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorMember.userId,
-                EnumActivityLogAction.workspaceMemberRemoved,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceMemberRemoved,
+                userId: actorMember.userId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
