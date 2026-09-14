@@ -64,7 +64,7 @@ pnpm typecheck
 pnpm lint
 pnpm deadcode
 pnpm spell
-pnpm test --testPathPatterns '<scope>'
+pnpm test <test-scope>
 ```
 
 **No check is optional and none is skipped for time.** A check that fails to run at all — a
@@ -78,9 +78,9 @@ signals. Their exit code means nothing: READ the output and report what it says.
 `tsconfig.json` error and reports zero source errors because it type-checked nothing. Capture
 the exit code and the raw output.
 
-The test run is scoped to the paths under review. `collectCoverage` is `false`, so this run does
-not apply the 100% threshold — coverage is `/ack-spec`, and this gate does not stand in for it.
-Say so in the verdict rather than implying the coverage bar was checked here.
+The test run is scoped by passing test directories or full spec paths as positional Vitest
+filters. Coverage is off by default; coverage analysis belongs to `/ack-spec`, and this gate
+does not stand in for it. Say so in the verdict rather than implying coverage was checked here.
 
 ## 4 — The verdict
 

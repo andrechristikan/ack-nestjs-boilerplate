@@ -83,9 +83,9 @@ which endpoints stay broken until it runs. Nobody here may run `db:migrate`.
 
 ## 5 — Build
 
-Dispatch `coder` with the plan. It works TEST-first — the failing unit spec before the code —
-and dispatches `test-writer` itself; do not dispatch `test-writer` from here. That unit spec is
-a different artifact from the `.superpowers/` spec §2 produced.
+Dispatch `coder` with the plan. It owns the complete red-to-green loop: the failing unit spec,
+the production code, and the focused regression suite. That unit spec is a different artifact
+from the `.superpowers/` spec §2 produced.
 
 **When the plan needs new baseline rows, dispatch `seed-writer`** after the schema lands. It
 writes the seed; nobody runs it — the owner does.
@@ -124,17 +124,17 @@ pnpm typecheck
 pnpm lint
 pnpm deadcode
 pnpm spell
-pnpm test --testPathPatterns '<module>'
+pnpm test test/modules/<module>
 ```
 
 **The test run is SCOPED to the modules the feature actually CHANGED, never the whole suite
-(HARD).** Name each one — the flag takes several patterns. A module you only read is not in
-scope. A full `pnpm test` belongs to `/ack-spec` and to the `pre-commit` hook, which runs it on
-every commit anyway.
+(HARD).** Pass each test directory or full spec path as a positional Vitest filter. A module
+you only read is not in scope. A full `pnpm test` belongs to the release sweep and the
+`pre-commit` hook.
 
-**`collectCoverage` is `false`.** A scoped `pnpm test` does not apply the 100% threshold.
-Coverage is `pnpm test:cov`. A scoped coverage run exits 1 while every spec passes because the
-threshold is GLOBAL — read the `Tests:` line, not the exit code.
+Coverage is off by default. When it provides useful evidence, run the same scoped test command
+with `--coverage` and a `--coverage.include='<source-glob>'` selected from `rules/testing.md`.
+Read per-file branches as well as totals.
 
 **`deadcode` and `spell` ALWAYS exit 0.** `spell` ends in `|| true` and `ts-prune` never
 signals. Their exit code means nothing: READ the output and report what it says. `ts-prune`
@@ -147,25 +147,14 @@ typecheck` here.
 **Booting the app is NOT part of this step.** That is `verifier`, offered in §6 and dispatched
 only when the owner picks it.
 
-### Coverage short of 100% is the OWNER's call (HARD)
+### Coverage findings
 
-**Never repair a coverage gap silently, and never widen the scope to chase one.** When a
-coverage run on a file you touched does not reach 100%, stop and put it to the owner with
-`AskUserQuestion`, naming the file, the uncovered lines, and why they are uncovered.
+The implementer closes every uncovered material branch introduced or changed by this feature.
+A percentage below 100% is not automatically a defect; name the remaining lines and explain
+why they do not represent a missing contract. Never add equivalent cases, private-method tests,
+or framework assertions to increase a number.
 
-Read the PER-FILE rows for the files you touched. The global summary means nothing on a scoped
-coverage run.
-
-Two answers are legitimate, and both belong to the owner:
-
-| They pick | You do |
-|---|---|
-| fix it | one more `test-writer` dispatch, on those files only |
-| leave it | nothing here — `pre-commit` runs `pnpm test` without coverage, so the threshold is not a hook gate |
-
-**A backfill pass here stays inside the files this feature wrote.** A gap anywhere else — an
-older module the coverage run surfaced, a shared helper this feature only imported — is a
-one-line REPORT and a `/ack-spec` run, never a second dispatch from here.
+A gap in older code outside this feature is a one-line report and a later `/ack-spec` run.
 
 **`--no-verify` is never yours to choose.** You do not pass it, suggest it as a default, or
 assume a previous answer still holds.

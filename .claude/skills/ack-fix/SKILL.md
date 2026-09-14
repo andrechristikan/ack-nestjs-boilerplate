@@ -130,9 +130,9 @@ one the plan assumes. A plan built on the wrong cause repairs the wrong file.
 
 ## 7 — Build
 
-Dispatch `coder` with the plan. It works TEST-first — the failing unit spec before the code —
-and dispatches `test-writer` itself; do not dispatch `test-writer` from here. That unit spec is
-a different artifact from the `.superpowers/` spec §6 produced.
+Dispatch `coder` with the plan. It owns the complete red-to-green loop: the failing regression
+spec, the production repair, and the focused suite. That unit spec is a different artifact from
+the `.superpowers/` spec §6 produced.
 
 **A schema change is `coder`'s edit plus a HAND-BACK of the push** — relay `pnpm db:migrate` and
 the data consequence, and say which endpoints stay broken until the owner runs it
@@ -166,39 +166,29 @@ pnpm typecheck
 pnpm lint
 pnpm deadcode
 pnpm spell
-pnpm test --testPathPatterns '<module>'
+pnpm test test/modules/<module>
 ```
 
 **The test run is SCOPED to the modules the repair actually CHANGED, never the whole suite
-(HARD).** The flag is PLURAL — Jest 30 rejects `--testPathPattern` and runs nothing. A module
-you only read while tracing is not in scope. A full `pnpm test` belongs to `/ack-spec` and to
-the `pre-commit` hook, which runs it on every commit anyway; running it here adds minutes and
-proves nothing the hook will not prove.
+(HARD).** Pass each test directory or full spec path as a positional Vitest filter. A module
+you only read while tracing is not in scope. A full `pnpm test` belongs to the release sweep
+and the `pre-commit` hook.
 
-**`collectCoverage` is `false`.** A scoped `pnpm test` does not apply the 100% threshold.
-Coverage is `pnpm test:cov`. A scoped coverage run exits 1 while every spec passes because the
-threshold is GLOBAL — read the `Tests:` line, not the exit code.
+Coverage is off by default. When it provides useful evidence, run the same scoped test command
+with `--coverage` and a `--coverage.include='<source-glob>'` selected from `rules/testing.md`.
+Read per-file branches as well as totals.
 
 **`deadcode` and `spell` ALWAYS exit 0** — `spell` ends in `|| true`, `ts-prune` never signals.
 Read their output; the exit code is meaningless.
 
 **Booting is NOT part of this step.** That is `verifier`, in §4 and §8.
 
-### Coverage short of 100% is the OWNER's call (HARD)
+### Coverage findings
 
-**Never repair a coverage gap silently, and never widen the scope to chase one.** When a
-coverage run on a file you touched does not reach 100%, stop and put it to the owner with
-`AskUserQuestion`, naming the file, the uncovered lines, and why they are uncovered.
-
-Read the PER-FILE rows for the files you touched. The global summary means nothing on a scoped
-coverage run.
-
-Two answers are legitimate, and both belong to the owner:
-
-| They pick | You do |
-|---|---|
-| fix it | one more `test-writer` dispatch on those files, still inside this module |
-| leave it | nothing here — `pre-commit` runs `pnpm test` without coverage, so the threshold is not a hook gate |
+The implementer closes every uncovered material branch involved in the defect or repair. A
+percentage below 100% is not automatically a defect; name the remaining lines and explain why
+they do not represent a missing contract. Never add equivalent cases, private-method tests, or
+framework assertions to increase a number.
 
 **`--no-verify` is never yours to choose.** You do not pass it, suggest it as a default, or
 assume a previous answer still holds.
@@ -234,5 +224,5 @@ and whether the trace in §3 was run or declined.
 | `/ack-docs` | the behaviour this changed is described in `docs/` |
 | `/ack-feature` | the cause turned out to be missing behaviour, not a defect |
 
-**`/ack-spec` is NOT a follow-up.** The specs for what you just changed came with the change —
-`coder` dispatched `test-writer` for them. `/ack-spec` is for specs of code you did NOT touch.
+**`/ack-spec` is NOT a follow-up.** The coder wrote the specs for the repaired behavior.
+`/ack-spec` is for backfill or repair of specs outside this production change.

@@ -9,7 +9,6 @@
             "Bash(npx tsc:*)",
             "Bash(npx eslint:*)",
             "Bash(npx prettier:*)",
-            "Bash(npx jest:*)",
             "Bash(npx cspell:*)",
             "Bash(npx ts-prune:*)",
             "Bash(npx nest:*)",

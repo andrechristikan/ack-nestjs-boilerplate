@@ -43,7 +43,7 @@ someone else built; you never edit it.
 
 ## The boot check
 
-An `imports:` change is verified by BOOTING the app. Cycles never surface at `tsc` or jest.
+An `imports:` change is verified by BOOTING the app. Cycles never surface in typecheck or Vitest.
 
 ```bash
 docker ps --format '{{.Names}}'                     # containers must be up first

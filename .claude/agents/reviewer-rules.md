@@ -50,7 +50,7 @@ yours to change.
 
 ## The findings that cost the most here
 
-These fail in production with `tsc`, lint, and jest all green. Check them explicitly on any scope
+These fail in production with typecheck, lint, and Vitest all green. Check them explicitly on any scope
 that touches them:
 
 - **A guard decorator in the wrong position.** The stack in `rules/http.md` is exact and runs

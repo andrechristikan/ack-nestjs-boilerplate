@@ -26,7 +26,7 @@ response shape, the meaning of a vendor error string, what a version bump change
 The stack you will most often be asked about: NestJS 12, Prisma 6 against MongoDB, BullMQ,
 `@nestjs/cache-manager` with Keyv/Redis, zod 4 with `zod-openapi` and `@standard-schema/spec`,
 `nestjs-i18n`, Pino, Passport, CASL, Luxon, AWS SDK (S3, SES), Firebase Admin, nest-commander,
-Jest 30 with `@swc/jest`.
+and Vitest with V8 coverage.
 
 Read local files only to establish WHICH version or configuration is in play — `package.json`,
 `pnpm-lock.yaml`, a config file. Everything else you look up.

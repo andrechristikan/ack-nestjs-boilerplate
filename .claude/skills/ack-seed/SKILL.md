@@ -32,7 +32,7 @@ Use `AskUserQuestion` for anything the sibling seeds do not already answer:
 Dispatch `seed-writer` with the answers. It writes the seed, its `data/` rows, its `remove()`,
 its `migration.module.ts` provider, and its position in both bundled scripts.
 
-**No TDD here.** `src/migration/` is outside `collectCoverageFrom` and a seed has no behaviour
+**No TDD here.** `src/migration/` is outside unit coverage collection and a seed has no behaviour
 to prove in a unit spec (`rules/testing.md`). Do not dispatch `test-writer`.
 
 ## 3 — Review (ASK, and only at the END)
