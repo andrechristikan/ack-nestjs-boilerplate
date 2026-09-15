@@ -350,6 +350,7 @@ flowchart TD
 - `EnumPolicySubject.device` - Device management
 - `EnumPolicySubject.workspace` - Workspace management
 - `EnumPolicySubject.project` - Project management
+- `EnumPolicySubject.analytic` - Admin analytic dashboard, anomaly, and fraud read routes
 
 **Usage:**
 
@@ -651,13 +652,13 @@ A role and its policies are two separate admin surfaces: `POST /admin/role/creat
 **Policy Structure:**
 
 Each policy row consists of:
-- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog)
+- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog, analytic)
 - **action**: Array of allowed actions (manage, read, create, update, delete)
 
 A role holds at most one policy per subject: creating a second policy for a subject already covered is rejected.
 
 **Available subjects and actions are defined in:**
-- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project
+- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project, analytic
 - `EnumPolicyAction`: manage, read, create, update, delete
 
 ### Assigning Roles to Users

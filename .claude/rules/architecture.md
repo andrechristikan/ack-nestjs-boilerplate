@@ -29,7 +29,13 @@ its definition (`rules/nest-wiring.md`).
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
 - **A multi-step write on this repository's own model may open a transaction here** through `this.databaseService.withTransaction` (`rules/database.md`). A write that also touches another repository's model is not opened here; the domain composes those repositories inside `this.databaseService.withTransaction`.
 - **A repository never injects or calls another repository.** Same-feature siblings are composed by the domain.
-- **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at `interfaces/<module>[.<concern>].repository.interface.ts`. Callers inject the class (`UserRepository`); Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs. ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a domain signature.
+- **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at
+  `interfaces/<module>[.<concern>].repository.interface.ts`. The interface file and the
+  class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
+  Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
+  ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a
+  domain signature. Public repository methods return named `I*` shapes, Prisma models, or
+  primitives — not `unknown` or `Record<string, unknown>` (`rules/null-safety.md`).
 
 ## Domain — `<module>[.<concern>].domain.ts`
 

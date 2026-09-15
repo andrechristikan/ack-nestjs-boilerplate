@@ -29,6 +29,15 @@ controller, guard, or module wiring is config in the wrong place.
 **A bare `const` is not an escape hatch** — promote it unless it is a genuinely fixed,
 single-source-of-truth invariant with no env knob today.
 
+## Nested keys name the concept
+
+Object keys under a config namespace are readable camelCase for the thing they configure
+(`impossibleTravel`, `credentialStuffing`, `dashboardTtlInMs`). Opaque ordinal or catalogue
+codes as nesting keys (`a1`, `f1`, `signal3`) are not config key names — a reader opening
+`src/configs/` must learn the threshold from the key, not from a separate legend. A wire or
+enum value that is itself a short code stays a value (or its own enum), not the key that
+holds thresholds for that signal.
+
 ## Time is the consumer's unit — no exceptions (HARD)
 
 A duration config key is named for the unit its CONSUMER takes, and holds the value already in

@@ -44,6 +44,7 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [File Configuration](#file-configuration)
 - [Workspace Configuration](#workspace-configuration)
 - [Project Configuration](#project-configuration)
+- [Analytic Configuration](#analytic-configuration)
 
 ## Configuration Structure
 
@@ -1034,6 +1035,35 @@ slugMaxLength: number           // Maximum slug length (default: 30)
 ```typescript
 slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
 ```
+
+### Analytic Configuration
+
+**File**: `src/configs/analytic.config.ts`
+**Interface**: `IConfigAnalytic`
+
+Live metric cache TTLs and key patterns, plus anomaly and fraud detection thresholds. Values are literals built with `ms(...)`; they are not environment-driven. Consumer: `AnalyticCache` and the analytic domains. Flow: [Analytic](analytic.md).
+
+#### Configuration Keys:
+
+**`cache`** - Redis key patterns and TTLs for dashboard, anomaly summary, fraud summary, and risk score entries
+```typescript
+cache: {
+  dashboardTtlInMs: number;       // Dashboard metric TTL (default: 1h)
+  anomalySummaryTtlInMs: number;  // Anomaly summary TTL (default: 5m)
+  fraudSummaryTtlInMs: number;    // Fraud summary TTL (default: 5m)
+  riskScoreTtlInMs: number;       // Per-user risk score TTL (default: 10m)
+  keyPatterns: {
+    dashboard: string;            // Analytic:dashboard:{metric}:{start}:{end}
+    anomaly: string;              // Analytic:anomaly:{signal}:{window}
+    fraud: string;                // Analytic:fraud:{signal}:{window}
+    riskScore: string;            // Analytic:fraud:risk:{userId}
+  };
+}
+```
+
+**`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
+
+**`fraud`** - Credential-stuffing and related signal windows, risk weights, band cutoffs, and band labels used by `AnalyticFraudDomain`
 
 
 <!-- REFERENCES -->

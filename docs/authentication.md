@@ -282,7 +282,7 @@ sequenceDiagram
 
 The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request before any credential is read.
 
-Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the account is set to `inactive` and `UserPasswordAttemptMaxException` is thrown), password matches (the attempt counter is incremented, then `UserPasswordNotMatchException`). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
+Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the account is set to `inactive` and `UserPasswordAttemptMaxException` is thrown), password matches (the attempt counter is incremented, `UserLoginDomain.stageLoginFailed` stages `EnumActivityLogAction.userLoginFailed`, then `UserPasswordNotMatchException`). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
 
 Two branches then short-circuit before any session or token is created:
 

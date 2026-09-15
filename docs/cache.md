@@ -123,7 +123,7 @@ export class FeatureFlagCacheService {
 }
 ```
 
-A cache manager is injected into a dedicated cache service, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCacheService`, `AuthCacheService`, `FeatureFlagCacheService`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
+A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCache`, `AuthCache`, `FeatureFlagCache`, `AnalyticCache`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
 
 ### SessionModule
 

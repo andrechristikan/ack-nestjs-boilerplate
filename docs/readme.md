@@ -84,12 +84,13 @@ Additional features and integrations for production-grade deployments.
 22. [Two Factor][ref-doc-two-factor] — TOTP 2FA with authenticator apps and backup codes
 23. [Feature Flag][ref-doc-feature-flag] — Dynamic feature management, gradual rollouts, A/B testing
 24. [Activity Log][ref-doc-activity-log] — Recording successful user activities with `@ActivityLog`
-25. [Term Policy][ref-doc-term-policy] — Legal agreements, versioning, and user consent enforcement
-26. [File Upload][ref-doc-file-upload] — Single/multiple file uploads, CSV processing, upload decorators
-27. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
-28. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
-29. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
-30. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
+25. [Analytic][ref-doc-analytic] — Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
+26. [Term Policy][ref-doc-term-policy] — Legal agreements, versioning, and user consent enforcement
+27. [File Upload][ref-doc-file-upload] — Single/multiple file uploads, CSV processing, upload decorators
+28. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
+29. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
+30. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
+31. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
 
 
 
@@ -117,6 +118,7 @@ Additional features and integrations for production-grade deployments.
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-activity-log]: activity-log.md
+[ref-doc-analytic]: analytic.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-file-upload]: file-upload.md
 [ref-doc-presign]: presign.md

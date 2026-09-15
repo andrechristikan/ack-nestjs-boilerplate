@@ -4,6 +4,7 @@ import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activ
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 
 /**
  * Global so the activity log domain, util, and always-on flush interceptor are
@@ -19,8 +20,9 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
             provide: APP_INTERCEPTOR,
             useClass: ActivityLogInterceptor,
         },
+        ActivityLogAnalyticDomain,
     ],
-    exports: [ActivityLogDomain, ActivityLogUtil],
+    exports: [ActivityLogDomain, ActivityLogUtil, ActivityLogAnalyticDomain],
     imports: [ActivityLogRepositoryModule],
 })
 export class ActivityLogDomainModule {}

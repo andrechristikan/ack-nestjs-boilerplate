@@ -10,6 +10,7 @@ The Term Policy module manages legal agreements and user consent within the appl
 - [Authorization Documentation][ref-doc-authorization] - RBAC for admin operations
 - [Authentication Documentation][ref-doc-authentication] - User authentication requirements
 - [Presign Documentation][ref-doc-presign] - How to upload the contents
+- [Analytic Documentation][ref-doc-analytic] - Admin acceptance-rate and time-to-accept metrics under `/admin/analytic/term-policies/*`
 
 ## Table of Contents
 
@@ -421,5 +422,6 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for contributing to the Term 
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-presign]: presign.md
+[ref-doc-analytic]: analytic.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

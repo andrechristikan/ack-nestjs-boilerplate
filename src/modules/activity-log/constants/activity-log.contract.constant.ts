@@ -48,6 +48,11 @@ export const ActivityLogContractByAction: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userLoginFailed]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userLoginGoogle]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,

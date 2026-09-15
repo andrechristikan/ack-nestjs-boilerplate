@@ -22,6 +22,10 @@ This file is the code rule set. Flow narrative: `docs/database.md` — explorer 
 - `select` shapes belong in `<module>/constants/<module>.constant.ts` as PascalCase constants, so a schema change surfaces as a compile error at one place rather than silently returning fewer fields.
 - Prefer one generic repository method with a discriminator param over a near-duplicate method per variant (OCP).
 - **The repository owns `null → {}` normalization** of filter params before they reach Prisma. A caller that does it has taken the repository's job.
+- **`orderBy` direction is an enum, not a string literal.** Use `Prisma.SortOrder.asc` /
+  `Prisma.SortOrder.desc`, or `EnumPaginationOrderDirectionType` where the call already sits
+  on the pagination path (`rules/pagination.md`). `'asc'` and `'desc'` string literals in a
+  Prisma `orderBy` are the defect.
 
 ## Generated unique values
 

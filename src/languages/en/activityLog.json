@@ -17,6 +17,7 @@
     "userClaimUsername": "Your username has been claimed",
     "userUpdatePasswordByAdmin": "Your password has been updated by admin",
     "userLoginCredential": "You logged in with credentials",
+    "userLoginFailed": "Login failed with invalid credentials",
     "userLoginGoogle": "You logged in with Google",
     "userLoginApple": "You logged in with Apple",
     "userRefreshToken": "Your access token has been refreshed",

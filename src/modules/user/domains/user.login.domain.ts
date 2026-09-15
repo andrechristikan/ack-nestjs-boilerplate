@@ -75,6 +75,13 @@ export class UserLoginDomain {
         );
     }
 
+    stageLoginFailed(userId: string): void {
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.userLoginFailed,
+            userId,
+        });
+    }
+
     async createTokenAndSession(
         user: IUser,
         device: IDeviceIdentity,

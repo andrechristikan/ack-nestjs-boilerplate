@@ -101,6 +101,15 @@ forbids, and executing it faithfully makes the violation yours. When the two dis
 hand the conflict back with both citations — do not resolve it, and do not implement either
 side.
 
+**Public method signatures use named types.** Controllers, HTTP services, domains, and
+repositories declare returns as `I*` interfaces, DTOs, Prisma models, or primitives
+(`rules/null-safety.md`). Do not stub unfinished work with `Promise<unknown>`,
+`Record<string, unknown>`, or `any` to quiet typecheck. Every repository class has a
+matching `I*Repository` in a separate `interfaces/` file and `implements` it
+(`rules/architecture.md`, `rules/naming.md`). Config nesting keys name the concept in
+readable camelCase (`rules/config.md`). Prisma `orderBy` directions use
+`Prisma.SortOrder` or `EnumPaginationOrderDirectionType` (`rules/database.md`).
+
 ## Boundaries
 
 - **Never write the `.superpowers/` spec or plan.** Those are `planner`'s artifacts; you build

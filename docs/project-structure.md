@@ -148,6 +148,7 @@ The modules folder contains all feature modules, each representing a distinct do
 ```
 modules
   ├── activity-log
+  ├── analytic
   ├── api-key
   ├── auth
   ├── country
@@ -165,6 +166,8 @@ modules
   ├── user
   └── workspace
 ```
+
+`analytic` orchestrates live metrics through owner `*AnalyticDomain` / `*AnalyticRepository` siblings (for example `user.analytic.domain.ts` with `user.analytic.repository.ts`). It has no repository module of its own. See [Analytic](analytic.md).
 
 **Per-layer Nest modules:**
 

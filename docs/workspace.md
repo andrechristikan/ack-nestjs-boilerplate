@@ -174,6 +174,8 @@ Mounted under `/user`. Every route carries `@FeatureFlagProtected('workspace')`.
 
 The `owner` role satisfies every `admin` and `member` requirement above.
 
+Current-workspace analytic metrics for the active `x-workspace-id` live under `/user/analytic/workspace/*` (summary for any member; invite funnel, join outcomes, member roles, and activity for workspace admin). See [Analytic](analytic.md).
+
 ### Public Scope
 
 Mounted under `/public`. Unauthenticated, but still behind `@ApiKeyProtected()` and `@FeatureFlagProtected('workspace')`.
