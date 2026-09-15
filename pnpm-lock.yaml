@@ -351,9 +351,6 @@ importers:
       unplugin-swc:
         specifier: ^1.6.0
         version: 1.6.0(@swc/core@1.16.2)(rolldown@1.2.7)(vite@8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0))(webpack@5.106.2(@swc/core@1.16.2)(uglify-js@3.19.3))
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(supports-color@10.2.2)(typescript@6.0.3)(vite@8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0))
       vitest:
         specifier: ^5.0.0
         version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@26.4.1)(@vitest/coverage-v8@5.0.0)(vite@8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0))
@@ -5579,11 +5576,6 @@ packages:
 
   verify-apple-id-token@3.1.2:
     resolution: {integrity: sha512-8OpVbQQmOOjb4qHVw8fc0Ky4qjKsTPywKVPORK36lcFFTrQpdADPbqcZY+fhEeFaSVZT1ExOoKdq9Y8bgPzY6A==}
-
-  vite-tsconfig-paths@6.1.1:
-    resolution: {integrity: sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg==}
-    peerDependencies:
-      vite: '*'
 
   vite@8.2.2:
     resolution: {integrity: sha512-cFKLV/PRgAUlIRm5WjMjJ86jrftzpqcgH+Us+DS8mI3CDNiH30Whrz8uHL3+MOLPAgqbMBAqWdAHAphOAM+z/Q==}
@@ -11453,16 +11445,6 @@ snapshots:
       jwks-rsa: 3.2.2(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
-
-  vite-tsconfig-paths@6.1.1(supports-color@10.2.2)(typescript@6.0.3)(vite@8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0)):
-    dependencies:
-      debug: 4.4.3(supports-color@10.2.2)
-      globrex: 0.1.2
-      tsconfck: 3.1.6(typescript@6.0.3)
-      vite: 8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
 
   vite@8.2.2(@types/node@26.4.1)(jiti@2.6.1)(terser@5.44.1)(yaml@2.9.0):
     dependencies:
