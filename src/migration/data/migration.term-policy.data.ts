@@ -30,6 +30,7 @@ export const migrationTermPolicyData: Record<
     TermPolicyCreateRequestDto[]
 > = {
     [EnumAppEnvironment.local]: termPolicyData,
+    [EnumAppEnvironment.test]: termPolicyData,
     [EnumAppEnvironment.development]: termPolicyData,
     [EnumAppEnvironment.staging]: termPolicyData,
     [EnumAppEnvironment.production]: termPolicyData,

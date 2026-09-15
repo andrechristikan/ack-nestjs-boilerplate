@@ -72,6 +72,17 @@ describe('AppEnvSchema', () => {
         }
     });
 
+    it('accepts blank optional integration values without requiring them', () => {
+        const result = AppEnvSchema.parse({
+            ...validEnv,
+            AWS_S3_IAM_ARN: '',
+            AWS_SES_IAM_ARN: '',
+        });
+
+        expect(result.AWS_S3_IAM_ARN).toBe('');
+        expect(result.AWS_SES_IAM_ARN).toBe('');
+    });
+
     it.each([
         ['AWS_S3_IAM_CREDENTIAL_KEY', 'AWS_S3_IAM_ARN'],
         ['AWS_SES_IAM_CREDENTIAL_SECRET', 'AWS_SES_IAM_ARN'],

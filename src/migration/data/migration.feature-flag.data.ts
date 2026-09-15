@@ -59,6 +59,7 @@ export const migrationFeatureFlagData: Record<
     Prisma.FeatureFlagCreateInput[]
 > = {
     [EnumAppEnvironment.local]: featureFlagData,
+    [EnumAppEnvironment.test]: featureFlagData,
     [EnumAppEnvironment.development]: featureFlagData,
     [EnumAppEnvironment.staging]: featureFlagData,
     [EnumAppEnvironment.production]: featureFlagData,

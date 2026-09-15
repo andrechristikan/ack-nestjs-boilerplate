@@ -48,6 +48,17 @@ export const migrationUserData: Record<
             password: 'aaAA@123',
         },
     ],
+    [EnumAppEnvironment.test]: [
+        ...userData,
+        {
+            country: 'ID',
+            email: 'user@mail.com',
+            username: 'user',
+            name: 'User',
+            role: 'user',
+            password: 'aaAA@123',
+        },
+    ],
     [EnumAppEnvironment.development]: userData,
     [EnumAppEnvironment.staging]: userData,
     [EnumAppEnvironment.production]: userData,

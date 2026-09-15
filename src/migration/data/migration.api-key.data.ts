@@ -20,6 +20,20 @@ export const migrationApiKeyData: Record<
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },
     ],
+    [EnumAppEnvironment.test]: [
+        {
+            name: 'Api Key Default',
+            type: EnumApiKeyType.default,
+            key: 'fyFGb7ywyM37TqDY8nuhAmGW5',
+            secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
+        },
+        {
+            name: 'Api Key System',
+            type: EnumApiKeyType.system,
+            key: 'UTDH0fuDMAb1dZVnwnyrQJd8Q',
+            secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
+        },
+    ],
     [EnumAppEnvironment.development]: [],
     [EnumAppEnvironment.staging]: [],
     [EnumAppEnvironment.production]: [],
