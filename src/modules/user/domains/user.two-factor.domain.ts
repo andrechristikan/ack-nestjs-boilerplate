@@ -3,9 +3,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumActivityLogAction,
     EnumUserStatus,
@@ -53,17 +50,13 @@ export class UserTwoFactorDomain {
         private readonly authTwoFactorDomain: AuthTwoFactorDomain,
         private readonly authCache: AuthCache,
         private readonly notificationQueue: NotificationQueue,
-        private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async loginVerifyTwoFactor(
         challengeToken: string,
         { code, backupCode, method }: IAuthTwoFactorVerify
     ): Promise<IAuthToken> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const challenge = await this.authCache.getChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
@@ -102,19 +95,16 @@ export class UserTwoFactorDomain {
                     loginAt
                 ),
                 this.authCache.clearChallenge(challengeToken),
-                this.databaseService.client.$transaction(async tx => {
+                this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.verifyTwoFactorInTx(
                         tx,
                         user.id,
                         twoFactorVerified
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        user.id,
-                        EnumActivityLogAction.userVerifyTwoFactor,
-                        requestLog,
-                        null
-                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: user.id,
+                    });
                 }),
             ]);
 
@@ -132,9 +122,6 @@ export class UserTwoFactorDomain {
         challengeToken: string,
         code: string
     ): Promise<string[]> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const challenge = await this.authCache.getChallenge(challengeToken);
         if (!challenge) {
             throw new AuthTwoFactorChallengeInvalidException();
@@ -162,19 +149,15 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.enableTwoFactorInTx(
                     tx,
                     user.id,
                     backupCodes.hashes
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userEnableTwoFactor,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                });
             });
 
             return backupCodes.codes;
@@ -192,9 +175,6 @@ export class UserTwoFactorDomain {
     }
 
     async setupTwoFactor(user: IUser): Promise<IUserTwoFactorSetup> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (user.twoFactor?.enabled) {
             throw new AuthTwoFactorAlreadyEnabledException();
         }
@@ -202,20 +182,17 @@ export class UserTwoFactorDomain {
         try {
             const { encryptedSecret, otpauthUrl, secret, iv } =
                 await this.authTwoFactorDomain.setupTwoFactor(user.email);
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.setupTwoFactorInTx(
                     tx,
                     user.id,
                     encryptedSecret,
                     iv
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userSetupTwoFactor,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userSetupTwoFactor,
+                    userId: user.id,
+                });
             });
 
             return {
@@ -232,9 +209,6 @@ export class UserTwoFactorDomain {
     }
 
     async enableTwoFactor(user: IUser, code: string): Promise<string[]> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (user.twoFactor?.enabled) {
             throw new AuthTwoFactorAlreadyEnabledException();
         } else if (!user.twoFactor?.iv || !user.twoFactor?.secret) {
@@ -248,19 +222,15 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.enableTwoFactorInTx(
                     tx,
                     user.id,
                     backupCodes.hashes
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userEnableTwoFactor,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userEnableTwoFactor,
+                });
             });
 
             return backupCodes.codes;
@@ -277,9 +247,6 @@ export class UserTwoFactorDomain {
         user: IUser,
         { code, backupCode, method }: IAuthTwoFactorVerify
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
         }
@@ -293,7 +260,7 @@ export class UserTwoFactorDomain {
         try {
             await this.userLoginDomain.revokeAllSessions(user.id);
             const now = this.helperDateService.create();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.disableTwoFactorInTx(
                     tx,
                     user.id
@@ -304,13 +271,9 @@ export class UserTwoFactorDomain {
                     user.id,
                     now
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userDisableTwoFactor,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                });
             });
 
             return;
@@ -327,9 +290,6 @@ export class UserTwoFactorDomain {
         user: IUser,
         code: string
     ): Promise<string[]> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (!user.twoFactor?.enabled) {
             throw new AuthTwoFactorNotEnabledException();
         }
@@ -341,19 +301,15 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx(
                     tx,
                     user.id,
                     backupCodes.hashes
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
+                });
             });
 
             return backupCodes.codes;
@@ -370,9 +326,6 @@ export class UserTwoFactorDomain {
         userId: string,
         updatedBy: string
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (userId === updatedBy) {
             throw new UserNotSelfException();
         }
@@ -390,7 +343,7 @@ export class UserTwoFactorDomain {
             await this.userLoginDomain.revokeAllSessions(userId);
             const now = this.helperDateService.create();
             await Promise.all([
-                this.databaseService.client.$transaction(async tx => {
+                this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
                         tx,
                         userId,
@@ -402,13 +355,6 @@ export class UserTwoFactorDomain {
                         updatedBy,
                         now
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        updatedBy,
-                        EnumActivityLogAction.adminUserResetTwoFactor,
-                        requestLog,
-                        null
-                    );
                 }),
                 this.authCache.clearLockTwoFactorAttempt(user),
             ]);
@@ -417,6 +363,14 @@ export class UserTwoFactorDomain {
                 user.id,
                 updatedBy
             );
+
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.adminUserResetTwoFactor,
+            });
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
+                userId,
+            });
 
             return;
         } catch (err: unknown) {

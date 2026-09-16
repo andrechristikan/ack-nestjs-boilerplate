@@ -192,6 +192,8 @@ model User {
   @@index(fields: [status, deletedAt, createdAt(sort: Desc)])
   @@index(fields: [roleId, status, deletedAt])
   @@index(fields: [countryId, status, signUpAt(sort: Desc)])
+  @@index(fields: [signUpAt(sort: Desc)])
+  @@index(fields: [deletedAt, signUpAt(sort: Desc)])
   @@map("users")
 }
 
@@ -249,6 +251,7 @@ model PasswordHistory {
 
   @@index(fields: [userId, expiredAt(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, type, createdAt(sort: Desc)])
   @@map("password_histories")
 }
 
@@ -272,6 +275,7 @@ model ActivityLog {
   @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc)])
+  @@index(fields: [action, createdAt(sort: Desc)])
   @@index(fields: [userId, action, createdAt(sort: Desc)])
   @@map("activity_logs")
 }
@@ -304,6 +308,7 @@ model Session {
   @@index(fields: [isRevoked, expiredAt(sort: Asc)])
   @@index(fields: [userId, deviceOwnershipId, isRevoked])
   @@index(fields: [deviceOwnershipId])
+  @@index(fields: [createdAt(sort: Desc)])
   @@map("sessions")
 }
 
@@ -324,6 +329,7 @@ model Device {
   ownerships DeviceOwnership[] @relation("DeviceOwnershipDevice")
 
   @@unique(fields: [fingerprint])
+  @@index(fields: [createdAt(sort: Desc)])
   @@map("devices")
 }
 
@@ -355,6 +361,7 @@ model DeviceOwnership {
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, revokedAt])
   @@index(fields: [deviceId, userId, revokedAt])
+  @@index(fields: [userId, lastActiveAt(sort: Desc)])
   @@map("device_ownerships")
 }
 
@@ -502,6 +509,7 @@ model ForgotPassword {
 
   @@unique(fields: [reference])
   @@index(fields: [token, expiredAt, isUsed])
+  @@index(fields: [isUsed, createdAt(sort: Desc)])
   @@map("forgot_passwords")
 }
 
@@ -781,6 +789,7 @@ enum EnumPolicySubject {
   device
   workspace
   project
+  analytic
 }
 
 enum EnumApiKeyType {
@@ -836,6 +845,7 @@ enum EnumActivityLogAction {
   userClaimUsername
   userUpdatePasswordByAdmin
   userLoginCredential
+  userLoginFailed
   userLoginGoogle
   userLoginApple
   userRefreshToken
@@ -854,6 +864,7 @@ enum EnumActivityLogAction {
   userSetupTwoFactor
   userEnableTwoFactor
   userDisableTwoFactor
+  userResetTwoFactorByAdmin
   userVerifyTwoFactor
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh

@@ -2,50 +2,37 @@ import {
     CallHandler,
     ExecutionContext,
     Injectable,
+    Logger,
     NestInterceptor,
 } from '@nestjs/common';
-import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
-import { Reflector } from '@nestjs/core';
+import { Observable, from, throwError } from 'rxjs';
+import { catchError, concatMap } from 'rxjs/operators';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { ActivityLogActionMetaKey } from '@modules/activity-log/constants/activity-log.constant';
-import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 /**
- * Triggers an activity log write on both success and failure paths, non-blocking.
+ * Flushes staged activity-log events after the handler settles.
+ * Success flushes every staged event; error flushes only `onError: true` events.
+ * A flush failure never changes the handler outcome.
  */
 @Injectable()
 export class ActivityLogInterceptor implements NestInterceptor {
-    constructor(
-        private readonly reflector: Reflector,
-        private readonly activityLogDomain: ActivityLogDomain
-    ) {}
+    private readonly logger = new Logger(ActivityLogInterceptor.name);
 
-    private triggerLog(
-        context: ExecutionContext,
-        request: IRequestApp,
-        rawError: unknown
-    ): void {
-        const { user } = request;
-        if (!user) {
-            return;
+    constructor(private readonly activityLogDomain: ActivityLogDomain) {}
+
+    private async flushSafe(
+        payloadUserId: string | null,
+        isError: boolean
+    ): Promise<void> {
+        try {
+            await this.activityLogDomain.flushStaged({
+                payloadUserId,
+                isError,
+            });
+        } catch (error: unknown) {
+            this.logger.error(error, 'Failed to flush staged activity logs');
         }
-
-        const action: EnumActivityLogAction =
-            this.reflector.get<EnumActivityLogAction>(
-                ActivityLogActionMetaKey,
-                context.getHandler()
-            );
-
-        if (!action) {
-            return;
-        }
-
-        // Not awaited: writing the log never delays the response.
-        this.activityLogDomain
-            .create(user.userId, action, rawError)
-            .catch(() => {});
     }
 
     intercept(
@@ -56,17 +43,22 @@ export class ActivityLogInterceptor implements NestInterceptor {
             return next.handle();
         }
 
-        const ctx = context.switchToHttp();
-        const request: IRequestApp = ctx.getRequest<IRequestApp>();
+        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const payloadUserId = request.user?.userId ?? null;
 
-        // tap runs on success only; catchError on the error path. Both needed.
         return next.handle().pipe(
-            tap(() => this.triggerLog(context, request, null)),
-            catchError((error: unknown) => {
-                this.triggerLog(context, request, error);
-
-                return throwError(() => error);
-            })
+            concatMap(async result => {
+                await this.flushSafe(payloadUserId, false);
+                return result;
+            }),
+            catchError((error: unknown) =>
+                from(
+                    (async () => {
+                        await this.flushSafe(payloadUserId, true);
+                        throw error;
+                    })()
+                ).pipe(catchError((err: unknown) => throwError(() => err)))
+            )
         );
     }
 }

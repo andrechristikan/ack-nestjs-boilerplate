@@ -2,9 +2,6 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -46,7 +43,6 @@ export class ProjectDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -128,32 +124,26 @@ export class ProjectDomain {
         actorId: string,
         create: IProjectCreate
     ): Promise<Project> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
             try {
-                return await this.databaseService.client.$transaction(
-                    async tx => {
-                        const project = await this.projectRepository.createInTx(
-                            tx,
-                            workspaceId,
-                            actorId,
-                            create,
-                            slug
-                        );
-                        await this.activityLogDomain.recordInTx(
-                            tx,
-                            actorId,
-                            EnumActivityLogAction.projectCreated,
-                            requestLog,
-                            workspaceId
-                        );
+                return await this.databaseService.withTransaction(async tx => {
+                    const project = await this.projectRepository.createInTx(
+                        tx,
+                        workspaceId,
+                        actorId,
+                        create,
+                        slug
+                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.projectCreated,
+                        userId: actorId,
+                        workspaceId: workspaceId,
+                    });
 
-                        return project;
-                    }
-                );
+                    return project;
+                });
             } catch (error: unknown) {
                 if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     throw error;
@@ -173,23 +163,18 @@ export class ProjectDomain {
         actorId: string,
         update: IProjectUpdate
     ): Promise<Project> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row = await this.projectRepository.updateDetailsInTx(
                 tx,
                 project.id,
                 actorId,
                 update
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectUpdated,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectUpdated,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
 
             return row;
         });
@@ -200,9 +185,6 @@ export class ProjectDomain {
         actorId: string,
         slug: string
     ): Promise<Project> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         this.assertSlugAllowed(slug);
 
         const slugTaken = await this.projectRepository.existsBySlugInWorkspace(
@@ -214,44 +196,38 @@ export class ProjectDomain {
             throw new ProjectSlugAlreadyExistsException();
         }
 
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row = await this.projectRepository.updateSlugInTx(
                 tx,
                 project.id,
                 actorId,
                 slug
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectUpdated,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectUpdated,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
 
             return row;
         });
     }
 
     async softDeleteProject(project: Project, actorId: string): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const deletedAt = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.projectRepository.softDeleteInTx(
                 tx,
                 project.id,
                 actorId,
                 deletedAt
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.projectDeleted,
-                requestLog,
-                project.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.projectDeleted,
+                userId: actorId,
+                workspaceId: project.workspaceId,
+            });
         });
     }
 

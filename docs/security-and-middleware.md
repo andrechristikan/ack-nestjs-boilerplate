@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Request Middleware Modul
 
 ## Overview
 
-ACK NestJS Boilerplate implements a comprehensive security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
+HTTP middleware is registered in `RequestMiddlewareModule` and applied to every route with `{*wildcard}`.
 
 ```typescript
 consumer
@@ -57,7 +57,7 @@ consumer
 
 ## Authentication & Authorization
 
-ACK NestJS Boilerplate includes comprehensive authentication and authorization systems. See dedicated documentation:
+ACK NestJS Boilerplate includes authentication and authorization. See dedicated documentation:
 
 - [Authentication][ref-doc-authentication] - JWT, OAuth, API Keys, sessions, password management
 - [Authorization][ref-doc-authorization] - RBAC, policy abilities, user protection
@@ -72,7 +72,7 @@ Applies protective HTTP headers using [Helmet][ref-helmet].
 
 Routes behind this chain answer with JSON or a file download (CSV or PDF via `ResponseFileInterceptor`, `Content-Disposition: attachment`). Neither is a browsing document, so `use` builds an explicit Helmet options object and runs `helmet(options)` on every request. Headers a browsing context acts on are off. Headers that still apply to a JSON body or an attachment are on, written in that same object rather than left to Helmet defaults.
 
-**On — set in the options object:**
+**On; set in the options object:**
 
 | Header | Value | Option |
 |---|---|---|
@@ -85,7 +85,7 @@ Routes behind this chain answer with JSON or a file download (CSV or PDF via `Re
 
 `X-Download-Options: noopen` is on because file routes return the bytes as an attachment.
 
-**Off — set to `false` in the same object:** `contentSecurityPolicy`, `crossOriginOpenerPolicy`, `originAgentCluster`, `referrerPolicy`, `xDnsPrefetchControl`, and `xXssProtection`. Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
+**Off; set to `false` in the same object:** `contentSecurityPolicy`, `crossOriginOpenerPolicy`, `originAgentCluster`, `referrerPolicy`, `xDnsPrefetchControl`, and `xXssProtection`. Each governs how a browser renders a document, and none of them changes how a client handles a JSON body or an attachment download.
 
 `Strict-Transport-Security` is the one directive driven by config: `request.helmet.maxAgeInSeconds` (365 days) is the `max-age`, and `request.helmet.includeSubDomains` and `request.helmet.preload` decide whether each directive is appended. See [Configuration][ref-doc-configuration].
 
@@ -225,28 +225,28 @@ Manages cross-origin resource sharing (CORS) with flexible origin matching, cred
 
 **Origin Matching Rules:**
 
-1. **Exact Match** — Hostname and port must match exactly
+1. **Exact Match**; Hostname and port must match exactly
    ```bash
    Pattern: example.com
    Allowed: http://example.com, https://example.com
    Denied: http://sub.example.com, http://example.com:3000
    ```
 
-2. **With Explicit Port** — Port must match exactly
+2. **With Explicit Port**; Port must match exactly
    ```bash
    Pattern: api.example.com:3000
    Allowed: http://api.example.com:3000, https://api.example.com:3000
    Denied: http://api.example.com (default port), http://api.example.com:8080
    ```
 
-3. **Wildcard Subdomain** — Matches any subdomain (including base domain)
+3. **Wildcard Subdomain**; Matches any subdomain (including base domain)
    ```bash
    Pattern: *.example.com
    Allowed: http://api.example.com, https://app.example.com, http://example.com
    Denied: http://api.myexample.com, http://example.org
    ```
 
-4. **Universal Match** — Allow all origins
+4. **Universal Match**; Allow all origins
    ```bash
    Pattern: *
    Allowed: Any origin
@@ -416,7 +416,7 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 
 Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogService.create()` reads `get<IRequestLog>(RequestLogStoreKey)!` before writing the row, and every audit-writing domain service reads the same key and threads the `IRequestLog` to its repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.create()` reads `get<IRequestLog>(RequestLogStoreKey)!` before writing the row, and every audit-writing domain reads the same key and threads the `IRequestLog` to its repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
 

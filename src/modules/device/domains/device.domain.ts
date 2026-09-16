@@ -8,17 +8,12 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import {
@@ -42,8 +37,7 @@ export class DeviceDomain {
         private readonly deviceUtil: DeviceUtil,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -142,15 +136,12 @@ export class DeviceDomain {
         if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const notificationProvider =
             this.deviceUtil.resolveNotificationProvider(data.platform ?? null);
         const now = this.helperDateService.create();
 
         try {
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.deviceOwnershipRepository.refreshInTx(
                     tx,
                     userId,
@@ -159,13 +150,9 @@ export class DeviceDomain {
                     notificationProvider,
                     now
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userDeviceRefresh,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userDeviceRefresh,
+                });
             });
 
             return;
@@ -187,9 +174,6 @@ export class DeviceDomain {
         if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const now = this.helperDateService.create();
 
         try {
@@ -197,7 +181,7 @@ export class DeviceDomain {
                 userId,
                 deviceOwnershipId
             );
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.sessionDomain.revokeByDeviceOwnershipInTx(
                     tx,
                     userId,
@@ -212,13 +196,10 @@ export class DeviceDomain {
                     userId,
                     now
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userRemoveDevice,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userRemoveDevice,
+                    userId: userId,
+                });
             });
 
             return;
@@ -244,9 +225,6 @@ export class DeviceDomain {
         if (!deviceOwnershipExists) {
             throw new DeviceNotFoundException();
         }
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const now = this.helperDateService.create();
 
         try {
@@ -254,7 +232,7 @@ export class DeviceDomain {
                 userId,
                 deviceOwnershipId
             );
-            const removed = await this.databaseService.client.$transaction(
+            const removed = await this.databaseService.withTransaction(
                 async tx => {
                     await this.sessionDomain.revokeByDeviceOwnershipInTx(
                         tx,
@@ -271,22 +249,20 @@ export class DeviceDomain {
                             removedBy,
                             now
                         );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        removedBy,
-                        EnumActivityLogAction.userRemoveDevice,
-                        requestLog,
-                        null
-                    );
-
                     return row;
                 }
             );
 
-            this.requestStoreService.merge<IActivityLogMetadata>(
-                ActivityLogMetadataStoreKey,
-                this.deviceUtil.mapActivityLogMetadata(removed)
-            );
+            const metadata = this.deviceUtil.mapActivityLogMetadata(removed);
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.adminDeviceRemove,
+                metadata,
+            });
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userRemoveDevice,
+                userId,
+                metadata,
+            });
 
             return;
         } catch (err: unknown) {

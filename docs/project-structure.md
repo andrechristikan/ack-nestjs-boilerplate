@@ -2,7 +2,7 @@
 
 ## Overview
 
-ACK NestJS Boilerplate is a comprehensive NestJS application designed for scalable, maintainable, and enterprise-grade development. It is built with a strong focus on the `repository design pattern` and a fully `modular architecture`. By leveraging these patterns, the codebase achieves clear separation of concerns, high testability, and easy extensibility for new features. 
+ACK NestJS Boilerplate is a NestJS application organized around the `repository design pattern` and a modular layout. 
 
 ## Table of Contents
 
@@ -42,47 +42,44 @@ src
   └── swagger.ts
 ```
 
-Each folder serves a specific purpose, supporting modularity and maintainability.
+```
 
 ## App Module
 
 **Location:** `src/app/app.module.ts`
 
-The App Module is the root module and entry point for the ACK NestJS Boilerplate application. It orchestrates the core setup by:
-- Importing two modules: `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount).
-- Registering five global exception filters for handling application exceptions, general, HTTP, validation, and import validation errors.
-- Following NestJS best practices for modular architecture and separation of concerns.
+The App Module is the root module. It:
+- Imports `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount).
+- Registers five global exception filters: general, application, HTTP, validation, and import validation.
 
 ## Common Module
 
 **Location:** `src/common/common.module.ts`
 
-The Common Module provides shared functionality and global services across the ACK NestJS Boilerplate application. It configures:
+CommonModule registers shared infrastructure and the global feature modules. It configures:
 - Global configuration management (using `ConfigModule` and custom configs)
 - Caching and queueing (Redis, BullMQ)
 - Logging (LoggerModule)
 - Database access (DatabaseModule)
-- Authentication and authorization (AuthModule, PolicyModule, RoleModule, ApiKeyModule, FeatureFlagModule, TermPolicyModule, SessionModule, ActivityLogModule, NotificationModule)
+- Authentication and authorization (`AuthDomainModule`, `PolicyDomainModule`, `RoleDomainModule`, `ApiKeyDomainModule`, `FeatureFlagDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, `ActivityLogDomainModule`, `NotificationDomainModule`)
 - Utilities for messaging, requests, responses, helpers, files, pagination, and Firebase
-- Registers all these modules as global or shared imports for use throughout the application
 
 ## Configs
 
 **Location:** `src/configs/`
 
-The configs folder contains strongly-typed configuration files for all major application features and integrations, including:
-- Database, Redis, Logger, Auth, AWS, Email, Firebase, Feature Flags, User, Session, Request/Response, and more
-- Each config file (e.g., `database.config.ts`, `auth.config.ts`) centralizes environment variables, settings, and validation logic for its domain
-- The `index.ts` file aggregates and exports all configs for use in global configuration management
+Typed `registerAs` files:
+- Database, Redis, Logger, Auth, AWS, Email, Firebase, Feature Flags, User, Session, Request/Response
+- Each file (e.g., `database.config.ts`, `auth.config.ts`) holds env vars, settings, and validation for its domain
+- `index.ts` exports them for `ConfigModule`
 
 ## Languages
 
 **Location:** `src/languages/`
 
-The languages folder provides internationalization (i18n) resources for multi-language support. It contains:
+i18n JSON, one folder per locale. It contains:
 - Subfolders for each supported language (e.g., `en/` for English)
 - JSON files for each domain or feature (e.g., `user.json`, `auth.json`, `policy.json`) containing translation strings and messages
-- Enables dynamic and scalable localization for all application features
 
 ## Migration
 
@@ -99,10 +96,10 @@ The migration folder seeds initial data. PostgreSQL schema migrations live under
 **Location:** `src/queues/`
 
 The queues folder is the BullMQ framework layer. It includes:
-- `queue.register.module.ts`: Global module holding every `BullModule.registerQueueAsync` call, the two BullMQ root connections (queue and processor), and the per-queue job defaults read from `queue.config.ts`
+- `queue.module.ts`: `QueueModule.forRoot()` holds the two BullMQ root connections (producer and processor). Named queues are registered by the owning feature's `<feature>.domain.module.ts` through a `RegisterQueueOptionsFactory`; per-queue job defaults are read from `queue.config.ts`
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
-- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`; the queue registration lives here
-- Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
+- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`
+- Immediate, delayed, and recurring jobs
 
 ## Router
 
@@ -112,19 +109,18 @@ The router folder mounts everything the application exposes. It includes:
 - `router.module.ts`: Root router that imports the five access-level modules and registers their path prefixes through `RouterModule.register` from `@nestjs/core`, plus the processor mount
 - `http/`: One module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need. `router.http.public.module.ts` mounts under `/public`, `router.http.system.module.ts` under `/system`, `router.http.admin.module.ts` under `/admin`, `router.http.user.module.ts` under `/user`, and `router.http.shared.module.ts` under `/shared`
 - `processor/router.processor.module.ts`: Aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application
-- Ensures clear separation of concerns and robust access control for all API endpoints
 
 ## Instrument
 
 **Location:** `src/instrument.ts`
 
-The instrument file configures observability and monitoring for the application using **Sentry**. It is imported at the very beginning of the application bootstrap to ensure all errors and transactions are properly tracked. Key responsibilities include:
+The instrument file configures Sentry. It is imported at the start of bootstrap so Sentry is initialized before anything else. Key responsibilities include:
 - Initializing Sentry with DSN and configuration based on the environment
 - Configuring sampling rates for traces and profiles (higher in development, lower in production)
 - Implementing custom filtering logic in `beforeSend` to drop non-fatal `QueueException` events, requests to the excluded noise routes (`LoggerExcludedRoutes`: health, docs, hello, metrics, favicon, root), responses with a status code below 500, and events at `info` or `debug` level
 - Forwarding Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
 - Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
-- Ensuring sensitive data (PII) is not sent to Sentry
+- Does not send PII to Sentry
 
 ## Migration Entrypoint
 
@@ -141,13 +137,14 @@ The migration file is the entry point for the migration CLI tool using **nest-co
 
 **Location:** `src/modules/`
 
-The modules folder contains all feature modules, each representing a distinct domain or functionality in the application. Every module is self-contained and follows the repository design pattern, ensuring clear separation of concerns and scalability.
+One folder per feature. Each feature follows the repository design pattern.
 
 **Feature modules:**
 
 ```
 modules
   ├── activity-log
+  ├── analytic
   ├── api-key
   ├── auth
   ├── country
@@ -166,6 +163,8 @@ modules
   └── workspace
 ```
 
+`analytic` orchestrates live metrics through owner `*AnalyticDomain` / `*AnalyticRepository` siblings (for example `user.analytic.domain.ts` with `user.analytic.repository.ts`). It has no repository module of its own. See [Analytic](analytic.md).
+
 **Per-layer Nest modules:**
 
 Each layer of a feature gets its own Nest module file at the root of the feature folder, and only the ones with something to provide exist:
@@ -173,13 +172,13 @@ Each layer of a feature gets its own Nest module file at the root of the feature
 ```
 modules/<feature>
   ├── <feature>.repository.module.ts  # repositories
-  ├── <feature>.module.ts             # domain services, utils and queue classes
+  ├── <feature>.domain.module.ts      # domains, utils, caches, queue classes and factories
   │                                   #   (the only one another feature consumes)
   ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
   └── <feature>.processor.module.ts   # processors and their processor services
 ```
 
-`<feature>.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
+`<feature>.domain.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
 
 **Folders:**
 
@@ -190,6 +189,7 @@ module
   # Core (present in almost every module)
   ├── constants
   ├── controllers
+  ├── domains
   ├── dtos
   ├── enums
   ├── exceptions
@@ -198,6 +198,7 @@ module
   ├── services
   ├── utils
   # Common (present when the feature needs them)
+  ├── caches
   ├── decorators
   ├── docs
   ├── guards
@@ -210,15 +211,11 @@ module
   └── templates
 ```
 
-This structure ensures each feature is isolated, testable, and easy to maintain.
-
-Below are explanations for each section:
-
 ### Constants
-Defines static values and configuration constants used throughout the module to ensure consistency and avoid magic numbers or strings.
+Defines static values and configuration constants used throughout the module.
 
 ### Controllers
-Handle incoming HTTP requests, delegate to services, and return responses. Controllers define the API endpoints for the module.
+Handle incoming HTTP requests, delegate to HTTP services, and return responses. Controllers define the API endpoints for the module.
 
 ### Decorators
 Custom decorators to add metadata or modify behavior of classes, methods, or properties within the module.
@@ -227,7 +224,7 @@ Custom decorators to add metadata or modify behavior of classes, methods, or pro
 Documentation files or Swagger decorators for API documentation and reference.
 
 ### DTOs (Data Transfer Objects)
-Classes that define the shape of data sent and received via API endpoints, ensuring validation and type safety.
+Classes that define the shape of data sent and received on API endpoints.
 
 ### Enums
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
@@ -254,19 +251,25 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
 ### Queues
-The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.module.ts`.
+The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.domain.module.ts`.
 
 ### Repositories
-Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for services.
+Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for domains.
+
+### Domains
+Business logic and orchestration of the module. Domains interact with repositories, other domains, utils, and queue classes. They open `DatabaseService.withTransaction` when a write spans more than one repository.
 
 ### Services
-Business logic and core functionality of the module. Services interact with repositories, perform computations, and orchestrate workflows.
+HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`). They translate transport or job payloads into domain calls and assemble response DTOs. They own no business rule and reach no repository.
+
+### Caches
+Dedicated cache classes that wrap a named cache provider for one feature concern (for example `SessionCache`, `FeatureFlagCache`).
 
 ### Templates
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
-Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a service.
+Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a domain.
 
 
 ## Other Modules
@@ -302,7 +305,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **eslint.config.mjs**: ESLint configuration for code linting and style enforcement.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
-- **pnpm-lock.yaml**: pnpm lockfile ensuring deterministic dependency installation.
+- **pnpm-lock.yaml**: pnpm lockfile.
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
 - **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by `ts-prune` through `pnpm deadcode` (`--project tsconfig.json`), and by the editor. Its `include` covers `src/**/*`, `test/**/*`, and `scripts/**/*`, and it carries the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
 - **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test` and `scripts`.

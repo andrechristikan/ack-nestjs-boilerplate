@@ -4,9 +4,7 @@ This documentation explains **Environment**: Located at `.env.example`
 
 ## Overview
 
-This document provides a comprehensive guide to configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
-
-All environment variables are validated against the `AppEnvSchema` zod schema to ensure required variables are present and properly formatted before the application starts.
+Runtime config is environment variables. `AppEnvSchema` validates them at startup.
 
 ## Related Documents
 
@@ -63,7 +61,7 @@ If validation fails, the application does not start and reports which environmen
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment — never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment; never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
 
 ```bash
 # Application Settings
@@ -164,7 +162,7 @@ SENTRY_DSN=
 
 ## Environment Variables
 
-All environment variables are validated against `AppEnvSchema` to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
+Validated by `AppEnvSchema`. Each variable:
 
 ### Application Settings
 
@@ -193,7 +191,7 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
 ```
@@ -293,7 +291,7 @@ Comma-separated list of allowed CORS origins. Supports subdomain wildcards and e
 
 **Examples:**
 ```bash
-# Allow all origins (development only) — credentials NOT allowed
+# Allow all origins (development only); credentials NOT allowed
 CORS_ALLOWED_ORIGIN=*
 
 # Specific origins
@@ -305,19 +303,19 @@ CORS_ALLOWED_ORIGIN=*.example.com,api.myapp.com
 # Multiple domains with explicit ports
 CORS_ALLOWED_ORIGIN=*.example.com:3000,api.myapp.com:8080,localhost:3000
 
-# Mixed — wildcards and specific ports
+# Mixed; wildcards and specific ports
 CORS_ALLOWED_ORIGIN=*.example.com,api.production.com:443,localhost:3000
 ```
 
 **Port Matching Behavior:**
 ```bash
-# ✅ SUPPORTED — Exact port matching
+# ✅ SUPPORTED; Exact port matching
 CORS_ALLOWED_ORIGIN=api.example.com:3000  # Matches: http://api.example.com:3000, https://api.example.com:3000
 
-# ❌ NOT SUPPORTED — Port wildcards
+# ❌ NOT SUPPORTED; Port wildcards
 CORS_ALLOWED_ORIGIN=api.example.com:*     # Does NOT work
 
-# ✅ SUPPORTED — Default port (implicit)
+# ✅ SUPPORTED; Default port (implicit)
 CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, https://api.example.com (no explicit port)
 ```
 
@@ -330,7 +328,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Specific origins**: Credentials are **enabled**
 
 > [!TIP]
-> **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
+> Production: name explicit origins. A wildcard with credentials off is for development.
 
 ### URL Versioning Settings
 
@@ -474,13 +472,13 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ### Two-Factor Authentication Settings
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(required)*  
-Issuer name displayed in authenticator apps. Empty by default — startup validation rejects an unset value.  
+Issuer name displayed in authenticator apps. Empty by default; startup validation rejects an unset value.  
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required)*  
-Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
 ```bash
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ```
@@ -511,11 +509,7 @@ AWS_S3_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_S3_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
@@ -570,11 +564,7 @@ AWS_SES_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_SES_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.

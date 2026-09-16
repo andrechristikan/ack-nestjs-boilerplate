@@ -13,6 +13,10 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { QueueConfigKey } from '@queues/constants/queue.constant';
 import { EnumQueue } from '@queues/enums/queue.enum';
+import { WorkspaceAnalyticDomain } from '@modules/workspace/domains/workspace.analytic.domain';
+import { WorkspaceInviteAnalyticDomain } from '@modules/workspace/domains/workspace.invite.analytic.domain';
+import { WorkspaceJoinRequestAnalyticDomain } from '@modules/workspace/domains/workspace.join-request.analytic.domain';
+import { WorkspaceMemberAnalyticDomain } from '@modules/workspace/domains/workspace.member.analytic.domain';
 
 /** Workspace domain services backing `@Workspace*Protected` guards and the workspace HTTP layer. */
 @Module({
@@ -24,6 +28,10 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         WorkspaceJoinRequestDomain,
         WorkspaceUtil,
         WorkspaceQueue,
+        WorkspaceAnalyticDomain,
+        WorkspaceInviteAnalyticDomain,
+        WorkspaceJoinRequestAnalyticDomain,
+        WorkspaceMemberAnalyticDomain,
     ],
     exports: [
         BullModule,
@@ -33,6 +41,10 @@ import { EnumQueue } from '@queues/enums/queue.enum';
         WorkspaceJoinRequestDomain,
         WorkspaceUtil,
         WorkspaceQueue,
+        WorkspaceAnalyticDomain,
+        WorkspaceInviteAnalyticDomain,
+        WorkspaceJoinRequestAnalyticDomain,
+        WorkspaceMemberAnalyticDomain,
     ],
     imports: [
         BullModule.registerQueueAsync({

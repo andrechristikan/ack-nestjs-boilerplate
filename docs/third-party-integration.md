@@ -2,7 +2,7 @@
 
 ## Overview
 
-ACK NestJS Boilerplate integrates with various third-party services and providers to handle authentication, storage, email, caching, monitoring, and database operations. All integrations are configured through environment variables.
+Third-party clients are configured through environment variables. Each section below names the package and the env vars.
 
 ## Related Documents
 
@@ -124,7 +124,7 @@ For notification details, see [Notification Documentation][ref-doc-notification]
 
 ## Sentry
 
-[Sentry][ref-sentry] provides error tracking and performance monitoring.
+[Sentry][ref-sentry] tracks errors and performance.
 
 **Packages:**
 - `@sentry/nestjs`
@@ -145,7 +145,7 @@ Leave `SENTRY_DSN` empty to disable Sentry in development.
 
 ## Redis
 
-[Redis][ref-redis] serves as cache storage and queue backend.
+[Redis][ref-redis] is the cache store and the queue backend.
 
 **Packages:**
 - `@keyv/redis`

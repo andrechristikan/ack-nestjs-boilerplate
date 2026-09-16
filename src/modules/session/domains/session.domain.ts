@@ -6,17 +6,13 @@ import {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     Prisma,
     Session,
 } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { ISession } from '@modules/session/interfaces/session.interface';
@@ -33,8 +29,7 @@ export class SessionDomain {
         private readonly sessionCache: SessionCache,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async getListOffsetByAdmin(
@@ -173,9 +168,6 @@ export class SessionDomain {
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
@@ -186,7 +178,7 @@ export class SessionDomain {
 
         const revokedAt = this.helperDateService.create();
         await Promise.all([
-            this.databaseService.client.$transaction(async tx => {
+            this.databaseService.withTransaction(async tx => {
                 await this.sessionRepository.revokeInTx(
                     tx,
                     userId,
@@ -194,16 +186,13 @@ export class SessionDomain {
                     userId,
                     revokedAt
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userRevokeSession,
-                    requestLog,
-                    null
-                );
             }),
             this.sessionCache.deleteOneLogin(userId, sessionId),
         ]);
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.userRevokeSession,
+        });
 
         return;
     }
@@ -213,9 +202,6 @@ export class SessionDomain {
         sessionId: string,
         revokedBy: string
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const checkActive = await this.sessionRepository.findOneActive(
             userId,
             sessionId
@@ -226,30 +212,27 @@ export class SessionDomain {
 
         const revokedAt = this.helperDateService.create();
         const [removed] = await Promise.all([
-            this.databaseService.client.$transaction(async tx => {
-                const row = await this.sessionRepository.revokeByAdminInTx(
+            this.databaseService.withTransaction(async tx => {
+                return this.sessionRepository.revokeByAdminInTx(
                     tx,
                     sessionId,
                     revokedBy,
                     revokedAt
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    revokedBy,
-                    EnumActivityLogAction.userRevokeSessionByAdmin,
-                    requestLog,
-                    null
-                );
-
-                return row;
             }),
             this.sessionCache.deleteOneLogin(userId, sessionId),
         ]);
 
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.sessionUtil.mapActivityLogMetadata(removed)
-        );
+        const metadata = this.sessionUtil.mapActivityLogMetadata(removed);
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.adminSessionRevoke,
+            metadata,
+        });
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.userRevokeSessionByAdmin,
+            userId,
+            metadata,
+        });
 
         return;
     }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Two-Factor Authentication (2FA) adds an additional security layer to user authentication using Time-based One-Time Password (TOTP) algorithm. This implementation supports both authenticator apps (Google Authenticator, Authy, etc.) and backup codes for account recovery.
+Login can require a TOTP (RFC 6238) from an authenticator app, plus one-time backup codes.
 
 **Key Features:**
 - TOTP-based verification (RFC 6238 compliant)

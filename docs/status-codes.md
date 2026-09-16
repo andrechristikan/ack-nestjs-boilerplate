@@ -2,7 +2,7 @@
 
 This document catalogs every application `statusCode` in the boilerplate, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status — `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
 
 The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocate new codes in those enums using the next free hundred in the block map below. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
 
@@ -30,8 +30,10 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51700` | `project` | `51700`–`51707` | 8 |
 | `51800` | `database` | `51800` | 1 |
 | `51900` | `response` | `51900`–`51902` | 3 |
+| `52000` | `activity-log` | `52000` | 1 |
+| `52100` | `analytic` | `52100` | 1 |
 
-Next free hundred: `52000` (verify by scanning enums before claiming).
+Next free hundred: `52200` (verify by scanning enums before claiming).
 
 ## `app`
 
@@ -90,7 +92,6 @@ Next free hundred: `52000` (verify by scanning enums before claiming).
 | exception | module | httpStatus | messagePath |
 |---|---|---|---|
 | `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
-| `RequestIsUuidException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isUuid` |
 | `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
 
 Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.
@@ -295,6 +296,18 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `serialization` | `51900` | `serialization` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.serialization` | The server produced a response that does not match the schema it declares. |
 | `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
 | `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
+
+## `activity-log`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `contractInvalid` | `52000` | `contractInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `activityLog.error.contractInvalid` | Activity log contract validation failed |
+
+## `analytic`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
 
 ## Related documents
 

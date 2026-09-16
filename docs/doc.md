@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Doc Module**: Located at
 
 ## Overview
 
-This module provides decorators for API documentation using [Swagger/OpenAPI][ref-nestjs-swagger]. It creates standardized, consistent API documentation with minimal boilerplate code.
+Decorators that build the [Swagger/OpenAPI][ref-nestjs-swagger] document from route metadata and the same zod schemas used for request validation.
 
 Features:
 - Standardized API documentation structure

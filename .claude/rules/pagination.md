@@ -86,7 +86,7 @@ There is **no `select`** anywhere in the pagination types. Shape a paginated rea
 
 ## Filter shape
 
-A filter is a specific, typed structure with named fields, produced by the filter decorators. **FORBIDDEN:** `Record<string, any>`, a raw `filter?: string` query param, or `JSON.parse(rawFilter)` spread into `where`. That is the client throwing a Prisma query at the database.
+A filter is a specific, typed structure with named fields, produced by the filter decorators. **FORBIDDEN:** `Record<string, any>`, `Record<string, unknown>`, a raw `filter?: string` query param, or `JSON.parse(rawFilter)` spread into `where`. That is the client throwing a Prisma query at the database.
 
 ## Naming
 

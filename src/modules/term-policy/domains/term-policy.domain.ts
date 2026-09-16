@@ -11,10 +11,8 @@ import {
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
@@ -32,6 +30,7 @@ import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
 import {
+    EnumActivityLogAction,
     EnumTermPolicyStatus,
     Prisma,
     TermPolicy,
@@ -45,19 +44,20 @@ export class TermPolicyDomain {
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly notificationQueue: NotificationQueue,
-        private readonly requestStoreService: RequestStoreService,
+        private readonly activityLogDomain: ActivityLogDomain,
         private readonly fileService: FileService,
         private readonly databaseService: DatabaseService,
         private readonly userDomain: UserDomain
     ) {}
 
-    private storeActivityLogMetadata(termPolicy: TermPolicy): void {
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.termPolicyUtil.mapActivityLogMetadata(termPolicy)
-        );
-
-        return;
+    private stageActivityLog(
+        action: EnumActivityLogAction,
+        termPolicy: TermPolicy
+    ): void {
+        this.activityLogDomain.stage({
+            action,
+            metadata: this.termPolicyUtil.mapActivityLogMetadata(termPolicy),
+        });
     }
 
     mapPublicContent(
@@ -129,7 +129,10 @@ export class TermPolicyDomain {
                 createdBy
             );
 
-            this.storeActivityLogMetadata(created);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyCreate,
+                created
+            );
 
             return created;
         } catch (err: unknown) {
@@ -159,7 +162,10 @@ export class TermPolicyDomain {
                 }),
             ]);
 
-            this.storeActivityLogMetadata(deleted);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyDelete,
+                deleted
+            );
 
             return deleted;
         } catch (err: unknown) {
@@ -202,7 +208,7 @@ export class TermPolicyDomain {
                 termPolicy.contents
             );
 
-            const updated = await this.databaseService.client.$transaction(
+            const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const row = await this.termPolicyRepository.publishInTx(
                         tx,
@@ -227,7 +233,10 @@ export class TermPolicyDomain {
                 updatedBy
             );
 
-            this.storeActivityLogMetadata(updated);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyPublish,
+                updated
+            );
 
             return;
         } catch (err: unknown) {

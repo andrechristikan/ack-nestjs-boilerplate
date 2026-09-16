@@ -15,19 +15,19 @@ Every spec file has the same four blocks, in this order, and nothing between the
 // 1. imports — nothing above them
 import { createMock, DeepMocked } from '@golevelup/ts-jest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SessionService } from '@modules/session/services/session.service';
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 
 // 2. jest.mock — AFTER the last import, BEFORE the first describe. Nowhere else.
 jest.mock('<third-party-package>');
 
-describe('SessionService', () => {
+describe('SessionDomain', () => {
     // 3. first door — const at the root describe, shape only
     const sessionRepository: DeepMocked<SessionRepository> =
         createMock<SessionRepository>();
     const sessionUtil: DeepMocked<SessionUtil> = createMock<SessionUtil>();
-    let service: SessionService;
+    let domain: SessionDomain;
 
     beforeEach(async () => {
         // 4. second door — reset, then the behavior every test starts from
@@ -35,13 +35,13 @@ describe('SessionService', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                SessionService,
+                SessionDomain,
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionUtil, useValue: sessionUtil },
             ],
         }).compile();
 
-        service = module.get(SessionService);
+        domain = module.get(SessionDomain);
     });
 
     describe('getListCursor', () => {
@@ -65,7 +65,8 @@ The rules the skeleton encodes:
 - **The subject is `let`, rebuilt in `beforeEach`.** A subject shared across tests carries
   state between them.
 - **Every DI dependency is mocked. No exception.** Every constructor param, every `@Inject`
-  token, every service, repository, util, `ConfigService`, and `RequestStoreService` gets a
+  token, every domain, HTTP service, processor service, repository, util, cache, queue,
+  `ConfigService`, and `RequestStoreService` gets a
   double registered by its class (or token). A real collaborator sitting in the provider list
   makes the spec depend on code it does not cover, and its failure lands on the wrong file.
   The one thing you do NOT double is the subject.
@@ -75,7 +76,7 @@ The rules the skeleton encodes:
 - **Mock variable names mirror the DI param they replace — `camelCase`.** Fixture and data
   locals are `camelCase` too (`rules/naming.md`). There is no snake_case surface in
   this project, including in specs.
-- **Injection is by class.** Repositories and services are provided as `{ provide: SessionRepository,
+- **Injection is by class.** Repositories and domains are provided as `{ provide: SessionRepository,
   useValue: sessionRepository }`, never behind a port token (`rules/architecture.md`).
 
 ## `DeepMocked` is one level deep (HARD)
@@ -292,13 +293,16 @@ the private describes are additional, never a replacement.
 The layer decides what is real and what is doubled. Getting this wrong is what produces slow,
 brittle specs that test the mock instead of the code.
 
-- **Service** — mock the repository and every injected service / util; assert the
+- **Domain** — mock the repository and every injected domain / util / queue / cache; assert the
   orchestration (which method was called, with what, in what order) and the thrown exception
   TYPE plus `statusCode` / `statusCodeKey` / `messagePath` for each failure branch. Assert on
   the exception class and the enum member, never on a message string (`rules/exceptions.md`).
+- **HTTP service / processor service** — mock the domain and every injected util; assert
+  transport shaping and the hand-off into the domain (or the processor channel work), not the
+  domain's business rules.
 - **Guard / strategy** — assert transport behavior only: metadata read, delegation to the
-  service, the value assigned onto `request.<field>`, the boolean returned. The authorization
-  decision itself belongs to the service's spec. **Controllers need direct instantiation** —
+  domain, the value assigned onto `request.<field>`, the boolean returned. The authorization
+  decision itself belongs to the domain's spec. **Controllers need direct instantiation** —
   `Test.createTestingModule` eagerly resolves guards and fails; controllers are also not in
   `collectCoverageFrom`.
 - **Pipe** — feed the real input shapes, assert the transformed output and the thrown

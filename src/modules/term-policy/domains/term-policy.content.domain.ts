@@ -6,9 +6,7 @@ import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -22,7 +20,11 @@ import {
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
-import { EnumTermPolicyStatus, TermPolicy } from '@generated/prisma-client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyStatus,
+    TermPolicy,
+} from '@generated/prisma-client';
 
 @Injectable()
 export class TermPolicyContentDomain {
@@ -30,16 +32,17 @@ export class TermPolicyContentDomain {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
-    private storeActivityLogMetadata(termPolicy: TermPolicy): void {
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.termPolicyUtil.mapActivityLogMetadata(termPolicy)
-        );
-
-        return;
+    private stageActivityLog(
+        action: EnumActivityLogAction,
+        termPolicy: TermPolicy
+    ): void {
+        this.activityLogDomain.stage({
+            action,
+            metadata: this.termPolicyUtil.mapActivityLogMetadata(termPolicy),
+        });
     }
 
     private async findOneDraftById(termPolicyId: string): Promise<ITermPolicy> {
@@ -121,7 +124,10 @@ export class TermPolicyContentDomain {
                 updatedBy
             );
 
-            this.storeActivityLogMetadata(updated);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyUpdateContent,
+                updated
+            );
 
             return;
         } catch (err: unknown) {
@@ -164,7 +170,10 @@ export class TermPolicyContentDomain {
                 updatedBy
             );
 
-            this.storeActivityLogMetadata(updated);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyAddContent,
+                updated
+            );
 
             return;
         } catch (err: unknown) {
@@ -198,7 +207,10 @@ export class TermPolicyContentDomain {
                 updatedBy
             );
 
-            this.storeActivityLogMetadata(updated);
+            this.stageActivityLog(
+                EnumActivityLogAction.adminTermPolicyRemoveContent,
+                updated
+            );
 
             return;
         } catch (err: unknown) {

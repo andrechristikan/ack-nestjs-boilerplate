@@ -8,7 +8,7 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
 import {
     UserCheckEmailRequestDto,
     UserCheckUsernameRequestDto,
@@ -66,7 +66,8 @@ export class UserHttpService {
         const [created] = await this.workspaceDomain.commitOnboarding(
             [input],
             EnumUserCreateMode.admin,
-            this.userOnboardingDomain.getCreateTimeoutInMs()
+            this.userOnboardingDomain.getCreateTimeoutInMs(),
+            EnumActivityLogAction.adminUserCreate
         );
         if (input.password) {
             await this.userDomain.notifyWelcomeByAdmin(

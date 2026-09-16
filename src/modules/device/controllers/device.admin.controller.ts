@@ -17,14 +17,12 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
 } from '@generated/prisma-client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -104,7 +102,6 @@ export class DeviceAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminDeviceRemove)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

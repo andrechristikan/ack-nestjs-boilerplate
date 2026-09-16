@@ -10,9 +10,7 @@ The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProt
 
 ## Overview
 
-This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
-
-The system is built using NestJS guards and decorators, making it easy to apply different authorization levels to your route handlers with simple, declarative syntax.
+Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each layer on the route handler.
 
 ## Related Documents
 
@@ -98,7 +96,7 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 
 ## User Protected
 
-`UserProtected` provides basic user authentication and verification. It ensures that only authenticated users can access protected routes and optionally validates whether the user's email has been verified.
+`UserProtected` applies `UserGuard`. The caller must be authenticated. Email verification is optional (on by default).
 
 ### Decorators
 
@@ -208,7 +206,7 @@ flowchart TD
 
 ## Role Protected
 
-`RoleProtected` implements role-based access control (RBAC) to restrict route access based on user roles. It ensures that only users with specific role types can access protected endpoints.
+`RoleProtected` is RBAC: the caller's role type must be one of the types listed on the decorator.
 
 ### Decorators
 
@@ -319,7 +317,7 @@ flowchart TD
 
 ## Policy Protected
 
-`PolicyProtected` implements fine-grained, permission-based access control using CASL (an isomorphic authorization library). It allows you to define specific actions (read, create, update, delete, manage) that users can perform on specific subjects (resources like users, roles, settings, etc.).
+`PolicyProtected` is CASL. A policy names an action (`read`, `create`, `update`, `delete`, `manage`) on a subject (user, role, setting, and so on).
 
 ### Decorators
 
@@ -350,6 +348,7 @@ flowchart TD
 - `EnumPolicySubject.device` - Device management
 - `EnumPolicySubject.workspace` - Workspace management
 - `EnumPolicySubject.project` - Project management
+- `EnumPolicySubject.analytic` - Admin analytic dashboard, anomaly, and fraud read routes
 
 **Usage:**
 
@@ -410,7 +409,7 @@ assignRole(
 
 #### `PolicyGuard`
 
-The guard reads the user and the stored policies off the request store and hands both to `PolicyService.validatePolicyGuard`, which evaluates them through CASL.
+The guard reads the user and the stored policies off the request store and hands both to `PolicyDomain.validatePolicyGuard`, which evaluates them through CASL.
 
 The `PolicyProtected` decorator follows this validation sequence:
 
@@ -475,7 +474,7 @@ The factory creates a CASL ability instance that can check if a user can perform
 
 ## Term Policy Acceptance Protected
 
-`TermPolicyAcceptanceProtected` validates that users have accepted required legal terms and policies (such as Terms of Service, Privacy Policy, etc.) before allowing access to protected routes. This ensures legal compliance and user consent management.
+`TermPolicyAcceptanceProtected` rejects the request until the user has accepted the required policies (Terms of Service, Privacy Policy, and the rest of the set).
 
 For more detailed information about term policies, see [Term Policy Document][ref-doc-term-policy].
 
@@ -608,7 +607,7 @@ For the guard bodies, the exceptions and status codes each one throws, the store
 
 The boilerplate supports creating custom roles through the role management API. A role carries a set of policies, each naming one subject and the actions allowed on it.
 
-This feature allows you to create specialized roles beyond the default `superAdmin`, `admin`, and `user` types - for example, you could create roles like "ContentModerator", "Accountant", "CustomerSupport", etc., each with their own specific set of permissions.
+A custom role is any role other than `superAdmin`, `admin`, and `user`. Examples: ContentModerator, Accountant, CustomerSupport. Each role carries its own policies.
 
 ### How to Create a New Role
 
@@ -651,13 +650,13 @@ A role and its policies are two separate admin surfaces: `POST /admin/role/creat
 **Policy Structure:**
 
 Each policy row consists of:
-- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog)
+- **subject**: The resource type (e.g., user, role, apiKey, session, termPolicy, activityLog, analytic)
 - **action**: Array of allowed actions (manage, read, create, update, delete)
 
 A role holds at most one policy per subject: creating a second policy for a subject already covered is rejected.
 
 **Available subjects and actions are defined in:**
-- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project
+- `EnumPolicySubject`: all, apiKey, role, user, session, activityLog, passwordHistory, termPolicy, featureFlag, device, workspace, project, analytic
 - `EnumPolicyAction`: manage, read, create, update, delete
 
 ### Assigning Roles to Users

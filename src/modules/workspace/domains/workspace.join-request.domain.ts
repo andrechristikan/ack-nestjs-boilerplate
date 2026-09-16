@@ -1,7 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
@@ -49,7 +46,6 @@ export class WorkspaceJoinRequestDomain {
         private readonly userDomain: UserDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
@@ -134,9 +130,6 @@ export class WorkspaceJoinRequestDomain {
     ): Promise<WorkspaceJoinRequest> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const workspace = await this.workspaceRepository.findActiveById(
             create.workspaceId
         );
@@ -162,7 +155,7 @@ export class WorkspaceJoinRequestDomain {
             throw new WorkspaceJoinRequestDuplicateException();
         }
 
-        const joinRequest = await this.databaseService.client.$transaction(
+        const joinRequest = await this.databaseService.withTransaction(
             async tx => {
                 const created =
                     await this.workspaceJoinRequestRepository.createPendingInTx(
@@ -173,13 +166,11 @@ export class WorkspaceJoinRequestDomain {
                             message: create.message,
                         }
                     );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.workspaceJoinRequested,
-                    requestLog,
-                    workspace.id
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.workspaceJoinRequested,
+                    userId: userId,
+                    workspaceId: workspace.id,
+                });
 
                 return created;
             }
@@ -211,16 +202,13 @@ export class WorkspaceJoinRequestDomain {
     ): Promise<void> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const joinRequest = await this.validatePendingJoinRequest(
             workspaceJoinRequestId,
             workspace.id
         );
         const reviewedAt = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
                 tx,
                 joinRequest.workspaceId,
@@ -234,13 +222,11 @@ export class WorkspaceJoinRequestDomain {
                 reviewerId,
                 reviewedAt
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                reviewerId,
-                EnumActivityLogAction.workspaceJoinAccepted,
-                requestLog,
-                joinRequest.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceJoinAccepted,
+                userId: reviewerId,
+                workspaceId: joinRequest.workspaceId,
+            });
         });
 
         await this.notificationQueue.sendWorkspaceJoinAccepted(
@@ -261,16 +247,13 @@ export class WorkspaceJoinRequestDomain {
     ): Promise<void> {
         await this.assertJoinRequestAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const joinRequest = await this.validatePendingJoinRequest(
             workspaceJoinRequestId,
             workspace.id
         );
         const reviewedAt = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceJoinRequestRepository.rejectInTx(
                 tx,
                 workspaceJoinRequestId,
@@ -278,13 +261,11 @@ export class WorkspaceJoinRequestDomain {
                 rejectReasonCode,
                 reviewedAt
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                reviewerId,
-                EnumActivityLogAction.workspaceJoinRejected,
-                requestLog,
-                workspace.id
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceJoinRejected,
+                userId: reviewerId,
+                workspaceId: workspace.id,
+            });
         });
 
         await this.notificationQueue.sendWorkspaceJoinRejected(

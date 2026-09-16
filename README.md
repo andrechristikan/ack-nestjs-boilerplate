@@ -105,6 +105,7 @@ This boilerplate is perfect for:
 - [x] Activity Log records successful user activities with `@ActivityLog`
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 - [x] Multi-workspace tenancy with workspace-scoped projects ([docs/workspace.md][ref-doc-workspace], [docs/project.md][ref-doc-project])
+- [x] Analytic admin dashboard, anomaly/fraud reports, and current-workspace metrics ([docs/analytic.md][ref-doc-analytic])
 
 ### Next Features
 
@@ -112,7 +113,6 @@ This boilerplate is perfect for:
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
-- [ ] Analytics Dashboard
 - [ ] Verification Mobile Number, whatsapp or/and sms
 - [ ] Versioning System (Force frontend to update, especially mobile)
 
@@ -230,6 +230,7 @@ Enterprise-grade integrations for production readiness.
 - **Sentry** - Error tracking, performance monitoring, and Pino log forwarding to Sentry Logs (environment-scoped levels)
 - **AWS SES** - Transactional email delivery
 - **Activity Logging** - Comprehensive audit trail
+- **Analytic** - Live admin dashboard metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
 - **Health Checks** - System monitoring endpoints
 - **Multi-language Support** - i18n with `x-custom-lang` header
 - **HashiCorp Vault** - Optional secret management, syncs `.env` ([docs][ref-doc-vault])
@@ -426,4 +427,5 @@ If you find this project helpful and would like to support its development, plea
 [ref-doc-doc]: docs/doc.md
 [ref-doc-workspace]: docs/workspace.md
 [ref-doc-project]: docs/project.md
+[ref-doc-analytic]: docs/analytic.md
 [ref-doc-status-codes]: docs/status-codes.md

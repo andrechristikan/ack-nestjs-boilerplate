@@ -4,15 +4,14 @@ This documentation explains the features and usage of **Logger Module**: Located
 
 ## Overview
 
-Comprehensive logging system using Pino with file rotation, sensitive data redaction, Sentry integration, and custom serializers for request/response logging. The system includes HTTP request/response logging, automatic sensitive data redaction, file rotation, configurable log levels, pretty printing for development, route exclusion for health checks, request ID tracking across services, Sentry error tracking, and memory usage and uptime debugging for non-production environments.
+Pino logs, with file rotation, redaction of sensitive fields, request/response serializers, request IDs, and Sentry. Dev pretty-print; health routes excluded; memory and uptime fields outside production.
 
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
 - [Environment Documentation][ref-doc-environment] - For logger environment variables
 - [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For logger middleware and security features
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For request ID tracking across services 
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Logger middleware, security features, and request ID tracking 
 
 ## Table of Contents
 
@@ -106,8 +105,8 @@ Use [NestJS][ref-nestjs] Logger throughout the application:
 ```typescript
 import { Logger } from '@nestjs/common';
 
-export class UserService {
-    private readonly logger = new Logger(UserService.name);
+export class UserDomain {
+    private readonly logger = new Logger(UserDomain.name);
 
     async createUser(data: UserCreateRequestDto) {
         this.logger.log('Creating new user');
@@ -342,7 +341,7 @@ logs/
 When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
 ```
 
 ### Example Usage
@@ -463,7 +462,7 @@ The logger supports two output modes: Pretty mode for development and JSON mode 
 Development-friendly colored output with structured formatting using `pino-pretty`:
 
 ```
-INFO [2025-12-29 15:18:54.496 +0700]: [UserService] Creating new user
+INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
     service: {
       "name": "ACKNestJs",
       "environment": "local",
@@ -502,7 +501,7 @@ LOGGER_LEVEL=debug
 Production-optimized structured JSON for log aggregation and analysis tools:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
 ```
 
 **Features:**

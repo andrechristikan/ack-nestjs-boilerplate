@@ -142,8 +142,8 @@ A circular import is a broken boundary to re-architect, not a hazard to work aro
 
 ## Injection is by class
 
-Inject services and repositories as CLASSES. No `@Inject`, no string token, no interface token
-— a repository has exactly one implementation and a feature service has one too. A DI token is
+Inject domain, HTTP, processor, and repository classes as CLASSES. No `@Inject`, no string token, no interface token
+— a repository has exactly one implementation and a domain has one too. A DI token is
 only for a real swappable seam, and then it is PascalCase wrapped in `Symbol()`
 (`rules/naming.md`).
 

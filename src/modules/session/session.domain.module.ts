@@ -12,6 +12,7 @@ import {
 } from '@nestjs/cache-manager';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';
 
 /**
  * Global so the session domain service and the login cache helpers are reachable from any
@@ -28,8 +29,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             provide: SessionCacheProvider,
             useExisting: CACHE_MANAGER,
         },
+        SessionAnalyticDomain,
     ],
-    exports: [SessionDomain, SessionCache],
+    exports: [SessionDomain, SessionCache, SessionAnalyticDomain],
     imports: [
         SessionRepositoryModule,
         CacheManagerModule.registerAsync({

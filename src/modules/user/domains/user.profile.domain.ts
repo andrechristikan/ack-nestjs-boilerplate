@@ -11,9 +11,6 @@ import {
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -47,7 +44,6 @@ export class UserProfileDomain {
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService
     ) {
         this.uploadPhotoProfilePath = this.configService.get<string>(
@@ -83,27 +79,20 @@ export class UserProfileDomain {
         userId: string,
         { countryId, ...data }: IUserUpdateProfile
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const checkCountry = await this.countryDomain.existsById(countryId);
         if (!checkCountry) {
             throw new CountryNotFoundException();
         }
 
         try {
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.updateProfileInTx(tx, userId, {
                     countryId,
                     ...data,
                 });
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userUpdateProfile,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userUpdateProfile,
+                });
             });
 
             return;
@@ -150,9 +139,6 @@ export class UserProfileDomain {
         userId: string,
         { key, size }: IUserUpdatePhotoProfile
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         try {
             const aws: IAwsS3 = this.awsS3Service.mapPresign(
                 {
@@ -162,19 +148,15 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.updatePhotoProfileInTx(
                     tx,
                     userId,
                     aws
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userUpdatePhotoProfile,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userUpdatePhotoProfile,
+                });
             });
 
             return;
@@ -188,9 +170,6 @@ export class UserProfileDomain {
     }
 
     async uploadPhotoProfile(userId: string, file: IFile): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         try {
             const extension: EnumFileExtensionImage =
                 this.fileService.extractExtensionFromFilename(
@@ -224,19 +203,15 @@ export class UserProfileDomain {
                     `Photo profile uploaded to S3 with key: ${key}`
                 );
 
-                await this.databaseService.client.$transaction(async tx => {
+                await this.databaseService.withTransaction(async tx => {
                     await this.userRepository.updatePhotoProfileInTx(
                         tx,
                         userId,
                         aws
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        userId,
-                        EnumActivityLogAction.userUpdatePhotoProfile,
-                        requestLog,
-                        null
-                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.userUpdatePhotoProfile,
+                    });
                 });
             }
 
@@ -254,9 +229,6 @@ export class UserProfileDomain {
         userId: string,
         username: Lowercase<string>
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const [checkUsername, checkBadWord, exist] = await Promise.all([
             this.userUtil.checkUsernamePattern(username),
             this.userUtil.checkBadWord(username),
@@ -271,17 +243,13 @@ export class UserProfileDomain {
         }
 
         try {
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.claimUsernameInTx(tx, userId, {
                     username,
                 });
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userClaimUsername,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userClaimUsername,
+                });
             });
 
             return;
