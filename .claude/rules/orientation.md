@@ -104,7 +104,8 @@ thought to list.
 | logging, Sentry | `logging.md` |
 | credential, token, session, activity log | `security.md` |
 | `src/migration/` | `seeding.md` |
-| a spec | `testing.md` `testing-spec-style.md` |
+| a unit spec (`test/**/*.spec.ts`) | `testing.md` `testing-spec-style.md` |
+| an E2E spec (`test/e2e/**`) | `testing-e2e.md` `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
 | `docs/*.md`, `.claude/**` | `authoring.md` |
 
 **Both halves bind whoever decides the shape, not only whoever types it.** A plan, a design, or
@@ -126,8 +127,10 @@ table is the index so none is skipped:
 | `reviewer` | `agent-communication.md` |
 | `reviewer-e2e` | `agent-communication.md`. Every HTTP path also: `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
 | `test-writer` | `testing.md` `testing-spec-style.md` `agent-communication.md` |
+| `e2e-writer` | `testing-e2e.md` `agent-communication.md`. Every route also: `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
 | `ack-code` | the map, then the extras of whoever it dispatches |
 | `ack-spec` | `testing.md` `testing-spec-style.md` |
+| `ack-e2e` | `testing-e2e.md` `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
 | `ack-docs` / `ack-claude-config` | `authoring.md` |
 
 A skill takes this map before it dispatches. An agent takes the four, its extras, then every
@@ -142,6 +145,6 @@ and never a standing read for an agent.
 the question in hand and the rule file does not settle it. One file, the one the rule
 names. Never the `docs/` tree.
 
-Every other agent — `coder`, `seed-writer`, `test-writer`, `reviewer`, `reviewer-e2e` —
-does not read `docs/` to do its job. `doc-writer` is the exception: those files are its
-subject.
+Every other agent — `coder`, `seed-writer`, `test-writer`, `reviewer`, `reviewer-e2e`,
+`e2e-writer` — does not read `docs/` to do its job. `doc-writer` is the exception: those files
+are its subject.

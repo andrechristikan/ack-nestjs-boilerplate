@@ -91,6 +91,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 |---|---|
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
+| `ack-e2e` | write and repair E2E HTTP specs under `test/e2e/**` against the real app via Supertest, scoped to the endpoint matrix; touches no `src/` |
 | `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
 | `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
 
@@ -106,6 +107,7 @@ flowchart LR
   code --> spec["/ack-spec"]
   spec --> code
   docs --> code
+  e2e["/ack-e2e"]
   config["/ack-claude-config"]
 ```
 
@@ -144,7 +146,7 @@ coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `explorer`, `planner`, `coder`, `seed-writer`, `reviewer`, `reviewer-e2e`, `doc-writer`,
-`test-writer`.
+`test-writer`, `e2e-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
 project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
@@ -155,7 +157,9 @@ skill's flow.** A project skill dispatches the agents in `.claude/agents/` and n
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
 work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched
-only by `/ack-spec`.
+only by `/ack-spec`. `e2e-writer` is dispatched only by `/ack-e2e`, owns
+`test/e2e/**/*.e2e-spec.ts` and `test/e2e/support/**`, and never touches `src/` or
+`test/**/*.spec.ts`.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
