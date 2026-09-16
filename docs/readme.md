@@ -2,17 +2,15 @@
 
 ## Accuracy
 
-Every document has been **manually reviewed and verified** against the actual implementation to ensure accuracy and correctness.
-If you find any discrepancies, please open an issue or submit a pull request.
-
+Each document matches the current implementation. If something is wrong, open an issue or a pull request.
 
 ## Standards & References
 
-This project follows established industry standards and methodologies. The sections below document the specific specs, RFCs, and practices this codebase is built against.
+Specs, RFCs, and practices this codebase is built against:
 
 ### Twelve-Factor App
 
-This project aligns with the [Twelve-Factor App][ref-12factor] methodology; a set of best practices for building modern, scalable, maintainable server-side applications.
+This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 
 | Factor | How it applies |
 |---|---|
@@ -50,15 +48,14 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology; a se
 ## Table of Contents
 
 ### Getting Started
-Start here to get the project running and understand its foundations.
+Install and configure the project.
 
 1. [Installation][ref-doc-installation]; Set up the development environment step by step
 2. [Environment][ref-doc-environment]; Configure all environment variables via `.env`
 3. [Configuration][ref-doc-configuration]; Understand the Config Module and per-concern config files
-4. [Project Structure][ref-doc-project-structure]; Learn the modular architecture and repository design pattern
+4. [Project Structure][ref-doc-project-structure]; Modular layout and the repository design pattern
 
 ### Core
-Essential systems that power every feature in the project.
 
 5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
 6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
@@ -75,7 +72,6 @@ Essential systems that power every feature in the project.
 17. [Security and Middleware][ref-doc-security-and-middleware]; HTTP middleware layer, headers, rate limiting
 
 ### Advanced
-Additional features and integrations for production-grade deployments.
 
 18. [Workspace][ref-doc-workspace]; Multi-workspace tenancy via `x-workspace-id`, membership roles, invites, join requests
 19. [Project][ref-doc-project]; Workspace-scoped projects with `:projectId` in the path and their own member roles

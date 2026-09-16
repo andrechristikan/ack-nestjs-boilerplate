@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Notification Module**: L
 
 ## Overview
 
-The notification module is a multi-channel notification system backed by three dedicated BullMQ queues: one for orchestration, one for email delivery, and one for push delivery.
+Three BullMQ queues: orchestration, email, and push.
 
 Key features:
 - **Multi-Channel Delivery**: `email`, `push`, `inApp`, and `silent` channels

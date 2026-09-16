@@ -4,11 +4,9 @@ This documentation explains the features and usage of **Device Module**: Located
 
 ## Overview
 
-Devices represent physical or virtual clients that users log in from. Each device is uniquely identified by a `fingerprint` and can be owned by multiple users. User-device relationships are managed through the `DeviceOwnership` model.
+Devices are the clients users log in from. Each device is identified by a `fingerprint` and can be owned by multiple users through `DeviceOwnership`.
 
-When a device ownership is removed, all active sessions linked to that device-user pair are immediately invalidated across both Redis and the database, forcing logout on the affected client.
-
-This is a critical security mechanism. It allows users (and admins) to forcibly terminate all sessions on a specific device-user pair.
+When a device ownership is removed, all active sessions for that device-user pair are invalidated in Redis and the database, which logs the client out.
 
 ## Related Documents
 

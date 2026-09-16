@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Exception Filter Module*
 
 ## Overview
 
-The error handling system uses NestJS's exception filter mechanism. All errors are transformed into standardized HTTP responses with proper formatting, internationalization, and monitoring integration.
+Exception filters turn thrown errors into the same HTTP error body, with i18n messages and logging.
 
 ## Related Documents
 

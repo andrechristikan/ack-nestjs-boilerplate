@@ -6,9 +6,9 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-This application uses **Redis** as the cache storage backend to improve performance and reduce database load. The cache is implemented using a global module pattern, making it accessible throughout the application without repeated imports.
+Redis is the cache backend. `RedisCacheModule` is global, so other modules do not import it again.
 
-This application uses **cache-manager v7**, which uses **Keyv** as the unified storage interface. We use `@keyv/redis` as the Redis adapter.
+The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv/redis` as the Redis adapter.
 
 ## Related Documents
 

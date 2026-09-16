@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Feature Flag Module**: L
 
 ## Overview
 
-Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, per-user targeting, A/B testing, and metadata-based feature configuration with caching for optimal performance.
+Flags gate routes and code paths. Targeting: rollout percentage, per-user, metadata, and A/B testing. Results are cached.
 
 ## Related Documents
 
@@ -133,7 +133,7 @@ export class YourService {
 
 ## Metadata
 
-Metadata provides granular control within a single feature flag:
+Metadata on a single flag:
 
 ```typescript
 // Feature flag with metadata

@@ -6,7 +6,7 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-The file upload module handles file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and CSV processing.
+Decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing.
 
 The module supports:
 

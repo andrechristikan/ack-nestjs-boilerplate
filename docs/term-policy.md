@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Term Policy module manages legal agreements and user consent within the application. It provides a complete workflow for creating, versioning, managing, and enforcing user acceptance of legal policies such as terms of service, privacy policies, marketing consents, and cookie policies.
+Term Policy stores versioned legal documents (terms of service, privacy policy, marketing consent, cookie policy) and records user acceptance.
 
 ## Related Documents
 

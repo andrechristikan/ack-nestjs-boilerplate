@@ -2,7 +2,7 @@
 
 This document catalogs every application `statusCode` in the boilerplate, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status — `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
 
 The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocate new codes in those enums using the next free hundred in the block map below. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
 

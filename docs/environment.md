@@ -4,9 +4,7 @@ This documentation explains **Environment**: Located at `.env.example`
 
 ## Overview
 
-This document covers configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
-
-All environment variables are validated against the `AppEnvSchema` zod schema to ensure required variables are present and properly formatted before the application starts.
+Runtime config is environment variables. `AppEnvSchema` validates them at startup.
 
 ## Related Documents
 
@@ -164,7 +162,7 @@ SENTRY_DSN=
 
 ## Environment Variables
 
-All environment variables are validated against `AppEnvSchema` to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
+Validated by `AppEnvSchema`. Each variable:
 
 ### Application Settings
 
@@ -330,7 +328,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Specific origins**: Credentials are **enabled**
 
 > [!TIP]
-> **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
+> Production: name explicit origins. A wildcard with credentials off is for development.
 
 ### URL Versioning Settings
 
@@ -511,11 +509,7 @@ AWS_S3_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_S3_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
@@ -570,11 +564,7 @@ AWS_SES_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_SES_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.

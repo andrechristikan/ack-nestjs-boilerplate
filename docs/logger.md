@@ -4,15 +4,14 @@ This documentation explains the features and usage of **Logger Module**: Located
 
 ## Overview
 
-Comprehensive logging system using Pino with file rotation, sensitive data redaction, Sentry integration, and custom serializers for request/response logging. The system includes HTTP request/response logging, automatic sensitive data redaction, file rotation, configurable log levels, pretty printing for development, route exclusion for health checks, request ID tracking across services, Sentry error tracking, and memory usage and uptime debugging for non-production environments.
+Pino logs, with file rotation, redaction of sensitive fields, request/response serializers, request IDs, and Sentry. Dev pretty-print; health routes excluded; memory and uptime fields outside production.
 
 ## Related Documents
 
 - [Configuration Documentation][ref-doc-configuration] - For logger configuration settings
 - [Environment Documentation][ref-doc-environment] - For logger environment variables
 - [Handling Error Documentation][ref-doc-handling-error] - For error logging integration
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For logger middleware and security features
-- [Security and Middleware Documentation][ref-doc-security-and-middleware] - For request ID tracking across services 
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - Logger middleware, security features, and request ID tracking 
 
 ## Table of Contents
 

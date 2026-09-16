@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Queue Module**: Located 
 
 ## Overview
 
-Queue module for background job processing using [BullMQ][ref-bullmq] and [Redis][ref-redis]. This module implements a DRY design pattern with singleton Redis connections for efficient resource management.
+Background jobs run on [BullMQ][ref-bullmq] with [Redis][ref-redis].
 
 All queue Redis connection settings live in `src/configs/redis.config.ts`. Job defaults (attempts, backoff, retention age) live in `src/configs/queue.config.ts`. The BullMQ framework layer (enums, decorator, base class, queue registration) lives in `src/queues`; the enqueue classes and the processors live in their owning feature module, and the router mounts the processors.
 

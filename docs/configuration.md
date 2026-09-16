@@ -4,9 +4,7 @@ This documentation explains the features and usage of **Config Module**: Located
 
 ## Overview
 
-This document provides a detailed explanation of how configuration works in the ACK NestJS Boilerplate project, including the configuration files structure and their interfaces.
-
-The project uses a modular configuration approach through the NestJS `ConfigModule`. Configuration is split into multiple dedicated files for different aspects of the application, making it easier to maintain and understand.
+NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`. Each file has a TypeScript interface.
 
 ## Related Documents
 
@@ -48,7 +46,7 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 
 ## Configuration Structure
 
-All configuration files are located in the `src/configs` directory. Each configuration module uses the `registerAs` function from `@nestjs/config` and provides a TypeScript interface for type safety.
+All configuration files are in `src/configs`. Each file uses `registerAs` from `@nestjs/config` and a TypeScript interface.
 
 The configuration modules are imported and registered in `src/configs/index.ts` as an array and this configuration array is then loaded in `src/common/common.module.ts`:
 

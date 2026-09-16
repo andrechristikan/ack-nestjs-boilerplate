@@ -4,19 +4,19 @@ This documentation explains the features and usage of the **Pagination Module** 
 
 ## Overview
 
-The Pagination module handles handling paginated data throughout the application. It supports:
-- **Offset-based pagination**: Traditional page number and limit approach
-- **Cursor-based pagination**: Efficient traversal using cursor tokens
-- **Advanced filtering**: Enum, equality, date range, and custom filters
-- **Field ordering**: Validation and transformation of sort parameters
-- **Error handling**: Consistent error responses with detailed context
+Offset and cursor list helpers, plus filter and order-by parsing:
+- **Offset-based pagination**: page number and limit
+- **Cursor-based pagination**: cursor tokens
+- **Filtering**: enum, equality, date range, and custom filters
+- **Field ordering**: validation and transformation of sort parameters
+- **Error handling**: the same error body as the rest of the app
 
 Ordering support is split across two levels:
 - **HTTP query level**: `orderBy` uses `field:direction` format in a single query parameter (e.g., `name:asc`, `createdAt:desc`). Multiple entries can be sent as repeated params.
 - **Service level**: `orderBy` is always an array of order objects (`IPaginationOrderBy[]`), which is the shape Prisma receives.
 - **Response metadata level**: `metadata.orderBy` is a string array in the same `field:direction` format as the query (e.g., `["createdAt:desc"]`), symmetric with `metadata.availableOrderBy`. `ResponsePagingInterceptor` performs the conversion; an empty order renders `[]`.
 
-The module uses a pipe-based architecture with factory functions for maximum flexibility and type safety.
+Query parsing is pipes plus factory functions.
 
 ## Related Documents
 
@@ -550,7 +550,7 @@ Two consequences a client has to plan around:
 - A non-admin list returns no `count`, no `page`, and no `totalPage`. `includeCount` is a repository-side argument, never a query param, so a client cannot ask for a total.
 - Offset cannot reach past row 2000 (`PaginationDefaultMaxPage` × `PaginationDefaultMaxPerPage`). It narrows and browses; it never scans a whole collection.
 
-Cursor routes also constrain what they will sort on: every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll genuinely moves position, and no tiebreaker stabilises that. Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`. When every field is immutable both routes share one constant.
+Cursor routes also constrain what they will sort on: every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll moves position, and no tiebreaker stabilises that. Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`. When every field is immutable both routes share one constant.
 
 ### Offset-Based
 

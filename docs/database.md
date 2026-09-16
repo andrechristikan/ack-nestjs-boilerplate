@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Database Module**: Locat
 
 ## Overview
 
-This documentation explains the database architecture and features in ACK NestJS Boilerplate:
+Prisma + MongoDB replica set, transactions, seeds, and the Database Module.
 
 ## Related Documents
 
@@ -84,8 +84,6 @@ This command will read your Prisma schema and generate the client code in `gener
 Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed commands are implemented in `src/migration/seeds/*`.
 
 ### Database Seeds
-
-ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly initialize or remove data for development and testing. Database seeding is used to populate the database with initial or test data, making development and testing easier.
 
 **Seed Data Location:**
 - All seed data is stored in `src/migration/data/*`.
@@ -227,7 +225,7 @@ All generated API keys automatically include an environment prefix to help ident
 - `staging_ghi789rst` - API key for staging environment
 - `production_jkl012mno` - API key for production environment
 
-This prefix is automatically added based on the `APP_ENV` environment variable when creating new API keys, ensuring easy identification and preventing accidental cross-environment usage.
+This prefix is added from `APP_ENV` when a new API key is created, so a key from one env is obvious in another.
 
 ### Roles
 
@@ -616,16 +614,16 @@ These commands execute directly in the running Docker container without needing 
 
 ### **Prisma ORM**
 
-ACK NestJS Boilerplate uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
+The database client is **[Prisma][ref-prisma] v6.19.x**.
 
 ### **Why Prisma for Repository Design Pattern?**
 
-Prisma perfectly enables **Repository Design Pattern** implementation:
+Repositories talk to Prisma:
 
-- **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
-- **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
-- **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **MongoDB on this checkout**: `prisma/schema.prisma` uses `provider = "mongodb"`; schema sync is `pnpm db:migrate` (`prisma db push`)
+- Generated TypeScript types on repository queries
+- `PrismaClient` is the database boundary
+- Shared query API and transactions
+- `prisma/schema.prisma` uses `provider = "mongodb"`; schema sync is `pnpm db:migrate` (`prisma db push`)
 
 ### Database provider
 

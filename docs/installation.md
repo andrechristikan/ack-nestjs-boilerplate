@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides step-by-step instructions for setting up the ACK NestJS Boilerplate on your development environment.
+How to clone, install, seed, and run the project locally.
 
 ## Related Documents
 
@@ -148,7 +148,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://<your_domain>/.well-known/refresh-jwks.
 > [!NOTE]
 > You can skip this section if all dependencies are already installed and you do not want to use Docker for your setup.
 
-Docker provides the fastest and most reliable way to set up the ACK NestJS Boilerplate. This method automatically configures the entire development environment with all dependencies and services pre-configured.
+Compose starts the services listed below, already wired to the app.
 
 ### What's Included
 

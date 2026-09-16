@@ -2,7 +2,7 @@
 
 ## Overview
 
-AWS S3 presigned URLs provide secure, time-limited access to S3 objects without requiring AWS credentials. This feature enables controlled file sharing and temporary upload/download access with built-in encryption and security.
+S3 presigned URLs let a client upload or download an object for a limited time without AWS credentials.
 
 ## Related Documents
 

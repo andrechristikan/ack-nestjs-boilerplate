@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Request Middleware Modul
 
 ## Overview
 
-ACK NestJS Boilerplate runs a security and middleware layer for HTTP request/response processing. All middleware is centrally managed through `RequestMiddlewareModule` and applied globally to all routes using the wildcard pattern `{*wildcard}`.
+HTTP middleware is registered in `RequestMiddlewareModule` and applied to every route with `{*wildcard}`.
 
 ```typescript
 consumer
