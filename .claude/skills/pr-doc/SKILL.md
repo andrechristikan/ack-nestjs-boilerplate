@@ -1,6 +1,14 @@
 ---
 name: pr-doc
-description: Author the pull-request DESCRIPTION document only for the current branch in ack-nestjs-boilerplate — living markdown at generated/docs/pr-<feature>.md against a local main or develop base (owner chooses before run). Use when the owner asks for a PR description / PR doc / "use pr-doc" (any language). Always ask main vs develop first; fetch origin; pull the target into a local ref (or a dedicated compare branch if pull cannot apply); compare from that local ref never from origin/*; reject when the current branch has no commits ahead of that local base. Dispatches `pr-doc-writer` only. HARD: writes the description file only — never creates, opens, edits, or publishes a GitHub pull request. NOT invoked by `coding`. NOT for commit messages, NOT for editing docs/*.md.
+description: >-
+  Author the pull-request DESCRIPTION document only for the current branch in ack-nestjs-boilerplate
+  — living markdown at generated/docs/pr-<feature>.md against a local main or develop base (owner
+  chooses before run). Use when the owner asks for a PR description / PR doc / "use pr-doc" (any
+  language). Always ask main vs develop first; fetch origin; pull the target into a local ref (or a
+  dedicated compare branch if pull cannot apply); compare from that local ref never from origin/*;
+  reject when the current branch has no commits ahead of that local base. Dispatches `pr-doc-writer`
+  only. HARD: writes the description file only — never creates, opens, edits, or publishes a GitHub
+  pull request. NOT invoked by `coding`. NOT for commit messages, NOT for editing docs/*.md.
 ---
 
 # PR document — whole branch, final state

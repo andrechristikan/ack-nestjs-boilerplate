@@ -1,6 +1,14 @@
 ---
 name: migration-seed
-description: Create or edit initial-data seeders under src/migration/ in ack-nestjs-boilerplate — a new seed command, seed data rows, remove() pair, migration.module registration, and package.json seed/remove order when the command is bundled. Use whenever the owner asks for a new migration seed, changes to migration/data or migration/seeds, template/aws seed commands, or adjustments to migration:seed / migration:remove order. Simplified flow: clarify → coder → light gate → doc-drift when docs/database.md claims change. NOT for feature modules, endpoints, or Controllers/Services/Repositories — that is the `coding` skill. NOT for running migration:* or schema commands.
+description: >-
+  Create or edit initial-data seeders under src/migration/ in ack-nestjs-boilerplate — a new seed
+  command, seed data rows, remove() pair, migration.module registration, and package.json
+  seed/remove order when the command is bundled. Use whenever the owner asks for a new migration
+  seed, changes to migration/data or migration/seeds, template/aws seed commands, or adjustments to
+  migration:seed / migration:remove order. Simplified flow: clarify → coder → light gate → doc-drift
+  when docs/database.md claims change. NOT for feature modules, endpoints, or
+  Controllers/Services/Repositories — that is the `coding` skill. NOT for running migration:* or
+  schema commands.
 ---
 
 # Migration seed — initial data only
