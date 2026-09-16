@@ -7,7 +7,6 @@ import { TermPolicyRequiredInvalidException } from '@modules/term-policy/excepti
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyAcceptanceDomain } from '@modules/term-policy/domains/term-policy.acceptance.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -17,7 +16,6 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 describe('TermPolicyAcceptanceDomain', () => {
     const termPolicyRepository = createMock<TermPolicyRepository>();
     const notificationQueue = createMock<NotificationQueue>();
-    const requestStoreService = createMock<RequestStoreService>();
     const activityLogDomain = createMock<ActivityLogDomain>();
     const databaseService = createMock<DatabaseService>();
     const helperDateService = createMock<HelperDateService>();
@@ -30,7 +28,6 @@ describe('TermPolicyAcceptanceDomain', () => {
         service = new TermPolicyAcceptanceDomain(
             termPolicyRepository,
             notificationQueue,
-            requestStoreService,
             activityLogDomain,
             databaseService,
             helperDateService,

@@ -349,7 +349,7 @@ sequenceDiagram
 
 ## Configuration Reference
 
-Defaults work out of the box. Override via environment variables if needed.
+The defaults are enough for local development. Override with environment variables when needed.
 
 | Variable | Used by | Default | Purpose |
 |---|---|---|---|

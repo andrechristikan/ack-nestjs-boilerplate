@@ -12,28 +12,28 @@ import { createMock } from '@golevelup/ts-vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
-import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 
-describe('SessionService', () => {
+describe('SessionDomain', () => {
     const sessionRepository = createMock<SessionRepository>();
     const sessionUtil = createMock<SessionUtil>();
 
-    let service: SessionService;
+    let domain: SessionDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
-                SessionService,
+                SessionDomain,
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionUtil, useValue: sessionUtil },
             ],
         }).compile();
 
-        service = moduleRef.get(SessionService);
+        domain = moduleRef.get(SessionDomain);
     });
 
     describe('getOne', () => {
@@ -50,7 +50,7 @@ The shape encodes these rules:
 - Rebuild the subject in `beforeEach`. Reset shared mock calls and implementations before establishing that case's baseline.
 - Register the real subject and explicit collaborator doubles. Do not mock the subject.
 - Name doubles after the constructor parameter or injection token they replace, using `camelCase`.
-- Inject repositories and services by their real class token, following `rules/architecture.md`.
+- Inject repositories, domains, and services by their real class token, following `rules/architecture.md`.
 - Do not assert on logs or `console`, and do not replace them merely to silence output. Logging is not a unit contract (`rules/logging.md`).
 
 ## Choose the smallest harness
@@ -102,7 +102,7 @@ const generateSecretMock = vi.mocked(generateSecret);
 
 Promote a repeated module mock to `test/vitest.setup.ts` only when at least three specs need an
 identical factory and no spec needs the real module. Register the setup file in
-`vitest.config.ts`, remove every duplicate local declaration, and run the full unit suite
+`vitest.config.mts`, remove every duplicate local declaration, and run the full unit suite
 because the setup file affects every spec. A one-off mock stays local.
 
 ## Deep mocks and framework-boundary mocks (HARD)

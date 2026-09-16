@@ -4,9 +4,7 @@ This documentation explains the features and usage of **Config Module**: Located
 
 ## Overview
 
-This document provides a detailed explanation of how configuration works in the ACK NestJS Boilerplate project, including the configuration files structure and their interfaces.
-
-The project uses a modular configuration approach through the NestJS `ConfigModule`. Configuration is split into multiple dedicated files for different aspects of the application, making it easier to maintain and understand.
+NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`. Each file has a TypeScript interface.
 
 ## Related Documents
 
@@ -44,10 +42,11 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [File Configuration](#file-configuration)
 - [Workspace Configuration](#workspace-configuration)
 - [Project Configuration](#project-configuration)
+- [Analytic Configuration](#analytic-configuration)
 
 ## Configuration Structure
 
-All configuration files are located in the `src/configs` directory. Each configuration module uses the `registerAs` function from `@nestjs/config` and provides a TypeScript interface for type safety.
+All configuration files are in `src/configs`. Each file uses `registerAs` from `@nestjs/config` and a TypeScript interface.
 
 The configuration modules are imported and registered in `src/configs/index.ts` as an array and this configuration array is then loaded in `src/common/common.module.ts`:
 
@@ -450,7 +449,7 @@ helmet: {
 }
 ```
 
-> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object — which headers are on and which are off — is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
+> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object; which headers are on and which are off; is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
@@ -541,15 +540,15 @@ default: {
 }
 ```
 
-**`onboarding`** - Prisma `$transaction` timeouts `WorkspaceService.commitOnboarding` applies to the onboarding compose
+**`onboarding`** - `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose
 ```typescript
 onboarding: {
-  createTimeoutInMs: number;      // Single-user compose (`WorkspaceService.commitOnboarding`) (ms('10s'))
-  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceService.commitOnboarding`) (ms('30s'))
+  createTimeoutInMs: number;      // Single-user compose (`WorkspaceDomain.commitOnboarding`) (ms('10s'))
+  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceDomain.commitOnboarding`) (ms('30s'))
 }
 ```
 
-> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceService.commitOnboarding` as `timeoutInMs`.
+> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
 
@@ -849,7 +848,7 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 **File**: `src/configs/queue.config.ts`
 **Interface**: `IConfigQueue`
 
-This configuration holds the BullMQ default job options applied by `queue.register.module.ts` to every registered queue.
+This configuration holds the BullMQ default job options. `QueueModule.forRoot()` applies shared connection defaults; each named queue's `RegisterQueueOptionsFactory` on the owning feature domain module applies that queue's backoff.
 
 #### Configuration Keys:
 
@@ -871,7 +870,7 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthModule` hands to `TerminusModule.forRootAsync`.
+This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthDomainModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -905,7 +904,7 @@ gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a 
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceService` when it runs a sweep.
+This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceDomain` when it runs a sweep.
 
 #### Configuration Keys:
 
@@ -1034,6 +1033,35 @@ slugMaxLength: number           // Maximum slug length (default: 30)
 ```typescript
 slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
 ```
+
+### Analytic Configuration
+
+**File**: `src/configs/analytic.config.ts`
+**Interface**: `IConfigAnalytic`
+
+Live metric cache TTLs and key patterns, plus anomaly and fraud detection thresholds. Values are literals built with `ms(...)`; they are not environment-driven. Consumer: `AnalyticCache` and the analytic domains. Flow: [Analytic](analytic.md).
+
+#### Configuration Keys:
+
+**`cache`** - Redis key patterns and TTLs for dashboard, anomaly summary, fraud summary, and risk score entries
+```typescript
+cache: {
+  dashboardTtlInMs: number;       // Dashboard metric TTL (default: 1h)
+  anomalySummaryTtlInMs: number;  // Anomaly summary TTL (default: 5m)
+  fraudSummaryTtlInMs: number;    // Fraud summary TTL (default: 5m)
+  riskScoreTtlInMs: number;       // Per-user risk score TTL (default: 10m)
+  keyPatterns: {
+    dashboard: string;            // Analytic:dashboard:{metric}:{start}:{end}
+    anomaly: string;              // Analytic:anomaly:{signal}:{window}
+    fraud: string;                // Analytic:fraud:{signal}:{window}
+    riskScore: string;            // Analytic:fraud:risk:{userId}
+  };
+}
+```
+
+**`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
+
+**`fraud`** - Credential-stuffing and related signal windows, risk weights, band cutoffs, and band labels used by `AnalyticFraudDomain`
 
 
 <!-- REFERENCES -->

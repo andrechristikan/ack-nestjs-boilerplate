@@ -16,6 +16,13 @@ import { UserRepositoryModule } from '@modules/user/user.repository.module';
 import { UserOnboardingUtil } from '@modules/user/utils/user.onboarding.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Module } from '@nestjs/common';
+import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
+import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
+import { UserPasswordAnalyticDomain } from '@modules/user/domains/user.password.analytic.domain';
+import { UserForgotPasswordAnalyticDomain } from '@modules/user/domains/user.forgot-password.analytic.domain';
+import { UserTwoFactorAnalyticDomain } from '@modules/user/domains/user.two-factor.analytic.domain';
+import { UserVerificationAnalyticDomain } from '@modules/user/domains/user.verification.analytic.domain';
+import { UserMobileNumberAnalyticDomain } from '@modules/user/domains/user.mobile-number.analytic.domain';
 
 /** User domains backing `UserGuard` and the user HTTP layer. */
 @Module({
@@ -33,6 +40,13 @@ import { Module } from '@nestjs/common';
         UserOnboardingDomain,
         UserUtil,
         UserOnboardingUtil,
+        UserAnalyticDomain,
+        UserLoginAnalyticDomain,
+        UserPasswordAnalyticDomain,
+        UserForgotPasswordAnalyticDomain,
+        UserTwoFactorAnalyticDomain,
+        UserVerificationAnalyticDomain,
+        UserMobileNumberAnalyticDomain,
     ],
     exports: [
         UserDomain,
@@ -46,6 +60,13 @@ import { Module } from '@nestjs/common';
         UserOnboardingDomain,
         UserOnboardingUtil,
         UserUtil,
+        UserAnalyticDomain,
+        UserLoginAnalyticDomain,
+        UserPasswordAnalyticDomain,
+        UserForgotPasswordAnalyticDomain,
+        UserTwoFactorAnalyticDomain,
+        UserVerificationAnalyticDomain,
+        UserMobileNumberAnalyticDomain,
     ],
     imports: [
         UserRepositoryModule,

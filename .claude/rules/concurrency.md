@@ -48,10 +48,11 @@ Two forms are NOT this rule, because neither has an `await` to attach a `try` to
 - **The process entrypoint.** `bootstrap().catch(...)` in `src/main.ts` and `src/migration.ts` runs
   at module level, where there is no enclosing async function and — this package is CommonJS —
   no top-level `await`.
-- **A promise that is deliberately never awaited.** A fire-and-forget write whose failure must not
-  reach the request, such as the activity-log save in
-  `src/modules/activity-log/interceptors/activity-log.interceptor.ts`. The comment above it says it
-  is not awaited; the `.catch()` is what keeps the rejection from becoming an unhandled one.
+- **A promise that is deliberately never awaited.** Fire-and-forget work whose failure must not
+  reach the caller still needs a `.catch()` so the rejection does not become unhandled. The
+  activity-log interceptor is not this case: it **awaits** flush inside `concatMap` (or an
+  equivalent awaited path) and handles failure with `try`/`catch` like every other awaited
+  promise.
 
 Everything else — every service, util, repository, guard, interceptor and processor — uses
 `try`/`catch`.

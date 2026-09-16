@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Response Module**: Locat
 
 ## Overview
 
-ACK NestJS Boilerplate standardizes API responses through decorators that automatically format responses, handle pagination, manage file downloads, and set custom headers. Each decorator uses an interceptor to transform data into consistent structures with metadata, status codes, and localized messages.
+Response decorators wrap the handler result with metadata, a status code, and a localized message. Separate decorators cover pagination, file download, and custom headers.
 
 ## Table of Contents
 

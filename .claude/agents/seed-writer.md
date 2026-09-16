@@ -62,7 +62,7 @@ write and not a place for business logic.
 - **Static rows live in `data/` as a PascalCase const** (`<module>.<concern>.data.ts`). A seed
   whose data is built inline needs no `data/` file — do not invent one for symmetry.
 - A seed MAY inject `DatabaseService` directly — that is the sanctioned exception to the
-  repository rule (`rules/database.md`) — or a feature service, whichever the sibling seed uses.
+  repository rule (`rules/database.md`) — or a feature domain / shared kit service, whichever the sibling seed uses.
 
 ## Boundaries
 

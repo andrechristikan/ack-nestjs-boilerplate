@@ -1,0 +1,116 @@
+import { DatabaseService } from '@common/database/services/database.service';
+import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import {
+    IDeviceOwnershipAnalyticCreatedRow,
+    IDeviceOwnershipAnalyticInactiveRow,
+    IDeviceOwnershipAnalyticRepository,
+    IDeviceOwnershipAnalyticUserCount,
+} from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyticRepository {
+    constructor(private readonly databaseService: DatabaseService) {}
+
+    async countRegistrations(startDate: Date, endDate: Date): Promise<number> {
+        return this.databaseService.client.device.count({
+            where: { createdAt: { gte: startDate, lt: endDate } },
+        });
+    }
+
+    async groupByPlatform(): Promise<IAnalyticCountBucket[]> {
+        const rows = await this.databaseService.client.device.groupBy({
+            by: ['platform'],
+            _count: { _all: true },
+        });
+        return rows.map(r => ({ key: r.platform, count: r._count._all }));
+    }
+
+    async countWithPushToken(): Promise<number> {
+        return this.databaseService.client.device.count({
+            where: { notificationToken: { not: null } },
+        });
+    }
+
+    async countDevices(): Promise<number> {
+        return this.databaseService.client.device.count();
+    }
+
+    async countOwnerships(): Promise<number> {
+        return this.databaseService.client.deviceOwnership.count({
+            where: { isRevoked: false },
+        });
+    }
+
+    async countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
+        const rows = await this.databaseService.client.deviceOwnership.groupBy({
+            by: ['userId'],
+            where: { isRevoked: false },
+            _count: { _all: true },
+        });
+        return rows.map(r => ({ userId: r.userId, count: r._count._all }));
+    }
+
+    async findInactive(
+        before: Date
+    ): Promise<IDeviceOwnershipAnalyticInactiveRow[]> {
+        return this.databaseService.client.deviceOwnership.findMany({
+            where: {
+                isRevoked: false,
+                lastActiveAt: { lt: before },
+            },
+            select: {
+                id: true,
+                userId: true,
+                lastActiveAt: true,
+                deviceId: true,
+            },
+        });
+    }
+
+    async findCreatedInRange(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IDeviceOwnershipAnalyticCreatedRow[]> {
+        return this.databaseService.client.deviceOwnership.findMany({
+            where: {
+                createdAt: { gte: startDate, lt: endDate },
+            },
+            select: {
+                id: true,
+                userId: true,
+                deviceId: true,
+                createdAt: true,
+            },
+        });
+    }
+
+    async sharedFingerprints(
+        minUsers: number
+    ): Promise<IAnalyticSharedFingerprintRow[]> {
+        const ownerships =
+            await this.databaseService.client.deviceOwnership.findMany({
+                where: { isRevoked: false },
+                select: {
+                    userId: true,
+                    device: { select: { fingerprint: true } },
+                },
+            });
+        const map = new Map<string, Set<string>>();
+        for (const o of ownerships) {
+            const fp = o.device.fingerprint;
+            if (!map.has(fp)) {
+                map.set(fp, new Set());
+            }
+            map.get(fp)!.add(o.userId);
+        }
+        return [...map.entries()]
+            .filter(([, users]) => users.size >= minUsers)
+            .map(([fingerprint, users]) => ({
+                fingerprint,
+                userCount: users.size,
+                userIds: [...users],
+            }));
+    }
+}

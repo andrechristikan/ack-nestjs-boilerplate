@@ -9,10 +9,9 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import {
+    EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumRoleType,
     EnumUserGender,
@@ -70,13 +69,6 @@ describe('UserPasswordDomain', () => {
     const notificationQueue = createMock<NotificationQueue>();
     const featureFlagService = createMock<FeatureFlagDomain>();
     const helperDateService = createMock<HelperDateService>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'get' | 'merge'>;
     const configGet = vi.fn((_key: string): unknown => undefined);
     const configService = {
         get<T>(key: string): T | undefined {
@@ -95,11 +87,6 @@ describe('UserPasswordDomain', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const expiredAt = new Date('2026-01-02T00:00:00.000Z');
     const periodExpiredAt = new Date('2026-04-01T00:00:00.000Z');
-    const requestLog = {
-        userAgent: { ua: 'browser' },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
     const password = {
         passwordHash: 'new-password-hash',
         passwordExpired: expiredAt,
@@ -200,7 +187,6 @@ describe('UserPasswordDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
         configGet.mockImplementation((key: string) => {
             const values = {
                 'home.url': 'https://app.example.com',
@@ -288,7 +274,6 @@ describe('UserPasswordDomain', () => {
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: FeatureFlagDomain, useValue: featureFlagService },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ConfigService, useValue: configService },
                 { provide: HelperStringService, useValue: helperStringService },
                 {
@@ -324,7 +309,7 @@ describe('UserPasswordDomain', () => {
     });
 
     describe('updatePasswordByAdmin', () => {
-        it('sets a temporary password, revokes sessions, notifies the user, and stores activity metadata', async () => {
+        it('sets a temporary password, revokes sessions, notifies the user, and stages activity events', async () => {
             await service.updatePasswordByAdmin(user.id, 'admin-id');
 
             expect(
@@ -355,10 +340,15 @@ describe('UserPasswordDomain', () => {
                 },
                 'admin-id'
             );
-            expect(requestStoreService.merge).toHaveBeenCalledWith(
-                ActivityLogMetadataStoreKey,
-                { userId: user.id }
-            );
+            expect(activityLogDomain.stage).toHaveBeenNthCalledWith(1, {
+                action: EnumActivityLogAction.adminUserUpdatePassword,
+                metadata: { userId: user.id },
+            });
+            expect(activityLogDomain.stage).toHaveBeenNthCalledWith(2, {
+                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                userId: user.id,
+                metadata: { userId: user.id },
+            });
         });
 
         it('throws UserNotSelfException when an admin updates their own password', async () => {

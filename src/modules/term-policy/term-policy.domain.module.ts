@@ -7,6 +7,8 @@ import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-poli
 import { TermPolicyRepositoryModule } from '@modules/term-policy/term-policy.repository.module';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Global, Module } from '@nestjs/common';
+import { TermPolicyAnalyticDomain } from '@modules/term-policy/domains/term-policy.analytic.domain';
+import { TermPolicyAcceptanceAnalyticDomain } from '@modules/term-policy/domains/term-policy.acceptance.analytic.domain';
 
 /** Global module exposing term-policy domain services for acceptance guards and seeding. */
 @Global()
@@ -18,6 +20,8 @@ import { Global, Module } from '@nestjs/common';
         TermPolicyAcceptanceDomain,
         TermPolicyTemplateDomain,
         TermPolicyUtil,
+        TermPolicyAnalyticDomain,
+        TermPolicyAcceptanceAnalyticDomain,
     ],
     exports: [
         TermPolicyDomain,
@@ -25,6 +29,8 @@ import { Global, Module } from '@nestjs/common';
         TermPolicyAcceptanceDomain,
         TermPolicyTemplateDomain,
         TermPolicyUtil,
+        TermPolicyAnalyticDomain,
+        TermPolicyAcceptanceAnalyticDomain,
     ],
     imports: [TermPolicyRepositoryModule, AwsModule, UserDomainModule],
 })

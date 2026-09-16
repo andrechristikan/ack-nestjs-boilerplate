@@ -56,22 +56,22 @@ Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `
 
 `superAdmin` bypasses both gates unconditionally, before the required list is ever consulted:
 
-- `RoleService.validateRoleGuard` returns `[]` and skips the `requiredRoles` check entirely for a `superAdmin`.
-- `PolicyService.validatePolicyGuard` returns `true` and skips the ability check entirely for a `superAdmin`.
+- `RoleDomain.validateRoleGuard` returns `[]` and skips the `requiredRoles` check entirely for a `superAdmin`.
+- `PolicyDomain.validatePolicyGuard` returns `true` and skips the ability check entirely for a `superAdmin`.
 
 So `@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)` and `@RoleProtected(EnumRoleType.admin)` grant exactly the same access. Listing `superAdmin` adds nothing and actively misleads the next reader into believing the route is gated by an enumeration that is never reached.
 
-Write the roles that are actually checked — for a platform admin route that is `@RoleProtected(EnumRoleType.admin)`. `superAdmin` appears in a `@RoleProtected` call only if the bypass in `RoleService` is ever removed.
+Write the roles that are actually checked — for a platform admin route that is `@RoleProtected(EnumRoleType.admin)`. `superAdmin` appears in a `@RoleProtected` call only if the bypass in `RoleDomain` is ever removed.
 
 ### `@FeatureFlagProtected` takes the BARE key (HARD)
 
 - **Every workspace-scoped and project-scoped route MUST carry `@FeatureFlagProtected('workspace')`** — the whole `user`, `shared`, and `public` workspace/project surface, including a route in another module that resolves its subject from the workspace header. The flag is the kill switch for that surface, so one route missing it stays live after the surface is switched off. Admin-scope routes are NOT part of it: they read across every workspace and are gated by role and policy instead.
-- **The decorator argument is the bare flag key, never `key.metadataKey`.** A metadata sub-key is a service concern and is asserted inside the service method; the flag semantics, the exceptions, and the anonymous-caller rules live in `rules/feature-flag.md`.
+- **The decorator argument is the bare flag key, never `key.metadataKey`.** A metadata sub-key is a domain concern and is asserted inside the domain method; the flag semantics, the exceptions, and the anonymous-caller rules live in `rules/feature-flag.md`.
 
 ## Controllers
 
 - A controller is a pure HTTP → HTTP-service dispatcher. One endpoint, one `<Module>HttpService` method, including a trivial GET. It never reaches the domain (`rules/architecture.md`).
-- **Security preconditions belong in the DOMAIN service, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
+- **Security preconditions belong in the domain, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
 - **Never build pagination metadata by hand.** The repository produces it through `PaginationService`; the HTTP service wraps it in the response envelope and the controller passes that through.
 - Prefer passing the whole request DTO; normalize `undefined → null` only when a service param is `T | null` (`rules/null-safety.md`).
 - One controller per scope, named for it: `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` · `shared`. The matching `src/router/http/router.http.<scope>.module.ts` registers it.
@@ -101,9 +101,15 @@ Optional UUID filters use `.optional()` on the same schema:
 ```typescript
 @Query('workspaceId', { schema: RequestUuidSchema.optional() })
 workspaceId?: string
+
+@Param('inviteToken', { schema: RequestRequiredStringSchema })
+inviteToken: string
 ```
 
 A param that is not a UUID, such as a token or language code, uses the schema for its own shape.
+- Shared schemas live under `src/common/request/validations/`. Module-specific ones live under
+  `<module>/validations/` (`rules/validation.md`).
+- File upload presence stays on `FileRequiredPipe()` and the other file pipes (`rules/file.md`).
 
 ## Route path shape (HARD)
 

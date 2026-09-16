@@ -1,9 +1,6 @@
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -13,8 +10,6 @@ import {
     NotificationUserSetting,
     Prisma,
 } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
@@ -34,8 +29,7 @@ export class NotificationDomain {
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly userDomain: UserDomain,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
-        private readonly requestStoreService: RequestStoreService
+        private readonly databaseService: DatabaseService
     ) {}
 
     async getListCursor(
@@ -81,32 +75,22 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            {
-                channel: data.channel,
-                type: data.type,
-                isActive: data.isActive,
-            }
-        );
-
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.notificationUserSettingRepository.updateUserSettingInTx(
                 tx,
                 userId,
                 data
             );
             await this.userDomain.touchUpdatedByInTx(tx, userId);
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.userUpdateNotificationSetting,
-                requestLog,
-                null
-            );
+        });
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.userUpdateNotificationSetting,
+            metadata: {
+                channel: data.channel,
+                type: data.type,
+                isActive: data.isActive,
+            },
         });
     }
 

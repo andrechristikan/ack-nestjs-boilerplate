@@ -1,7 +1,6 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
@@ -22,6 +21,7 @@ import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('RoleDomain', () => {
     const roleRepository = {
@@ -37,9 +37,9 @@ describe('RoleDomain', () => {
     const roleUtil = {
         mapActivityLogMetadata: vi.fn<RoleUtil['mapActivityLogMetadata']>(),
     } satisfies Pick<RoleUtil, 'mapActivityLogMetadata'>;
-    const requestStoreService = {
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'merge'>;
+    const activityLogDomain = {
+        stage: vi.fn<ActivityLogDomain['stage']>(),
+    } satisfies Pick<ActivityLogDomain, 'stage'>;
     const now = new Date('2026-01-01T00:00:00.000Z');
     const policy = {
         id: 'policy-id',
@@ -108,7 +108,7 @@ describe('RoleDomain', () => {
                 RoleDomain,
                 { provide: RoleRepository, useValue: roleRepository },
                 { provide: RoleUtil, useValue: roleUtil },
-                { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
         service = moduleRef.get(RoleDomain);

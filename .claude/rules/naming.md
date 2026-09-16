@@ -148,6 +148,14 @@ provide exist:
 ## Rules that get broken most often
 
 - **Every type name starts with `I`.** Interfaces, payload shapes, option bags, data shapes. `IUser`, not `User` (the bare name belongs to the Prisma generated model — colliding with it is the exact confusion the prefix prevents). Data-shape interfaces describe DATA, not domain/HTTP/processor behavior. The one behavioral header is `I*Repository` — the persistence port (`rules/architecture.md`).
+- **An `I*` declaration lives under `interfaces/`, not in the class file.** The repository
+  port is `interfaces/<module>[.<concern>].repository.interface.ts` beside
+  `repositories/<module>[.<concern>].repository.ts` that `implements` it. Data-shape
+  interfaces for a concern sit in `interfaces/<module>[.<concern>].interface.ts` (or a
+  focused sibling under `interfaces/`). Exporting the interface from the same file as the
+  `@Injectable()` class that implements or primarily uses it is the defect — the class file
+  imports the interface. Config interfaces beside `registerAs` in `src/configs/*.config.ts`
+  stay with the config file (`rules/config.md`).
 - **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.

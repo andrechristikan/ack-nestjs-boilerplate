@@ -38,7 +38,7 @@ A CSV import endpoint composes two pipes in order, and the order is the contract
 
 A controller returning `IResponseFileReturn` hands `ResponseFileInterceptor` a finished buffer; the interceptor caps it, sets the download headers, and wraps it in a `StreamableFile`.
 
-- **The row cap belongs to the service that produces the rows.** `file.maxDataExport`, overridden per module the way the import cap is (`user.maxDataExport`). The query asks for `cap + 1` rows and the service throws `FileExceedMaxDataExportException` when it gets them, before a single row is formatted.
+- **The row cap belongs to the domain that produces the rows.** `file.maxDataExport`, overridden per module the way the import cap is (`user.maxDataExport`). The query asks for `cap + 1` rows and the domain throws `FileExceedMaxDataExportException` when it gets them, before a single row is formatted.
 - **`file.maxSizeExportInBytes` is the backstop.** `ResponseFileInterceptor` measures the finished buffer and throws `FileExceedMaxSizeExportException`. It runs once the buffer exists, so it stops the send rather than the allocation — the row cap is what keeps memory bounded, and this covers the branches that have no row to count.
 - **`Content-Disposition` is built, never interpolated.** The filename passes through `FileService.sanitizeFilename` for the quoted `filename=` and through `encodeURIComponent` for `filename*=UTF-8''`. A filename that reaches the header raw is a header-injection defect, not a formatting detail.
 - The headers are handed to `StreamableFile` as `{ type, disposition, length }`; `ResponseMetadataService.setHeaders` adds the `x-*` metadata alongside them.

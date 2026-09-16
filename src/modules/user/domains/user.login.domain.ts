@@ -75,6 +75,13 @@ export class UserLoginDomain {
         );
     }
 
+    stageLoginFailed(userId: string): void {
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.userLoginFailed,
+            userId,
+        });
+    }
+
     async createTokenAndSession(
         user: IUser,
         device: IDeviceIdentity,
@@ -100,7 +107,7 @@ export class UserLoginDomain {
 
         const now = this.helperDateService.create();
         const { isNewDevice, sessionShouldBeInactive } =
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const upserted = await this.deviceDomain.upsertForLoginInTx(
                     tx,
                     user.id,
@@ -138,13 +145,12 @@ export class UserLoginDomain {
                     requestLog.ipAddress ?? null,
                     now
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    this.userUtil.resolveLoginActivityLogAction(loginWith),
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: this.userUtil.resolveLoginActivityLogAction(
+                        loginWith
+                    ),
+                    userId: user.id,
+                });
 
                 return {
                     isNewDevice: upserted.isNewDevice,
@@ -188,9 +194,6 @@ export class UserLoginDomain {
         loginWith: EnumUserLoginWith,
         loginAt: Date
     ): Promise<IUserLoginOutcome> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (!user.isVerified) {
             const emailVerification =
                 this.userVerificationDomain.verificationCreateVerification(
@@ -243,20 +246,17 @@ export class UserLoginDomain {
         if (user.twoFactor?.requiredSetup) {
             const { encryptedSecret, otpauthUrl, secret, iv } =
                 await this.authTwoFactorDomain.setupTwoFactor(user.email);
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.setupTwoFactorInTx(
                     tx,
                     user.id,
                     encryptedSecret,
                     iv
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userSetupTwoFactor,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userSetupTwoFactor,
+                    userId: user.id,
+                });
             });
 
             return {
@@ -380,7 +380,7 @@ export class UserLoginDomain {
                     newJti,
                     expiredInMs
                 ),
-                this.databaseService.client.$transaction(async tx => {
+                this.databaseService.withTransaction(async tx => {
                     await this.sessionDomain.updateJtiInTx(
                         tx,
                         sessionId,
@@ -394,13 +394,9 @@ export class UserLoginDomain {
                         requestLog.ipAddress ?? null,
                         this.helperDateService.create()
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        userId,
-                        EnumActivityLogAction.userRefreshToken,
-                        requestLog,
-                        null
-                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.userRefreshToken,
+                    });
                 }),
             ]);
 
@@ -419,12 +415,10 @@ export class UserLoginDomain {
         sessionId: string,
         deviceOwnershipId: string
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const now = this.helperDateService.create();
 
         await this.revokeSession(userId, sessionId);
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.sessionDomain.revokeInTx(
                 tx,
                 userId,
@@ -438,13 +432,9 @@ export class UserLoginDomain {
                 userId,
                 now
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.userLogout,
-                requestLog,
-                null
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userLogout,
+            });
         });
     }
 }

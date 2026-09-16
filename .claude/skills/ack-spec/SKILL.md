@@ -19,7 +19,7 @@ or a structural refactor left a spec misplaced.
 
 ## 1 - Establish the scope
 
-Name the module, source subjects, or failing specs. Read `vitest.config.ts`,
+Name the module, source subjects, or failing specs. Read `vitest.config.mts`,
 `.claude/rules/testing.md`, `.claude/rules/testing-spec-style.md`, the matching project docs, and
 the source contracts before judging the suite.
 
@@ -90,7 +90,7 @@ before the final checks because it affects every spec.
 - No `.only`, unjustified `.skip`, or placeholder `.todo` remains.
 - Coverage does not regress in the named scope. Any remaining material uncovered branch is
   identified with its risk and reason.
-- `src/`, `docs/`, `prisma/`, `vitest.config.ts`, and shared setup remain unchanged unless the
+- `src/`, `docs/`, `prisma/`, `vitest.config.mts`, and shared setup remain unchanged unless the
   owner explicitly opened a separate configuration task.
 - The scoped suite and repository checks are green, or every failure is reported exactly.
 

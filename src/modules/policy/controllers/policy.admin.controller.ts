@@ -3,12 +3,10 @@ import { RequestUuidSchema } from '@common/request/validations/request.uuid.vali
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -82,7 +80,6 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -105,7 +102,6 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -130,7 +126,6 @@ export class PolicyAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

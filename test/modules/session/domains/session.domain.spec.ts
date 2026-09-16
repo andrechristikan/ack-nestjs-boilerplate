@@ -2,8 +2,7 @@ import { createMock } from '@golevelup/ts-vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { RequestStoreService } from '@common/request/services/request.store.service';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -23,10 +22,6 @@ describe('SessionDomain', () => {
     const sessionCacheService = createMock<SessionCache>();
     const sessionUtil = createMock<SessionUtil>();
     const activityLogDomain = createMock<ActivityLogDomain>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = createMock<RequestStoreService>({
-        get: <T>(key: string) => requestStoreGet(key) as T | null,
-    });
     const databaseService = createDatabaseServiceMock();
     const helperDateService = createMock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
@@ -61,18 +56,11 @@ describe('SessionDomain', () => {
         user: userRef,
         revokedBy: null,
     } satisfies ISession;
-    const requestLog = {
-        userAgent: { ua: 'browser' },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
-
     let service: SessionDomain;
 
     beforeEach(async () => {
         vi.resetAllMocks();
         mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
         helperDateService.create.mockReturnValue(now);
         service = new SessionDomain(
             sessionRepository,
@@ -80,8 +68,7 @@ describe('SessionDomain', () => {
             sessionCacheService,
             activityLogDomain,
             databaseService,
-            helperDateService,
-            requestStoreService
+            helperDateService
         );
     });
 
@@ -121,7 +108,9 @@ describe('SessionDomain', () => {
         await expect(
             service.revoke('user-id', 'session-id')
         ).resolves.toBeUndefined();
-        expect(requestStoreGet).toHaveBeenCalledWith(RequestLogStoreKey);
+        expect(activityLogDomain.stage).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.userRevokeSession,
+        });
         expect(sessionRepository.revokeInTx).toHaveBeenCalledWith(
             expect.any(Object),
             'user-id',
@@ -158,7 +147,25 @@ describe('SessionDomain', () => {
             'user-id',
             'session-id'
         );
-        expect(requestStoreService.merge).toHaveBeenCalled();
+        expect(activityLogDomain.stage).toHaveBeenNthCalledWith(1, {
+            action: EnumActivityLogAction.adminSessionRevoke,
+            metadata: {
+                sessionId: session.id,
+                userId: session.userId,
+                userUsername: session.user.username,
+                timestamp: session.updatedAt,
+            },
+        });
+        expect(activityLogDomain.stage).toHaveBeenNthCalledWith(2, {
+            action: EnumActivityLogAction.userRevokeSessionByAdmin,
+            userId: 'user-id',
+            metadata: {
+                sessionId: session.id,
+                userId: session.userId,
+                userUsername: session.user.username,
+                timestamp: session.updatedAt,
+            },
+        });
     });
 
     it('invalidates every active login returned before bulk revocation', async () => {

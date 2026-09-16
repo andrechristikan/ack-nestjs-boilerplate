@@ -5,11 +5,14 @@ import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ApiKey, EnumApiKeyType, Prisma } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import {
+    ApiKey,
+    EnumActivityLogAction,
+    EnumApiKeyType,
+    Prisma,
+} from '@generated/prisma-client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
@@ -37,7 +40,7 @@ export class ApiKeyDomain {
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
         private readonly apiKeyCache: ApiKeyCache,
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly requestStoreService: RequestStoreService
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     private validateApiKey(
@@ -61,13 +64,14 @@ export class ApiKeyDomain {
         return;
     }
 
-    private storeActivityLogMetadata(apiKey: ApiKey): void {
-        this.requestStoreService.merge<IActivityLogMetadata>(
-            ActivityLogMetadataStoreKey,
-            this.apiKeyUtil.mapActivityLogMetadata(apiKey)
-        );
-
-        return;
+    private stageActivityLog(
+        action: EnumActivityLogAction,
+        apiKey: ApiKey
+    ): void {
+        this.activityLogDomain.stage({
+            action,
+            metadata: this.apiKeyUtil.mapActivityLogMetadata(apiKey),
+        });
     }
 
     async getListByAdmin(
@@ -113,7 +117,7 @@ export class ApiKeyDomain {
             hash
         );
 
-        this.storeActivityLogMetadata(created);
+        this.stageActivityLog(EnumActivityLogAction.adminApiKeyCreate, created);
 
         return { apiKey: created, secret };
     }
@@ -142,7 +146,10 @@ export class ApiKeyDomain {
             this.apiKeyCache.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.storeActivityLogMetadata(updated);
+        this.stageActivityLog(
+            EnumActivityLogAction.adminApiKeyUpdateStatus,
+            updated
+        );
 
         return updated;
     }
@@ -158,7 +165,7 @@ export class ApiKeyDomain {
             this.apiKeyCache.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.storeActivityLogMetadata(updated);
+        this.stageActivityLog(EnumActivityLogAction.adminApiKeyUpdate, updated);
 
         return updated;
     }
@@ -188,7 +195,10 @@ export class ApiKeyDomain {
             this.apiKeyCache.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.storeActivityLogMetadata(updated);
+        this.stageActivityLog(
+            EnumActivityLogAction.adminApiKeyUpdateDate,
+            updated
+        );
 
         return updated;
     }
@@ -207,7 +217,7 @@ export class ApiKeyDomain {
             this.apiKeyCache.deleteCacheByKey(apiKey!.key),
         ]);
 
-        this.storeActivityLogMetadata(updated);
+        this.stageActivityLog(EnumActivityLogAction.adminApiKeyReset, updated);
 
         return { apiKey: updated, secret };
     }
@@ -223,7 +233,7 @@ export class ApiKeyDomain {
             this.apiKeyCache.deleteCacheByKey(apiKey.key),
         ]);
 
-        this.storeActivityLogMetadata(deleted);
+        this.stageActivityLog(EnumActivityLogAction.adminApiKeyDelete, deleted);
 
         return deleted;
     }

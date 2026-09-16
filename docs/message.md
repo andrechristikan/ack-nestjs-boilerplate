@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Message Module**: Locate
 
 ## Overview
 
-Message Service provides internationalization (i18n) support using [nestjs-i18n][ref-nestjs-i18n] to manage multi-language messages. All message files are stored in `src/languages/{language}` directory in JSON format. Currently, only English (`en`) is available.
+i18n through [nestjs-i18n][ref-nestjs-i18n]. Message files live in `src/languages/{language}` as JSON. English (`en`) is the only language shipped.
 
 The `MessageModule` is imported globally via `CommonModule` in `src/common/common.module.ts`, making `MessageService` available throughout the application without additional imports.
 
@@ -124,7 +124,7 @@ Inject `MessageService` and use `setMessage` method:
 
 ```typescript
 @Injectable()
-export class UserService {
+export class UserDomain {
     constructor(private readonly messageService: MessageService) {}
 
     getUpdateProfileMessage(): string {

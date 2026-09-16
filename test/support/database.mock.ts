@@ -16,14 +16,14 @@ export function mockDatabaseServiceTransaction(
 ): void {
     const transactionClient = {} as IDatabaseTransactionClient;
 
-    const transaction = vi.fn(
+    const withTransaction = vi.fn(
         async (
             callback: (client: IDatabaseTransactionClient) => Promise<unknown>
         ) => callback(transactionClient)
     );
 
-    Object.defineProperty(databaseService.client, '$transaction', {
+    Object.defineProperty(databaseService, 'withTransaction', {
         configurable: true,
-        value: transaction,
+        value: withTransaction,
     });
 }

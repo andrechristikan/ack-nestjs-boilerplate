@@ -9,8 +9,13 @@ import { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.upda
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType, Policy } from '@generated/prisma-client';
+import {
+    EnumActivityLogAction,
+    EnumRoleType,
+    Policy,
+} from '@generated/prisma-client';
 import { IUser } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
@@ -18,7 +23,8 @@ export class PolicyDomain {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory,
         private readonly policyRepository: PolicyRepository,
-        private readonly roleDomain: RoleDomain
+        private readonly roleDomain: RoleDomain,
+        private readonly activityLogDomain: ActivityLogDomain
     ) {}
 
     private async validateRoleExists(roleId: string): Promise<void> {
@@ -81,7 +87,13 @@ export class PolicyDomain {
             throw new PolicyExistException();
         }
 
-        return this.policyRepository.create(roleId, data);
+        const created = await this.policyRepository.create(roleId, data);
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.adminPolicyCreate,
+        });
+
+        return created;
     }
 
     async updateByAdmin(
@@ -99,7 +111,13 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        return this.policyRepository.update(id, data);
+        const updated = await this.policyRepository.update(id, data);
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.adminPolicyUpdate,
+        });
+
+        return updated;
     }
 
     async deleteByAdmin(roleId: string, id: string): Promise<Policy> {
@@ -113,6 +131,12 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
-        return this.policyRepository.delete(id);
+        const deleted = await this.policyRepository.delete(id);
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.adminPolicyDelete,
+        });
+
+        return deleted;
     }
 }

@@ -39,7 +39,6 @@ import {
 } from '@modules/role/dtos/request/role.update.request.dto';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
-    EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
@@ -47,7 +46,6 @@ import {
 } from '@generated/prisma-client';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleDto, RoleSchema } from '@modules/role/dtos/role.dto';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     PaginationOffsetQuery,
@@ -128,7 +126,6 @@ export class RoleAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleCreate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -149,7 +146,6 @@ export class RoleAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleUpdate)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -172,7 +168,6 @@ export class RoleAdminController {
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminRoleDelete)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()

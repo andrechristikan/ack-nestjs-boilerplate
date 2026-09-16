@@ -22,6 +22,10 @@ import { UserAdminController } from '@modules/user/controllers/user.admin.contro
 import { UserHttpModule } from '@modules/user/user.http.module';
 import { WorkspaceAdminController } from '@modules/workspace/controllers/workspace.admin.controller';
 import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
+import { AnalyticHttpModule } from '@modules/analytic/analytic.http.module';
+import { AnalyticAnomalyAdminController } from '@modules/analytic/controllers/analytic.anomaly.admin.controller';
+import { AnalyticDashboardAdminController } from '@modules/analytic/controllers/analytic.dashboard.admin.controller';
+import { AnalyticFraudAdminController } from '@modules/analytic/controllers/analytic.fraud.admin.controller';
 import { Module } from '@nestjs/common';
 
 /**
@@ -43,6 +47,9 @@ import { Module } from '@nestjs/common';
         WorkspaceAdminController,
         ProjectAdminController,
         PolicyAdminController,
+        AnalyticDashboardAdminController,
+        AnalyticAnomalyAdminController,
+        AnalyticFraudAdminController,
     ],
     providers: [],
     exports: [],
@@ -59,6 +66,7 @@ import { Module } from '@nestjs/common';
         WorkspaceHttpModule,
         ProjectHttpModule,
         PolicyHttpModule,
+        AnalyticHttpModule,
     ],
 })
 export class RouterHttpAdminModule {}

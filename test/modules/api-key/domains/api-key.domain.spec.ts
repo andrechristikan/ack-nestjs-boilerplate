@@ -2,7 +2,6 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumApiKeyType, type ApiKey } from '@generated/prisma-client';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyXApiKeyForbiddenException } from '@modules/api-key/exceptions/api-key.x-api-key-forbidden.exception';
@@ -15,6 +14,7 @@ import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 describe('ApiKeyDomain', () => {
     const helperDateService = {
@@ -59,9 +59,9 @@ describe('ApiKeyDomain', () => {
         ApiKeyRepository,
         'findOneById' | 'findOneByKey' | 'updateStatus' | 'updateHash'
     >;
-    const requestStoreService = {
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'merge'>;
+    const activityLogDomain = {
+        stage: vi.fn<ActivityLogDomain['stage']>(),
+    } satisfies Pick<ActivityLogDomain, 'stage'>;
 
     const now = new Date('2026-01-01T12:00:00.000Z');
     const apiKey = {
@@ -102,7 +102,7 @@ describe('ApiKeyDomain', () => {
                 },
                 { provide: ApiKeyCache, useValue: apiKeyCacheService },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
-                { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
         service = moduleRef.get(ApiKeyDomain);

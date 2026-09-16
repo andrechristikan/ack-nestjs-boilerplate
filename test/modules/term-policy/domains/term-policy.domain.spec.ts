@@ -6,13 +6,13 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     type TermPolicyContent,
 } from '@generated/prisma-client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -49,9 +49,9 @@ describe('TermPolicyDomain', () => {
         sendPublishTermPolicy:
             vi.fn<NotificationQueue['sendPublishTermPolicy']>(),
     } satisfies Pick<NotificationQueue, 'sendPublishTermPolicy'>;
-    const requestStoreService = {
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'merge'>;
+    const activityLogDomain = {
+        stage: vi.fn<ActivityLogDomain['stage']>(),
+    } satisfies Pick<ActivityLogDomain, 'stage'>;
     const fileService = {
         extractFilenameFromPath:
             vi.fn<FileService['extractFilenameFromPath']>(),
@@ -100,7 +100,7 @@ describe('TermPolicyDomain', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: FileService, useValue: fileService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: UserDomain, useValue: userDomain },

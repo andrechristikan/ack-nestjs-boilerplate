@@ -1,8 +1,5 @@
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -74,7 +71,6 @@ export class WorkspaceInviteDomain {
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
@@ -269,9 +265,6 @@ export class WorkspaceInviteDomain {
     ): Promise<WorkspaceInvite> {
         await this.assertInvitationAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const hasProjectId = !!create.projectId;
         const hasProjectRole = !!create.projectRole;
         if (hasProjectId !== hasProjectRole) {
@@ -298,31 +291,27 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(create.expiryDuration);
 
-        const invite = await this.databaseService.client.$transaction(
-            async tx => {
-                const created =
-                    await this.workspaceInviteRepository.createPendingInTx(tx, {
-                        workspaceId: workspace.id,
-                        email: create.email,
-                        workspaceRole: create.workspaceRole,
-                        projectId: create.projectId,
-                        projectRole: create.projectRole,
-                        hashedToken: tokenData.hashedToken,
-                        reference: tokenData.reference,
-                        expiredAt: tokenData.expiredAt,
-                        invitedByUserId: actorId,
-                    });
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    actorId,
-                    EnumActivityLogAction.workspaceInviteCreated,
-                    requestLog,
-                    workspace.id
-                );
+        const invite = await this.databaseService.withTransaction(async tx => {
+            const created =
+                await this.workspaceInviteRepository.createPendingInTx(tx, {
+                    workspaceId: workspace.id,
+                    email: create.email,
+                    workspaceRole: create.workspaceRole,
+                    projectId: create.projectId,
+                    projectRole: create.projectRole,
+                    hashedToken: tokenData.hashedToken,
+                    reference: tokenData.reference,
+                    expiredAt: tokenData.expiredAt,
+                    invitedByUserId: actorId,
+                });
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceInviteCreated,
+                userId: actorId,
+                workspaceId: workspace.id,
+            });
 
-                return created;
-            }
-        );
+            return created;
+        });
 
         await this.sendInviteNotification(
             workspace,
@@ -380,9 +369,6 @@ export class WorkspaceInviteDomain {
     ): Promise<void> {
         await this.assertInvitationAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const existing =
             await this.workspaceInviteRepository.findByIdAndWorkspace(
                 workspaceInviteId,
@@ -394,19 +380,17 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteAlreadyProcessedException();
         }
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceInviteRepository.revokeInTx(
                 tx,
                 workspaceInviteId,
                 actorId
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.workspaceInviteRevoked,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceInviteRevoked,
+                userId: actorId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
@@ -448,9 +432,6 @@ export class WorkspaceInviteDomain {
     ): Promise<void> {
         await this.assertInvitationAllowed();
 
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const invite = await this.validateInviteToken(inviteToken);
         if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {
             throw new WorkspaceInviteInvalidException();
@@ -467,7 +448,7 @@ export class WorkspaceInviteDomain {
 
         const today = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
                 tx,
                 invite.workspaceId,
@@ -495,13 +476,11 @@ export class WorkspaceInviteDomain {
                     userId
                 );
             }
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.workspaceInviteAccepted,
-                requestLog,
-                invite.workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceInviteAccepted,
+                userId: userId,
+                workspaceId: invite.workspaceId,
+            });
         });
     }
 

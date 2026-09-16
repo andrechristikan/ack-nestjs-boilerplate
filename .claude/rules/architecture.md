@@ -20,7 +20,7 @@ its definition (`rules/nest-wiring.md`).
 - Injects `DatabaseService` directly as a class. No `@Inject`, no token — `DatabaseService` has exactly one implementation.
 - **Model access goes through `this.databaseService.client`, or through `tx` on an `*InTx` method.** `client` is the audited extended Prisma client, which stamps `createdBy` / `updatedBy` / `deletedBy` from the CLS request actor. Soft delete is `<client>.<model>.softDelete(...)`, restore is `<client>.<model>.restore(...)`. A method that runs inside a caller-owned transaction is named `*InTx` and takes `tx: IDatabaseTransactionClient` as its first parameter. A method that does not join one takes no `tx` and never reads one. See `rules/database.md`.
 - **It issues statements only against the model it owns.** Another model's row is reached through that model's repository, composed by a domain (`rules/cross-module.md`).
-- **The repository owns `null → {}` normalization** for filter params before they reach Prisma. Never in the caller. A service that spreads `filter ?? {}` into a repository call has taken over the repository's job.
+- **The repository owns `null → {}` normalization** for filter params before they reach Prisma. Never in the caller. A domain that spreads `filter ?? {}` into a repository call has taken over the repository's job.
 - Returns Prisma models or the module's `I<Module>*` interfaces. **It never returns a DTO** — a response shape belongs to one transport, and the repository answers to all of them.
 - **It MAY receive a request DTO.** Where the controller, the HTTP service and the domain all carry the same shape unchanged down to the write, that shape travels as the DTO rather than being retyped at every layer for no gain. What decides is whether anything in between DERIVES: the moment a layer merges, computes or validates the input into a different shape, that new shape is an `I<Module>*` interface, and it is the interface that reaches the repository. A repository parameter typed as a DTO says "nothing happened to this on the way down", and that has to be true.
 - **The signature says whether the method READS the DTO or FORWARDS it.** A method that reads individual fields destructures them in the parameter list (`{ name, description }: WorkspaceUpdateRequestDto`); a method that hands the shape on untouched — to a private sibling, or straight into the Prisma `data` — takes it whole as `dto`. A reader learns which fields a write actually touches from the signature alone, without opening the body.
@@ -29,7 +29,13 @@ its definition (`rules/nest-wiring.md`).
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
 - **A multi-step write on this repository's own model may open a transaction here** through `this.databaseService.withTransaction` (`rules/database.md`). A write that also touches another repository's model is not opened here; the domain composes those repositories inside `this.databaseService.withTransaction`.
 - **A repository never injects or calls another repository.** Same-feature siblings are composed by the domain.
-- **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at `interfaces/<module>[.<concern>].repository.interface.ts`. Callers inject the class (`UserRepository`); Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs. UUID and Prisma `where` shapes stay in this class, not in a domain signature.
+- **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at
+  `interfaces/<module>[.<concern>].repository.interface.ts`. The interface file and the
+  class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
+  Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
+  UUID and Prisma `where` shapes stay in this class, not in a domain signature. Public
+  repository methods return named `I*` shapes, Prisma models, or primitives — not `unknown`
+  or `Record<string, unknown>` (`rules/null-safety.md`).
 
 ## Domain — `<module>[.<concern>].domain.ts`
 
@@ -121,8 +127,8 @@ Three tiers. Everything in a tier is open to every tier below it, and the revers
 | **3 — feature** | a module under `src/modules/` without `@Global()` | its own layers; from ANOTHER module, its DOMAIN module and its exported queue class, injected by a domain, HTTP service, or processor service |
 
 - **Tier 2 is not a lesser tier 1.** A `@Global()` module is shared surface by construction, so its util and service reach a repository the same way `HelperDateService` does. `ActivityLogUtil` in sixteen repositories is correct, not a leak — the ban is on what a util INJECTS, not on who injects a util.
-- **A util never injects another module's util, `@Global()` or not.** Tier 2 widens who may reach a util; it does not widen what a util may reach. What one util needs from another module arrives as an argument from the service that called it.
-- **A tier 3 util never reaches ANOTHER module's repository.** It is injected by that module's services, and whatever it built arrives at the repository as a parameter. A util that genuinely belongs in several modules' repositories belongs in tier 1 or tier 2 — move it, do not widen the rule.
+- **A util never injects another module's util, `@Global()` or not.** Tier 2 widens who may reach a util; it does not widen what a util may reach. What one util needs from another module arrives as an argument from the domain (or HTTP / processor service) that called it.
+- **A tier 3 util never reaches ANOTHER module's repository.** It is injected by that module's domain and services, and whatever it built arrives at the repository as a parameter. A util that genuinely belongs in several modules' repositories belongs in tier 1 or tier 2 — move it, do not widen the rule.
 - **A tier 3 util does not reach ANY repository, its own included.** Utils live beside the domain classes in `<feature>.domain.module.ts`, and `<feature>.repository.module.ts` imports nothing (`rules/nest-wiring.md`).
 - **A tier 3 repository is not reachable across modules at all.** `<Feature>RepositoryModule` stops at its own feature and the domain is the crossing point (`rules/cross-module.md`); that is a separate question from this table, which governs UTILS, DOMAINS, and SERVICES.
 - **`src/common/` MUST NOT import a util, service, or repository from `src/modules/`.** Composition wiring in `common.module.ts` and compile-time enums are the only crossings (`rules/common.md`). A shared module that knows one feature's internals is no longer shared.

@@ -11,6 +11,7 @@ import {
     EnumUserStatus,
     type Policy,
 } from '@generated/prisma-client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyPredefinedNotFoundException } from '@modules/policy/exceptions/policy.predefined-not-found.exception';
@@ -88,6 +89,7 @@ describe('PolicyDomain', () => {
     const policyRepository = createMock<PolicyRepository>();
     const policyAbilityFactory = new PolicyAbilityFactory();
     const roleDomain = createMock<RoleDomain>();
+    const activityLogDomain = createMock<ActivityLogDomain>();
 
     let service: PolicyDomain;
 
@@ -95,7 +97,8 @@ describe('PolicyDomain', () => {
         service = new PolicyDomain(
             policyAbilityFactory,
             policyRepository,
-            roleDomain
+            roleDomain,
+            activityLogDomain
         );
     });
 

@@ -10,11 +10,16 @@ import {
     IActivityLog,
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import {
-    ActivityLog,
-    EnumActivityLogAction,
-    Prisma,
-} from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+
+export interface IActivityLogCreateManyRow {
+    userId: string;
+    workspaceId: string | null;
+    action: EnumActivityLogAction;
+    description: string;
+    requestLog: IRequestLog;
+    metadata: IActivityLogMetadata;
+}
 
 export interface IActivityLogRepository {
     findUserScopedWithPaginationOffset(
@@ -47,20 +52,8 @@ export interface IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    create(
-        userId: string,
-        action: EnumActivityLogAction,
-        description: string,
-        requestLog: IRequestLog,
-        metadata?: IActivityLogMetadata
-    ): Promise<ActivityLog>;
-    createInTx(
+    createManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        action: EnumActivityLogAction,
-        description: string,
-        requestLog: IRequestLog,
-        metadata: IActivityLogMetadata | undefined,
-        workspaceId: string | null
-    ): Promise<ActivityLog>;
+        rows: IActivityLogCreateManyRow[]
+    ): Promise<Prisma.BatchPayload>;
 }

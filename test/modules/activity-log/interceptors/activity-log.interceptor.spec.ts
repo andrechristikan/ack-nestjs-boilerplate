@@ -1,57 +1,36 @@
 import { createMock } from '@golevelup/ts-vitest';
-import { Test, type TestingModule } from '@nestjs/testing';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { lastValueFrom, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EnumActivityLogAction } from '@generated/prisma-client';
-import { ActivityLogActionMetaKey } from '@modules/activity-log/constants/activity-log.constant';
-import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import { ActivityLogInterceptor } from '@modules/activity-log/interceptors/activity-log.interceptor';
 
 describe('ActivityLogInterceptor', () => {
-    const reflector = {
-        get: vi.fn<Reflector['get']>(),
-    } satisfies Pick<Reflector, 'get'>;
-    const activityLogService = {
-        create: vi.fn<ActivityLogDomain['create']>(),
-    } satisfies Pick<ActivityLogDomain, 'create'>;
+    const activityLogDomain = createMock<ActivityLogDomain>();
     const request = {
         user: {
             userId: 'user-id',
         },
     };
-    const handler = () => undefined;
 
     let interceptor: ActivityLogInterceptor;
     let context: ExecutionContext;
 
-    beforeEach(async () => {
+    beforeEach(() => {
         vi.resetAllMocks();
-        reflector.get.mockReturnValue(EnumActivityLogAction.userUpdateProfile);
-        activityLogService.create.mockResolvedValue(undefined);
+        activityLogDomain.flushStaged.mockResolvedValue(undefined);
         context = createMock<ExecutionContext>({
             getType: () => 'http',
-            getHandler: () => handler,
             switchToHttp: () =>
                 createMock<ReturnType<ExecutionContext['switchToHttp']>>({
                     getRequest: () => request,
                 }),
         });
-
-        const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                ActivityLogInterceptor,
-                { provide: Reflector, useValue: reflector },
-                { provide: ActivityLogDomain, useValue: activityLogService },
-            ],
-        }).compile();
-
-        interceptor = moduleRef.get(ActivityLogInterceptor);
+        interceptor = new ActivityLogInterceptor(activityLogDomain);
     });
 
-    it('triggers the configured activity log action on successful HTTP responses', async () => {
+    it('flushes all staged events after a successful HTTP response', async () => {
         const next = {
             handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
         } satisfies CallHandler;
@@ -59,18 +38,13 @@ describe('ActivityLogInterceptor', () => {
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
         ).resolves.toBe('ok');
-        expect(reflector.get).toHaveBeenCalledWith(
-            ActivityLogActionMetaKey,
-            handler
-        );
-        expect(activityLogService.create).toHaveBeenCalledWith(
-            'user-id',
-            EnumActivityLogAction.userUpdateProfile,
-            null
-        );
+        expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            payloadUserId: 'user-id',
+            isError: false,
+        });
     });
 
-    it('triggers the configured activity log action and rethrows handler errors', async () => {
+    it('flushes error-enabled events and rethrows the handler error', async () => {
         const error = new Error('failed');
         const next = {
             handle: vi
@@ -81,16 +55,15 @@ describe('ActivityLogInterceptor', () => {
         await expect(
             lastValueFrom(interceptor.intercept(context, next))
         ).rejects.toBe(error);
-        expect(activityLogService.create).toHaveBeenCalledWith(
-            'user-id',
-            EnumActivityLogAction.userUpdateProfile,
-            error
-        );
+        expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            payloadUserId: 'user-id',
+            isError: true,
+        });
     });
 
-    it('skips logging when the request has no authenticated user', async () => {
+    it('flushes anonymous HTTP requests with a null payload user', async () => {
         context = createMock<ExecutionContext>({
-            getHandler: () => handler,
+            getType: () => 'http',
             switchToHttp: () =>
                 createMock<ReturnType<ExecutionContext['switchToHttp']>>({
                     getRequest: () => ({ user: null }),
@@ -102,10 +75,38 @@ describe('ActivityLogInterceptor', () => {
 
         await lastValueFrom(interceptor.intercept(context, next));
 
-        expect(activityLogService.create).not.toHaveBeenCalled();
+        expect(activityLogDomain.flushStaged).toHaveBeenCalledWith({
+            payloadUserId: null,
+            isError: false,
+        });
     });
 
-    it('passes through non-http contexts without reading activity metadata', async () => {
+    it('preserves a successful response when flushing fails', async () => {
+        activityLogDomain.flushStaged.mockRejectedValue(new Error('db down'));
+        const next = {
+            handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
+        } satisfies CallHandler;
+
+        await expect(
+            lastValueFrom(interceptor.intercept(context, next))
+        ).resolves.toBe('ok');
+    });
+
+    it('preserves the handler error when its error flush fails', async () => {
+        const error = new Error('handler failed');
+        activityLogDomain.flushStaged.mockRejectedValue(new Error('db down'));
+        const next = {
+            handle: vi
+                .fn<CallHandler['handle']>()
+                .mockReturnValue(throwError(() => error)),
+        } satisfies CallHandler;
+
+        await expect(
+            lastValueFrom(interceptor.intercept(context, next))
+        ).rejects.toBe(error);
+    });
+
+    it('passes through non-http contexts without flushing staged events', async () => {
         const rpcContext = createMock<ExecutionContext>({
             getType: () => 'rpc',
         });
@@ -113,9 +114,10 @@ describe('ActivityLogInterceptor', () => {
             handle: vi.fn<CallHandler['handle']>().mockReturnValue(of('ok')),
         } satisfies CallHandler;
 
-        await lastValueFrom(interceptor.intercept(rpcContext, next));
-
+        await expect(
+            lastValueFrom(interceptor.intercept(rpcContext, next))
+        ).resolves.toBe('ok');
         expect(rpcContext.switchToHttp).not.toHaveBeenCalled();
-        expect(reflector.get).not.toHaveBeenCalled();
+        expect(activityLogDomain.flushStaged).not.toHaveBeenCalled();
     });
 });

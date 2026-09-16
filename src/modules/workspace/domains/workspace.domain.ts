@@ -2,9 +2,6 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -83,7 +80,6 @@ export class WorkspaceDomain {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly featureFlagDomain: FeatureFlagDomain
@@ -225,10 +221,9 @@ export class WorkspaceDomain {
     async commitOnboarding(
         inputs: IUserCreateWithWorkspaceInput[],
         mode: EnumUserCreateMode,
-        timeoutInMs: number
+        timeoutInMs: number,
+        adminPayloadAction?: EnumActivityLogAction
     ): Promise<IUser[]> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const slugAttemptCount = inputs.reduce((min, input) => {
             if (
                 input.workspaceContext.type !==
@@ -245,14 +240,14 @@ export class WorkspaceDomain {
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.databaseService.client.$transaction(
+                const onboarded = await this.databaseService.withTransaction(
                     async tx => {
                         const users =
                             await this.userOnboardingDomain.createManyInTx(
                                 tx,
                                 inputs
                             );
-                        const onboarded: IUser[] = [];
+                        const rows: IUser[] = [];
 
                         for (const [index, input] of inputs.entries()) {
                             if (input.password && input.passwordHistoryType) {
@@ -287,7 +282,7 @@ export class WorkspaceDomain {
                                     input.userId,
                                     input.createdBy
                                 );
-                            onboarded.push({ ...users[index], twoFactor });
+                            rows.push({ ...users[index], twoFactor });
                         }
 
                         await this.createOwnedForUsersInTx(
@@ -313,25 +308,20 @@ export class WorkspaceDomain {
                                 input.acceptedTermPolicyTypes,
                                 input.createdBy
                             );
-
-                            for (const activity of this.userOnboardingDomain.buildOnboardingActivities(
-                                mode,
-                                input.workspaceContext
-                            )) {
-                                await this.activityLogDomain.recordInTx(
-                                    tx,
-                                    input.createdBy,
-                                    activity.action,
-                                    requestLog,
-                                    activity.workspaceId
-                                );
-                            }
                         }
 
-                        return onboarded;
+                        return rows;
                     },
                     { timeout: timeoutInMs }
                 );
+
+                this.stageOnboardingActivities(
+                    inputs,
+                    mode,
+                    adminPayloadAction
+                );
+
+                return onboarded;
             } catch (error: unknown) {
                 if (this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     continue;
@@ -344,13 +334,52 @@ export class WorkspaceDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
+    private stageOnboardingActivities(
+        inputs: IUserCreateWithWorkspaceInput[],
+        mode: EnumUserCreateMode,
+        adminPayloadAction?: EnumActivityLogAction
+    ): void {
+        if (adminPayloadAction) {
+            this.activityLogDomain.stage({
+                action: adminPayloadAction,
+            });
+        }
+
+        for (const input of inputs) {
+            for (const activity of this.userOnboardingDomain.buildOnboardingActivities(
+                mode,
+                input.workspaceContext
+            )) {
+                const isSubjectUserAction =
+                    activity.action === EnumActivityLogAction.userSignedUp ||
+                    activity.action === EnumActivityLogAction.userCreated ||
+                    activity.action ===
+                        EnumActivityLogAction.userSendVerificationEmail;
+
+                if (activity.workspaceId) {
+                    this.activityLogDomain.stage({
+                        action: activity.action,
+                        userId: isSubjectUserAction
+                            ? input.userId
+                            : input.createdBy,
+                        workspaceId: activity.workspaceId,
+                    });
+                } else {
+                    this.activityLogDomain.stage({
+                        action: activity.action,
+                        userId: isSubjectUserAction
+                            ? input.userId
+                            : input.createdBy,
+                    });
+                }
+            }
+        }
+    }
+
     async createWorkspace(
         userId: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const ownedCount =
             await this.workspaceMemberRepository.countOwnedActiveByUser(userId);
         if (ownedCount >= this.maxWorkspacesPerUser) {
@@ -363,26 +392,22 @@ export class WorkspaceDomain {
             const workspaceId = this.databaseUtil.createId();
 
             try {
-                return await this.databaseService.client.$transaction(
-                    async tx => {
-                        const workspace = await this.createInTx(
-                            tx,
-                            userId,
-                            create,
-                            slug,
-                            workspaceId
-                        );
-                        await this.activityLogDomain.recordInTx(
-                            tx,
-                            userId,
-                            EnumActivityLogAction.workspaceCreated,
-                            requestLog,
-                            workspace.id
-                        );
+                return await this.databaseService.withTransaction(async tx => {
+                    const workspace = await this.createInTx(
+                        tx,
+                        userId,
+                        create,
+                        slug,
+                        workspaceId
+                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.workspaceCreated,
+                        userId: userId,
+                        workspaceId: workspace.id,
+                    });
 
-                        return workspace;
-                    }
-                );
+                    return workspace;
+                });
             } catch (error: unknown) {
                 if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     throw error;
@@ -402,23 +427,18 @@ export class WorkspaceDomain {
         actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row = await this.workspaceRepository.updateDetailsInTx(
                 tx,
                 workspaceId,
                 actorId,
                 update
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.workspaceUpdated,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: actorId,
+                workspaceId: workspaceId,
+            });
 
             return row;
         });
@@ -429,23 +449,18 @@ export class WorkspaceDomain {
         actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row = await this.workspaceRepository.updateIsPublicInTx(
                 tx,
                 workspaceId,
                 actorId,
                 isPublic
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.workspaceVisibilityUpdated,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                userId: actorId,
+                workspaceId: workspaceId,
+            });
 
             return row;
         });
@@ -456,9 +471,6 @@ export class WorkspaceDomain {
         actorId: string,
         slug: string
     ): Promise<Workspace> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         this.assertSlugAllowed(slug);
 
         const slugTaken = await this.workspaceRepository.existsBySlug(
@@ -469,44 +481,37 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugAlreadyExistsException();
         }
 
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row = await this.workspaceRepository.updateSlugInTx(
                 tx,
                 workspaceId,
                 actorId,
                 slug
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.workspaceUpdated,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: actorId,
+                workspaceId: workspaceId,
+            });
 
             return row;
         });
     }
 
     async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         await this.validateWorkspaceGuard(workspaceId);
         await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
             workspaceId,
             userId
         );
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userDomain.setLastWorkspaceInTx(tx, userId, workspaceId);
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.workspaceSwitched,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceSwitched,
+                userId: userId,
+                workspaceId: workspaceId,
+            });
         });
     }
 
@@ -514,11 +519,9 @@ export class WorkspaceDomain {
         workspaceId: string,
         actorId: string
     ): Promise<void> {
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
         const deletedAt = this.helperDateService.create();
 
-        await this.databaseService.client.$transaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.workspaceRepository.softDeleteInTx(
                 tx,
                 workspaceId,
@@ -541,13 +544,11 @@ export class WorkspaceDomain {
                 workspaceId,
                 actorId
             );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                actorId,
-                EnumActivityLogAction.workspaceDeleted,
-                requestLog,
-                workspaceId
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: actorId,
+                workspaceId: workspaceId,
+            });
         });
     }
 

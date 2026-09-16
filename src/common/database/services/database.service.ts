@@ -53,9 +53,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
      * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client.
      */
     async withTransaction<T>(
-        fn: (tx: IDatabaseTransactionClient) => Promise<T>
+        fn: (tx: IDatabaseTransactionClient) => Promise<T>,
+        options?: {
+            maxWait?: number;
+            timeout?: number;
+        }
     ): Promise<T> {
-        return this.client.$transaction(async tx => fn(tx));
+        return this.client.$transaction(async tx => fn(tx), options);
     }
 
     /**

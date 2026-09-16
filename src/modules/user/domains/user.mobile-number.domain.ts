@@ -1,9 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumActivityLogAction } from '@generated/prisma-client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -27,17 +24,13 @@ export class UserMobileNumberDomain {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly countryDomain: CountryDomain,
-        private readonly userUtil: UserUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly userUtil: UserUtil
     ) {}
 
     async addMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const country = await this.countryDomain.getOne(countryId);
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
@@ -55,7 +48,7 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            return await this.databaseService.client.$transaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const row = await this.userMobileNumberRepository.addInTx(
                     tx,
                     userId,
@@ -66,13 +59,9 @@ export class UserMobileNumberDomain {
                     }
                 );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userAddMobileNumber,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userAddMobileNumber,
+                });
 
                 return row;
             });
@@ -90,9 +79,6 @@ export class UserMobileNumberDomain {
         mobileNumberId: string,
         { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const [checkMobileNumberExist, country] = await Promise.all([
             this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
@@ -129,7 +115,7 @@ export class UserMobileNumberDomain {
                 : false;
 
         try {
-            return await this.databaseService.client.$transaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const row = await this.userMobileNumberRepository.updateInTx(
                     tx,
                     userId,
@@ -142,13 +128,9 @@ export class UserMobileNumberDomain {
                     isVerified
                 );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userUpdateMobileNumber,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userUpdateMobileNumber,
+                });
 
                 return row;
             });
@@ -165,9 +147,6 @@ export class UserMobileNumberDomain {
         userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         const checkExist =
             await this.userMobileNumberRepository.findOneMobileNumber(
                 userId,
@@ -178,19 +157,15 @@ export class UserMobileNumberDomain {
         }
 
         try {
-            return await this.databaseService.client.$transaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const row = await this.userMobileNumberRepository.deleteInTx(
                     tx,
                     mobileNumberId
                 );
                 await this.userDomain.touchUpdatedByInTx(tx, userId);
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userDeleteMobileNumber,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userDeleteMobileNumber,
+                });
 
                 return row;
             });

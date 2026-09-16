@@ -4,12 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     type TermPolicyContent,
 } from '@generated/prisma-client';
+import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -39,9 +39,9 @@ describe('TermPolicyContentDomain', () => {
         TermPolicyUtil,
         'getContentByLanguage' | 'mapActivityLogMetadata'
     >;
-    const requestStoreService = {
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'merge'>;
+    const activityLogDomain = {
+        stage: vi.fn<ActivityLogDomain['stage']>(),
+    } satisfies Pick<ActivityLogDomain, 'stage'>;
     const now = new Date('2026-01-01T00:00:00.000Z');
     const content = {
         id: 'content-id',
@@ -82,7 +82,7 @@ describe('TermPolicyContentDomain', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: TermPolicyUtil, useValue: termPolicyUtil },
-                { provide: RequestStoreService, useValue: requestStoreService },
+                { provide: ActivityLogDomain, useValue: activityLogDomain },
             ],
         }).compile();
         service = moduleRef.get(TermPolicyContentDomain);

@@ -4,7 +4,7 @@ This documentation explains the features and usage of **Database Module**: Locat
 
 ## Overview
 
-This documentation explains the database architecture and features in ACK NestJS Boilerplate:
+Prisma + PostgreSQL, transactions, seeds, and the Database Module.
 
 ## Related Documents
 
@@ -87,8 +87,6 @@ Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed comm
 
 ### Database Seeds
 
-ACK NestJS Boilerplate provides ready-to-use seed scripts to help you quickly initialize or remove data for development and testing. Database seeding is used to populate the database with initial or test data, making development and testing easier.
-
 **Seed Data Location:**
 - All seed data is stored in `src/migration/data/*`.
 
@@ -147,7 +145,7 @@ The term policy template seed uploads each policy document to S3 and writes it o
 
 **How to Run Term Policy Template Seeds:**
 - Seed: `pnpm migration template-termPolicy --type seed`
-- Remove: `pnpm migration template-termPolicy --type remove` *(no-op — term policy removal is intentionally skipped)*
+- Remove: `pnpm migration template-termPolicy --type remove` *(no-op; term policy removal is intentionally skipped)*
 
 
 ### AWS S3 Configuration Seed
@@ -213,7 +211,7 @@ Two API keys are created for authentication and service access. They are seeded 
 | Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
 | Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
 
-The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyCredentialService.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
+The seed data in `migration.api-key.data.ts` holds the bare random part; `ApiKeyCredentialUtil.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above. The seed is an `upsert` keyed on the prefixed key, which is what makes re-running it safe.
 
 **API Key Prefix Convention:**
 
@@ -229,7 +227,7 @@ All generated API keys automatically include an environment prefix to help ident
 - `staging_ghi789rst` - API key for staging environment
 - `production_jkl012mno` - API key for production environment
 
-This prefix is automatically added based on the `APP_ENV` environment variable when creating new API keys, ensuring easy identification and preventing accidental cross-environment usage.
+This prefix is added from `APP_ENV` when a new API key is created, so a key from one env is obvious in another.
 
 ### Roles
 
@@ -326,7 +324,7 @@ model Session {
 - `Session.geoLocation` — location at login time
 - `ActivityLog.geoLocation` — location when the action was performed
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -361,7 +359,7 @@ model Session {
 
 `RequestUtil.parseUserAgent(raw)` builds the composite from the `ua-parser-js` result: each field falls back to `null`, and a sub-type whose every field came back `null` is stored as `null` rather than as an object of nulls.
 
-Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature services read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
+Resolved once per request into the request store (`RequestLogStoreKey`, as part of `IRequestLog`). Feature domains read it from the store and pass `IRequestLog` to their repositories as the last method parameter; the repository persists the columns. See [Security and Middleware Documentation][ref-doc-security-and-middleware] for details.
 
 ---
 
@@ -520,8 +518,8 @@ What that means for callers:
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
 - A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, `$queryRaw`, and `$executeRaw` all work on `client`.
 - `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes, must branch on an intermediate result, or spans more than one repository. Both run on `client`, so audit stamping still fires inside them. In the callback form every statement uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
-- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own. Another model's row is reached through that model's repository, composed by a domain service. `ActivityLog` is written by `ActivityLogRepository.create` and `createInTx`. Feature services record a log inside a caller-owned transaction through `ActivityLogDomain.recordInTx`.
-- When a write spans more than one repository, the domain service calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. The constraint when changing this: `rules/database.md`.
+- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`DeviceOwnershipRepository` owns `DeviceOwnership` and `Device`). Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written by `ActivityLogRepository.create` and `createInTx`. Feature domains record a log inside a caller-owned transaction through `ActivityLogDomain.recordInTx`.
+- When a write spans more than one repository, the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not). The constraint when changing this: `rules/database.md`.
 - The PostgreSQL health check lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$queryRaw\`SELECT 1\``. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
@@ -537,9 +535,9 @@ For a caller this means a nested write needs no hand-written `createdBy` / `upda
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceService.softDeleteWorkspace` opens the `$transaction` that also soft-deletes still-active projects (`ProjectService.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and records `workspaceDeleted` through `ActivityLogService.recordInTx`.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceDomain.softDeleteWorkspace` opens `withTransaction` that also soft-deletes still-active projects (`ProjectDomain.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and records `workspaceDeleted` through `ActivityLogDomain.recordInTx`.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserService.deleteSelf` revokes the live sessions, then opens a `$transaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`) and `ActivityLogService.recordInTx` (`userDeleteSelf`).
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserDomain.deleteSelf` revokes the live sessions, then opens a `withTransaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`) and `ActivityLogDomain.recordInTx` (`userDeleteSelf`).
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
@@ -559,15 +557,15 @@ The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: t
 
 | Candidate source | Consumer | Retry unit |
 |---|---|---|
-| `WorkspaceService.drawSlugCandidates()` | `WorkspaceService.createWorkspace` | the `$transaction`: `createInTx` (workspace plus owner membership) and `recordInTx` |
-| `ProjectService.drawSlugCandidates()` | `ProjectService.createProject` | the `$transaction`: `ProjectRepository.createInTx` and `recordInTx` |
-| `UserOnboardingService.buildPersonalWorkspaceContexts()` | `WorkspaceService.commitOnboarding` | the whole onboarding `$transaction` |
+| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) and `recordInTx` |
+| `ProjectDomain.drawSlugCandidates()` | `ProjectDomain.createProject` | the `withTransaction`: `ProjectRepository.createInTx` and `recordInTx` |
+| `UserOnboardingDomain.buildPersonalWorkspaceContexts()` | `WorkspaceDomain.commitOnboarding` | the whole onboarding `withTransaction` |
 
 Three rules hold across all of them:
 
 - **A `P2002` on a value the repository did not draw is rethrown untouched.** `isUniqueCollision` is asked about the generated column by name, so a violation on a client-supplied field stays the caller's error. Onboarding translates the two it owns through `UserOnboardingUtil.mapCreateCollision`, turning a `username` collision into `UserUsernameExistException` and an `email` collision into `UserEmailExistException`.
 - **The candidate list is an argument, never a client field.** `WorkspaceCreateRequestDto` and `ProjectCreateRequestDto` carry no slug, and the personal-workspace sign-up context carries `slugCandidates: string[]` that the onboarding repository indexes by attempt number.
-- **A batch retries as a batch.** `WorkspaceService.commitOnboarding` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `$transaction`, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
+- **A batch retries as a batch.** `WorkspaceDomain.commitOnboarding` substitutes the same candidate index into every personal workspace in the batch and re-runs the whole `withTransaction`, so its attempt budget is the smallest candidate list in the batch. Admin CSV import is the caller that uses it.
 
 ## Docker
 
@@ -599,16 +597,16 @@ These commands execute directly in the running Docker container without needing 
 
 ### **Prisma ORM**
 
-ACK NestJS Boilerplate uses **[Prisma][ref-prisma] v6.19.x** as the primary database toolkit. Prisma is not just an ORM - it's a complete database toolkit that provides the foundation for implementing clean architecture patterns.
+The database client is **[Prisma][ref-prisma] v6.19.x**.
 
 ### **Why Prisma for Repository Design Pattern?**
 
-Prisma perfectly enables **Repository Design Pattern** implementation:
+Repositories talk to Prisma:
 
-- **Type-Safe Repository Layer**: Auto-generated TypeScript types ensure compile-time validation throughout repositories
-- **Clean Architecture**: PrismaClient provides foundation for clean separation between database and business logic  
-- **Easy Implementation**: Consistent query API and transaction support simplify repository development
-- **Database Isolated**: Prisma and the repository layer isolate database-specific code from services and controllers
+- Generated TypeScript types on repository queries
+- `PrismaClient` is the database boundary
+- Shared query API and transactions
+- `prisma/schema.prisma` uses `provider = "postgresql"`; schema changes use Prisma Migrate
 
 ### PostgreSQL Design
 

@@ -9,9 +9,6 @@ import {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -26,8 +23,6 @@ import {
     Prisma,
     User,
 } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -86,7 +81,6 @@ export class UserDomain {
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService
     ) {}
@@ -370,9 +364,6 @@ export class UserDomain {
         status: EnumUserStatus,
         updatedBy: string
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (userId === updatedBy) {
             throw new UserNotSelfException();
         }
@@ -390,31 +381,27 @@ export class UserDomain {
                 : EnumActivityLogAction.userUpdateStatus;
 
         try {
-            const updated = await this.databaseService.client.$transaction(
+            const updated = await this.databaseService.withTransaction(
                 async tx => {
-                    const row =
-                        await this.userRepository.updateStatusByAdminInTx(
-                            tx,
-                            userId,
-                            { status },
-                            updatedBy
-                        );
-                    await this.activityLogDomain.recordInTx(
+                    return this.userRepository.updateStatusByAdminInTx(
                         tx,
-                        updatedBy,
-                        action,
-                        requestLog,
-                        null
+                        userId,
+                        { status },
+                        updatedBy
                     );
-
-                    return row;
                 }
             );
 
-            this.requestStoreService.merge<IActivityLogMetadata>(
-                ActivityLogMetadataStoreKey,
-                this.userUtil.mapActivityLogMetadata(updated)
-            );
+            const metadata = this.userUtil.mapActivityLogMetadata(updated);
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.adminUserUpdateStatus,
+                metadata,
+            });
+            this.activityLogDomain.stage({
+                action,
+                userId,
+                metadata,
+            });
 
             return;
         } catch (err: unknown) {
@@ -453,21 +440,14 @@ export class UserDomain {
     }
 
     async deleteSelf(userId: string): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         try {
             await this.userLoginDomain.revokeAllSessions(userId);
             const deletedAt = this.helperDateService.create();
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.deleteSelfInTx(tx, userId, deletedAt);
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    userId,
-                    EnumActivityLogAction.userDeleteSelf,
-                    requestLog,
-                    null
-                );
+            });
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userDeleteSelf,
             });
 
             return;

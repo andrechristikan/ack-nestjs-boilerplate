@@ -26,7 +26,7 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 - [Schema Shape](#schema-shape)
 - [Composing Schemas](#composing-schemas)
 - [Shared Validations](#shared-validations)
-- [Validation Pipes](#validation-pipes)
+- [File Validation Pipes](#file-validation-pipes)
 - [CSV Import Validation](#csv-import-validation)
 - [Environment Variables](#environment-variables)
 - [Error Message Mapping](#error-message-mapping)
@@ -111,7 +111,7 @@ Each request schema lives in `<module>/dtos/request/` and exports the `<Module><
 
 ### Path Parameters Validation
 
-A path param is validated by a schema on the param binding:
+A path param is validated by a zod schema bound on `@Param`, the same way a body uses `@Body({ schema })`:
 
 ```typescript
 @Get('/get/:user')
@@ -201,7 +201,7 @@ export const UserChangePasswordRequestSchema =
 
 ## Shared Validations
 
-Checks too detailed for a chained method live as plain functions in `src/common/request/validations/` and are called from `.superRefine()`.
+Checks too detailed for a chained method live as plain functions or shared zod schemas in `src/common/request/validations/` and are called from `.superRefine()` or bound on `@Param` / `@Query`.
 
 **`validateEmail`** (`request.custom-email.validation.ts`) walks an address part by part (`@` count, domain length, domain labels, TLD, local part) and returns the i18n path of the first rule it fails, so the client is told which rule broke rather than that the address is invalid:
 
@@ -224,12 +224,10 @@ email: z
 
 A module-specific check goes in that module's `validations/` folder instead.
 
-## Validation Pipes
+Shared param schemas:
 
-Pipes validate a single param, body field, or query value. A multi-field payload uses a schema.
-
-**RequestUuidSchema**
-Validates UUID path and query parameters:
+- `RequestUuidSchema` — UUID path and query parameters
+- `RequestRequiredStringSchema` — non-empty string
 
 ```typescript
 @Get(':userId')
@@ -238,12 +236,13 @@ findOne(@Param('userId', { schema: RequestUuidSchema }) userId: string) {
 }
 ```
 
-**File validation pipes**
-`FileExtensionPipe` validates the upload extension. See [File Upload][ref-doc-file-upload].
+## File Validation Pipes
+
+Upload routes use file pipes from `src/common/file/pipes/`, not request param pipes. `FileRequiredPipe()` throws `FileRequiredException` when the upload is missing. `FileExtensionPipe` validates the extension. See [File Upload][ref-doc-file-upload].
 
 ## CSV Import Validation
 
-A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
+A CSV import composes pipes in order: `FileRequiredPipe()`, `FileExtensionPipe`, `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
 
 ```typescript
 @UploadedFile(

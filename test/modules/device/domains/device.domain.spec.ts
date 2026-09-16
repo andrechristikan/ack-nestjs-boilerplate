@@ -3,13 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client';
@@ -54,21 +53,9 @@ describe('DeviceDomain', () => {
         'deleteLoginsByDeviceOwnership' | 'revokeByDeviceOwnershipInTx'
     >;
     const activityLogDomain = createMock<ActivityLogDomain>();
-    const requestStoreGet = vi.fn((_key: string): unknown => null);
-    const requestStoreService = {
-        get<T>(key: string): T | null {
-            return requestStoreGet(key) as T | null;
-        },
-        merge: vi.fn<RequestStoreService['merge']>(),
-    } satisfies Pick<RequestStoreService, 'get' | 'merge'>;
     const databaseService = createDatabaseServiceMock();
     const helperDateService = createMock<HelperDateService>();
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const requestLog = {
-        userAgent: { ua: 'browser' },
-        ipAddress: '127.0.0.1',
-        geoLocation: null,
-    };
     const ownership = {
         id: 'ownership-id',
         deviceId: 'device-id',
@@ -119,7 +106,6 @@ describe('DeviceDomain', () => {
     beforeEach(async () => {
         vi.resetAllMocks();
         mockDatabaseServiceTransaction(databaseService);
-        requestStoreGet.mockReturnValue(requestLog);
         helperDateService.create.mockReturnValue(now);
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -133,7 +119,6 @@ describe('DeviceDomain', () => {
                 { provide: ActivityLogDomain, useValue: activityLogDomain },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
         service = moduleRef.get(DeviceDomain);
@@ -181,7 +166,9 @@ describe('DeviceDomain', () => {
         await expect(
             service.refresh('user-id', ownership.id, update)
         ).resolves.toBeUndefined();
-        expect(requestStoreGet).toHaveBeenCalledWith(RequestLogStoreKey);
+        expect(activityLogDomain.stage).toHaveBeenCalledWith({
+            action: EnumActivityLogAction.userDeviceRefresh,
+        });
         expect(deviceOwnershipRepository.refreshInTx).toHaveBeenCalledWith(
             expect.any(Object),
             'user-id',
@@ -240,6 +227,22 @@ describe('DeviceDomain', () => {
             'admin-id',
             expect.any(Date)
         );
-        expect(requestStoreService.merge).toHaveBeenCalled();
+        const metadata = {
+            deviceOwnershipId: ownership.id,
+            deviceId: ownership.device.id,
+            userId: ownership.userId,
+            userUsername: ownership.user.username,
+            timestamp: ownership.updatedAt,
+            sessionCount: ownership._count.sessions,
+        };
+        expect(activityLogDomain.stage).toHaveBeenNthCalledWith(1, {
+            action: EnumActivityLogAction.adminDeviceRemove,
+            metadata,
+        });
+        expect(activityLogDomain.stage).toHaveBeenNthCalledWith(2, {
+            action: EnumActivityLogAction.userRemoveDevice,
+            userId: 'user-id',
+            metadata,
+        });
     });
 });

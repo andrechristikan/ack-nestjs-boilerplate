@@ -7,16 +7,15 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-This document provides a comprehensive overview of authentication and session management in the ACK NestJS Boilerplate. 
+Credential login, JWT access/refresh (ES256/ES512), Redis plus Mongo sessions, Google/Apple social login, and API keys.
 
-It covers:
-- **Password**: Passwords are securely hashed (bcrypt), have configurable expiration and rotation, login attempt limits, history tracking, and support for reset/change/temporary password with session invalidation.
-- **JWT Authentication**: Stateless authentication using access and refresh tokens with ES256/ES512 algorithms, configurable expiration, and security mechanisms such as JWT ID (jti) validation for session tracking.
-- **Session Management**: Dual storage strategy using Redis for high-performance validation and automatic expiration, and database for session listing, management, and audit trail. Sessions are validated on every API request via jti matching and can be revoked instantly.
-- **Social Authentication**: Integration with Google OAuth 2.0 and Apple Sign In, allowing users to authenticate using third-party providers. The backend validates OAuth tokens and manages sessions similarly to credential-based authentication.
-- **API Key Authentication**: Stateless authentication for machine-to-machine and system integrations, supporting both default and system API keys with caching for performance.
+- **Password:** bcrypt hash, expiration, rotation, attempt limits, history, and reset/change/temporary-password flows that invalidate sessions.
+- **JWT:** access and refresh tokens, `jti` checked against the session on each request.
+- **Session:** Redis for validation and TTL; database for listing, management, and history. A missing or mismatched Redis `jti` rejects the request.
+- **Social:** Google OAuth 2.0 and Apple Sign In. The backend verifies the provider token, then follows the same session path as credential login.
+- **API key:** default and system keys, checked against the database and cache.
 
-Configuration for tokens, password, two-factor, social providers, and API keys is managed in `src/configs/auth.config.ts`. The Redis session key pattern lives in `src/configs/session.config.ts`.
+Configuration for tokens, password, two-factor, social providers, and API keys is in `src/configs/auth.config.ts`. The Redis session key pattern is in `src/configs/session.config.ts`.
 
 ## Related Documents
 
@@ -27,7 +26,7 @@ Configuration for tokens, password, two-factor, social providers, and API keys i
 - [Workspace Documentation][ref-doc-workspace] - For what an authenticated request is scoped to, and for sign-up carrying an invite token
 - [Project Documentation][ref-doc-project] - For project scoping inside a workspace
 
-This document covers authentication only - proving who the caller is. What an authenticated caller is then allowed to reach is [Authorization][ref-doc-authorization], and the workspace or project a request is scoped to is [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
+This document covers authentication only: proving who the caller is. What an authenticated caller is then allowed to reach is [Authorization][ref-doc-authorization]. The workspace or project a request is scoped to is [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
 ## Table of Contents
 
@@ -148,11 +147,7 @@ graph TD
 
 ## JWT Authentication
 
-JWT (JSON Web Token) is an open standard ([RFC 7519][ref-jwt]) that defines a compact and self-contained way for securely transmitting information between parties as a JSON object. This information can be verified and trusted because it is digitally signed.
-
-JWTs can be signed using a secret (with the HMAC algorithm) or a public/private key pair using RSA or ECDSA.
-
-For more detailed information about JWT, please visit the official [JWT website][ref-jwt].
+Access and refresh tokens are JWTs ([RFC 7519][ref-jwt]). This project signs them with ECDSA: ES256 for access, ES512 for refresh. Specs: [JWT.io][ref-jwt].
 
 > [!NOTE]
 > Before using JWT authentication, you must generate cryptographic key pairs. See the [Installation Documentation - Generate Keys][ref-doc-installation] section for detailed instructions on key generation.
@@ -179,7 +174,7 @@ export default registerAs(
                 // Private key for signing access tokens (from environment)
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by the direct verify helpers on AuthJwtService
+                // Public key, used by the direct verify helpers on AuthJwtDomain
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
                 
                 // Access token expiration in seconds, the unit the JWT signer takes,
@@ -201,7 +196,7 @@ export default registerAs(
                 // Private key for signing refresh tokens (from environment)
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by the direct verify helpers on AuthJwtService
+                // Public key, used by the direct verify helpers on AuthJwtDomain
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
                 
                 // Refresh token expiration in seconds, parsed from the ms() string in
@@ -226,13 +221,13 @@ export default registerAs(
 );
 ```
 
-Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtService.validateAccessToken` / `AuthJwtService.validateRefreshToken`.
+Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
 
 ### JWT Flow
 
 #### JWT Access Token Flow
 
-The following diagram illustrates the complete authentication flow from login to token generation:
+Login through token generation:
 
 ```mermaid
 sequenceDiagram
@@ -282,7 +277,7 @@ sequenceDiagram
 
 The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request before any credential is read.
 
-Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the account is set to `inactive` and `UserPasswordAttemptMaxException` is thrown), password matches (the attempt counter is incremented, then `UserPasswordNotMatchException`). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
+Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the account is set to `inactive` and `UserPasswordAttemptMaxException` is thrown), password matches (the attempt counter is incremented, `UserLoginDomain.stageLoginFailed` stages `EnumActivityLogAction.userLoginFailed`, then `UserPasswordNotMatchException`). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
 
 Two branches then short-circuit before any session or token is created:
 
@@ -293,7 +288,7 @@ Session creation also enforces the device constraint. The device upsert, the dev
 
 #### JWT Refresh Token Flow
 
-When the access token expires, the refresh token is used to obtain a new access token. The jti validation ensures additional security by tracking token usage:
+When the access token expires, the refresh token is used to obtain a new access token. Each refresh issues a new `jti`, which is what the session check matches:
 
 ```mermaid
 sequenceDiagram
@@ -362,7 +357,7 @@ Endpoint: `POST /shared/user/logout`. Protected by `@AuthJwtAccessProtected`, `@
 The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
 
 1. Verifies the session is still active (`404 session.error.notFound` otherwise) and deletes its Redis key.
-2. `UserLoginService.logout` opens `this.databaseService.client.$transaction` and composes `SessionService.revokeInTx`, `DeviceService.clearNotificationInTx`, and `ActivityLogService.recordInTx` (`userLogout`).
+2. `UserLoginDomain.logout` opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx`, `DeviceDomain.clearNotificationInTx`, and `ActivityLogDomain.recordInTx` (`userLogout`).
 
 ```mermaid
 sequenceDiagram
@@ -376,7 +371,7 @@ sequenceDiagram
     API->>Database: Find active session by userId:sessionId
     alt Session active
         API->>Redis: Delete session login key
-        API->>Database: $transaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
+        API->>Database: withTransaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
         API-->>Client: 200 OK (user.logout)
     else Session not found
         API-->>Client: 404 Not Found (SessionNotFoundException)
@@ -544,8 +539,6 @@ async verifyToken(
 
 ### Security: JWT ID (jti)
 
-> The **JWT ID (jti)** is a critical security mechanism for both access and refresh token validation.
-
 A unique identifier (32-character random string) generated during login and token refresh, stored in both the token payload and the session in Redis.
 
 #### How it Works
@@ -595,7 +588,7 @@ Social authentication allows users to sign in using their Google or Apple accoun
 
 ### Social Authentication Flow
 
-The following diagram illustrates the social authentication flow:
+Social login:
 
 ```mermaid
 sequenceDiagram
@@ -604,8 +597,8 @@ sequenceDiagram
     participant GoogleApple as Google/Apple
     participant Guard
     participant API
-    participant AuthSocialService
-    participant AuthJwtService
+    participant AuthSocialDomain
+    participant AuthJwtDomain
     participant Redis
     participant Database
 
@@ -620,13 +613,13 @@ sequenceDiagram
     Guard->>Guard: Split the Authorization header on the configured prefix
     
     alt Google Authentication
-        Guard->>AuthSocialService: verifyGoogle(token)
-        Note over AuthSocialService: Uses OAuth2Client from<br/>google-auth-library
-        AuthSocialService-->>Guard: TokenPayload {email, email_verified}
+        Guard->>AuthSocialDomain: verifyGoogle(token)
+        Note over AuthSocialDomain: Uses OAuth2Client from<br/>google-auth-library
+        AuthSocialDomain-->>Guard: TokenPayload {email, email_verified}
     else Apple Authentication
-        Guard->>AuthSocialService: verifyApple(token)
-        Note over AuthSocialService: Uses verifyAppleToken from<br/>verify-apple-id-token
-        AuthSocialService-->>Guard: Payload {email, email_verified}
+        Guard->>AuthSocialDomain: verifyApple(token)
+        Note over AuthSocialDomain: Uses verifyAppleToken from<br/>verify-apple-id-token
+        AuthSocialDomain-->>Guard: Payload {email, email_verified}
     end
     
     alt Token Valid
@@ -635,9 +628,9 @@ sequenceDiagram
         Note over API,Database: Created only when the flag's<br/>signUpAllowed metadata is true
         Database-->>API: User record
         
-        API->>AuthJwtService: createTokens(user, loginFrom, loginWith)
-        Note over AuthJwtService: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
-        AuthJwtService-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
+        API->>AuthJwtDomain: createTokens(user, loginFrom, loginWith)
+        Note over AuthJwtDomain: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
+        AuthJwtDomain-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
         
         par Store in Database
             API->>Database: Create session record with jti
@@ -870,7 +863,7 @@ See [Two-Factor Documentation][ref-doc-two-factor] for detailed.
 
 ## API Key Authentication
 
-API Key authentication provides a simple, stateless authentication mechanism for machine-to-machine communication and system integrations. Unlike JWT tokens, API keys don't require session management and are validated directly against the database/cache.
+API keys authenticate machines. They have no session. The key is checked against the database and cache.
 
 **Use Cases:**
 - External system integrations
@@ -1087,19 +1080,19 @@ sequenceDiagram
 
 ## Session Management
 
-Session management handles user authentication sessions across multiple devices and locations. It provides visibility and control over active sessions, allowing users and administrators to monitor and revoke access as needed.
+Sessions are bound to a user and a device. Users and admins can list them and revoke them.
 
-**Device-Ownership Model**: Sessions are linked to `DeviceOwnership` records, which represent the relationship between a user and a device. This enables enforcing **only one active session per device-user pair** while allowing devices to be shared across multiple users.
+Sessions sit on `DeviceOwnership` (one user on one device). That pair may hold only one active session. A device can still be owned by more than one user.
 
-This implementation uses a **dual storage strategy**:
-- **Redis**: High-performance session validation and automatic expiration
-- **Database**: Session listing, management, and audit trail
+Storage:
+- **Redis:** validation and TTL, for both access and refresh tokens
+- **Database:** listing, management, and audit trail
 
 ### Session Storage
 
 #### Redis (Primary - Validation)
 
-Used for high-speed session validation for **both access and refresh tokens**.
+Used to validate **both access and refresh tokens**.
 
 **Critical Behavior**: Every API call with an access token will check Redis. If the session is not found in Redis or the jti doesn't match, the request is rejected immediately, even if the token signature is valid.
 
@@ -1137,7 +1130,7 @@ Used for session listing and management purposes.
 - `jti` — JWT ID for session tracking
 - `ipAddress` — Client IP at login time
 - `userAgent` — Parsed user agent (browser, OS, device)
-- `geoLocation` — Geographic location derived from IP (optional) — `latitude`, `longitude`, `country`, `region`, `city`
+- `geoLocation` — Geographic location derived from IP (optional): `latitude`, `longitude`, `country`, `region`, `city`
 - `deviceOwnershipId` — Reference to the `DeviceOwnership` record associated with this session (represents the user-device relationship)
 - `expiredAt`, `revokedAt`, `isRevoked`, `revokedById` — Lifecycle and revocation tracking fields
 

@@ -48,9 +48,14 @@ describe('UserAuthDomain', () => {
         refreshSession: vi.fn<UserLoginDomain['refreshSession']>(),
         revokeSession: vi.fn<UserLoginDomain['revokeSession']>(),
         logout: vi.fn<UserLoginDomain['logout']>(),
+        stageLoginFailed: vi.fn<UserLoginDomain['stageLoginFailed']>(),
     } satisfies Pick<
         UserLoginDomain,
-        'handleLogin' | 'refreshSession' | 'revokeSession' | 'logout'
+        | 'handleLogin'
+        | 'refreshSession'
+        | 'revokeSession'
+        | 'logout'
+        | 'stageLoginFailed'
     >;
     const authPasswordService = {
         checkPasswordAttempt: vi.fn<AuthPasswordUtil['checkPasswordAttempt']>(),

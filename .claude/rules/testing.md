@@ -9,11 +9,11 @@
 - Use `vi.fn()`, `vi.spyOn()`, and `vi.mock()` for test doubles. `vi.mock()` is hoisted; values used by its factory must be created with `vi.hoisted()` or inside the factory.
 - Put `vi.mock()` and `vi.hoisted()` at file scope. Prefer the type-checked `vi.mock(import('<module>'), factory)` form for project modules, and use `vi.mocked()` to work with mocked exports without casts.
 - Prefer `@golevelup/ts-vitest`'s `createMock<T>()` for injected collaborators and framework/third-party transport types such as `ExecutionContext`, `ArgumentsHost`, `CallHandler`, Express `Request`/`Response`, and nested clients. Its methods are typed Vitest mocks, including nested members. Configure every behavior that decides the branch under test; use `createMock<T>({}, { strict: true })` when an unexpected call should fail immediately. Small explicit `Pick` plus `satisfies` doubles remain valid when they are clearer. Do not add another deep-mock package.
-- The canonical configuration and setup files are `vitest.config.ts` and `test/vitest.setup.ts` when a shared setup is needed.
+- The canonical configuration and setup files are `vitest.config.mts` and `test/vitest.setup.ts` when a shared setup is needed.
 
 ## Vitest configuration contract
 
-- Define the unit runner in root `vitest.config.ts` with `defineConfig()` and resolve the aliases from `tsconfig.json` through `vite-tsconfig-paths` or explicit Vite aliases.
+- Define the unit runner in root `vitest.config.mts` with `defineConfig()` and resolve the aliases from `tsconfig.json` through `vite-tsconfig-paths` or explicit Vite aliases.
 - Use the Node environment and include only `test/**/*.spec.ts` in the unit project. Keep globals disabled; every spec imports its APIs from `vitest`.
 - The `test` script runs once with `vitest run`. Watch mode is a separate script. Coverage is a separate opt-in flag or script.
 - Use `@vitest/coverage-v8`. Configure `coverage.include` for the source layers eligible under this rule so unloaded files appear in a full report; exclusions must represent deliberate non-unit-test surfaces, never missing coverage.
@@ -36,8 +36,11 @@
 Specs mirror `src/` under `test/`:
 
 ```text
-src/modules/user/services/user.service.ts
-  -> test/modules/user/services/user.service.spec.ts
+src/modules/session/domains/session.domain.ts
+  -> test/modules/session/domains/session.domain.spec.ts
+
+src/modules/user/services/user.http.service.ts
+  -> test/modules/user/services/user.http.service.spec.ts
 
 src/common/pagination/services/pagination.service.ts
   -> test/common/pagination/services/pagination.service.spec.ts

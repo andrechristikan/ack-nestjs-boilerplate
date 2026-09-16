@@ -4,17 +4,12 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumUserStatus,
     User,
 } from '@generated/prisma-client';
-import { ActivityLogMetadataStoreKey } from '@modules/activity-log/constants/activity-log.constant';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -74,7 +69,6 @@ export class UserPasswordDomain {
         private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
-        private readonly requestStoreService: RequestStoreService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly helperEncryptionService: HelperEncryptionService
@@ -161,22 +155,16 @@ export class UserPasswordDomain {
     }
 
     async reachMaxPasswordAttempt(userId: string): Promise<User> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
-        return this.databaseService.client.$transaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const row =
                 await this.userDomain.deactivateForMaxPasswordAttemptInTx(
                     tx,
                     userId
                 );
-            await this.activityLogDomain.recordInTx(
-                tx,
-                userId,
-                EnumActivityLogAction.userReachMaxPasswordAttempt,
-                requestLog,
-                null
-            );
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                userId: userId,
+            });
 
             return row;
         });
@@ -186,9 +174,6 @@ export class UserPasswordDomain {
         userId: string,
         updatedBy: string
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (userId === updatedBy) {
             throw new UserNotSelfException();
         }
@@ -212,7 +197,7 @@ export class UserPasswordDomain {
 
             await this.userLoginDomain.revokeAllSessions(userId);
 
-            const updated = await this.databaseService.client.$transaction(
+            const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
                         tx,
@@ -235,14 +220,6 @@ export class UserPasswordDomain {
                         updatedBy,
                         password.passwordCreated
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        updatedBy,
-                        EnumActivityLogAction.userUpdatePasswordByAdmin,
-                        requestLog,
-                        null
-                    );
-
                     return row;
                 }
             );
@@ -261,10 +238,16 @@ export class UserPasswordDomain {
                 updatedBy
             );
 
-            this.requestStoreService.merge<IActivityLogMetadata>(
-                ActivityLogMetadataStoreKey,
-                this.userUtil.mapActivityLogMetadata(updated)
-            );
+            const metadata = this.userUtil.mapActivityLogMetadata(updated);
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.adminUserUpdatePassword,
+                metadata,
+            });
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                userId,
+                metadata,
+            });
 
             return;
         } catch (err: unknown) {
@@ -286,9 +269,6 @@ export class UserPasswordDomain {
             method,
         }: IUserChangePassword
     ): Promise<void> {
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
-
         if (user.password) {
             if (this.authPasswordUtil.checkPasswordAttempt(user)) {
                 throw new UserPasswordAttemptMaxException();
@@ -337,7 +317,7 @@ export class UserPasswordDomain {
             );
 
             await this.userLoginDomain.revokeAllSessions(user.id);
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
                     user.id,
@@ -359,26 +339,19 @@ export class UserPasswordDomain {
                     user.id,
                     password.passwordCreated
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userChangePassword,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userChangePassword,
+                });
                 if (twoFactorVerified) {
                     await this.userTwoFactorRepository.verifyTwoFactorInTx(
                         tx,
                         user.id,
                         twoFactorVerified
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        user.id,
-                        EnumActivityLogAction.userVerifyTwoFactor,
-                        requestLog,
-                        null
-                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: user.id,
+                    });
                 }
             });
 
@@ -396,9 +369,6 @@ export class UserPasswordDomain {
 
     async forgotPassword(email: string): Promise<void> {
         await this.assertForgotPasswordAllowed();
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const user = await this.userRepository.findOneActiveByEmail(email);
         if (!user) {
@@ -428,7 +398,7 @@ export class UserPasswordDomain {
         try {
             const resetPassword = this.forgotPasswordCreate(user.id);
 
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userPasswordRepository.expireUnusedInTx(tx, user.id);
                 await this.userPasswordRepository.createInTx(
                     tx,
@@ -436,13 +406,10 @@ export class UserPasswordDomain {
                     email,
                     resetPassword
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    user.id,
-                    EnumActivityLogAction.userForgotPassword,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userForgotPassword,
+                    userId: user.id,
+                });
             });
 
             await this.notificationQueue.sendForgotPassword(user.id, {
@@ -473,9 +440,6 @@ export class UserPasswordDomain {
         method,
     }: IUserResetPassword): Promise<void> {
         await this.assertForgotPasswordAllowed();
-
-        const requestLog: IRequestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey)!;
 
         const hashedToken = this.helperHashService.sha256Hash(token);
         const resetPassword =
@@ -520,7 +484,7 @@ export class UserPasswordDomain {
             );
 
             await this.userLoginDomain.revokeAllSessions(resetPassword.userId);
-            await this.databaseService.client.$transaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userDomain.updatePasswordInTx(
                     tx,
                     resetPassword.userId,
@@ -547,26 +511,20 @@ export class UserPasswordDomain {
                     resetPassword.userId,
                     password.passwordCreated
                 );
-                await this.activityLogDomain.recordInTx(
-                    tx,
-                    resetPassword.userId,
-                    EnumActivityLogAction.userResetPassword,
-                    requestLog,
-                    null
-                );
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.userResetPassword,
+                    userId: resetPassword.userId,
+                });
                 if (twoFactorVerified) {
                     await this.userTwoFactorRepository.verifyTwoFactorInTx(
                         tx,
                         resetPassword.userId,
                         twoFactorVerified
                     );
-                    await this.activityLogDomain.recordInTx(
-                        tx,
-                        resetPassword.userId,
-                        EnumActivityLogAction.userVerifyTwoFactor,
-                        requestLog,
-                        null
-                    );
+                    this.activityLogDomain.stage({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: resetPassword.userId,
+                    });
                 }
             });
 
