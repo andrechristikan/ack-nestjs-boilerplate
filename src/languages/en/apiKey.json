@@ -10,6 +10,7 @@
         "notFound": "We couldn't locate this API key. Please check and try again.",
         "inactive": "This API key is currently inactive.",
         "expired": "This API key has expired. Would you like to create a new one?",
+        "startAtNotFuture": "The start date must be in the future.",
         "xApiKey": {
             "required": "Please provide your API key to continue.",
             "notFound": "We couldn't find this API key in our system.",

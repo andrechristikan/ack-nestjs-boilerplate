@@ -16,6 +16,28 @@ export class DatabaseUtil {
     }
 
     /**
+     * True when `error` is a Prisma unique-constraint violation naming `field`, so a caller can tell
+     * its own generated value apart from any other unique key on the same table.
+     */
+    isUniqueCollision(error: unknown, field: string): boolean {
+        if (
+            !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+            error.code !== 'P2002'
+        ) {
+            return false;
+        }
+
+        const target = error.meta?.target;
+        const fields = Array.isArray(target) ? target : [target];
+
+        return fields.some(
+            entry =>
+                typeof entry === 'string' &&
+                entry.toLowerCase().includes(field.toLowerCase())
+        );
+    }
+
+    /**
      * Deep-clones `data` and casts it to a Prisma-compatible plain object.
      */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {

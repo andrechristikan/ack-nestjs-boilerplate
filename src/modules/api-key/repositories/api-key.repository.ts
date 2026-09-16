@@ -1,5 +1,4 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     IPaginationEqual,
     IPaginationIn,
@@ -10,11 +9,12 @@ import { IResponsePagingReturn } from '@common/response/interfaces/response.inte
 import { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import { IApiKeyRepository } from '@modules/api-key/interfaces/api-key.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { ApiKey, Prisma } from '@generated/prisma-client';
 
 @Injectable()
-export class ApiKeyRepository {
+export class ApiKeyRepository implements IApiKeyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
@@ -24,30 +24,21 @@ export class ApiKeyRepository {
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >,
+        }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>> {
-        return this.paginationService.offset<
-            ApiKey,
-            Prisma.ApiKeySelect,
-            Prisma.ApiKeyWhereInput
-        >(this.databaseService.client.apiKey, {
-            ...params,
-            where: {
-                ...where,
-                ...isActive,
-                ...type,
-            },
-            orderBy: [
-                {
-                    createdAt: EnumPaginationOrderDirectionType.desc,
+        return this.paginationService.offset<ApiKey, Prisma.ApiKeyWhereInput>(
+            this.databaseService.client.apiKey,
+            {
+                ...params,
+                where: {
+                    ...where,
+                    ...isActive,
+                    ...type,
                 },
-            ],
-        });
+            }
+        );
     }
 
     async create(

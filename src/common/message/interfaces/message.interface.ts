@@ -1,6 +1,9 @@
-import { ValidationError } from '@nestjs/common';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 
-export type IMessageProperties = Record<string, string | number>;
+export type IMessageProperties = Record<
+    string,
+    string | number | boolean | Date
+>;
 
 export interface IMessageErrorOptions {
     readonly customLanguage?: string;
@@ -18,7 +21,7 @@ export interface IMessageValidationError {
 
 export interface IMessageValidationImportErrorParam {
     row: number;
-    errors: ValidationError[];
+    errors: readonly StandardSchemaV1.Issue[];
 }
 
 export interface IMessageValidationImportError extends Omit<

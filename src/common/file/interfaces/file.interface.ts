@@ -26,3 +26,7 @@ export interface IFileRandomFilenameOptions {
     extension: EnumFileExtension;
     randomLength?: number;
 }
+
+export interface IFileCsvValidationOptions {
+    maxDataImportConfigKey?: string;
+}

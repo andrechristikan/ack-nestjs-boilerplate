@@ -6,31 +6,23 @@ import {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
-import {
-    Response,
-    ResponsePaging,
-} from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
-    IResponseReturn,
-} from '@common/response/interfaces/response.interface';
+import { ResponsePaging } from '@common/response/decorators/response.decorator';
+import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumRoleType, Prisma } from '@generated/prisma-client';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
     RoleDefaultType,
 } from '@modules/role/constants/role.list.constant';
+import { RoleSystemListDoc } from '@modules/role/docs/role.system.doc';
 import {
-    RoleSystemGetAbilitiesDoc,
-    RoleSystemListDoc,
-} from '@modules/role/docs/role.system.doc';
-import { RoleAbilitiesResponseDto } from '@modules/role/dtos/response/role.abilities.response.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleService } from '@modules/role/services/role.service';
-import { Controller, Get, Param } from '@nestjs/common';
+    RoleListResponseDto,
+    RoleListResponseSchema,
+} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
 
 @ApiTags('modules.system.role')
 @Controller({
@@ -38,34 +30,21 @@ import { EnumRoleType, Prisma } from '@generated/prisma-client';
     path: '/role',
 })
 export class RoleSystemController {
-    constructor(private readonly roleService: RoleService) {}
+    constructor(private readonly roleHttpService: RoleHttpService) {}
 
     @RoleSystemListDoc()
-    @ResponsePaging('role.list')
+    @ResponsePaging('role.list', { schema: RoleListResponseSchema })
     @ApiKeySystemProtected()
     @Get('/list')
     async list(
         @PaginationCursorQuery({
             availableSearch: RoleDefaultAvailableSearch,
+            availableOrderBy: RoleDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryCursorParams<
-            Prisma.RoleSelect,
-            Prisma.RoleWhereInput
-        >,
+        pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         @PaginationQueryFilterInEnum<EnumRoleType>('type', RoleDefaultType)
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<RoleListResponseDto>> {
-        return this.roleService.getListCursor(pagination, type);
-    }
-
-    @RoleSystemGetAbilitiesDoc()
-    @Response('role.getAbilities')
-    @ApiKeySystemProtected()
-    @Get('/get/:roleId/abilities')
-    async getAbilities(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-        roleId: string
-    ): Promise<IResponseReturn<RoleAbilitiesResponseDto>> {
-        return this.roleService.getAbilities(roleId);
+        return this.roleHttpService.getListCursorBySystem(pagination, type);
     }
 }

@@ -7,6 +7,7 @@ import { IQueueResponse } from '@queues/interfaces/queue.interface';
 import {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
+    INotificationEmailUnregisteredQueuePayload,
     INotificationForgotPasswordPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
@@ -15,6 +16,11 @@ import {
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
     INotificationWelcomeByAdminPayload,
+    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteUnregisteredPayload,
+    INotificationWorkspaceJoinAcceptedPayload,
+    INotificationWorkspaceJoinRejectedPayload,
+    INotificationWorkspaceJoinRequestPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailProcessorService } from '@modules/notification/services/notification.email.processor.service';
@@ -159,6 +165,51 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     return this.notificationEmailProcessorService.processPublishTermPolicy(
                         job as Job<
                             INotificationEmailBulkQueuePayload<INotificationPublishTermPolicyPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.workspaceInvite:
+                    return this.notificationEmailProcessorService.processWorkspaceInvite(
+                        job as Job<
+                            INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.workspaceInviteUnregistered:
+                    return this.notificationEmailProcessorService.processWorkspaceInviteUnregistered(
+                        job as Job<
+                            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.workspaceJoinRequest:
+                    return this.notificationEmailProcessorService.processWorkspaceJoinRequest(
+                        job as Job<
+                            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.workspaceJoinAccepted:
+                    return this.notificationEmailProcessorService.processWorkspaceJoinAccepted(
+                        job as Job<
+                            INotificationEmailQueuePayload<INotificationWorkspaceJoinAcceptedPayload>,
+                            IQueueResponse,
+                            EnumNotificationProcess
+                        >
+                    );
+
+                case EnumNotificationProcess.workspaceJoinRejected:
+                    return this.notificationEmailProcessorService.processWorkspaceJoinRejected(
+                        job as Job<
+                            INotificationEmailQueuePayload<INotificationWorkspaceJoinRejectedPayload>,
                             IQueueResponse,
                             EnumNotificationProcess
                         >

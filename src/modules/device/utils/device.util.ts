@@ -1,15 +1,26 @@
-import { ResponseUtil } from '@common/response/utils/response.util';
+import {
+    EnumDeviceNotificationProvider,
+    EnumDevicePlatform,
+} from '@generated/prisma-client';
 import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response';
 import { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceUtil {
-    constructor(private readonly responseUtil: ResponseUtil) {}
-
-    mapList(devices: IDeviceOwnership[]): DeviceOwnershipResponseDto[] {
-        return this.responseUtil.serialize(DeviceOwnershipResponseDto, devices);
+    /** Maps a device platform onto the push provider that serves it. */
+    resolveNotificationProvider(
+        platform: EnumDevicePlatform | null
+    ): EnumDeviceNotificationProvider | null {
+        switch (platform) {
+            case EnumDevicePlatform.android:
+                return EnumDeviceNotificationProvider.fcm;
+            case EnumDevicePlatform.ios:
+                return EnumDeviceNotificationProvider.apns;
+            case EnumDevicePlatform.web:
+            default:
+                return null;
+        }
     }
 
     /** Projects an ownership into the activity-log metadata shape the interceptor expects. */
@@ -21,7 +32,7 @@ export class DeviceUtil {
             deviceId: deviceOwnership.device.id,
             userId: deviceOwnership.userId,
             userUsername: deviceOwnership.user.username,
-            timestamp: deviceOwnership.updatedAt ?? deviceOwnership.createdAt,
+            timestamp: deviceOwnership.updatedAt,
             sessionCount: deviceOwnership._count.sessions,
         };
     }

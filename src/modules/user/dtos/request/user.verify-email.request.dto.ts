@@ -1,13 +1,16 @@
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
 
-export class UserVerifyEmailRequestDto {
-    @ApiProperty({
-        description: 'Verification token',
-        example: faker.string.alphanumeric(20),
-    })
-    @IsString()
-    @IsNotEmpty()
-    token: string;
-}
+export const UserVerifyEmailRequestSchema = z.strictObject({
+    token: z
+        .string()
+        .min(1)
+        .meta({
+            description: 'Verification token',
+            example: faker.string.alphanumeric(20),
+        }),
+});
+
+export type UserVerifyEmailRequestDto = z.infer<
+    typeof UserVerifyEmailRequestSchema
+>;

@@ -5,10 +5,7 @@ export interface IConfigResponse {
     filenameExportPattern: string;
 }
 
-export default registerAs(
-    'response',
-    (): IConfigResponse => ({
-        keyPattern: 'Apis:{key}',
-        filenameExportPattern: 'export-{timestamp}.{extension}',
-    })
-);
+export default registerAs('response', (): IConfigResponse => ({
+    keyPattern: 'Apis:{key}',
+    filenameExportPattern: 'export-{timestamp}.{extension}',
+}));

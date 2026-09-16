@@ -6,7 +6,7 @@ import {
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
 import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
-import { ApiKeyService } from '@modules/api-key/services/api-key.service';
+import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 
 /**
  * Authorizes the request by matching the resolved API key type against the types required via `ApiKeyXTypeMetaKey`.
@@ -16,7 +16,7 @@ import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly apiKeyService: ApiKeyService,
+        private readonly apiKeyDomain: ApiKeyDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -26,6 +26,6 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
         >(ApiKeyXTypeMetaKey, [context.getHandler(), context.getClass()]);
 
         const apiKey = this.requestStoreService.get<ApiKey>(ApiKeyStoreKey);
-        return this.apiKeyService.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
+        return this.apiKeyDomain.validateXApiKeyTypeGuard(apiKey, apiKeyTypes);
     }
 }

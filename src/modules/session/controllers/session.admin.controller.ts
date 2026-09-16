@@ -6,8 +6,8 @@ import {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestIsValidObjectIdPipe } from '@common/request/pipes/request.is-valid-object-id.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
     ResponsePaging,
@@ -16,31 +16,28 @@ import {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { ActivityLog } from '@modules/activity-log/decorators/activity-log.decorator';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyAbilityProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-} from '@modules/policy/enums/policy.enum';
+import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionAdminListDoc,
     SessionAdminRevokeDoc,
 } from '@modules/session/docs/session.admin.doc';
-import { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
-import { SessionService } from '@modules/session/services/session.service';
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import { ISession } from '@modules/session/interfaces/session.interface';
+import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumRoleType,
     Prisma,
 } from '@generated/prisma-client';
@@ -51,12 +48,12 @@ import {
     path: '/user/:userId/session',
 })
 export class SessionAdminController {
-    constructor(private readonly sessionService: SessionService) {}
+    constructor(private readonly sessionHttpService: SessionHttpService) {}
 
     @SessionAdminListDoc()
-    @ResponsePaging('session.list')
+    @ResponsePaging('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -70,21 +67,19 @@ export class SessionAdminController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @PaginationOffsetQuery({
             availableOrderBy: SessionDefaultAvailableOrderBy,
         })
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.SessionSelect,
-            Prisma.SessionWhereInput
-        >,
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<SessionResponseDto>> {
-        return this.sessionService.getListOffsetByAdmin(
+    ): Promise<IResponsePagingReturn<ISession>> {
+        return this.sessionHttpService.getListOffsetByAdmin(
             userId,
             pagination,
             isRevoked
@@ -94,7 +89,7 @@ export class SessionAdminController {
     @SessionAdminRevokeDoc()
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
-    @PolicyAbilityProtected(
+    @PolicyProtected(
         {
             subject: EnumPolicySubject.user,
             action: [EnumPolicyAction.read],
@@ -105,18 +100,22 @@ export class SessionAdminController {
         }
     )
     @RoleProtected(EnumRoleType.admin)
-    @ActivityLog(EnumActivityLogAction.adminSessionRevoke)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('userId', { schema: RequestMongoIdSchema })
         userId: string,
-        @Param('sessionId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
+        @Param('sessionId', { schema: RequestMongoIdSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
-        return this.sessionService.revokeByAdmin(userId, sessionId, revokedBy);
+        return this.sessionHttpService.revokeByAdmin(
+            userId,
+            sessionId,
+            revokedBy
+        );
     }
 }

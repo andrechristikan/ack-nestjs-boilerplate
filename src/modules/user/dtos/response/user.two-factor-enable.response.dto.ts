@@ -1,14 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { z } from 'zod';
 
-export class UserTwoFactorEnableResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Backup codes issued when two-factor authentication is enabled or regenerated.
+ */
+export const UserTwoFactorEnableResponseSchema = z.object({
+    backupCodes: z.array(z.string()).meta({
         description:
             'List of newly generated backup codes. Each code can be used once.',
-        type: [String],
         example: ['ABCD1234EF', 'ZXCV5678GH'],
-    })
-    @Expose()
-    backupCodes: string[];
-}
+    }),
+});
+
+export type UserTwoFactorEnableResponseDto = z.infer<
+    typeof UserTwoFactorEnableResponseSchema
+>;

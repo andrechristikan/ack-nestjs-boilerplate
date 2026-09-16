@@ -35,7 +35,7 @@ export interface IAwsS3Presign {
     mime: string;
     extension: string;
     presignUrl: string;
-    expiredIn: number;
+    expiredInSeconds: number;
 }
 
 export interface IAwsS3PresignPart extends IAwsS3Presign {
@@ -44,7 +44,7 @@ export interface IAwsS3PresignPart extends IAwsS3Presign {
 }
 
 export interface IAwsS3Options {
-    access?: EnumAwsS3Accessibility;
+    access: EnumAwsS3Accessibility;
 }
 
 export interface IAwsS3PutItemOptions extends IAwsS3Options {
@@ -69,7 +69,7 @@ export interface IAwsS3PresignPutItemPartOptions extends IAwsS3Options {
     expiredInSeconds?: number;
 }
 
-export interface IAwsS3MoveItemOptions {
+export interface IAwsS3CopyItemOptions {
     accessFrom: EnumAwsS3Accessibility;
     accessTo: EnumAwsS3Accessibility;
 }

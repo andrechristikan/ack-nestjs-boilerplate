@@ -1,68 +1,38 @@
-import { EnumTermPolicyType } from '@generated/prisma-client';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { UserTermPolicyDto } from '@modules/user/dtos/user.term-policy.dto';
-import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { z } from 'zod';
+import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 
-export class UserExportResponseDto extends OmitType(UserListResponseDto, [
-    'role',
-    'photo',
-]) {
-    @ApiHideProperty()
-    @Exclude()
-    termPolicy: UserTermPolicyDto;
-
-    @ApiProperty({
-        required: true,
+/**
+ * Flattened user row for CSV export: the role and the term-policy flags become scalar columns.
+ */
+export const UserExportResponseSchema = UserListResponseSchema.omit({
+    role: true,
+    photo: true,
+    termPolicy: true,
+}).extend({
+    photo: z.string().nullable().meta({
         description: 'User photo URL',
         example: 'https://example.com/photo.jpg',
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.photo.completedUrl)
-    photo: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    termPolicyTermsOfService: z.boolean().meta({
         description: 'Term of service flag',
         example: true,
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.termPolicy?.[EnumTermPolicyType.termsOfService])
-    termPolicyTermsOfService: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    termPolicyPrivacy: z.boolean().meta({
         description: 'Privacy flag',
         example: true,
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.termPolicy?.[EnumTermPolicyType.privacy])
-    termPolicyPrivacy: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    termPolicyCookies: z.boolean().meta({
         description: 'Cookies flag',
         example: true,
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.termPolicy?.[EnumTermPolicyType.cookies])
-    termPolicyCookies: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    termPolicyMarketing: z.boolean().meta({
         description: 'Marketing flag',
         example: true,
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.termPolicy?.[EnumTermPolicyType.marketing])
-    termPolicyMarketing: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    role: z.string().meta({
         description: 'User role',
         example: 'admin',
-    })
-    @Expose()
-    @Transform(({ obj }) => obj.role.name)
-    role: string;
-}
+    }),
+});
+
+export type UserExportResponseDto = z.infer<typeof UserExportResponseSchema>;

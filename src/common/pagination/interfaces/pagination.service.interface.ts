@@ -1,18 +1,18 @@
 import {
+    IPaginationCursorArgs,
     IPaginationCursorReturn,
+    IPaginationOffsetArgs,
     IPaginationOffsetReturn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
 
 export interface IPaginationService {
     offset<TReturn>(
         repository: IPaginationRepository,
-        args: IPaginationQueryOffsetParams
+        args: IPaginationOffsetArgs
     ): Promise<IPaginationOffsetReturn<TReturn>>;
     cursor<TReturn>(
         repository: IPaginationRepository,
-        args: IPaginationQueryCursorParams
+        args: IPaginationCursorArgs
     ): Promise<IPaginationCursorReturn<TReturn>>;
 }

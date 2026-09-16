@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides step-by-step instructions for setting up the ACK NestJS Boilerplate on your development environment.
+How to clone, install, seed, and run the project locally.
 
 ## Related Documents
 
@@ -48,13 +48,13 @@ Before starting, install the following tools and packages. We recommend using th
 | Tool | Version |
 |------|---------|
 | [Node.js](https://nodejs.org) | v24.11.0+ |
-| [MongoDB](https://docs.mongodb.com/) | v8.2.11 |
-| [Redis](https://redis.io) | v8.8.0 |
-| [PNPM](http://pnpm.io) | v11.5.x |
+| [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
+| [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
+| [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]
-> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
+> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#-installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
 
 ## Clone Repository
 
@@ -93,7 +93,7 @@ The environment file contains all configuration settings for your application in
 cp .env.example .env
 ```
 
-> **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
+> **For environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
@@ -116,7 +116,7 @@ pnpm generate:keys --direct-insert
 - Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
 - Generates JWKS (JSON Web Key Set) files in `/keys` directory
 - Creates `access-jwks.json` and `refresh-jwks.json` for public key distribution
-- Prints only the output file paths and the generated key IDs (KIDs) — key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
+- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
 - With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
 
 > [!NOTE]
@@ -148,7 +148,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://<your_domain>/.well-known/refresh-jwks.
 > [!NOTE]
 > You can skip this section if all dependencies are already installed and you do not want to use Docker for your setup.
 
-Docker provides the fastest and most reliable way to set up the ACK NestJS Boilerplate. This method automatically configures the entire development environment with all dependencies and services pre-configured.
+Compose starts the services listed below, already wired to the app.
 
 ### What's Included
 
@@ -205,7 +205,7 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
-> **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
+> **For environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
@@ -225,7 +225,7 @@ pnpm generate:keys --direct-insert
 - Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
 - Generates JWKS (JSON Web Key Set) files in `/keys` directory
 - Creates `access-jwks.json` and `refresh-jwks.json` for Docker container serving
-- Prints only the output file paths and the generated key IDs (KIDs) — key material is **never** printed to the console
+- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console
 - With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
 
 #### Docker JWKS Hosting
@@ -274,7 +274,7 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-The Docker setup includes comprehensive health checks for all services, ensuring they're fully operational before marking as available.
+Compose health checks mark each service ready only after its check passes.
 
 
 ### Troubleshooting
@@ -319,6 +319,20 @@ pnpm db:migrate
 **Seed all initial data:**
 ```bash
 pnpm migration:seed
+```
+
+**Remove all seeded data:**
+```bash
+pnpm migration:remove
+```
+
+**Reset the database and reseed from scratch:**
+
+> [!WARNING]
+> `migration:fresh` runs `prisma db push --force-reset`, which drops all existing data.
+
+```bash
+pnpm migration:fresh
 ```
 
 **Seed email:**
@@ -376,6 +390,12 @@ pnpm lint:fix
 # Run tests
 pnpm test
 
+# Run tests with coverage
+pnpm test:cov
+
+# Type-check without emitting (also run by the pre-commit hook)
+pnpm typecheck
+
 # Check for dead/unused code
 pnpm deadcode
 
@@ -430,6 +450,7 @@ To verify everything is working correctly:
 <!-- REFERENCES -->
 
 [ref-vault]: https://developer.hashicorp.com/vault
+[ref-mongodb]: https://www.mongodb.com/products/platform/atlas-database
 
 [ref-doc-environment]: environment.md
 [ref-doc-database]: database.md

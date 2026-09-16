@@ -173,7 +173,8 @@ services:
             - app-network
         volumes:
             - mongo_data:/data/db
-        command: mongod --bind_ip_all --replSet rs0 --port 27017
+            - ./ci/mongo/entrypoint.sh:/entrypoint.sh:ro
+        entrypoint: ['/bin/bash', '/entrypoint.sh']
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         deploy:
@@ -182,37 +183,15 @@ services:
                     cpus: '1'
                     memory: 1GB
         healthcheck:
-            test: mongosh --eval "db.adminCommand('ping')" --quiet
+            test:
+                [
+                    'CMD-SHELL',
+                    "mongosh --quiet --eval \"quit(db.hello().isWritablePrimary ? 0 : 1)\"",
+                ]
             interval: 10s
             timeout: 5s
             retries: 5
-            start_period: 30s
-
-    mongo-bootstrap:
-        image: mongo:latest
-        restart: 'no'
-        depends_on:
-            mongo:
-                condition: service_healthy
-        networks:
-            - app-network
-        command: >
-            bash -c "
-            echo 'Waiting for MongoDB instance to be ready...' &&
-            mongosh --host host.docker.internal:27017 --eval '
-            config = {
-                    \"_id\": \"rs0\",
-                    \"members\": [
-                    { \"_id\": 0, \"host\": \"host.docker.internal:27017\", \"priority\": 1 }
-                ]
-            };
-            rs.initiate(config);
-            rs.status();'&&
-            echo 'Single-node replica set initialized successfully. Container will exit now.'
-            "
-        deploy:
-            restart_policy:
-                condition: none
+            start_period: 40s
 
 volumes:
     mongo_data:

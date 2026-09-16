@@ -1,96 +1,92 @@
 # Documentation
 
-## Disclaimer
+## Accuracy
 
-The documentation in this directory was written with the assistance of **GitHub Copilot**.
-
-Every document has been **manually reviewed and verified** against the actual implementation to ensure accuracy and correctness.
-If you find any discrepancies, please open an issue or submit a pull request.
-
+Each document matches the current implementation. If something is wrong, open an issue or a pull request.
 
 ## Standards & References
 
-This project follows established industry standards and methodologies. The sections below document the specific specs, RFCs, and practices this codebase is built against.
+Specs, RFCs, and practices this codebase is built against:
 
 ### Twelve-Factor App
 
-This project aligns with the [Twelve-Factor App][ref-12factor] methodology — a set of best practices for building modern, scalable, maintainable server-side applications.
+This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 
 | Factor | How it applies |
 |---|---|
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
-| Config | All configuration via environment variables, validated at startup via `AppEnvDto` |
-| Backing Services | MongoDB, Redis, AWS S3/SES, Firebase — treated as attached resources via env config |
+| Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
+| Backing Services | MongoDB, Redis, AWS S3/SES, Firebase; treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
-| Processes | Stateless app processes — session and cache state stored in Redis, not in-memory |
+| Processes | Stateless app processes; session and cache state stored in Redis, not in-memory |
 | Port Binding | App self-contained via NestJS HTTP server, port exposed via `HTTP_PORT` env |
-| Concurrency | Horizontal scaling supported — stateless processes, shared Redis for sessions |
-| Disposability | Fast startup, graceful shutdown — no sticky sessions or local state |
+| Concurrency | Horizontal scaling supported; stateless processes, shared Redis for sessions |
+| Disposability | Fast startup, graceful shutdown; no sticky sessions or local state |
 | Dev/Prod Parity | Same stack (Docker Compose) for local dev and production |
-| Logs | Logs as event streams via Pino to stdout — no log file management in app |
+| Logs | Logs as event streams via Pino to stdout, and optionally to files under `/logs` when `LOGGER_INTO_FILE=true` |
 | Admin Processes | One-off tasks via dedicated migration and seed scripts (`pnpm migration:seed`) |
 
 ### Security Standards
 
 | Concern | Standard |
 |---|---|
-| JWT Access Token | ES256 — ECDSA + SHA-256 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
-| JWT Refresh Token | ES512 — ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
-| Two-Factor Auth | TOTP — SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
-| Password Hashing | bcrypt — 12 salt rounds |
-| Encryption at Rest | AES-256-CBC (2FA secrets), AES-CBC + PKCS7 (general data) |
-| HTTP Security Headers | [Helmet][ref-helmet] v8 — CSP, Strict-Transport-Security, X-Frame-Options, etc. |
+| JWT Access Token | ES256; ECDSA + SHA-256 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
+| JWT Refresh Token | ES512; ECDSA + SHA-512 ([RFC 7518][ref-rfc-7518], [RFC 7519][ref-rfc-7519]) |
+| Two-Factor Auth | TOTP; SHA-1, 6 digits, 30s period ([RFC 6238][ref-rfc-6238]) |
+| Password Hashing | bcrypt; 12 salt rounds |
+| Encryption at Rest | AES-256-CBC; PKCS7 padding, SHA-256 derived key; 2FA secrets keyed by `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, everything else by `APP_ENCRYPTION_SECRET_KEY` |
+| HTTP Security Headers | [Helmet][ref-helmet] v8, non-documents profile; Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies |
 | CORS | Configurable allowlist with wildcard subdomain support, preflight max-age 24h |
-| Rate Limiting | 100 requests / 60s window — global guard via [@nestjs/throttler][ref-throttler] |
-| Authorization | [CASL][ref-casl] — fine-grained ability-based access control (subject + action) |
+| Rate Limiting | Redis-backed sliding window via [@nestjs/throttler][ref-throttler]; global 300 req / 60s per IP, plus opt-in 100 req / 60s per user and per-route tiers (5 / 20 / 60 req per 60s) |
+| Authorization | [CASL][ref-casl]; fine-grained ability-based access control (subject + action) |
 | API Key Auth | Machine-to-machine via `x-api-key` header |
-| Sensitive Data | Auto-redacted in logs (password, token, apiKey) via Pino serializers |
-| Threat Coverage | [OWASP Top 10][ref-owasp] — input validation, injection prevention, auth hardening |
+| Sensitive Data | Auto-redacted in logs (password, token, apiKey) via the Pino `redact` option |
+| Threat Coverage | [OWASP Top 10][ref-owasp]; input validation, injection prevention, auth hardening |
 
 
 ## Table of Contents
 
 ### Getting Started
-Start here to get the project running and understand its foundations.
+Install and configure the project.
 
-1. [Installation][ref-doc-installation] — Set up the development environment step by step
-2. [Environment][ref-doc-environment] — Configure all environment variables via `.env`
-3. [Configuration][ref-doc-configuration] — Understand the Config Module and per-concern config files
-4. [Project Structure][ref-doc-project-structure] — Learn the modular architecture and repository design pattern
+1. [Installation][ref-doc-installation]; Set up the development environment step by step
+2. [Environment][ref-doc-environment]; Configure all environment variables via `.env`
+3. [Configuration][ref-doc-configuration]; Understand the Config Module and per-concern config files
+4. [Project Structure][ref-doc-project-structure]; Modular layout and the repository design pattern
 
 ### Core
-Essential systems that power every feature in the project.
 
-5. [Database][ref-doc-database] — Prisma + MongoDB replica set, transactions, and the Database Module
-6. [Authentication][ref-doc-authentication] — JWT (ES256/ES512), session lifecycle, API key auth
-7. [Authorization][ref-doc-authorization] — `UserProtected`, `RoleProtected`, `PolicyAbilityProtected`, `TermPolicyAcceptanceProtected`
-8. [Device][ref-doc-device] — Device fingerprinting, `DeviceOwnership`, max 1 session per device
-9. [Response][ref-doc-response] — Standardized response decorators, pagination response, file download
-10. [Request Validation][ref-doc-request-validation] — `ValidationPipe`, `class-validator`, body/query/path validation
-11. [Handling Error][ref-doc-handling-error] — Exception filters, standardized HTTP error responses, i18n errors
-12. [Status Codes][ref-doc-status-codes] — Full catalog of application statusCode values by module
-13. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
-14. [Cache][ref-doc-cache] — Redis caching with shared `RedisCacheModule`, TTL strategy
-15. [Queue][ref-doc-queue] — BullMQ background jobs, `QueueProcessorBase`, retry/backoff
-16. [Logger][ref-doc-logger] — Pino logging, file rotation, sensitive data redaction, Sentry integration
-17. [Security and Middleware][ref-doc-security-and-middleware] — HTTP middleware layer, headers, rate limiting
+5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
+6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
+7. [Authorization][ref-doc-authorization]; `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
+8. [Device][ref-doc-device]; Device fingerprinting, `DeviceOwnership`, max 1 session per device
+9. [Response][ref-doc-response]; Standardized response decorators, pagination response, file download
+10. [Request Validation][ref-doc-request-validation]; `RequestSchemaValidationPipe`, zod request schemas, body and path validation
+11. [Handling Error][ref-doc-handling-error]; Exception filters, standardized HTTP error responses, i18n errors
+12. [Status Codes][ref-doc-status-codes]; Full catalog of application statusCode values by module
+13. [Message][ref-doc-message]; i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
+14. [Cache][ref-doc-cache]; Redis caching with shared `RedisCacheModule`, TTL strategy
+15. [Queue][ref-doc-queue]; BullMQ background jobs, `QueueProcessorBase`, retry/backoff
+16. [Logger][ref-doc-logger]; Pino logging, file rotation, sensitive data redaction, Sentry integration
+17. [Security and Middleware][ref-doc-security-and-middleware]; HTTP middleware layer, headers, rate limiting
 
 ### Advanced
-Additional features and integrations for production-grade deployments.
 
-18. [Pagination][ref-doc-pagination] — Offset-based, cursor-based pagination, advanced filtering
-19. [Notification][ref-doc-notification] — Multi-channel notifications (email, push, inApp, silent) via BullMQ
-20. [Two Factor][ref-doc-two-factor] — TOTP 2FA with authenticator apps and backup codes
-21. [Feature Flag][ref-doc-feature-flag] — Dynamic feature management, gradual rollouts, A/B testing
-22. [Activity Log][ref-doc-activity-log] — Recording successful user activities with `@ActivityLog`
-23. [Term Policy][ref-doc-term-policy] — Legal agreements, versioning, and user consent enforcement
-24. [File Upload][ref-doc-file-upload] — Single/multiple file uploads, CSV processing, upload decorators
-25. [Presign][ref-doc-presign] — AWS S3 presigned URLs for secure time-limited object access
-26. [Third Party Integration][ref-doc-third-party-integration] — AWS S3/SES, Firebase, Sentry, no-op mode
-27. [Doc][ref-doc-doc] — Swagger/OpenAPI decorators via the Doc Module
-28. [Analytics][ref-doc-analytics] — Planned analytics design using MongoDB aggregation pipelines
-29. [Vault][ref-doc-vault] — Optional secret management via HashiCorp Vault
+18. [Workspace][ref-doc-workspace]; Multi-workspace tenancy via `x-workspace-id`, membership roles, invites, join requests
+19. [Project][ref-doc-project]; Workspace-scoped projects with `:projectId` in the path and their own member roles
+20. [Pagination][ref-doc-pagination]; Offset-based, cursor-based pagination, advanced filtering
+21. [Notification][ref-doc-notification]; Multi-channel notifications (email, push, inApp, silent) via BullMQ
+22. [Two Factor][ref-doc-two-factor]; TOTP 2FA with authenticator apps and backup codes
+23. [Feature Flag][ref-doc-feature-flag]; Dynamic feature management, gradual rollouts, A/B testing
+24. [Activity Log][ref-doc-activity-log]; Recording successful user activities with `@ActivityLog`
+25. [Analytic][ref-doc-analytic]; Live admin dashboard metrics, anomaly and fraud reports, current-workspace user metrics
+26. [Term Policy][ref-doc-term-policy]; Legal agreements, versioning, and user consent enforcement
+27. [File Upload][ref-doc-file-upload]; Single/multiple file uploads, CSV processing, upload decorators
+28. [Presign][ref-doc-presign]; AWS S3 presigned URLs for secure time-limited object access
+29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, no-op mode
+30. [Doc][ref-doc-doc]; Swagger/OpenAPI decorators via the Doc Module
+31. [Vault][ref-doc-vault]; Optional secret management via HashiCorp Vault
 
 
 
@@ -111,17 +107,19 @@ Additional features and integrations for production-grade deployments.
 [ref-doc-queue]: queue.md
 [ref-doc-logger]: logger.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-project]: project.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-notification]: notification.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-activity-log]: activity-log.md
+[ref-doc-analytic]: analytic.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-file-upload]: file-upload.md
 [ref-doc-presign]: presign.md
 [ref-doc-third-party-integration]: third-party-integration.md
 [ref-doc-doc]: doc.md
-[ref-doc-analytics]: analytics.md
 [ref-doc-vault]: vault.md
 
 [ref-12factor]: https://12factor.net

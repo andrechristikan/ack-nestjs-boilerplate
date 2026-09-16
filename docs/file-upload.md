@@ -6,7 +6,7 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-The file upload module provides a comprehensive solution for handling file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and CSV processing.
+Decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing.
 
 The module supports:
 
@@ -28,6 +28,7 @@ The module supports:
   - [FileUploadSingle](#fileuploadsingle)
   - [FileUploadMultiple](#fileuploadmultiple)
   - [FileUploadMultipleFields](#fileuploadmultiplefields)
+  - [Upload Transport Errors](#upload-transport-errors)
 - [Enums](#enums)
 - [Pipes](#pipes)
   - [FileExtensionPipe](#fileextensionpipe)
@@ -87,7 +88,7 @@ Handles multiple files from different form fields.
   - `maxFiles`: Maximum files for this field
 - `options.fileSize` (optional): Maximum file size per file in bytes (default: `FileSizeInBytes`)
 
-The total number of files across all fields is capped at `FileMaxMultiple` (3), regardless of what the per-field `maxFiles` values add up to.
+The global `limits.files` is the sum of the declared per-field `maxFiles`, so the request-wide cap admits exactly what the per-field caps allow.
 
 **Example:**
 ```typescript
@@ -99,6 +100,19 @@ The total number of files across all fields is capped at `FileMaxMultiple` (3), 
   { fileSize: bytes('15mb') }
 )
 ```
+
+### Upload Transport Errors
+
+All three decorators compose `FileUploadErrorInterceptor` (`src/common/file/interceptors/file.upload-error.interceptor.ts`) outermost, ahead of the multer interceptor it wraps. Multer and busboy signal a limit failure as a framework `HttpException` carrying a fixed message; the interceptor matches that message against Nest's `multerExceptions` / `busboyExceptions` and rethrows a typed file exception. The client message comes from the exception's own path (`file.error.exceedMaxSizeUpload`, …), not from a second catalog.
+
+| Condition | Framework message | Exception | statusCode | HTTP |
+|---|---|---|---|---|
+| A file exceeds `fileSize` | `File too large` | `FileExceedMaxSizeUploadException` | 50106 | 413 |
+| The request carries more files than the global `limits.files` | `Too many files` | `FileExceedMaxFilesException` | 50107 | 422 |
+| A file arrives on a field the route did not declare, or past that field's `maxFiles` | `Unexpected field` | `FileFieldUnexpectedException` | 50108 | 422 |
+| A malformed multipart body, or a part / field / nesting limit | `Multipart: Boundary not found`, `Too many parts`, `Field name too long`, and the rest of Nest's multipart messages | `FileMultipartInvalidException` | 50109 | 422 |
+
+The framework appends ` - <field>` to several of those messages, so the interceptor matches on the segment before the first ` - `. A message outside the table passes through untouched.
 
 ## Enums
 
@@ -132,17 +146,24 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 
 ### FileExtensionPipe
 
-A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. It reads the extension off `file.originalname` via `FileService.extractExtensionFromFilename` and throws when it is not in the allow-list. The pipe returns the file untouched; it never rewrites the value.
+A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. The declared extension and the bytes both have to agree with the allow-list. The pipe returns the value untouched; it never rewrites it.
+
+For each file:
+
+1. The declared extension comes off `file.originalname` through `FileService.extractExtensionFromFilename`, and has to be a member of `allowedExtensions`.
+2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package. The sniffed type is accepted when `FileExtensionSignatures` (`src/common/file/constants/file.constant.ts`) maps some member of the allow-list onto it.
+
+`csv` is the signature-less member of `FileExtensionSignatures`: its entry is an empty array. A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list, and rejected for every other member. `hbs` is not in the table; templates are not uploaded through this pipe. Adding an uploadable extension to a group enum means adding its row to that table.
 
 **Usage:**
-Pass an array of allowed file extensions from the enum constants. It validates the single uploaded file.
+Pass an array of allowed file extensions from the enum constants. A single file and an array of files are both accepted, and every element of an array is validated: one rejected file rejects the request.
 
 **Passes through without validating:**
 - A falsy value
 - An empty object or an empty array
 
 **Throws:**
-- `FileExtensionInvalidException`: When `originalname` is missing, or the extension is not in the allowed list
+- `FileExtensionInvalidException`: `originalname` is missing, the declared extension is not in the allow-list, the sniffed type maps to no member of the allow-list, or nothing was sniffed for an extension that carries a signature
 
 ### FileCsvParsePipe
 
@@ -163,34 +184,37 @@ Array of parsed row objects `T[]`, or `undefined` when no file was uploaded
 
 ### FileCsvValidationPipe
 
-Transforms and validates CSV data using DTO classes with class-validator decorators. This pipe applies validation rules to each row of imported data and provides detailed error messages.
+Validates every parsed CSV row against a zod request schema and reports the failures row by row.
 
 **How it Works:**
 1. Receives parsed data from `FileCsvParsePipe`
-2. Rejects an empty row set, and a row set larger than `FileMaxDataImport` (1000)
-3. Transforms each row into the specified DTO class
-4. Validates using class-validator with `whitelist: true` and `forbidNonWhitelisted: true`, so an unknown column fails the row
-5. Collects all validation errors with row context, never failing fast on the first bad row
+2. Rejects an empty row set, and a row set larger than the configured row cap
+3. Runs each row through the schema, keeping the parsed output
+4. A request schema is `z.strictObject`, so an unknown column fails the row
+5. Collects all validation issues with row context, never failing fast on the first bad row
 6. Throws `FileImportException` if any row failed
 
 **Parameters:**
-- DTO class for row validation
+- The zod schema each row is validated against
+- `options.maxDataImportConfigKey` (optional): config key holding the row cap (default `'file.maxDataImport'`, which is `100`)
+
+The pipe factory runs at decoration time, before config is resolved, so it takes the config KEY and reads the value in the constructor. The user import passes `'user.maxDataImport'`, which is `50`.
 
 **Throws:**
 - `FileRequiredExtractFirstException`: No rows were passed in
-- `FileExceedMaxDataImportException`: Row count exceeds `FileMaxDataImport` (1000)
+- `FileExceedMaxDataImportException`: Row count exceeds the row cap read from the configured key
 - `FileImportException`: Contains detailed validation errors with row context
 
 ## CSV Import Flow
 
-Understanding the flow of CSV file processing helps you implement robust data import features. The diagram below illustrates how uploaded CSV files are processed through validation and transformation pipelines.
+CSV upload processing:
 
 ```mermaid
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
-    B --> B2{RequestRequiredPipe}
+    B --> B2{FileRequiredPipe()}
     
-    B2 -->|Missing File| B3[Throw RequestParamRequiredException]
+    B2 -->|Missing File| B3[Throw FileRequiredException]
     B2 -->|Present| C{FileExtensionPipe}
     
     C -->|Invalid Extension| D[Throw FileExtensionInvalidException]
@@ -203,11 +227,11 @@ flowchart TD
     H --> I{FileCsvValidationPipe}
     
     I -->|No Rows| I2[Throw FileRequiredExtractFirstException]
-    I -->|Rows > FileMaxDataImport| I3[Throw FileExceedMaxDataImportException]
-    I -->|Within Cap| J[Transform Each Row to DTO Class]
-    J --> K[Validate with class-validator]
+    I -->|Rows > configured row cap| I3[Throw FileExceedMaxDataImportException]
+    I -->|Within Cap| J[Run Each Row Through the Schema]
+    J --> K[Collect the Standard Schema issues]
     
-    K -->|Validation Errors| L[Collect Errors with Row Context]
+    K -->|Row Issues| L[Collect Issues with Row Context]
     L --> M[Throw FileImportException]
     
     K -->|All Valid| N[Return Validated Data Array]
@@ -237,7 +261,7 @@ Single and multiple file uploads with extension validation.
 
 **Single File Upload:**
 
-The live example is `POST /shared/user/profile/upload/photo` on `UserSharedController`. The controller only dispatches; the S3 write happens in `UserService.uploadPhotoProfile`.
+The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileDomain`, where the S3 write happens.
 
 ```typescript
 @UserSharedUploadPhotoProfileDoc()
@@ -248,12 +272,13 @@ The live example is `POST /shared/user/profile/upload/photo` on `UserSharedContr
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
+@RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
 @HttpCode(HttpStatus.OK)
-@Post('/profile/upload/photo')
+@Post('/profile/photo/upload')
 async uploadPhotoProfile(
   @AuthJwtPayload('userId') userId: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([
       EnumFileExtensionImage.jpeg,
       EnumFileExtensionImage.png,
@@ -262,39 +287,51 @@ async uploadPhotoProfile(
   )
   file: IFile
 ): Promise<void> {
-  return this.userService.uploadPhotoProfile(userId, file);
+  await this.userProfileHttpService.uploadPhotoProfile(userId, file);
 }
 ```
 
-The service derives the extension, builds the key, and writes the object:
+`UserProfileDomain.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
 
 ```typescript
-const extension = this.fileService.extractExtensionFromFilename(
-  file.originalname
-) as EnumFileExtensionImage;
+const extension: EnumFileExtensionImage =
+  this.fileService.extractExtensionFromFilename(
+    file.originalname
+  ) as EnumFileExtensionImage;
 
-const key: string = this.userUtil.createRandomFilenamePhotoProfileWithPath(
+const key: string = this.createRandomFilenamePhotoProfileWithPath(
   userId,
   { extension }
 );
 
-const aws: IAwsS3 | null = await this.awsS3Service.putItem({
-  key,
-  size: file.size,
-  file: file.buffer,
-});
+const aws: IAwsS3 | null = await this.awsS3Service.putItem(
+  {
+    key,
+    size: file.size,
+    file: file.buffer,
+  },
+  { access: EnumAwsS3Accessibility.public }
+);
 ```
 
-`putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case. The repository call that stores the S3 reference takes the `IRequestLog` the service reads from the request store under `RequestLogStoreKey`.
 
 **Multiple Files Upload:**
 
-`@FileUploadMultiple` wires the interceptor for an array of files. `FileExtensionPipe` validates a single file, so validate each entry inside the handler.
+`@FileUploadMultiple` wires the interceptor for an array of files, and `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
 
 ```typescript
 @Post('/documents/upload')
 @FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
-async uploadDocuments(@UploadedFiles() files: IFile[]) {
+async uploadDocuments(
+  @UploadedFiles(
+    FileExtensionPipe([
+      EnumFileExtensionDocument.pdf,
+      EnumFileExtensionImage.png,
+    ])
+  )
+  files: IFile[]
+) {
   const uploadedFiles = [];
 
   for (const file of files) {
@@ -308,11 +345,14 @@ async uploadDocuments(@UploadedFiles() files: IFile[]) {
       extension,
     });
 
-    await this.awsS3Service.putItem({
-      key,
-      size: file.size,
-      file: file.buffer,
-    });
+    await this.awsS3Service.putItem(
+      {
+        key,
+        size: file.size,
+        file: file.buffer,
+      },
+      { access: EnumAwsS3Accessibility.private }
+    );
     uploadedFiles.push(key);
   }
 
@@ -326,20 +366,23 @@ Import and validate data from CSV files. The live example is `POST /admin/user/i
 
 The pipe chain order is the contract: presence, then extension, then parse, then per-row validation.
 
-The row DTO is an ordinary request DTO. `UserImportRequestDto` picks `email` and `name` off `UserCreateRequestDto`, so the import reuses the same validators as user creation:
+The row shape is an ordinary request schema. `UserImportRequestSchema` picks `email`, `name` and `username` off `UserCreateRequestSchema`, so the import reuses the same field constraints as user creation:
 
 ```typescript
-export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
-  'email',
-  'name',
-]) {}
+export const UserImportRequestSchema = UserCreateRequestSchema.pick({
+    email: true,
+    name: true,
+    username: true,
+});
+
+export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 ```
 
 ```typescript
 @UserAdminImportDoc()
 @Response('user.import')
 @TermPolicyAcceptanceProtected()
-@PolicyAbilityProtected({
+@PolicyProtected({
   subject: EnumPolicySubject.user,
   action: [EnumPolicyAction.read, EnumPolicyAction.create],
 })
@@ -350,23 +393,28 @@ export class UserImportRequestDto extends PickType(UserCreateRequestDto, [
 @ApiKeyProtected()
 @FileUploadSingle()
 @RequestTimeout('1m')
+@RequestThrottle({ user: true })
 @HttpCode(HttpStatus.OK)
 @Post('/import')
 async import(
   @AuthJwtPayload('userId') createdBy: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
-    FileCsvValidationPipe(UserImportRequestDto)
+    FileCsvValidationPipe(UserImportRequestSchema, {
+      maxDataImportConfigKey: 'user.maxDataImport',
+    })
   )
   data: UserImportRequestDto[]
 ): Promise<void> {
-  return this.userService.importByAdmin(data, createdBy);
+  await this.userImportHttpService.importByAdmin(data, createdBy);
 }
 ```
 
-`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no DTO validation applied.
+The row cap on this route is `user.maxDataImport`, which is `50`.
+
+`FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no schema validation applied.
 
 ### Multiple Field Upload
 
@@ -397,11 +445,14 @@ async uploadCompleteProfile(
         avatar.originalname
       ) as EnumFileExtension
     });
-    await this.awsS3Service.putItem({
-      key: filename,
-      size: avatar.size,
-      file: avatar.buffer,
-    });
+    await this.awsS3Service.putItem(
+      {
+        key: filename,
+        size: avatar.size,
+        file: avatar.buffer,
+      },
+      { access: EnumAwsS3Accessibility.private }
+    );
     result.avatar = filename;
   }
   
@@ -415,11 +466,14 @@ async uploadCompleteProfile(
           doc.originalname
         ) as EnumFileExtension
       });
-      await this.awsS3Service.putItem({
-        key: filename,
-        size: doc.size,
-        file: doc.buffer,
-      });
+      await this.awsS3Service.putItem(
+        {
+          key: filename,
+          size: doc.size,
+          file: doc.buffer,
+        },
+        { access: EnumAwsS3Accessibility.private }
+      );
       result.documents.push(filename);
     }
   }
@@ -432,7 +486,7 @@ async uploadCompleteProfile(
 
 ### FileImportException
 
-Thrown during CSV validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row and validation errors.
+Thrown during CSV validation with detailed error context. The exception carries the exact row and its issues.
 
 **Exception Structure:**
 
@@ -448,8 +502,8 @@ Thrown during CSV validation with detailed error context. This exception provide
   errors: Array<{
     row: number;            // Row index (0-based)
     errors: Array<{
-      key: string;          // Constraint name (e.g. 'isEmail', 'min')
-      property: string;     // DTO property name
+      key: string;          // camelCase zod issue code (e.g. 'invalidFormat', 'tooSmall')
+      property: string;     // dotted property path
       message: string;      // Translated error message
     }>;
   }>;
@@ -460,14 +514,18 @@ Thrown during CSV validation with detailed error context. This exception provide
 
 | Error Type | Status Code | HTTP | Message | Description |
 |------------|-------------|------|---------|-------------|
-| Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | File extension not in allowed list |
+| Invalid Extension | 50101 | 415 | `file.error.extensionInvalid` | The declared extension is not in the allow-list, or the sniffed bytes disagree with it |
 | Empty File | 50100 | 422 | `file.error.required` | File buffer is empty or missing |
 | Invalid Format | 50101 | 415 | `file.error.extensionInvalid` | File passed to CSV pipe is not a `.csv` file |
-| Parse First | 50102 | 422 | `file.error.requiredParseFirst` | Validation pipe received no rows |
-| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds `FileMaxDataImport` (1000) |
-| Validation Failed | 50300 | 422 | `file.error.validationDto` | DTO validation failed with details |
+| Extract First | 50102 | 422 | `file.error.requiredExtractFirst` | Validation pipe received no rows |
+| Exceed Max Import | 50103 | 422 | `file.error.exceedMaxDataImport` | Row count exceeds the configured row cap |
+| Exceed Max Size Upload | 50106 | 413 | `file.error.exceedMaxSizeUpload` | A file exceeds the route's `fileSize` |
+| Exceed Max Files | 50107 | 422 | `file.error.exceedMaxFiles` | The request carries more files than the route's global `limits.files` |
+| Field Unexpected | 50108 | 422 | `file.error.fieldUnexpected` | A file arrived on a field the route does not accept |
+| Multipart Invalid | 50109 | 422 | `file.error.multipartInvalid` | The multipart body is malformed, or a part / field limit was hit |
+| Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 
-Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`.
+Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`. The full catalog is [Status Codes](status-codes.md).
 
 **Error Response Examples:**
 
@@ -491,14 +549,14 @@ Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Fail
       "row": 0,
       "errors": [
         {
-          "key": "isEmail",
+          "key": "custom",
           "property": "email",
-          "message": "email must be a valid email address"
+          "message": "email should be a valid email address."
         },
         {
-          "key": "min",
-          "property": "age",
-          "message": "age must not be less than 18"
+          "key": "tooSmall",
+          "property": "username",
+          "message": "username is shorter than the minimum allowed."
         }
       ]
     }
@@ -512,25 +570,27 @@ File validation errors are automatically translated using the i18n system. The `
 
 **How It Works:**
 
-1. Validation errors are captured from class-validator
-2. Errors are passed to `MessageService.setValidationImportMessage()`
-3. Each constraint is translated using i18n keys: `request.error.{constraint}`
-4. When that key does not resolve, the raw class-validator message is used instead
+1. The schema's issues are collected per row
+2. They are passed to `MessageService.setValidationImportMessage()`
+3. The issue message is translated first, so a schema raising a message path speaks for itself; otherwise the camelCase issue code is looked up under `request.error.{key}`
+4. `{property}` is interpolated with the last segment of the issue path
 5. Localized messages are returned in the error response, each carrying `key`, `property`, and `message`
 
 **Custom Error Messages:**
 
-Add custom validation messages in `src/languages/<lang>/request.json` for any class-validator constraint:
+Add messages in `src/languages/<lang>/request.json`, one entry per zod issue code:
 
 ```json
 {
   "error": {
-    "min": "{property} must not be less than {value}",
-    "max": "{property} must not be greater than {value}",
-    "isEmail": "{property} must be a valid email address"
+    "tooSmall": "{property} is shorter than the minimum allowed.",
+    "tooBig": "{property} is longer than the maximum allowed.",
+    "invalidFormat": "{property} does not match the expected format."
   }
 }
 ```
+
+`{property}` is substituted with the last segment of the issue path.
 
 See [Message Documentation][ref-doc-message] for complete language configuration details.
 

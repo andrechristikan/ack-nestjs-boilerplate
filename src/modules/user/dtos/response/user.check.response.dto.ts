@@ -1,24 +1,31 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { z } from 'zod';
 
-export class UserCheckEmailResponseDto {
-    @ApiProperty({
-        required: true,
-    })
-    @Expose()
-    badWord: boolean;
+/**
+ * Outcome of checking an email against the blocklist and the existing accounts.
+ */
+export const UserCheckEmailResponseSchema = z.object({
+    badWord: z.boolean().meta({
+        description: 'Whether the value contains a blocked word',
+        example: false,
+    }),
+    exist: z.boolean().meta({
+        description: 'Whether the value already exists',
+        example: false,
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-    })
-    @Expose()
-    exist: boolean;
-}
+export type UserCheckEmailResponseDto = z.infer<
+    typeof UserCheckEmailResponseSchema
+>;
 
-export class UserCheckUsernameResponseDto extends UserCheckEmailResponseDto {
-    @ApiProperty({
-        required: true,
-    })
-    @Expose()
-    pattern: boolean;
-}
+export const UserCheckUsernameResponseSchema =
+    UserCheckEmailResponseSchema.extend({
+        pattern: z.boolean().meta({
+            description: 'Whether the username matches the allowed pattern',
+            example: true,
+        }),
+    });
+
+export type UserCheckUsernameResponseDto = z.infer<
+    typeof UserCheckUsernameResponseSchema
+>;

@@ -4,9 +4,7 @@ This documentation explains **Environment**: Located at `.env.example`
 
 ## Overview
 
-This document provides a comprehensive guide to configuring the ACK NestJS Boilerplate using environment variables. The project uses a `.env` file to store all configuration settings including database connections, authentication, AWS services, and other application settings.
-
-All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted before the application starts.
+Runtime config is environment variables. `AppEnvSchema` validates them at startup.
 
 ## Related Documents
 
@@ -41,40 +39,29 @@ All environment variables are validated using the `AppEnvDto` class to ensure re
 
 ## Environment Validation
 
-Environment variables are validated using the `AppEnvDto` class with `class-validator` decorators. This validation occurs in `src/main.ts` during application bootstrap:
+`process.env` is validated against a zod schema handed to `ConfigModule.forRoot()` in `src/common/common.module.ts`, so the check runs while the module graph is being built, before any provider resolves a config value:
 
 ```typescript
-const classEnv = plainToInstance(AppEnvDto, process.env);
-const errors = await validate(classEnv, {
-    skipMissingProperties: false,
-    skipNullProperties: false,
-    skipUndefinedProperties: false,
-    validationError: {
-        target: false,
-        value: true,
-    },
-});
-if (errors.length > 0) {
-    const messageService = app.get(MessageService);
-    const errorsMessage = messageService.setValidationMessage(errors);
-
-    logger.error(errorsMessage, 'Env Variable Invalid');
-
-    throw new Error('Env Variable Invalid', {
-        cause: errorsMessage,
-    });
-}
+ConfigModule.forRoot({
+    load: configs,
+    isGlobal: true,
+    cache: true,
+    envFilePath: ['.env', `.env.${process.env.NODE_ENV ?? 'local'}`],
+    expandVariables: false,
+    validationSchema: AppEnvSchema,
+}),
 ```
 
-The `AppEnvDto` class is located at `src/app/dtos/app.env.dto.ts`.
-If validation fails, the application will not start and will display detailed error messages showing which environment variables are missing or invalid.
+`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `z.stringbool` accepting exactly `'true'` or `'false'`, a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
+
+If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 
 ## Example Configuration
 
 Below is an example `.env` file based on the current `.env.example`:
 
 > [!WARNING]
-> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment — never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
+> **Security**: All secret and key values below (`*_ENCRYPTION_SECRET_KEY`, `*_ENCRYPTION_KEY`, `AUTH_JWT_*_KEY`) are placeholders for illustration only. They are intentionally left empty in `.env.example` so startup validation fails until you set them. Generate a unique random value per environment; never copy these examples as-is. For a 32+ character secret: `openssl rand -base64 32`.
 
 ```bash
 # Application Settings
@@ -91,6 +78,7 @@ HOME_NAME=ACKNestJs
 # HTTP Server
 HTTP_HOST=localhost
 HTTP_PORT=3000
+HTTP_TRUSTED_PROXY=
 
 # Logging
 LOGGER_ENABLE=true
@@ -174,7 +162,7 @@ SENTRY_DSN=
 
 ## Environment Variables
 
-All environment variables are validated using the `AppEnvDto` class to ensure required variables are present and properly formatted. Below is a detailed explanation of each variable:
+Validated by `AppEnvSchema`. Each variable:
 
 ### Application Settings
 
@@ -203,9 +191,15 @@ APP_TIMEZONE=Asia/Jakarta
 ```
 
 **`APP_ENCRYPTION_SECRET_KEY`** *(required)*  
-Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (enforced by `@MinLength(32)` / `@MaxLength(64)`). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
+Secret key used to derive an AES-256 encryption key for encrypting sensitive data. Must be 32-64 characters (`z.string().min(32).max(64)`). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.
 ```bash
 APP_ENCRYPTION_SECRET_KEY=<your_app_encryption_secret_key>
+```
+
+**`NODE_ENV`** *(optional)*  
+Selects the second env file loaded by `ConfigModule.forRoot` in `src/common/common.module.ts`: `.env` is always read, then `.env.${NODE_ENV}`, falling back to `.env.local` when unset. It is not part of `AppEnvSchema`, and `src/main.ts` overwrites it with `app.env` once the config is loaded.
+```bash
+NODE_ENV=local
 ```
 
 ### Home/Organization Settings
@@ -236,6 +230,21 @@ Port number for the HTTP server.
 HTTP_PORT=3000
 ```
 
+**`HTTP_TRUSTED_PROXY`** *(optional)*  
+Comma-separated list of proxy NETWORKS whose forwarding headers Express may trust, passed straight to `trust proxy`. Accepts the `proxy-addr` preset names (`loopback`, `linklocal`, `uniquelocal`) and explicit CIDRs. It is never a hop count and never `true`.
+
+Leave it empty to trust no proxy: `req.ip` is then the direct socket peer and a client cannot forge it through `X-Forwarded-For`. A deployment behind a CDN or edge proxy that connects from a public address must list that provider's CIDRs, or every client behind it shares one rate-limit bucket.
+```bash
+# no proxy trusted
+HTTP_TRUSTED_PROXY=
+
+# private-network proxies
+HTTP_TRUSTED_PROXY=loopback,uniquelocal
+
+# an edge provider on public addresses
+HTTP_TRUSTED_PROXY=173.245.48.0/20,103.21.244.0/22
+```
+
 ### Logging Settings
 
 **`LOGGER_ENABLE`** *(required)*  
@@ -245,7 +254,7 @@ LOGGER_ENABLE=true
 ```
 
 **`LOGGER_LEVEL`** *(required)*  
-Logging level. Validated against `EnumLoggerLevel`. Options: `error`, `warn`, `info`, `verbose`, `debug`, `silly`
+Minimum log level. Validated against `EnumLoggerLevel`, which declares Pino's own level set. Options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`
 ```bash
 LOGGER_LEVEL=debug
 ```
@@ -282,7 +291,7 @@ Comma-separated list of allowed CORS origins. Supports subdomain wildcards and e
 
 **Examples:**
 ```bash
-# Allow all origins (development only) — credentials NOT allowed
+# Allow all origins (development only); credentials NOT allowed
 CORS_ALLOWED_ORIGIN=*
 
 # Specific origins
@@ -294,19 +303,19 @@ CORS_ALLOWED_ORIGIN=*.example.com,api.myapp.com
 # Multiple domains with explicit ports
 CORS_ALLOWED_ORIGIN=*.example.com:3000,api.myapp.com:8080,localhost:3000
 
-# Mixed — wildcards and specific ports
+# Mixed; wildcards and specific ports
 CORS_ALLOWED_ORIGIN=*.example.com,api.production.com:443,localhost:3000
 ```
 
 **Port Matching Behavior:**
 ```bash
-# ✅ SUPPORTED — Exact port matching
+# ✅ SUPPORTED; Exact port matching
 CORS_ALLOWED_ORIGIN=api.example.com:3000  # Matches: http://api.example.com:3000, https://api.example.com:3000
 
-# ❌ NOT SUPPORTED — Port wildcards
+# ❌ NOT SUPPORTED; Port wildcards
 CORS_ALLOWED_ORIGIN=api.example.com:*     # Does NOT work
 
-# ✅ SUPPORTED — Default port (implicit)
+# ✅ SUPPORTED; Default port (implicit)
 CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, https://api.example.com (no explicit port)
 ```
 
@@ -319,7 +328,7 @@ CORS_ALLOWED_ORIGIN=api.example.com       # Matches: http://api.example.com, htt
 - **Specific origins**: Credentials are **enabled**
 
 > [!TIP]
-> **Best Practice**: For production, always specify explicit origins instead of using wildcard. Wildcard origins with credentials disabled should only be used in development environments.
+> Production: name explicit origins. A wildcard with credentials off is for development.
 
 ### URL Versioning Settings
 
@@ -463,13 +472,13 @@ AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID=
 ### Two-Factor Authentication Settings
 
 **`AUTH_TWO_FACTOR_ISSUER`** *(required)*  
-Issuer name displayed in authenticator apps. Empty by default — startup validation rejects an unset value.  
+Issuer name displayed in authenticator apps. Empty by default; startup validation rejects an unset value.  
 ```bash
 AUTH_TWO_FACTOR_ISSUER=ACKNestJsTwoFactor
 ```
 
 **`AUTH_TWO_FACTOR_ENCRYPTION_KEY`** *(required)*  
-Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default — startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
+Secret used to derive an AES-256 key for encrypting TOTP secrets (recommended 32+ chars). Empty by default; startup validation rejects an unset value. Generate a unique key per environment (`openssl rand -base64 32`); never reuse the example below.  
 ```bash
 AUTH_TWO_FACTOR_ENCRYPTION_KEY=<your_two_factor_encryption_key>
 ```
@@ -500,11 +509,7 @@ AWS_S3_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_S3_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_S3_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_S3_REGION`** *(optional/required for file uploads)*  
 AWS region for S3 services.
@@ -519,7 +524,7 @@ AWS_S3_PUBLIC_BUCKET=
 ```
 
 **`AWS_S3_PUBLIC_CDN`** *(optional)*  
-CloudFront CDN URL for public bucket.
+CloudFront CDN hostname for the public bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PUBLIC_CDN}`.
 ```bash
 AWS_S3_PUBLIC_CDN=
 ```
@@ -533,7 +538,7 @@ AWS_S3_PRIVATE_BUCKET=
 ```
 
 **`AWS_S3_PRIVATE_CDN`** *(optional)*  
-CloudFront CDN URL for private bucket.
+CloudFront CDN hostname for the private bucket. Set the hostname only, without a scheme: `aws.config.ts` builds the config value as `https://{AWS_S3_PRIVATE_CDN}`.
 ```bash
 AWS_S3_PRIVATE_CDN=
 ```
@@ -559,11 +564,7 @@ AWS_SES_IAM_ARN=
 ```
 
 > [!TIP]
-> **Best Practice**: Using IAM Role ARN (`AWS_SES_IAM_ARN`) is recommended over long-lived credentials for production environments as it provides:
-> - Temporary security credentials
-> - Better security through role assumption
-> - Fine-grained access control
-> - Automatic credential rotation
+> Prefer `AWS_SES_IAM_ARN` in production over long-lived keys. Role assumption issues temporary credentials and rotates them.
 
 **`AWS_SES_REGION`** *(optional/required for email features)*  
 AWS region for SES service.
@@ -612,7 +613,7 @@ FIREBASE_CLIENT_EMAIL=
 ```
 
 **`FIREBASE_PRIVATE_KEY`** *(optional/required for push notifications)*  
-Firebase service account private key. Replace newlines with `\n` when storing in `.env`.
+Firebase service account private key, accepted either as the PEM block with its newlines written as `\n`, or as the bare base64 PKCS#8 DER body. `FirebaseUtil.normalizePrivateKey` in `src/common/firebase/utils/firebase.util.ts` turns either form into the PEM the Admin SDK expects.
 ```bash
 FIREBASE_PRIVATE_KEY=
 ```

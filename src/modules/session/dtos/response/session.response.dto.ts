@@ -1,92 +1,132 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
-import { RequestGeoLocationResponseDto } from '@common/request/dtos/response/request.geo-location.response.dto';
-import { RequestUserAgentResponseDto } from '@common/request/dtos/response/request.user-agent.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
+import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
+import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
+import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-export class SessionResponseDto extends DatabaseResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Base session shape: the stored session row without the JWT identifier.
+ */
+export const SessionResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    userId: z.string().meta({
+        description: 'Identifier of the user who owns the session',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    userId: string;
-
-    @ApiProperty({
-        required: true,
-        type: UserListResponseDto,
-    })
-    @Expose()
-    @Type(() => UserListResponseDto)
-    user: UserListResponseDto;
-
-    @ApiProperty({
-        required: true,
+    }),
+    user: UserRefResponseSchema.meta({
+        description: 'Embedded user who owns the session',
+        example: {
+            id: faker.database.mongodbObjectId(),
+            createdAt: faker.date.recent(),
+            createdBy: faker.database.mongodbObjectId(),
+            updatedAt: faker.date.recent(),
+            updatedBy: faker.database.mongodbObjectId(),
+            deletedAt: faker.date.recent(),
+            deletedBy: faker.database.mongodbObjectId(),
+            name: faker.person.fullName(),
+            username: faker.internet.username().toLowerCase(),
+            photo: {
+                bucket: faker.string.alpha({ length: 10, casing: 'upper' }),
+                key: faker.system.filePath(),
+                cdnUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
+                completedUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
+                mime: 'image/jpeg',
+                extension: 'jpg',
+                access: EnumAwsS3Accessibility.public,
+                size: 1024,
+            },
+        },
+    }),
+    deviceOwnershipId: z.string().meta({
+        description: 'Identifier of the device ownership bound to the session',
         example: faker.string.uuid(),
-    })
-    @Expose()
-    deviceOwnershipId: string;
-
-    jti: string;
-
-    @ApiProperty({
-        required: true,
+    }),
+    ipAddress: z.string().nullable().meta({
+        description: 'IP address recorded for the session',
         example: faker.internet.ipv4(),
-    })
-    @Expose()
-    ipAddress: string;
-
-    @ApiProperty({
-        required: true,
-        type: RequestUserAgentResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestUserAgentResponseDto)
-    userAgent: RequestUserAgentResponseDto;
-
-    @ApiProperty({
-        required: false,
-        type: RequestGeoLocationResponseDto,
-    })
-    @Expose()
-    @Type(() => RequestGeoLocationResponseDto)
-    geoLocation?: RequestGeoLocationResponseDto;
-
-    @ApiProperty({
-        required: true,
+    }),
+    userAgent: RequestUserAgentResponseSchema.meta({
+        description: 'Parsed user agent recorded for the session',
+        example: {
+            ua: faker.internet.userAgent(),
+            browser: {
+                name: 'Chrome',
+                version: '112.0.5615.49',
+                major: '112',
+                type: 'mobile',
+            },
+            cpu: {
+                architecture: 'amd64',
+            },
+            device: {
+                type: 'mobile',
+                vendor: 'Apple',
+                model: 'iPhone',
+            },
+            engine: {
+                name: 'WebKit',
+                version: '537.36',
+            },
+            os: {
+                name: 'iOS',
+                version: '16.3.1',
+            },
+        },
+    }),
+    geoLocation: RequestGeoLocationResponseSchema.nullable().meta({
+        description: 'Geo-location recorded for the session',
+        example: {
+            latitude: faker.location.latitude(),
+            longitude: faker.location.longitude(),
+            country: faker.location.country(),
+            region: faker.location.state(),
+            city: faker.location.city(),
+        },
+    }),
+    expiredAt: z.date().meta({
+        description: 'When the session expires',
         example: faker.date.future(),
-    })
-    @Expose()
-    expiredAt: Date;
-
-    @ApiProperty({
-        required: false,
+    }),
+    revokedAt: z.date().nullable().meta({
+        description: 'When the session was revoked',
         example: faker.date.future(),
-    })
-    @Expose()
-    revokedAt?: Date;
-
-    @ApiProperty({
-        required: true,
+    }),
+    isRevoked: z.boolean().meta({
+        description: 'Whether the session has been revoked',
         example: false,
-    })
-    @Expose()
-    isRevoked: boolean;
-
-    @ApiProperty({
-        required: false,
+    }),
+    revokedById: z.string().nullable().meta({
+        description: 'Identifier of the user who revoked the session',
         example: faker.database.mongodbObjectId(),
-    })
-    @Expose()
-    revokedById?: string;
+    }),
+    revokedBy: UserRefResponseSchema.nullable().meta({
+        description: 'Embedded user who revoked the session',
+        example: {
+            id: faker.database.mongodbObjectId(),
+            createdAt: faker.date.recent(),
+            createdBy: faker.database.mongodbObjectId(),
+            updatedAt: faker.date.recent(),
+            updatedBy: faker.database.mongodbObjectId(),
+            deletedAt: faker.date.recent(),
+            deletedBy: faker.database.mongodbObjectId(),
+            name: faker.person.fullName(),
+            username: faker.internet.username().toLowerCase(),
+            photo: {
+                bucket: faker.string.alpha({ length: 10, casing: 'upper' }),
+                key: faker.system.filePath(),
+                cdnUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
+                completedUrl: `${faker.internet.url()}/${faker.system.filePath()}`,
+                mime: 'image/jpeg',
+                extension: 'jpg',
+                access: EnumAwsS3Accessibility.public,
+                size: 1024,
+            },
+        },
+    }),
+});
 
-    @ApiProperty({
-        required: true,
-        type: UserListResponseDto,
-    })
-    @Expose()
-    @Type(() => UserListResponseDto)
-    revokedBy: UserListResponseDto;
-}
+export type SessionResponseDto = z.infer<typeof SessionResponseSchema>;

@@ -4,7 +4,7 @@ import { IMessageValidationImportErrorParam } from '@common/message/interfaces/m
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
- * Carries per-row class-validator errors from a file import for the import filter to format.
+ * Carries per-row validation issues from a file import for the import filter to format.
  */
 export class FileImportException extends AppBaseException {
     readonly module = 'file';

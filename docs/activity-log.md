@@ -4,53 +4,58 @@ This documentation explains the features and usage of **Activity Log Module**: L
 
 ## Overview
 
-Activity Log records audited user actions. There are two recording paths:
+Activity Log records audited user actions. Domains call `ActivityLogDomain.stage` during the request. The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes staged events after the handler settles: success flushes every staged event; an error path flushes only events staged with `onError: true`. Flushed rows go through `ActivityLogRepository.createManyInTx` inside `DatabaseService.withTransaction`.
 
-1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method, and the interceptor persists one log for the authenticated actor after the handler runs. This document covers that path.
-2. **Repository-written** - a repository nests an `activityLogs.create` inside the Prisma write it already performs, so the log lands in the same transaction as the mutation. All `user*` actions in `EnumActivityLogAction` are recorded this way (`userLoginCredential`, `userChangePassword`, `userRemoveDevice`, and the rest), built with the same `ActivityLogUtil.getDescription`.
+**`userLoginFailed`:** On credential password mismatch, `UserAuthDomain` increments the password-attempt counter and calls `UserLoginDomain.stageLoginFailed`, which stages `EnumActivityLogAction.userLoginFailed` with `userId` set to the target user. Contract in `ActivityLogContractByAction`: `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n description: `activityLog.userLoginFailed` ("Login failed with invalid credentials"). Login path: [Authentication](authentication.md). Analytic failed-login metrics count `userLoginFailed` rows: [Analytic](analytic.md).
 
 **Notes:**
 
-- Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` and `errorStack` are merged into `metadata`, and ` - Error: <message>` is appended to `description`.
-- Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
-- `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
-- `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
-- Never log secrets (password, token, apiKey) or large objects in metadata.
+- Flush failures are logged and do not change the handler outcome.
+- Do not stage secrets (password, token, apiKey) or large objects in metadata.
 
 ## Related Documents
 
 - [Authentication Documentation][ref-doc-authentication] - For user context (`request.user`)
-- [Authorization Documentation][ref-doc-authorization] - For decorator order and guards
+- [Authorization Documentation][ref-doc-authorization] - For guards and policy abilities
 - [Response Documentation][ref-doc-response] - For serialization of list responses
 - [Message Documentation][ref-doc-message] - For the i18n description source
 - [Pagination Documentation][ref-doc-pagination] - For the list endpoints
+- [Analytic Documentation][ref-doc-analytic] - Metrics that count activity-log actions
 
 ## Table of Contents
 
-- [Activity Log Documentation](#activity-log-documentation)
-  - [Overview](#overview)
-  - [Related Documents](#related-documents)
-  - [Table of Contents](#table-of-contents)
-  - [Architecture](#architecture)
-  - [Flow](#flow)
-  - [Recording an Activity](#recording-an-activity)
-    - [@ActivityLog Decorator](#activitylog-decorator)
-    - [Metadata](#metadata-dynamic-only)
-    - [Request store (metadata)](#request-store-metadata)
-  - [Data](#data)
-    - [Metadata](#metadata)
-    - [Description](#description)
+- [Overview](#overview)
+- [Related Documents](#related-documents)
+- [Architecture](#architecture)
+- [List Endpoints](#list-endpoints)
+- [Flow](#flow)
+- [Staging an activity](#staging-an-activity)
+- [Data](#data)
 
 ## Architecture
 
 | Component | Responsibility |
 |---|---|
-| `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
-| `ActivityLogInterceptor` | Reads the action, reads dynamic metadata and request context (`IRequestLog`: IP, user agent, geo) from the request store, persists the log on success and failure |
-| `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
-| `ActivityLogService` | Read side: paginated listing for admin and self |
-| `ActivityLogRepository` | Data access (Prisma) |
-| `ActivityLogUtil` | Builds the i18n description, serializes list responses |
+| `ActivityLogDomain.stage` | Validates contract and metadata, pushes an event onto the request-store stage list |
+| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
+| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`), request log, and workspace |
+| `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createManyInTx` |
+| `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
+| `ActivityLogRepository` | Data access (Prisma), including `createManyInTx` |
+| `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
+
+## List Endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
+| `GET` | `/shared/user/activity-log/workspace/list` | Authenticated user lists own logs in the workspace from `x-workspace-id` (cursor) |
+| `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
+| `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
+
+Global prefix `/api` and version `v1` apply as elsewhere.
+
+The two user-scoped lists match rows whose `workspaceId` is null or unset, so an account's own timeline holds the logs that belong to no workspace. A log written inside a workspace mutation appears in the two workspace-scoped lists.
 
 ## Flow
 
@@ -58,106 +63,63 @@ Activity Log records audited user actions. There are two recording paths:
 sequenceDiagram
     participant Client
     participant Controller
-    participant Service
+    participant Domain
     participant Storage as RequestStoreService
     participant Interceptor as ActivityLogInterceptor
-    participant DB
+    participant Repo as ActivityLogRepository
 
     Client->>Controller: HTTP Request
-    Note over Controller: @AuthJwtAccessProtected (required)
-    Note over Controller: @ActivityLog(action)
-    Controller->>Service: Execute business logic
-    Service->>Storage: merge(ActivityLogMetadataStoreKey, { ... })
+    Controller->>Domain: business logic
+    Domain->>Storage: ActivityLogDomain.stage({ action, userId?, workspaceId?, metadata?, onError? })
     alt Success
-        Service-->>Interceptor: result
-        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
-        Interceptor->>DB: create log (non-blocking)
-        DB-->>Client: Success Response
+        Domain-->>Interceptor: result
+        Interceptor->>Domain: flushStaged({ isError: false })
+        Domain->>Repo: createManyInTx(rows)
+        Repo-->>Client: Success Response
     else Failure
-        Service-->>Interceptor: throws error
-        Interceptor->>Storage: get(ActivityLogMetadataStoreKey)
-        Note over Interceptor: serialize error into metadata + description
-        Interceptor->>DB: create log (non-blocking)
-        DB-->>Client: Error Response
+        Domain-->>Interceptor: throws
+        Interceptor->>Domain: flushStaged({ isError: true })
+        Note over Domain: Only events with onError true
+        Domain->>Repo: createManyInTx(rows) when any qualify
+        Repo-->>Client: Error Response
     end
 ```
 
-## Recording an Activity
+## Staging an activity
 
-### @ActivityLog Decorator
-
-```typescript
-ActivityLog(action: EnumActivityLogAction): MethodDecorator
-```
-
-- `action` - the recorded action enum, also the i18n key for the description (`activityLog.<action>`).
-
-The decorator takes only `action`. There is no static metadata at decoration time; all metadata is set dynamically from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`.
-
-Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It must sit above `@AuthJwtAccessProtected`.
+Domains call `ActivityLogDomain.stage` after the mutation they are auditing (or, for `userLoginFailed`, after a password mismatch). Metadata is validated against `ActivityLogContractByAction[action].metadata` at stage time. Example pattern from owner domains:
 
 ```typescript
-@ActivityLog(EnumActivityLogAction.adminRoleCreate)
-@AuthJwtAccessProtected() // required
-@Post('/create')
-async create(@Body() dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    return this.roleService.createByAdmin(dto);
-}
+this.activityLogDomain.stage({
+    action: EnumActivityLogAction.adminRoleCreate,
+    metadata: this.roleUtil.mapActivityLogMetadata(created),
+});
 ```
 
-### Metadata (dynamic only)
-
-All metadata is dynamic: set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use it for entity values resolved during the request. The interceptor reads it from the request store and, on failure, merges in the serialized error (`{ ...metadata, ...error }`) before writing.
-
-### Request store (metadata)
-
-Dynamic metadata lives in the generic `RequestStoreService` (`@common/request`), backed by `nestjs-cls`. Services call `merge(ActivityLogMetadataStoreKey, metadata)` to shallow-merge into the current request's metadata; the interceptor reads it via `get(ActivityLogMetadataStoreKey)`. The `ActivityLogMetadataStoreKey` constant is the only key used for activity-log metadata.
-
-Request context (IP, user agent, geo) is read from the same store under `RequestLogStoreKey`. It is computed once per request by `RequestUtil.buildRequestLog(req)` in `RequestRequestLogMiddleware`, not recomputed by the interceptor. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+`userLoginFailed` stages with an explicit target `userId` and empty metadata:
 
 ```typescript
-merge<T extends object>(key: string, value: Partial<T>): void; // shallow-merge into the request store
-get<T>(key: string): T | null;                                 // null when none set
+this.activityLogDomain.stage({
+    action: EnumActivityLogAction.userLoginFailed,
+    userId,
+});
 ```
 
-Build the metadata shape in the module's util, then merge it in the service:
-
-```typescript
-// Service - inject RequestStoreService, merge metadata after the mutation
-async createByAdmin(dto: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    const created = await this.roleRepository.create(dto);
-
-    this.requestStoreService.merge<IActivityLogMetadata>(
-        ActivityLogMetadataStoreKey,
-        this.roleUtil.mapActivityLogMetadata(created)
-    );
-
-    return { data: this.roleUtil.mapOne(created) };
-}
-
-// Util - owns the metadata shape
-mapActivityLogMetadata(role: Role): IActivityLogMetadata {
-    return {
-        roleId: role.id,
-        roleName: role.name,
-        roleType: role.type,
-        timestamp: role.updatedAt ?? role.createdAt,
-    };
-}
-```
+Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`, filled once per request by `RequestRequestLogMiddleware`. See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Data
 
-Each log contains:
+Each flushed log contains:
 
-- **userId** - the authenticated actor (from JWT)
+- **userId** - from the staged target or from `request.user.userId` when the contract uses the actor
 - **user** - related user record (included on read)
 - **action** - `EnumActivityLogAction`
-- **description** - localized text; on failure the error message is appended
-- **ipAddress** - read from the request store `IRequestLog` (may be null); resolved once per request via `@supercharge/request-ip`
-- **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
-- **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
-- **metadata** - dynamic context from the request store (JSON, null when empty)
+- **description** - localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
+- **ipAddress** - from the request store `IRequestLog` (may be null)
+- **userAgent** - from the request store `IRequestLog` (JSON)
+- **geoLocation** - from the request store `IRequestLog` (JSON, may be null)
+- **metadata** - staged metadata (JSON, null when empty)
+- **workspaceId** - from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
 - **createdAt** - timestamp
 
 ### Metadata
@@ -166,41 +128,11 @@ Each log contains:
 type IActivityLogMetadata = Record<string, string | number | Date | boolean>;
 ```
 
-Stored as `null` when empty. On failure the interceptor adds `errorMessage` and `errorStack`.
-
-```json
-{
-  "userId": "admin-id",
-  "action": "adminUserUpdateStatus",
-  "geoLocation": {
-    "latitude": -6.2,
-    "longitude": 106.8,
-    "country": "ID",
-    "region": "JK",
-    "city": "Jakarta"
-  },
-  "metadata": {
-    "userId": "user-123",
-    "userName": "John Doe",
-    "oldStatus": "active",
-    "newStatus": "blocked"
-  }
-}
-```
-
-**Never** include sensitive or oversized values:
-
-```typescript
-this.requestStoreService.merge<IActivityLogMetadata>(ActivityLogMetadataStoreKey, {
-    password: 'secret123',     // never
-    accessToken: 'jwt_token',  // never
-    entireUserObject: { ... }, // too large
-});
-```
+Stored as `null` when empty. Secrets and oversized objects do not belong in metadata.
 
 ### Description
 
-Built by `ActivityLogUtil.getDescription`, which resolves the i18n key `activityLog.<action>` via `MessageService.setMessage`, passing the merged metadata for placeholder interpolation. Strings live in `src/languages/<lang>/activityLog.json`. On failure, ` - Error: <message>` is appended.
+Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>` via `MessageService.setMessage`, passing staged metadata for placeholder interpolation. Strings live in `src/languages/<lang>/activityLog.json`.
 
 
 <!-- REFERENCES -->
@@ -211,3 +143,4 @@ Built by `ActivityLogUtil.getDescription`, which resolves the i18n key `activity
 [ref-doc-message]: message.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-analytic]: analytic.md

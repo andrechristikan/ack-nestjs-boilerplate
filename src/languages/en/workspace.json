@@ -1,0 +1,62 @@
+{
+    "list": "List of your workspaces",
+    "create": "Workspace created successfully",
+    "get": "Workspace retrieved successfully",
+    "preview": "Workspace preview retrieved successfully",
+    "update": "Workspace updated successfully",
+    "updateIsPublic": "Workspace visibility updated successfully",
+    "updateSlug": "Workspace slug updated successfully",
+    "switch": "Active workspace switched successfully",
+    "transferOwnership": "Workspace ownership transferred successfully",
+    "leave": "You have left the workspace",
+    "softDelete": "Workspace deleted successfully",
+    "member": {
+        "list": "List of workspace members",
+        "updateRole": "Workspace member role updated successfully",
+        "remove": "Workspace member removed successfully"
+    },
+    "invite": {
+        "list": "List of workspace invites",
+        "create": "Workspace invite sent successfully",
+        "resend": "Workspace invite resent successfully",
+        "revoke": "Workspace invite revoked successfully",
+        "claim": "Workspace invite accepted successfully",
+        "preview": "Workspace invite preview retrieved successfully"
+    },
+    "joinRequest": {
+        "list": "List of workspace join requests",
+        "create": "Workspace join request sent successfully",
+        "accept": "Workspace join request accepted successfully",
+        "reject": "Workspace join request rejected successfully"
+    },
+    "admin": {
+        "list": "List of all workspaces",
+        "get": "Workspace retrieved successfully",
+        "member": {
+            "list": "List of workspace members"
+        }
+    },
+    "error": {
+        "notFound": "Sorry, we couldn't find the workspace.",
+        "memberForbidden": "You are not a member of this workspace.",
+        "roleForbidden": "You do not have the required role in this workspace.",
+        "inviteInvalid": "This workspace invite link is invalid or has expired.",
+        "capReached": "You have reached the maximum number of workspaces you can own.",
+        "slugAlreadyExists": "This workspace slug is already taken.",
+        "memberNotFound": "Sorry, we couldn't find that workspace member.",
+        "lastOwner": "You are the last owner; transfer ownership before leaving.",
+        "memberPeerForbidden": "You are not allowed to perform this action on this member.",
+        "inviteDuplicate": "There is already a pending invite for this email in this workspace.",
+        "inviteProjectMismatch": "This project does not belong to the current workspace.",
+        "inviteRoleRequired": "projectMemberRole is required when projectId is set, and must be omitted otherwise.",
+        "inviteNotFound": "Sorry, we couldn't find that workspace invite.",
+        "inviteAlreadyProcessed": "This workspace invite is no longer pending.",
+        "notPublic": "This workspace is not accepting public join requests.",
+        "joinRequestAlreadyMember": "You are already a member of this workspace.",
+        "joinRequestDuplicate": "You already have a pending join request for this workspace.",
+        "joinRequestNotFound": "Sorry, we couldn't find that workspace join request.",
+        "joinRequestAlreadyProcessed": "This workspace join request is no longer pending.",
+        "selfTransfer": "You cannot transfer ownership to yourself.",
+        "slugInvalid": "This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length."
+    }
+}

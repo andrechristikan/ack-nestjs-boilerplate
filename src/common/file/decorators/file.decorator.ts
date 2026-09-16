@@ -8,6 +8,7 @@ import {
     FileMaxMultiple,
     FileSizeInBytes,
 } from '@common/file/constants/file.constant';
+import { FileUploadErrorInterceptor } from '@common/file/interceptors/file.upload-error.interceptor';
 import {
     IFileUploadMultiple,
     IFileUploadMultipleField,
@@ -18,6 +19,7 @@ import {
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
+            FileUploadErrorInterceptor,
             FileInterceptor(options?.field ?? 'file', {
                 limits: {
                     fileSize: options?.fileSize ?? FileSizeInBytes,
@@ -33,6 +35,7 @@ export function FileUploadMultiple(
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
+            FileUploadErrorInterceptor,
             FilesInterceptor(
                 options?.field ?? 'files',
                 options?.maxFiles ?? FileMaxMultiple,
@@ -52,6 +55,7 @@ export function FileUploadMultipleFields(
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
+            FileUploadErrorInterceptor,
             FileFieldsInterceptor(
                 fields.map(e => ({
                     name: e.field,
@@ -60,7 +64,10 @@ export function FileUploadMultipleFields(
                 {
                     limits: {
                         fileSize: options?.fileSize ?? FileSizeInBytes,
-                        files: FileMaxMultiple,
+                        files: fields.reduce(
+                            (total, field) => total + field.maxFiles,
+                            0
+                        ),
                     },
                 }
             )

@@ -1,47 +1,34 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { z } from 'zod';
+import { faker } from '@faker-js/faker';
 
-export class UserTwoFactorStatusResponseDto {
-    @ApiProperty({
-        required: true,
+/**
+ * Current two-factor authentication state of the signed-in account.
+ */
+export const UserTwoFactorStatusResponseSchema = z.object({
+    isEnabled: z.boolean().meta({
         description:
             'Whether two-factor authentication is enabled for the account',
         example: false,
-    })
-    @Expose()
-    isEnabled: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    isPendingConfirmation: z.boolean().meta({
         description:
             'True when 2FA setup has been started but not yet confirmed',
         example: false,
-    })
-    @Expose()
-    isPendingConfirmation: boolean;
-
-    @ApiProperty({
-        required: true,
+    }),
+    backupCodesRemaining: z.number().min(0).meta({
         description: 'Remaining backup codes count for the account',
         example: 8,
-        minimum: 0,
-    })
-    @Expose()
-    backupCodesRemaining: number;
-
-    @ApiProperty({
-        required: false,
+    }),
+    confirmedAt: z.date().nullable().meta({
         description: 'When two-factor authentication was confirmed/enabled',
-        example: '2025-01-01T00:00:00.000Z',
-    })
-    @Expose()
-    confirmedAt?: Date;
-
-    @ApiProperty({
-        required: false,
+        example: faker.date.past(),
+    }),
+    lastUsedAt: z.date().nullable().meta({
         description: 'Last time two-factor authentication was used/verified',
-        example: '2025-01-01T00:00:00.000Z',
-    })
-    @Expose()
-    lastUsedAt?: Date;
-}
+        example: faker.date.recent(),
+    }),
+});
+
+export type UserTwoFactorStatusResponseDto = z.infer<
+    typeof UserTwoFactorStatusResponseSchema
+>;

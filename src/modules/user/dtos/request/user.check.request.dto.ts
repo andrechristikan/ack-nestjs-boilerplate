@@ -1,9 +1,17 @@
-import { PickType } from '@nestjs/swagger';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { z } from 'zod';
+import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 
-export class UserCheckUsernameRequestDto extends UserClaimUsernameRequestDto {}
+export const UserCheckUsernameRequestSchema = UserClaimUsernameRequestSchema;
 
-export class UserCheckEmailRequestDto extends PickType(UserCreateRequestDto, [
-    'email',
-] as const) {}
+export type UserCheckUsernameRequestDto = z.infer<
+    typeof UserCheckUsernameRequestSchema
+>;
+
+export const UserCheckEmailRequestSchema = UserCreateRequestSchema.pick({
+    email: true,
+});
+
+export type UserCheckEmailRequestDto = z.infer<
+    typeof UserCheckEmailRequestSchema
+>;

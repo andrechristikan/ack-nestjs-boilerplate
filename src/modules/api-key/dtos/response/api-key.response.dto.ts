@@ -1,58 +1,39 @@
-import { DatabaseResponseDto } from '@common/database/dtos/response/database.response.dto';
+import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { EnumApiKeyType } from '@generated/prisma-client';
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
 
-export class ApiKeyResponseDto extends DatabaseResponseDto {
-    hash: string;
-
-    @ApiProperty({
+/**
+ * Base api-key shape: the stored api-key row without its hashed secret.
+ */
+export const ApiKeyResponseSchema = DatabaseResponseSchema.omit({
+    deletedAt: true,
+    deletedBy: true,
+}).extend({
+    isActive: z.boolean().meta({
         description: 'Active flag of api key',
         example: true,
-        required: true,
-    })
-    @Expose()
-    isActive: boolean;
-
-    @ApiProperty({
+    }),
+    startAt: z.date().nullable().meta({
         description: 'Api Key start date',
         example: faker.date.past(),
-        required: false,
-    })
-    @Expose()
-    startAt?: Date;
-
-    @ApiProperty({
+    }),
+    endAt: z.date().nullable().meta({
         description: 'Api Key end date',
         example: faker.date.future(),
-        required: false,
-    })
-    @Expose()
-    endAt?: Date;
-
-    @ApiProperty({
+    }),
+    name: z.string().meta({
         description: 'Name of api key',
         example: faker.string.alpha(10),
-        required: true,
-    })
-    @Expose()
-    name: string;
-
-    @ApiProperty({
+    }),
+    type: z.enum(EnumApiKeyType).meta({
         description: 'Type of api key',
         example: EnumApiKeyType.default,
-        enum: EnumApiKeyType,
-        required: true,
-    })
-    @Expose()
-    type: EnumApiKeyType;
-
-    @ApiProperty({
+    }),
+    key: z.string().meta({
         description: 'Unique key of api key',
         example: faker.string.alpha(15),
-        required: true,
-    })
-    @Expose()
-    key: string;
-}
+    }),
+});
+
+export type ApiKeyResponseDto = z.infer<typeof ApiKeyResponseSchema>;

@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { IRequestApp } from '@common/request/interfaces/request.interface';
-import { UserService } from '@modules/user/services/user.service';
+import { UserDomain } from '@modules/user/domains/user.domain';
 import { Reflector } from '@nestjs/core';
 import {
     UserGuardIsVerifiedMetaKey,
@@ -13,7 +13,7 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly userService: UserService,
+        private readonly userDomain: UserDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -26,8 +26,8 @@ export class UserGuard implements CanActivate {
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
 
-        const user = await this.userService.validateUserGuard(
-            request,
+        const user = await this.userDomain.validateUserGuard(
+            request.user?.userId ?? null,
             isVerified
         );
 

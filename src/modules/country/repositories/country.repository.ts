@@ -1,44 +1,42 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ICountryRepository } from '@modules/country/interfaces/country.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Country, Prisma } from '@generated/prisma-client';
 
 @Injectable()
-export class CountryRepository {
+export class CountryRepository implements ICountryRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
     ) {}
 
-    async findWithPagination(
-        pagination: IPaginationQueryOffsetParams<
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >
+    async findWithPaginationCursor(
+        pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
     ): Promise<IResponsePagingReturn<Country>> {
-        return this.paginationService.offset<
-            Country,
-            Prisma.CountrySelect,
-            Prisma.CountryWhereInput
-        >(this.databaseService.client.country, pagination);
+        return this.paginationService.cursor<Country, Prisma.CountryWhereInput>(
+            this.databaseService.client.country,
+            pagination
+        );
     }
 
-    async existById(id: string): Promise<{ id: string } | null> {
-        return this.databaseService.client.country.findUnique({
+    async existsById(id: string): Promise<boolean> {
+        const count = await this.databaseService.client.country.count({
             where: { id },
-            select: { id: true },
         });
+
+        return count > 0;
     }
 
-    async existByAlpha2Code(
-        alpha2Code: string
-    ): Promise<{ id: string } | null> {
-        return this.databaseService.client.country.findUnique({
+    async findIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
+        const country = await this.databaseService.client.country.findUnique({
             where: { alpha2Code },
             select: { id: true },
         });
+
+        return country?.id ?? null;
     }
 
     async findOneById(id: string): Promise<Country | null> {
