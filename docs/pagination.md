@@ -4,7 +4,7 @@ This documentation explains the features and usage of the **Pagination Module** 
 
 ## Overview
 
-The Pagination module provides a comprehensive solution for handling paginated data throughout the application. It supports:
+The Pagination module handles handling paginated data throughout the application. It supports:
 - **Offset-based pagination**: Traditional page number and limit approach
 - **Cursor-based pagination**: Efficient traversal using cursor tokens
 - **Advanced filtering**: Enum, equality, date range, and custom filters
@@ -481,7 +481,7 @@ PaginationQueryFilterDate(
 - `options.type`:
   - `EnumPaginationFilterDateBetweenType.start`: Greater than or equal (`gte`) — use for start date
   - `EnumPaginationFilterDateBetweenType.end`: Less than or equal (`lte`) — use for end date
-  - Undefined: emits the `equal` key — exact date match
+  - Undefined: emits the `equal` key; exact date match
 - `options.dayOf`: Day adjustment option (`EnumHelperDateDayOf`)
 
 **Usage:**
@@ -777,7 +777,7 @@ The response reports the applied ordering back in the same `field:direction` for
 
 ### Basic Offset Pagination
 
-A list route travels `Controller → HTTP Service → Domain Service → Repository`. The domain service forwards the pagination params, the repository is the layer that adds `include`, and the item schema declared on `@ResponsePaging` shapes each row on the way out.
+A list route travels `Controller → HTTP Service → Domain → Repository`. The domain forwards the pagination params, the repository is the layer that adds `include`, and the item schema declared on `@ResponsePaging` shapes each row on the way out.
 
 **Controller:**
 ```typescript
@@ -799,11 +799,11 @@ async list(
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<IUser>> {
-    return this.userService.getListOffsetByAdmin(pagination);
+    return this.userDomain.getListOffsetByAdmin(pagination);
 }
 ```
 
-**Domain Service:**
+**Domain:**
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>

@@ -15,19 +15,19 @@ TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rule
 | Module `I*` interface — request lifecycle or external spec (JWT, Prisma) | `field?: Type` |
 | Exception options / options bag | `field?: Type` |
 | Config interface (`src/configs/`) | `field: Type \| null` |
-| Service / Repository — data param | `param: Type \| null` |
-| Service / Repository — filter param | `param: Type \| null` (an additive service-level filter may use `?`) |
+| Domain / HTTP / processor / Repository — data param | `param: Type \| null` |
+| Domain / HTTP / processor / Repository — filter param | `param: Type \| null` (an additive domain-level filter may use `?`) |
 | Prisma return | `Type \| null` |
 
 ## The controller and the boundary
 
-Prefer **passing the whole request DTO** into the service (`userService.updateProfile(userId, body)`). Normalize `undefined → null` only when a service method takes a discrete `T | null` param and the DTO field is optional:
+Prefer **passing the whole request DTO** into the HTTP service (`userProfileHttpService.updateProfile(userId, body)`). Normalize `undefined → null` only when a domain or HTTP method takes a discrete `T | null` param and the DTO field is optional:
 
 ```ts
-return this.userService.updateSomething(userId, dto.field ?? null);
+return this.userProfileHttpService.updateSomething(userId, dto.field ?? null);
 ```
 
-A service signature that accepts `bio?: string` has pushed the ambiguity one layer deeper and made every downstream call site re-decide what an absent value means.
+A domain or HTTP signature that accepts `bio?: string` has pushed the ambiguity one layer deeper and made every downstream call site re-decide what an absent value means.
 
 ## Consequences
 

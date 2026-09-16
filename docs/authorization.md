@@ -10,9 +10,7 @@ The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProt
 
 ## Overview
 
-This authorization system provides a comprehensive, layered security approach for ACK NestJs Boilerplate. It implements multiple protection levels including user authentication, role-based access control, policy-based permissions, and terms acceptance verification.
-
-The system is built using NestJS guards and decorators, making it easy to apply different authorization levels to your route handlers with simple, declarative syntax.
+This authorization system is a layered stack for ACK NestJs Boilerplate: user authentication, role-based access control, policy-based permissions, and terms acceptance verification. NestJS guards and decorators apply each layer on route handlers.
 
 ## Related Documents
 
@@ -411,7 +409,7 @@ assignRole(
 
 #### `PolicyGuard`
 
-The guard reads the user and the stored policies off the request store and hands both to `PolicyService.validatePolicyGuard`, which evaluates them through CASL.
+The guard reads the user and the stored policies off the request store and hands both to `PolicyDomain.validatePolicyGuard`, which evaluates them through CASL.
 
 The `PolicyProtected` decorator follows this validation sequence:
 

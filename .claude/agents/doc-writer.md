@@ -45,7 +45,7 @@ finding, never an entry, never a change.
 The current checkout, as it sits. **Not a comparison between two branches.** Git stays
 read-only.
 
-The tree: `activity-log` · `authentication` · `authorization` · `cache` · `configuration` ·
+The tree: `activity-log` · `analytic` · `authentication` · `authorization` · `cache` · `configuration` ·
 `database` · `device` · `doc` · `environment` · `feature-flag` · `file-upload` ·
 `handling-error` · `installation` · `logger` · `message` · `notification` · `pagination` ·
 `presign` · `project` · `project-structure` · `queue` · `readme` · `request-validation` ·

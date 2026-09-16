@@ -64,8 +64,9 @@ and the **100% global threshold, which is measured only when `--coverage` is on*
 `collectCoverage` is `false` in `test/jest.json`, so `pnpm test` never applies the
 threshold. Report the totals with the command that produced them.
 
-Controllers and repositories are deliberately outside `collectCoverageFrom` — a gap there is
-not a gap (`rules/testing.md`).
+Controllers, repositories, domains, and caches sit outside `collectCoverageFrom` —
+a gap there is not an `/ack-spec` gap (`rules/testing.md`). Expanding the jest globs is an
+owner change to `test/jest.json`.
 
 **100% is the bar.** A file in scope still short of it is another `test-writer` dispatch,
 until the per-file rows read 100 across statements, branches, functions and lines. Read the

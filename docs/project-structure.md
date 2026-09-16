@@ -2,7 +2,7 @@
 
 ## Overview
 
-ACK NestJS Boilerplate is a comprehensive NestJS application designed for scalable, maintainable, and enterprise-grade development. It is built with a strong focus on the `repository design pattern` and a fully `modular architecture`. By leveraging these patterns, the codebase achieves clear separation of concerns, high testability, and easy extensibility for new features. 
+ACK NestJS Boilerplate is a NestJS application organized around the `repository design pattern` and a modular layout. 
 
 ## Table of Contents
 
@@ -62,7 +62,7 @@ The Common Module provides shared functionality and global services across the A
 - Caching and queueing (Redis, BullMQ)
 - Logging (LoggerModule)
 - Database access (DatabaseModule)
-- Authentication and authorization (AuthModule, PolicyModule, RoleModule, ApiKeyModule, FeatureFlagModule, TermPolicyModule, SessionModule, ActivityLogModule, NotificationModule)
+- Authentication and authorization (`AuthDomainModule`, `PolicyDomainModule`, `RoleDomainModule`, `ApiKeyDomainModule`, `FeatureFlagDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, `ActivityLogDomainModule`, `NotificationDomainModule`)
 - Utilities for messaging, requests, responses, helpers, files, pagination, and Firebase
 - Registers all these modules as global or shared imports for use throughout the application
 
@@ -99,9 +99,9 @@ The migration folder seeds initial data. MongoDB has no migration files; the sch
 **Location:** `src/queues/`
 
 The queues folder is the BullMQ framework layer. It includes:
-- `queue.register.module.ts`: Global module holding every `BullModule.registerQueueAsync` call, the two BullMQ root connections (queue and processor), and the per-queue job defaults read from `queue.config.ts`
+- `queue.module.ts`: `QueueModule.forRoot()` holds the two BullMQ root connections (producer and processor). Named queues are registered by the owning feature's `<feature>.domain.module.ts` through a `RegisterQueueOptionsFactory`; per-queue job defaults are read from `queue.config.ts`
 - Subfolders for queue bases, constants, decorators, enums, exceptions, interfaces
-- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`; the queue registration lives here
+- Processor classes live in their owning feature module (`<module>/processors/`), wired by that module's `<feature>.processor.module.ts`
 - Supports immediate, delayed, and recurring jobs for tasks like email sending, data processing, etc.
 
 ## Router
@@ -112,7 +112,7 @@ The router folder mounts everything the application exposes. It includes:
 - `router.module.ts`: Root router that imports the five access-level modules and registers their path prefixes through `RouterModule.register` from `@nestjs/core`, plus the processor mount
 - `http/`: One module per access level, each holding its controllers and the `<feature>.http.module.ts` imports they need. `router.http.public.module.ts` mounts under `/public`, `router.http.system.module.ts` under `/system`, `router.http.admin.module.ts` under `/admin`, `router.http.user.module.ts` under `/user`, and `router.http.shared.module.ts` under `/shared`
 - `processor/router.processor.module.ts`: Aggregates every `<feature>.processor.module.ts`, so the BullMQ workers boot with the HTTP application
-- Ensures clear separation of concerns and robust access control for all API endpoints
+- Keeps HTTP access levels and processor mounting in one place
 
 ## Instrument
 
@@ -176,13 +176,13 @@ Each layer of a feature gets its own Nest module file at the root of the feature
 ```
 modules/<feature>
   ├── <feature>.repository.module.ts  # repositories
-  ├── <feature>.module.ts             # domain services, utils and queue classes
+  ├── <feature>.domain.module.ts      # domains, utils, caches, queue classes and factories
   │                                   #   (the only one another feature consumes)
   ├── <feature>.http.module.ts        # HTTP services, imported by a router http module
   └── <feature>.processor.module.ts   # processors and their processor services
 ```
 
-`<feature>.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
+`<feature>.domain.module.ts` is present for every feature. A feature without background jobs has no `<feature>.processor.module.ts`; `notification` and `workspace` are the two that do. `auth`, `policy`, `health`, and `hello` carry only the layers they need.
 
 **Folders:**
 
@@ -193,6 +193,7 @@ module
   # Core (present in almost every module)
   ├── constants
   ├── controllers
+  ├── domains
   ├── dtos
   ├── enums
   ├── exceptions
@@ -201,6 +202,7 @@ module
   ├── services
   ├── utils
   # Common (present when the feature needs them)
+  ├── caches
   ├── decorators
   ├── docs
   ├── guards
@@ -221,7 +223,7 @@ Below are explanations for each section:
 Defines static values and configuration constants used throughout the module to ensure consistency and avoid magic numbers or strings.
 
 ### Controllers
-Handle incoming HTTP requests, delegate to services, and return responses. Controllers define the API endpoints for the module.
+Handle incoming HTTP requests, delegate to HTTP services, and return responses. Controllers define the API endpoints for the module.
 
 ### Decorators
 Custom decorators to add metadata or modify behavior of classes, methods, or properties within the module.
@@ -257,19 +259,25 @@ Logic to intercept and modify requests or responses, such as logging, caching, o
 Background job handlers, such as BullMQ processors, for asynchronous tasks related to the module.
 
 ### Queues
-The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.module.ts`.
+The `@Injectable()` classes holding the BullMQ `Queue`, one method per job the feature enqueues. They are provided and exported by `<feature>.domain.module.ts`.
 
 ### Repositories
-Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for services.
+Implements the Repository design pattern for data access, abstracting database operations and providing a clean API for domains.
+
+### Domains
+Business logic and orchestration of the module. Domains interact with repositories, other domains, utils, and queue classes. They open `DatabaseService.withTransaction` when a write spans more than one repository.
 
 ### Services
-Business logic and core functionality of the module. Services interact with repositories, perform computations, and orchestrate workflows.
+HTTP services (`*.http.service.ts`) and processor services (`*.processor.service.ts`). They translate transport or job payloads into domain calls and assemble response DTOs. They own no business rule and reach no repository.
+
+### Caches
+Dedicated cache classes that wrap a named cache provider for one feature concern (for example `SessionCache`, `FeatureFlagCache`).
 
 ### Templates
 Reusable templates, such as email templates or message formats, used by the module.
 
 ### Utils
-Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a service.
+Pure shaping helpers specific to the module: mappers, predicates, and format checks. A util reaches no cache, repository, queue, request store, or file service; work that needs one of those lives in a domain.
 
 
 ## Other Modules

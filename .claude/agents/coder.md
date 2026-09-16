@@ -29,7 +29,8 @@ A dispatch may name the **suite waiver** from `CLAUDE.md`. Only then may you wri
 without a red spec. You never grant that waiver yourself.
 
 Controllers and repositories are outside `collectCoverageFrom`. Do not write a spec for
-those layers (`rules/testing.md`). A seed has no TDD cycle.
+those layers (`rules/testing.md`). When the behaviour lives on a domain, the TDD subject is
+that domain class. A seed has no TDD cycle.
 
 ## The dispatch is the SCOPE (HARD)
 

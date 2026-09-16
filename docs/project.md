@@ -122,7 +122,7 @@ Located at `src/modules/project/decorators`. For where these sit in the full pro
 
 **Method decorator** that applies `ProjectGuard`. It requires `@WorkspaceProtected()` below it - a project is always reached through its workspace.
 
-Reads the `projectId` **route parameter** (there is no project header) and resolves it through `ProjectService.validateProjectGuard`, constrained to the workspace `WorkspaceGuard` resolved. The result is stored under `ProjectStoreKey`. No active workspace throws `WorkspaceNotFoundException` (404, `51600`).
+Reads the `projectId` **route parameter** (there is no project header) and resolves it through `ProjectDomain.validateProjectGuard`, constrained to the workspace `WorkspaceGuard` resolved. The result is stored under `ProjectStoreKey`. No active workspace throws `WorkspaceNotFoundException` (404, `51600`).
 
 #### `ProjectMemberProtected(...roles)`
 
@@ -143,11 +143,11 @@ Admin routes carry no project or workspace guard. They take the project id from 
 
 ## Slug
 
-- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectService.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
-- A slug sent to `update/:projectId/slug` is validated by `ProjectService.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
+- **Creation always generates the slug.** `ProjectCreateRequestDto` carries no slug field: `ProjectDomain.createProject` draws `project.slugMaxAttempts` (5) candidates of `project.slugPrefix` plus random characters up to `slugMaxLength` and walks them itself. Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path runs `assertSlugAllowed`.
+- A slug sent to `update/:projectId/slug` is validated by `ProjectDomain.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
 - `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
-- `createProject` walks its candidates and, for each one, opens a `$transaction` that calls `ProjectRepository.createInTx` and `ActivityLogService.recordInTx` (`projectCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `createProject` walks its candidates and, for each one, opens a `withTransaction` that calls `ProjectRepository.createInTx` and `ActivityLogDomain.recordInTx` (`projectCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
@@ -168,7 +168,7 @@ Every membership change writes an activity log entry (`projectMemberAssigned`, `
 
 ## Soft Delete
 
-`ProjectService.softDeleteProject` opens one `$transaction` that calls `ProjectRepository.softDeleteInTx` (stamps `deletedAt` and `updatedBy`) and `ActivityLogService.recordInTx` (`projectDeleted`). **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
+`ProjectDomain.softDeleteProject` opens one `withTransaction` that calls `ProjectRepository.softDeleteInTx` (stamps `deletedAt` and `updatedBy`) and `ActivityLogDomain.recordInTx` (`projectDeleted`). **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
 
 After deletion the project disappears from `ProjectGuard` and from the user-scope list, but the admin routes still return it because they apply no active filter. There is no restore and no hard delete.
 
@@ -187,7 +187,7 @@ Deleting the **workspace** soft-deletes its still-active projects in the same tr
 }
 ```
 
-`ProjectService` reads all four: `slugRegex` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
+`ProjectDomain` reads all four: `slugRegex` and `slugMaxLength` for validation, `slugPrefix`, `slugMaxLength`, and `slugMaxAttempts` when it draws the candidates a create walks through.
 
 ## Status Codes
 

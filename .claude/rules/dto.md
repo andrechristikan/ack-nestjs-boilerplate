@@ -23,7 +23,7 @@ canonical request or response shape** (`device.request.dto.ts`). The direction s
 part that is never optional, and the file and its exports must agree on it. Full grammar in
 `rules/naming.md`.
 
-**Do not introduce a third model between the controller and the service.** A DTO in, a DTO or
+**Do not introduce a third model between the controller and the HTTP service.** A DTO in, a DTO or
 an `I*` interface out — no "domain model" layer, no mapper class per endpoint.
 
 ## One file exports a schema and its inferred type (HARD)

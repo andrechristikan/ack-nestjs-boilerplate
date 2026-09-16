@@ -6,7 +6,7 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-The file upload module provides a comprehensive solution for handling file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and CSV processing.
+The file upload module handles file uploads in ACK NestJs Boilerplate. It includes decorators, pipes, services, and utilities for single/multiple file uploads, file validation, and CSV processing.
 
 The module supports:
 
@@ -207,14 +207,14 @@ The pipe factory runs at decoration time, before config is resolved, so it takes
 
 ## CSV Import Flow
 
-Understanding the flow of CSV file processing helps you implement robust data import features. The diagram below illustrates how uploaded CSV files are processed through validation and transformation pipelines.
+CSV upload processing:
 
 ```mermaid
 flowchart TD
     A[Client Upload<br/>CSV File] --> B[ @UploadedFile Decorator]
-    B --> B2{RequestRequiredPipe}
+    B --> B2{FileRequiredPipe()}
     
-    B2 -->|Missing File| B3[Throw RequestParamRequiredException]
+    B2 -->|Missing File| B3[Throw FileRequiredException]
     B2 -->|Present| C{FileExtensionPipe}
     
     C -->|Invalid Extension| D[Throw FileExtensionInvalidException]
@@ -261,7 +261,7 @@ Single and multiple file uploads with extension validation.
 
 **Single File Upload:**
 
-The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileService`, where the S3 write happens.
+The live example is `POST /shared/user/profile/photo/upload` on `UserSharedController`. The controller only dispatches: it calls `UserProfileHttpService.uploadPhotoProfile`, which forwards to the domain `UserProfileDomain`, where the S3 write happens.
 
 ```typescript
 @UserSharedUploadPhotoProfileDoc()
@@ -278,7 +278,7 @@ The live example is `POST /shared/user/profile/photo/upload` on `UserSharedContr
 async uploadPhotoProfile(
   @AuthJwtPayload('userId') userId: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([
       EnumFileExtensionImage.jpeg,
       EnumFileExtensionImage.png,
@@ -291,7 +291,7 @@ async uploadPhotoProfile(
 }
 ```
 
-`UserProfileService.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
+`UserProfileDomain.uploadPhotoProfile` derives the extension, builds the key, and writes the object:
 
 ```typescript
 const extension: EnumFileExtensionImage =
@@ -399,7 +399,7 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 async import(
   @AuthJwtPayload('userId') createdBy: string,
   @UploadedFile(
-    RequestRequiredPipe,
+    FileRequiredPipe(),
     FileExtensionPipe([EnumFileExtensionDocument.csv]),
     FileCsvParsePipe,
     FileCsvValidationPipe(UserImportRequestSchema, {
@@ -486,7 +486,7 @@ async uploadCompleteProfile(
 
 ### FileImportException
 
-Thrown during CSV validation with detailed error context. This exception provides comprehensive information about validation failures including the exact row and its issues.
+Thrown during CSV validation with detailed error context. The exception carries the exact row and its issues.
 
 **Exception Structure:**
 

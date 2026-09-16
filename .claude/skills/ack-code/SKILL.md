@@ -23,7 +23,7 @@ A seed-only run and a judge-only run have no TDD cycle.
 ## Rules
 
 Read `.claude/rules/orientation.md` before you dispatch or answer a design question. Take the
-six, the extras for the agent you are about to send, then every surface row the work touches.
+four, the extras for the agent you are about to send, then every surface row the work touches.
 A shape you decide in conversation is bound by the same rows.
 
 ## Reject early

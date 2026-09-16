@@ -93,7 +93,7 @@ The environment file contains all configuration settings for your application in
 cp .env.example .env
 ```
 
-> **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
+> **For environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
@@ -116,7 +116,7 @@ pnpm generate:keys --direct-insert
 - Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
 - Generates JWKS (JSON Web Key Set) files in `/keys` directory
 - Creates `access-jwks.json` and `refresh-jwks.json` for public key distribution
-- Prints only the output file paths and the generated key IDs (KIDs) — key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
+- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
 - With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
 
 > [!NOTE]
@@ -205,7 +205,7 @@ AUTH_JWT_ACCESS_TOKEN_JWKS_URI=http://localhost:3011/.well-known/access-jwks.jso
 AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.json
 ```
 
-> **For comprehensive environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
+> **For environment configuration details**, refer to the [Environment Documentation][ref-doc-environment].
 
 ### Generate Keys
 
@@ -225,7 +225,7 @@ pnpm generate:keys --direct-insert
 - Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
 - Generates JWKS (JSON Web Key Set) files in `/keys` directory
 - Creates `access-jwks.json` and `refresh-jwks.json` for Docker container serving
-- Prints only the output file paths and the generated key IDs (KIDs) — key material is **never** printed to the console
+- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console
 - With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
 
 #### Docker JWKS Hosting
@@ -274,7 +274,7 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-The Docker setup includes comprehensive health checks for all services, ensuring they're fully operational before marking as available.
+Compose health checks mark each service ready only after its check passes.
 
 
 ### Troubleshooting

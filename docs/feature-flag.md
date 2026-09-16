@@ -108,28 +108,28 @@ export class AuthController {
 
 ### With Service
 
-`FeatureFlagCacheService` is the cache-through reader, exported by `FeatureFlagModule`:
+`FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`:
 
 ```typescript
 @Injectable()
 export class YourService {
   constructor(
-    private readonly featureFlagCacheService: FeatureFlagCacheService
+    private readonly featureFlagCache: FeatureFlagCache
   ) {}
 
   async example() {
     // Get feature flag with cache
     const flag =
-      await this.featureFlagCacheService.getByKeyAndCache('loginWithGoogle');
+      await this.featureFlagCache.getByKeyAndCache('loginWithGoogle');
 
     // Get metadata only
     const metadata =
-      await this.featureFlagCacheService.getMetadataByKeyAndCache('changePassword');
+      await this.featureFlagCache.getMetadataByKeyAndCache('changePassword');
   }
 }
 ```
 
-`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain service applies on update.
+`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
 
 ## Metadata
 

@@ -92,7 +92,6 @@ Next free hundred: `52200` (verify by scanning enums before claiming).
 | exception | module | httpStatus | messagePath |
 |---|---|---|---|
 | `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
-| `RequestIsMongoIdException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isMongoId` |
 | `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
 
 Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.

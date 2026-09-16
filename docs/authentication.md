@@ -7,7 +7,7 @@ This documentation explains the features and usage of:
 
 ## Overview
 
-This document provides a comprehensive overview of authentication and session management in the ACK NestJS Boilerplate. 
+This document covers authentication and session management in the ACK NestJS Boilerplate. 
 
 It covers:
 - **Password**: Passwords are securely hashed (bcrypt), have configurable expiration and rotation, login attempt limits, history tracking, and support for reset/change/temporary password with session invalidation.
@@ -179,7 +179,7 @@ export default registerAs(
                 // Private key for signing access tokens (from environment)
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by the direct verify helpers on AuthJwtService
+                // Public key, used by the direct verify helpers on AuthJwtDomain
                 publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY,
                 
                 // Access token expiration in seconds, the unit the JWT signer takes,
@@ -201,7 +201,7 @@ export default registerAs(
                 // Private key for signing refresh tokens (from environment)
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY,
                 
-                // Public key, used by the direct verify helpers on AuthJwtService
+                // Public key, used by the direct verify helpers on AuthJwtDomain
                 publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY,
                 
                 // Refresh token expiration in seconds, parsed from the ms() string in
@@ -226,7 +226,7 @@ export default registerAs(
 );
 ```
 
-Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtService.validateAccessToken` / `AuthJwtService.validateRefreshToken`.
+Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
 
 ### JWT Flow
 
@@ -362,7 +362,7 @@ Endpoint: `POST /shared/user/logout`. Protected by `@AuthJwtAccessProtected`, `@
 The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
 
 1. Verifies the session is still active (`404 session.error.notFound` otherwise) and deletes its Redis key.
-2. `UserLoginService.logout` opens `this.databaseService.client.$transaction` and composes `SessionService.revokeInTx`, `DeviceService.clearNotificationInTx`, and `ActivityLogService.recordInTx` (`userLogout`).
+2. `UserLoginDomain.logout` opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx`, `DeviceDomain.clearNotificationInTx`, and `ActivityLogDomain.recordInTx` (`userLogout`).
 
 ```mermaid
 sequenceDiagram
@@ -376,7 +376,7 @@ sequenceDiagram
     API->>Database: Find active session by userId:sessionId
     alt Session active
         API->>Redis: Delete session login key
-        API->>Database: $transaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
+        API->>Database: withTransaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
         API-->>Client: 200 OK (user.logout)
     else Session not found
         API-->>Client: 404 Not Found (SessionNotFoundException)
@@ -604,8 +604,8 @@ sequenceDiagram
     participant GoogleApple as Google/Apple
     participant Guard
     participant API
-    participant AuthSocialService
-    participant AuthJwtService
+    participant AuthSocialDomain
+    participant AuthJwtDomain
     participant Redis
     participant Database
 
@@ -620,13 +620,13 @@ sequenceDiagram
     Guard->>Guard: Split the Authorization header on the configured prefix
     
     alt Google Authentication
-        Guard->>AuthSocialService: verifyGoogle(token)
-        Note over AuthSocialService: Uses OAuth2Client from<br/>google-auth-library
-        AuthSocialService-->>Guard: TokenPayload {email, email_verified}
+        Guard->>AuthSocialDomain: verifyGoogle(token)
+        Note over AuthSocialDomain: Uses OAuth2Client from<br/>google-auth-library
+        AuthSocialDomain-->>Guard: TokenPayload {email, email_verified}
     else Apple Authentication
-        Guard->>AuthSocialService: verifyApple(token)
-        Note over AuthSocialService: Uses verifyAppleToken from<br/>verify-apple-id-token
-        AuthSocialService-->>Guard: Payload {email, email_verified}
+        Guard->>AuthSocialDomain: verifyApple(token)
+        Note over AuthSocialDomain: Uses verifyAppleToken from<br/>verify-apple-id-token
+        AuthSocialDomain-->>Guard: Payload {email, email_verified}
     end
     
     alt Token Valid
@@ -635,9 +635,9 @@ sequenceDiagram
         Note over API,Database: Created only when the flag's<br/>signUpAllowed metadata is true
         Database-->>API: User record
         
-        API->>AuthJwtService: createTokens(user, loginFrom, loginWith)
-        Note over AuthJwtService: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
-        AuthJwtService-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
+        API->>AuthJwtDomain: createTokens(user, loginFrom, loginWith)
+        Note over AuthJwtDomain: Mints sessionId, deviceOwnershipId<br/>and a 32-char random jti through AuthUtil
+        AuthJwtDomain-->>API: Access Token (ES256) + Refresh Token (ES512), both carrying the jti
         
         par Store in Database
             API->>Database: Create session record with jti
@@ -1137,7 +1137,7 @@ Used for session listing and management purposes.
 - `jti` — JWT ID for session tracking
 - `ipAddress` — Client IP at login time
 - `userAgent` — Parsed user agent (browser, OS, device)
-- `geoLocation` — Geographic location derived from IP (optional) — `latitude`, `longitude`, `country`, `region`, `city`
+- `geoLocation` — Geographic location derived from IP (optional): `latitude`, `longitude`, `country`, `region`, `city`
 - `deviceOwnershipId` — Reference to the `DeviceOwnership` record associated with this session (represents the user-device relationship)
 - `expiredAt`, `revokedAt`, `isRevoked`, `revokedById` — Lifecycle and revocation tracking fields
 

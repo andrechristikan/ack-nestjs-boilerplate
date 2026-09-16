@@ -451,7 +451,7 @@ helmet: {
 }
 ```
 
-> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object — which headers are on and which are off — is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
+> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object; which headers are on and which are off; is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
@@ -542,15 +542,15 @@ default: {
 }
 ```
 
-**`onboarding`** - Prisma `$transaction` timeouts `WorkspaceService.commitOnboarding` applies to the onboarding compose
+**`onboarding`** - `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose
 ```typescript
 onboarding: {
-  createTimeoutInMs: number;      // Single-user compose (`WorkspaceService.commitOnboarding`) (ms('10s'))
-  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceService.commitOnboarding`) (ms('30s'))
+  createTimeoutInMs: number;      // Single-user compose (`WorkspaceDomain.commitOnboarding`) (ms('10s'))
+  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceDomain.commitOnboarding`) (ms('30s'))
 }
 ```
 
-> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceService.commitOnboarding` as `timeoutInMs`.
+> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
 
@@ -850,7 +850,7 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 **File**: `src/configs/queue.config.ts`
 **Interface**: `IConfigQueue`
 
-This configuration holds the BullMQ default job options applied by `queue.register.module.ts` to every registered queue.
+This configuration holds the BullMQ default job options. `QueueModule.forRoot()` applies shared connection defaults; each named queue's `RegisterQueueOptionsFactory` on the owning feature domain module applies that queue's backoff.
 
 #### Configuration Keys:
 
@@ -872,7 +872,7 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthModule` hands to `TerminusModule.forRootAsync`.
+This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthDomainModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -906,7 +906,7 @@ gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a 
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceService` when it runs a sweep.
+This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceDomain` when it runs a sweep.
 
 #### Configuration Keys:
 

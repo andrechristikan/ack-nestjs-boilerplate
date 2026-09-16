@@ -49,29 +49,29 @@ Admin reads and writes ACROSS every workspace — that is what the scope means. 
 Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
 
 - Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated by `RequestIsValidObjectIdPipe` — never from the header.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestMongoIdSchema }` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
 
 `superAdmin` bypasses both gates unconditionally, before the required list is ever consulted:
 
-- `RoleService.validateRoleGuard` returns `[]` and skips the `requiredRoles` check entirely for a `superAdmin`.
-- `PolicyService.validatePolicyGuard` returns `true` and skips the ability check entirely for a `superAdmin`.
+- `RoleDomain.validateRoleGuard` returns `[]` and skips the `requiredRoles` check entirely for a `superAdmin`.
+- `PolicyDomain.validatePolicyGuard` returns `true` and skips the ability check entirely for a `superAdmin`.
 
 So `@RoleProtected(EnumRoleType.admin, EnumRoleType.superAdmin)` and `@RoleProtected(EnumRoleType.admin)` grant exactly the same access. Listing `superAdmin` adds nothing and actively misleads the next reader into believing the route is gated by an enumeration that is never reached.
 
-Write the roles that are actually checked — for a platform admin route that is `@RoleProtected(EnumRoleType.admin)`. `superAdmin` appears in a `@RoleProtected` call only if the bypass in `RoleService` is ever removed.
+Write the roles that are actually checked — for a platform admin route that is `@RoleProtected(EnumRoleType.admin)`. `superAdmin` appears in a `@RoleProtected` call only if the bypass in `RoleDomain` is ever removed.
 
 ### `@FeatureFlagProtected` takes the BARE key (HARD)
 
 - **Every workspace-scoped and project-scoped route MUST carry `@FeatureFlagProtected('workspace')`** — the whole `user`, `shared`, and `public` workspace/project surface, including a route in another module that resolves its subject from the workspace header. The flag is the kill switch for that surface, so one route missing it stays live after the surface is switched off. Admin-scope routes are NOT part of it: they read across every workspace and are gated by role and policy instead.
-- **The decorator argument is the bare flag key, never `key.metadataKey`.** A metadata sub-key is a service concern and is asserted inside the service method; the flag semantics, the exceptions, and the anonymous-caller rules live in `rules/feature-flag.md`.
+- **The decorator argument is the bare flag key, never `key.metadataKey`.** A metadata sub-key is a domain concern and is asserted inside the domain method; the flag semantics, the exceptions, and the anonymous-caller rules live in `rules/feature-flag.md`.
 
 ## Controllers
 
 - A controller is a pure HTTP → HTTP-service dispatcher. One endpoint, one `<Module>HttpService` method, including a trivial GET. It never reaches the domain (`rules/architecture.md`).
-- **Security preconditions belong in the DOMAIN service, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
+- **Security preconditions belong in the domain, not the controller and not the HTTP service.** A 2FA check, an account-state check, or a "must own this resource" rule written inline in a controller is business logic in the wrong layer; written in the HTTP service it is a rule the queue path never applies.
 - **Never build pagination metadata by hand.** The repository produces it through `PaginationService`; the HTTP service wraps it in the response envelope and the controller passes that through.
 - Prefer passing the whole request DTO; normalize `undefined → null` only when a service param is `T | null` (`rules/null-safety.md`).
 - One controller per scope, named for it: `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` · `shared`. The matching `src/router/http/router.http.<scope>.module.ts` registers it.
@@ -87,41 +87,31 @@ Write the roles that are actually checked — for a platform admin route that is
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
 - **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
-### `RequestRequiredPipe` and `RequestIsValidObjectIdPipe` are a PAIR (HARD)
+### Path and query params bind a zod schema (HARD)
 
-An ObjectId param is always validated by both, in this order:
-
-```typescript
-@Param('workspaceId', RequestRequiredPipe, RequestIsValidObjectIdPipe)
-```
-
-Presence is checked before format. Never `RequestIsValidObjectIdPipe` on its own for an ObjectId.
-
-**This is deliberate, and it is about the error the caller receives, not about safety.**
-`RequestIsValidObjectIdPipe` does reject a falsy value on its own — but it reports it as
-`RequestIsMongoIdException`, which tells the caller their value is malformed when in fact they never
-sent one. `RequestRequiredPipe` first means an absent value returns `RequestParamRequiredException`
-and a present-but-wrong value returns `RequestIsMongoIdException`. Two different client mistakes, two
-different answers.
-
-On a `@Param` the distinction is currently unobservable — an absent path segment does not match the
-route, so the request 404s before any pipe runs. That does not make the pair decorative: it is the
-same contract wherever the value is bound, it is what makes the binding safe to move to a `@Query`
-later, and it states the intent for the next reader. **Do not "clean it up".**
-
-**The pair governs REQUIRED bindings.** An OPTIONAL ObjectId — a query filter the caller may omit —
-takes `new RequestIsValidObjectIdPipe({ optional: true })` alone, because `RequestRequiredPipe`
-would reject the very absence the binding permits, and an absent value is no longer a client mistake
-worth its own answer. An optional ObjectId query param with NO pipe is still a defect: the raw string
-reaches Prisma and a malformed value returns 500 instead of 400.
+A path or query value is validated by the same `RequestSchemaValidationPipe` as a body. Bind the
+schema on the decorator; do not add a custom pipe for ObjectId or presence checks.
 
 ```typescript
-@Query('workspaceId', new RequestIsValidObjectIdPipe({ optional: true }))
+@Param('workspaceId', { schema: RequestMongoIdSchema })
+workspaceId: string
+
+@Query('workspaceId', { schema: RequestMongoIdSchema.optional() })
 workspaceId?: string
+
+@Param('inviteToken', { schema: RequestRequiredStringSchema })
+inviteToken: string
 ```
 
-A param that is NOT an ObjectId (a token, a language code) takes `RequestRequiredPipe` alone — do not
-invent a format validator it has no format for.
+- **Required ObjectId** — `RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`).
+- **Optional ObjectId query** — `RequestMongoIdSchema.optional()`. An optional ObjectId with no
+  schema is a defect: the raw string reaches Prisma and a malformed value returns 500 instead of
+  400.
+- **Required non-ObjectId string** (token, slug) — `RequestRequiredStringSchema`.
+- **Language code** — `RequestMessageLanguageSchema` where that is the contract.
+- Shared schemas live under `src/common/request/validations/`. Module-specific ones live under
+  `<module>/validations/` (`rules/validation.md`).
+- File upload presence stays on `FileRequiredPipe()` and the other file pipes (`rules/file.md`).
 
 ## Route path shape (HARD)
 

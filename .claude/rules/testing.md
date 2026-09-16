@@ -11,8 +11,11 @@ passes, and not that it fails when someone merely rearranges the code.
 Specs mirror `src/` under `test/`, same relative path, filename plus `.spec.ts`:
 
 ```
-src/modules/user/services/user.service.ts
-  → test/modules/user/services/user.service.spec.ts
+src/modules/session/domains/session.domain.ts
+  → test/modules/session/domains/session.domain.spec.ts
+
+src/modules/user/services/user.http.service.ts
+  → test/modules/user/services/user.http.service.spec.ts
 
 src/common/pagination/services/pagination.service.ts
   → test/common/pagination/services/pagination.service.spec.ts
@@ -71,18 +74,22 @@ filters, and middlewares):
 `*.dto.ts` · `*.decorator.ts` · `*.exception.ts` · `*.filter.ts` · `*.middleware.ts` ·
 `*.indicator.ts` · `*.factory.ts`
 
-**Controllers and repositories are deliberately NOT in the coverage set.** A controller is
-route delegation and a repository is a Prisma call shape — specs there would assert the mock,
-not our behavior. If you find yourself wanting one, the logic is probably in the wrong layer.
+**Controllers and repositories are not in the coverage set.** A controller is route
+delegation and a repository is a Prisma call shape — specs there would assert the mock, not
+our behavior. **Domain and cache files are also outside `collectCoverageFrom` in
+`test/jest.json`.** Expanding those globs is an owner change to the jest config. If you find
+yourself wanting a controller or repository spec, the logic is probably in the wrong layer.
 
-**`collectCoverageFrom` decides WHAT gets a spec, and an excluded tree gets NONE (HARD).**
+**`collectCoverageFrom` decides WHAT gets a spec for `/ack-spec`, and an excluded tree gets
+NONE (HARD).**
 `src/migration/**`, `src/router/**`, `src/configs/**`, `src/languages/**`, and the root
 `src/*.ts` files are outside the globs. Wanting coverage on an excluded tree is a request to
 change `test/jest.json`, which is the owner's call, never a spec written around the config.
 
 A file whose suffix is NOT on that list is not measured at all — `*.module.ts`, `*.enum.ts`,
 `*.interface.ts`, `*.constant.ts`, `*.util.ts`, `*.queue.ts`, `*.processor.ts`,
-`*.repository.ts`, `*.controller.ts`. Adding a suffix to the list adds every existing file carrying it to the
+`*.repository.ts`, `*.controller.ts`, `*.domain.ts`, `*.cache.ts`. Adding a suffix to the list
+adds every existing file carrying it to the
 100% denominator at once.
 
 ## TDD (HARD)
@@ -91,7 +98,9 @@ New behaviour and a repair go through TDD. Write the failing spec first, watch i
 because the behaviour is absent, then implement. `coder` writes both halves of that cycle.
 The skill is `superpowers:test-driven-development`.
 
-A spec lives at its final path under `test/` and stays as the regression net.
+A spec lives at its final path under `test/` and stays as the regression net. When the
+behaviour lives on a domain, the TDD subject is that domain class
+(`rules/architecture.md`). Domain and cache files sit outside `collectCoverageFrom`.
 
 Seeds, controllers, and repositories have no TDD cycle (`collectCoverageFrom` does not
 measure them).

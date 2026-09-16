@@ -712,7 +712,7 @@ export function UserSharedUploadPhotoProfileDoc(): MethodDecorator {
 @Post('/profile/photo/upload')
 async uploadPhotoProfile(
     @UploadedFile(
-        RequestRequiredPipe,
+        FileRequiredPipe(),
         FileExtensionPipe([
             EnumFileExtensionImage.jpeg,
             EnumFileExtensionImage.png,

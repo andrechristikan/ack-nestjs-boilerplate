@@ -20,7 +20,7 @@ AWS S3 presigned URLs provide secure, time-limited access to S3 objects without 
 
 ## AWS S3 Presigned URL Get Capability
 
-`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentService.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in. There is no request DTO: `termPolicyId` and `language` are path params.
+`AwsS3Service.presignGetItem` produces a time-limited GET URL for an object that already exists in S3. Its only caller is `TermPolicyContentDomain.getContentByAdmin`, reached through `TermPolicyContentHttpService` and exposed as `GET /admin/term-policy/content/:termPolicyId/:language/get` on `TermPolicyAdminController` under the message key `termPolicy.getContent`. That call passes the `access` recorded on the stored content itself, so each content entry is signed against the bucket it lives in. There is no request DTO: `termPolicyId` and `language` are path params.
 
 ### Signature
 
@@ -144,11 +144,11 @@ export class UserSharedController {
 
 **Step 3 - Service Implementation:**
 
-`UserProfileHttpService` is a thin hop: it awaits the domain service and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileService`.
+`UserProfileHttpService` is a thin hop: it awaits the domain and wraps the presign in `{ data: presign }` for the response interceptor. The S3 work lives in `UserProfileDomain`.
 
 ```typescript
 @Injectable()
-export class UserProfileService {
+export class UserProfileDomain {
   async generatePhotoProfilePresign(
     userId: string,
     { extension, size }: IUserGeneratePhotoProfile
@@ -202,7 +202,7 @@ Two things follow from the options actually passed:
 
 `presignPutItem` returns `null` when S3 credentials are not configured, and the service converts that into `AwsServiceUnavailableException`.
 
-`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileService`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
+`createRandomFilenamePhotoProfileWithPath` is a method on `UserProfileDomain`. It substitutes `{userId}` into `user.uploadPhotoProfilePath` and delegates to `FileService.createRandomFilename` with a 20-character random segment.
 
 **Step 4 - Client-Side Upload:**
 ```typescript
@@ -289,14 +289,14 @@ export const AwsS3PresignResponseSchema = z.object({
 sequenceDiagram
     participant Client
     participant Backend
-    participant UserProfileService
+    participant UserProfileDomain
     participant AwsS3Service
     participant S3 as AWS S3
     participant Repository as Database
 
     Client->>Backend: POST /profile/photo/presign/generate<br/>{extension, size}
-    Backend->>UserProfileService: createRandomFilenamePhotoProfileWithPath()
-    UserProfileService-->>Backend: unique S3 key
+    Backend->>UserProfileDomain: createRandomFilenamePhotoProfileWithPath()
+    UserProfileDomain-->>Backend: unique S3 key
     
     Backend->>AwsS3Service: presignPutItem({key, size}, {forceUpdate: true, access: public})
     Note over AwsS3Service: ServerSideEncryption AES256,<br/>ChecksumAlgorithm SHA256,<br/>ContentDisposition inline
@@ -335,7 +335,7 @@ sequenceDiagram
 
 1. **Generate Presigned URL Stage:**
    - Client requests presigned URL with file metadata (extension, size)
-   - Backend generates a unique S3 key through `UserProfileService.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
+   - Backend generates a unique S3 key through `UserProfileDomain.createRandomFilenamePhotoProfileWithPath`, which delegates to `FileService.createRandomFilename`
    - `AwsS3Service` creates time-limited presigned URL with encryption enabled
    - Backend returns presigned URL data to client
 
@@ -389,7 +389,7 @@ async generate(
 ```
 
 - `TermPolicyContentPresignRequestSchema` carries `type` (from `TermPolicyAcceptRequestSchema`), `size` (picked from `AwsS3PresignRequestSchema`), `language` (`EnumMessageLanguage`), and `version` (integer).
-- `TermPolicyContentService.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
+- `TermPolicyContentDomain.generateContentPresignByAdmin` rejects the request with `TermPolicyStatusInvalidException` when a policy of that version and type is already `published`.
 - The key is built by `TermPolicyUtil.createRandomFilenameContentWithPath` from `termPolicy.uploadContentPath` (`term-policies/{type}/v{version}`) plus `<language>.hbs`, so the same type, version and language always resolve to the same key.
 - `presignPutItem` is called with `{ forceUpdate: true, access: EnumAwsS3Accessibility.private }`, so term policy content is signed against the private bucket. Expiry is the 30 minute config default.
 

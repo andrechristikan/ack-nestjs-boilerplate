@@ -16,14 +16,14 @@ rollout question is not settled here.
 - **Values are `boolean | number | string`, or a homogeneous `string[]` / `number[]`.** A mixed array (`[1, 'a']`), a nested array, or `boolean[]` fails validation. An array value is data only; it is never a gate value.
 - **An array value cannot change element type on update.** `checkMetadataKey` treats `string[]` and `number[]` as distinct types, and an empty array counts as an empty value (rejected), same as `''`.
 - **Keys are frozen; only values change.** The admin API updates values, never adds or removes a metadata key — schema consistency is the contract.
-- **A metadata sub-key used as a gate requires a boolean value.** `FeatureFlagService.validateFeatureFlagMetadata(key, metadataKey)` throws `predefinedKeyTypeInvalid` when the value is not boolean, and `serviceUnavailable` (503) when it is `false`.
+- **A metadata sub-key used as a gate requires a boolean value.** `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` throws `predefinedKeyTypeInvalid` when the value is not boolean, and `serviceUnavailable` (503) when it is `false`.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating
 
 - A route is gated by `@FeatureFlagProtected('<key>')` — the bare key, never a bare `@UseGuards`. Where it sits in the decorator stack is `rules/http.md`.
 - **`@FeatureFlagProtected()` is NOT authentication.** It gates on flag state only; apply the auth guards separately when the route needs a user.
-- **A metadata sub-key is asserted in the SERVICE, never in the decorator (HARD).** The decorator answers only "is this feature on at all". Whether the feature currently permits this particular operation is a business condition, so it is a guard clause at the top of the service method — `await this.featureFlagService.validateFeatureFlagMetadata('<key>', '<metadataKey>')` before any work. Written into the decorator it would gate one route instead of every caller of the method, and `rules/http.md` already forbids a guard from holding a business rule.
+- **A metadata sub-key is asserted in the domain, never in the decorator (HARD).** The decorator answers only "is this feature on at all". Whether the feature currently permits this particular operation is a business condition, so it is a guard clause at the top of the domain method — `await this.featureFlagDomain.validateFeatureFlagMetadata('<key>', '<metadataKey>')` before any work. Written into the decorator it would gate one route instead of every caller of the method, and `rules/http.md` already forbids a guard from holding a business rule.
 ## Rollout and targeting
 
 - **`targetUserIds` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.

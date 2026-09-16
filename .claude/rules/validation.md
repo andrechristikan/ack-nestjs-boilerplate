@@ -25,7 +25,7 @@ exists to catch.
   `.omit()`, `.pick()` and `.partial()` keep the strictness, so only the root spells it out.
 - **Every field carries its constraints on the schema** — `.min()`, `.max()`, `.email()`,
   `.regex()`, `z.enum()`. A field typed `z.string()` with nothing else is an unvalidated wire
-  input, and the shape is the only thing standing between the request and the service.
+  input, and the shape is the only thing standing between the request and the handler.
 - **Normalization belongs on the schema, not in the service** — `.trim()`,
   `.toLowerCase()`, `.transform()` run at the boundary so every caller sees one canonical
   value.
@@ -38,12 +38,18 @@ exists to catch.
 
 ## Params and queries
 
-- A path param is validated by pipes on the param itself — `RequestRequiredPipe`,
-  `RequestIsValidObjectIdPipe` — not by a schema (`rules/http.md`).
+- A path or query param is validated by a zod schema on the binding itself —
+  `@Param('userId', { schema: RequestMongoIdSchema })`,
+  `@Query('userId', { schema: RequestMongoIdSchema.optional() })`,
+  `@Param('inviteToken', { schema: RequestRequiredStringSchema })` — the same
+  `RequestSchemaValidationPipe` that validates bodies (`rules/http.md`). Shared schemas live
+  in `src/common/request/validations/`.
 - Pagination and filtering come from the `@Pagination*` decorators in
   `src/common/pagination/` (`rules/pagination.md`), not from hand-rolled `@Query` parsing.
   Reach for a query schema when an endpoint has its own non-pagination filter set; otherwise
   use the existing decorators.
+- File upload presence and type stay on the file pipes in `src/common/file/pipes/`
+  (`rules/file.md`), not on a request schema.
 
 ## Environment variables
 

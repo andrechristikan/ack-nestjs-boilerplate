@@ -77,7 +77,7 @@ the concept and make that module global — do not inject it across a tier 3 bou
 
 **That reach runs one way.** `@Global()` decides who may inject the util; it never widens what
 the util may inject. A util injects no other module's util in either tier, and the value it
-would have asked for is passed in by the service that called it (`rules/architecture.md`).
+would have asked for is passed in by the domain (or HTTP / processor service) that called it (`rules/architecture.md`).
 
 **An exception names the SUBJECT that failed, not the module that noticed.** The project module
 throwing `WorkspaceNotFoundException` when the workspace is what is missing is correct: the

@@ -124,7 +124,7 @@ Inject `MessageService` and use `setMessage` method:
 
 ```typescript
 @Injectable()
-export class UserService {
+export class UserDomain {
     constructor(private readonly messageService: MessageService) {}
 
     getUpdateProfileMessage(): string {

@@ -106,8 +106,8 @@ Use [NestJS][ref-nestjs] Logger throughout the application:
 ```typescript
 import { Logger } from '@nestjs/common';
 
-export class UserService {
-    private readonly logger = new Logger(UserService.name);
+export class UserDomain {
+    private readonly logger = new Logger(UserDomain.name);
 
     async createUser(data: UserCreateRequestDto) {
         this.logger.log('Creating new user');
@@ -342,7 +342,7 @@ logs/
 When `LOGGER_PRETTIER=false`, logs are written in JSON format:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1764577182750,"msg":"User created: user-123","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"level":30}
 ```
 
 ### Example Usage
@@ -463,7 +463,7 @@ The logger supports two output modes: Pretty mode for development and JSON mode 
 Development-friendly colored output with structured formatting using `pino-pretty`:
 
 ```
-INFO [2025-12-29 15:18:54.496 +0700]: [UserService] Creating new user
+INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
     service: {
       "name": "ACKNestJs",
       "environment": "local",
@@ -502,7 +502,7 @@ LOGGER_LEVEL=debug
 Production-optimized structured JSON for log aggregation and analysis tools:
 
 ```json
-{"severity":"INFO","context":"UserService","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
+{"severity":"INFO","context":"UserDomain","timestamp":1735461534496,"msg":"Creating new user","service":{"name":"ACKNestJs","environment":"production","version":"9.0.0"},"additionalData":{"userId":"user-123","action":"create"},"level":30}
 ```
 
 **Features:**
