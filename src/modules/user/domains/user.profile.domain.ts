@@ -13,7 +13,6 @@ import type {
     IFileRandomFilenameOptions,
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { DatabaseService } from '@common/database/services/database.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -42,7 +41,6 @@ export class UserProfileDomain {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
         private readonly countryDomain: CountryDomain,
         private readonly userUtil: UserUtil,
         private readonly awsS3Service: AwsS3Service,
@@ -88,15 +86,17 @@ export class UserProfileDomain {
         }
 
         try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.updateProfileInTx(tx, userId, {
-                    countryId,
-                    ...data,
-                });
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdateProfile,
-                });
+                }),
+            ];
+            await this.userRepository.updateProfile(userId, {
+                countryId,
+                ...data,
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -151,16 +151,14 @@ export class UserProfileDomain {
                 { access: EnumAwsS3Accessibility.public }
             );
 
-            await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.updatePhotoProfileInTx(
-                    tx,
-                    userId,
-                    aws
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userUpdatePhotoProfile,
-                });
-            });
+                }),
+            ];
+            await this.userRepository.updatePhotoProfile(userId, aws);
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -206,16 +204,14 @@ export class UserProfileDomain {
                     `Photo profile uploaded to S3 with key: ${key}`
                 );
 
-                await this.databaseService.withTransaction(async tx => {
-                    await this.userRepository.updatePhotoProfileInTx(
-                        tx,
-                        userId,
-                        aws
-                    );
-                    this.activityLogDomain.stage({
+                const events = [
+                    this.activityLogDomain.prepare({
                         action: EnumActivityLogAction.userUpdatePhotoProfile,
-                    });
-                });
+                    }),
+                ];
+                await this.userRepository.updatePhotoProfile(userId, aws);
+
+                this.activityLogDomain.stagePrepared(events);
             }
 
             return;
@@ -246,14 +242,14 @@ export class UserProfileDomain {
         }
 
         try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.claimUsernameInTx(tx, userId, {
-                    username,
-                });
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userClaimUsername,
-                });
-            });
+                }),
+            ];
+            await this.userRepository.claimUsername(userId, { username });
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {

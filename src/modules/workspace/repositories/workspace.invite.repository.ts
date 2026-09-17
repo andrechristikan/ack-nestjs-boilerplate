@@ -127,22 +127,21 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async createPendingInTx(
-        tx: IDatabaseTransactionClient,
-        {
-            workspaceId,
-            email,
-            workspaceRole,
-            projectId,
-            projectRole,
-            hashedToken,
-            reference,
-            expiredAt,
-            invitedByUserId,
-        }: IWorkspaceInviteCreateData
-    ): Promise<WorkspaceInvite> {
-        return tx.workspaceInvite.create({
+    async createPending({
+        workspaceInviteId,
+        workspaceId,
+        email,
+        workspaceRole,
+        projectId,
+        projectRole,
+        hashedToken,
+        reference,
+        expiredAt,
+        invitedByUserId,
+    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
+        return this.databaseService.client.workspaceInvite.create({
             data: {
+                id: workspaceInviteId,
                 workspaceId,
                 email,
                 workspaceRole,
@@ -172,11 +171,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         });
     }
 
-    async revokeInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceInviteId: string
-    ): Promise<void> {
-        await tx.workspaceInvite.update({
+    async revoke(workspaceInviteId: string): Promise<void> {
+        await this.databaseService.client.workspaceInvite.update({
             where: { id: workspaceInviteId },
             data: {
                 status: EnumWorkspaceInviteStatus.revoked,

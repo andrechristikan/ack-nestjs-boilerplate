@@ -19,6 +19,11 @@ export interface IDeviceLoginUpsert {
     isNewDevice: boolean;
 }
 
+export interface IDeviceOwnershipLoginUpsert {
+    deviceOwnership: DeviceOwnership;
+    isNewOwnership: boolean;
+}
+
 export interface IDeviceOwnership extends DeviceOwnership {
     device: Device;
     user: IUserRef;

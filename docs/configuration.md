@@ -266,6 +266,11 @@ url: string                     // MongoDB connection URL
 debug: boolean                  // Enable/disable database query logging
 ```
 
+**`seedTransactionTimeoutInMs`** - `withTransaction` timeout for the seed commands
+```typescript
+seedTransactionTimeoutInMs: number  // Timeout every seed passes to withTransaction, in seed() and remove() (ms('60s')); no env var
+```
+
 ### AWS Configuration
 
 **File**: `src/configs/aws.config.ts`
@@ -556,6 +561,15 @@ onboarding: {
 ```
 
 > Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
+
+**`passwordLockout`** - Write-conflict budget of the credential lockout transaction
+```typescript
+passwordLockout: {
+  writeConflictMaxAttempts: number;  // Total attempts, first included, that UserPasswordDomain.reachMaxPasswordAttempt makes when MongoDB reports a write conflict (P2034) (default: 3)
+}
+```
+
+> The lockout reruns its transaction immediately, with no backoff. Details: [Authentication](authentication.md).
 
 ### Documentation Configuration
 

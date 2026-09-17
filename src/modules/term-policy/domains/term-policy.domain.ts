@@ -1,6 +1,8 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -13,6 +15,7 @@ import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
@@ -45,16 +48,22 @@ export class TermPolicyDomain {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly fileService: FileService,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
         private readonly userDomain: UserDomain
     ) {}
 
-    private stageActivityLog(
+    private prepareActivityLog(
         action: EnumActivityLogAction,
-        termPolicy: TermPolicy
-    ): void {
-        this.activityLogDomain.stage({
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        timestamp: Date
+    ): IActivityLogStagedEvent {
+        return this.activityLogDomain.prepare({
             action,
-            metadata: this.termPolicyUtil.mapActivityLogMetadata(termPolicy),
+            metadata: this.termPolicyUtil.mapActivityLogMetadata(
+                termPolicy,
+                timestamp
+            ),
         });
     }
 
@@ -122,15 +131,21 @@ export class TermPolicyDomain {
                     ),
                 })
             );
+            const termPolicyId = this.databaseUtil.createId();
+            const events = [
+                this.prepareActivityLog(
+                    EnumActivityLogAction.adminTermPolicyCreate,
+                    { id: termPolicyId, type, version },
+                    this.helperDateService.create()
+                ),
+            ];
             const created = await this.termPolicyRepository.create(
+                termPolicyId,
                 { contents, type, version },
                 mappedContents
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyCreate,
-                created
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return created;
         } catch (err: unknown) {
@@ -153,6 +168,13 @@ export class TermPolicyDomain {
 
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const events = [
+                this.prepareActivityLog(
+                    EnumActivityLogAction.adminTermPolicyDelete,
+                    termPolicy,
+                    this.helperDateService.create()
+                ),
+            ];
             const [deleted] = await Promise.all([
                 this.termPolicyRepository.delete(termPolicyId),
                 this.awsS3Service.deleteDir(contentPath, {
@@ -160,10 +182,7 @@ export class TermPolicyDomain {
                 }),
             ]);
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyDelete,
-                deleted
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return deleted;
         } catch (err: unknown) {
@@ -208,7 +227,7 @@ export class TermPolicyDomain {
 
             const newContents = this.mapPublicContent(newItems, contents);
 
-            const updated = await this.databaseService.withTransaction(
+            const events = await this.databaseService.withTransaction(
                 async tx => {
                     const row = await this.termPolicyRepository.publishInTx(
                         tx,
@@ -220,9 +239,17 @@ export class TermPolicyDomain {
                         termPolicy.type
                     );
 
-                    return row;
+                    return [
+                        this.prepareActivityLog(
+                            EnumActivityLogAction.adminTermPolicyPublish,
+                            row,
+                            row.updatedAt
+                        ),
+                    ];
                 }
             );
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendPublishTermPolicy(
                 {
@@ -230,11 +257,6 @@ export class TermPolicyDomain {
                     version: termPolicy.version,
                 },
                 updatedBy
-            );
-
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyPublish,
-                updated
             );
 
             return;

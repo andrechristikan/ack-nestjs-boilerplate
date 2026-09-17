@@ -12,12 +12,7 @@ export interface IUserPasswordRepository {
     findOneLatestByForgotPassword(
         userId: string
     ): Promise<ForgotPassword | null>;
-    expireUnusedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<void>;
-    createInTx(
-        tx: IDatabaseTransactionClient,
+    createReplacingUnused(
         userId: string,
         email: string,
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate

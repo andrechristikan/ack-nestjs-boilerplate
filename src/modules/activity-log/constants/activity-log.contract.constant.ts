@@ -2,6 +2,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.actor-metadata.dto';
 import { ActivityLogApiKeyMetadataSchema } from '@modules/activity-log/dtos/activity-log.api-key-metadata.dto';
 import { ActivityLogDeviceActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-actor-metadata.dto';
+import { ActivityLogDeviceMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-metadata.dto';
 import { ActivityLogDeviceTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-target-metadata.dto';
 import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
 import { ActivityLogImportMetadataSchema } from '@modules/activity-log/dtos/activity-log.import-metadata.dto';
@@ -119,7 +120,7 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.userRemoveDevice]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogDeviceMetadataSchema,
     },
     [EnumActivityLogAction.userCreatedByAdmin]: {
         user: EnumActivityLogUser.target,
@@ -189,7 +190,7 @@ export const ActivityLogContractByAction: Record<
         metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userRevokeAllSessions]: {
-        user: EnumActivityLogUser.payload,
+        user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },

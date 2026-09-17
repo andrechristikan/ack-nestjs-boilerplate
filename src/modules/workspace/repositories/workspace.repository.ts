@@ -126,12 +126,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateDetailsInTx(
-        tx: IDatabaseTransactionClient,
+    async updateDetails(
         workspaceId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<Workspace> {
-        return tx.workspace.update({
+        return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
             data: {
                 name,
@@ -140,12 +139,11 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateIsPublicInTx(
-        tx: IDatabaseTransactionClient,
+    async updateIsPublic(
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return tx.workspace.update({
+        return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
             data: {
                 isPublic,
@@ -153,12 +151,8 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateSlugInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        slug: string
-    ): Promise<Workspace> {
-        return tx.workspace.update({
+    async updateSlug(workspaceId: string, slug: string): Promise<Workspace> {
+        return this.databaseService.client.workspace.update({
             where: { id: workspaceId },
             data: {
                 slug,
@@ -171,7 +165,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date
     ): Promise<void> {
-        await tx.workspace.update({
+        await tx.workspace.softDelete({
             where: { id: workspaceId },
             data: {
                 deletedAt,

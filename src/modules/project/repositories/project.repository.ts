@@ -1,5 +1,7 @@
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -18,7 +20,8 @@ import { Injectable } from '@nestjs/common';
 export class ProjectRepository implements IProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findActiveByIdAndWorkspace(
@@ -102,29 +105,37 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async createInTx(
-        tx: IDatabaseTransactionClient,
+    async create(
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slug: string
+        slugCandidates: string[]
     ): Promise<Project> {
-        return tx.project.create({
-            data: {
-                workspaceId,
-                name,
-                slug,
-                description,
-                deletedAt: null,
-            },
-        });
+        for (const slug of slugCandidates) {
+            try {
+                return await this.databaseService.client.project.create({
+                    data: {
+                        workspaceId,
+                        name,
+                        slug,
+                        description,
+                        deletedAt: null,
+                    },
+                });
+            } catch (error: unknown) {
+                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                    throw error;
+                }
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    async updateDetailsInTx(
-        tx: IDatabaseTransactionClient,
+    async updateDetails(
         projectId: string,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<Project> {
-        return tx.project.update({
+        return this.databaseService.client.project.update({
             where: { id: projectId },
             data: {
                 name,
@@ -133,12 +144,8 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async updateSlugInTx(
-        tx: IDatabaseTransactionClient,
-        projectId: string,
-        slug: string
-    ): Promise<Project> {
-        return tx.project.update({
+    async updateSlug(projectId: string, slug: string): Promise<Project> {
+        return this.databaseService.client.project.update({
             where: { id: projectId },
             data: {
                 slug,
@@ -146,12 +153,8 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async softDeleteInTx(
-        tx: IDatabaseTransactionClient,
-        projectId: string,
-        deletedAt: Date
-    ): Promise<void> {
-        await tx.project.update({
+    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
+        await this.databaseService.client.project.softDelete({
             where: { id: projectId },
             data: {
                 deletedAt,
@@ -162,7 +165,8 @@ export class ProjectRepository implements IProjectRepository {
     async softDeleteByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
+        deletedAt: Date,
+        deletedBy: string
     ): Promise<void> {
         await tx.project.updateMany({
             where: {
@@ -171,6 +175,7 @@ export class ProjectRepository implements IProjectRepository {
             },
             data: {
                 deletedAt,
+                deletedBy,
             },
         });
     }

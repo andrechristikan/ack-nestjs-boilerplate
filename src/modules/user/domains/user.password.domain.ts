@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -12,6 +13,7 @@ import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -51,6 +53,8 @@ export class UserPasswordDomain {
     private readonly forgotResendInMinutes: number;
     private readonly forgotLinkPattern: string;
 
+    private readonly passwordLockoutWriteConflictMaxAttempts: number;
+
     constructor(
         private readonly userPasswordRepository: UserPasswordRepository,
         private readonly userRepository: UserRepository,
@@ -67,7 +71,9 @@ export class UserPasswordDomain {
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly deviceDomain: DeviceDomain,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -89,6 +95,11 @@ export class UserPasswordDomain {
         this.forgotLinkPattern = this.configService.get<string>(
             'forgotPassword.linkPattern'
         )!;
+
+        this.passwordLockoutWriteConflictMaxAttempts =
+            this.configService.get<number>(
+                'user.passwordLockout.writeConflictMaxAttempts'
+            )!;
     }
 
     private async assertForgotPasswordAllowed(): Promise<void> {
@@ -137,29 +148,75 @@ export class UserPasswordDomain {
         };
     }
 
-    async increasePasswordAttempt(userId: string): Promise<User> {
-        return this.userDomain.increasePasswordAttempt(userId);
-    }
-
     async resetPasswordAttempt(userId: string): Promise<User> {
         return this.userDomain.resetPasswordAttempt(userId);
     }
 
-    async reachMaxPasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.withTransaction(async tx => {
-            const row =
-                await this.userDomain.deactivateForMaxPasswordAttemptInTx(
-                    tx,
-                    userId
-                );
-            this.activityLogDomain.stage({
+    async reachMaxPasswordAttempt(userId: string): Promise<void> {
+        const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
+            userId,
+            true
+        );
+        const reachMaxEvents = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                userId: userId,
+                userId,
                 createdBy: userId,
-            });
+                onError: true,
+            }),
+        ];
+        const now = this.helperDateService.create();
 
-            return row;
-        });
+        try {
+            for (
+                let attempt = 1;
+                attempt <= this.passwordLockoutWriteConflictMaxAttempts;
+                attempt++
+            ) {
+                try {
+                    await this.databaseService.withTransaction(async tx => {
+                        await this.userDomain.deactivateForMaxPasswordAttemptInTx(
+                            tx,
+                            userId
+                        );
+                        await this.sessionDomain.revokeActiveByUserInTx(
+                            tx,
+                            userId,
+                            userId,
+                            now
+                        );
+                        await this.deviceDomain.revokeAllByUserInTx(
+                            tx,
+                            userId,
+                            userId,
+                            now
+                        );
+                    });
+
+                    break;
+                } catch (error: unknown) {
+                    if (
+                        attempt <
+                            this.passwordLockoutWriteConflictMaxAttempts &&
+                        this.databaseUtil.isWriteConflict(error)
+                    ) {
+                        continue;
+                    }
+
+                    throw error;
+                }
+            }
+
+            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+
+            this.activityLogDomain.stagePrepared(reachMaxEvents);
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
+
+            throw new AppUnknownException(err);
+        }
     }
 
     async updatePasswordByAdmin(
@@ -186,7 +243,7 @@ export class UserPasswordDomain {
                 }
             );
 
-            const { updated, revokedSessions } =
+            const { updated, events } =
                 await this.databaseService.withTransaction(async tx => {
                     const row = await this.userDomain.updatePasswordInTx(
                         tx,
@@ -203,20 +260,39 @@ export class UserPasswordDomain {
                         password.passwordCreated,
                         updatedBy
                     );
-                    const sessions =
-                        await this.sessionDomain.revokeActiveByUserInTx(
-                            tx,
-                            userId,
-                            updatedBy,
-                            password.passwordCreated
-                        );
+                    await this.sessionDomain.revokeActiveByUserInTx(
+                        tx,
+                        userId,
+                        updatedBy,
+                        password.passwordCreated
+                    );
 
-                    return { updated: row, revokedSessions: sessions };
+                    return {
+                        updated: row,
+                        events: [
+                            this.activityLogDomain.prepare({
+                                action: EnumActivityLogAction.adminUserUpdatePassword,
+                                metadata:
+                                    this.userUtil.mapActivityLogActorMetadata(
+                                        row
+                                    ),
+                            }),
+                            this.activityLogDomain.prepare({
+                                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                                userId,
+                                createdBy: updatedBy,
+                                metadata:
+                                    this.userUtil.mapActivityLogTargetMetadata(
+                                        row,
+                                        updatedBy
+                                    ),
+                            }),
+                        ],
+                    };
                 });
-            await this.sessionDomain.purgeRevokedLogins(
-                userId,
-                revokedSessions
-            );
+            await this.sessionDomain.purgeLoginsByUser(userId);
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendTemporaryPasswordByAdmin(
                 updated.id,
@@ -231,20 +307,6 @@ export class UserPasswordDomain {
                 },
                 updatedBy
             );
-
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.adminUserUpdatePassword,
-                metadata: this.userUtil.mapActivityLogActorMetadata(updated),
-            });
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userUpdatePasswordByAdmin,
-                userId,
-                createdBy: updatedBy,
-                metadata: this.userUtil.mapActivityLogTargetMetadata(
-                    updated,
-                    updatedBy
-                ),
-            });
 
             return;
         } catch (err: unknown) {
@@ -309,54 +371,54 @@ export class UserPasswordDomain {
 
         try {
             const password = this.authPasswordUtil.createPassword(newPassword);
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userChangePassword,
+                }),
+            ];
+            if (twoFactorVerified) {
+                events.push(
+                    this.activityLogDomain.prepare({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
+                        userId: user.id,
+                        createdBy: user.id,
+                    })
+                );
+            }
 
-            const revokedSessions = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userDomain.updatePasswordInTx(
+            await this.databaseService.withTransaction(async tx => {
+                await this.userDomain.updatePasswordInTx(
+                    tx,
+                    user.id,
+                    password,
+                    user.id
+                );
+                await this.passwordHistoryDomain.createInTx(
+                    tx,
+                    user.id,
+                    password.passwordHash,
+                    EnumPasswordHistoryType.profile,
+                    password.passwordPeriodExpired,
+                    password.passwordCreated,
+                    user.id
+                );
+                await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    user.id,
+                    user.id,
+                    password.passwordCreated
+                );
+                if (twoFactorVerified) {
+                    await this.userLoginDomain.recordTwoFactorVerificationInTx(
                         tx,
-                        user.id,
-                        password,
-                        user.id
+                        user,
+                        twoFactorVerified
                     );
-                    await this.passwordHistoryDomain.createInTx(
-                        tx,
-                        user.id,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.profile,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        user.id
-                    );
-                    const sessions =
-                        await this.sessionDomain.revokeActiveByUserInTx(
-                            tx,
-                            user.id,
-                            user.id,
-                            password.passwordCreated
-                        );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.userChangePassword,
-                    });
-                    if (twoFactorVerified) {
-                        await this.userLoginDomain.recordTwoFactorVerificationInTx(
-                            tx,
-                            user,
-                            twoFactorVerified
-                        );
-                        this.activityLogDomain.stage({
-                            action: EnumActivityLogAction.userVerifyTwoFactor,
-                            userId: user.id,
-                            createdBy: user.id,
-                        });
-                    }
-
-                    return sessions;
                 }
-            );
-            await this.sessionDomain.purgeRevokedLogins(
-                user.id,
-                revokedSessions
-            );
+            });
+            await this.sessionDomain.purgeLoginsByUser(user.id);
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendChangePassword(user.id);
 
@@ -401,20 +463,20 @@ export class UserPasswordDomain {
         try {
             const resetPassword = this.forgotPasswordCreate();
 
-            await this.databaseService.withTransaction(async tx => {
-                await this.userPasswordRepository.expireUnusedInTx(tx, user.id);
-                await this.userPasswordRepository.createInTx(
-                    tx,
-                    user.id,
-                    email,
-                    resetPassword
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userForgotPassword,
                     userId: user.id,
                     createdBy: user.id,
-                });
-            });
+                }),
+            ];
+            await this.userPasswordRepository.createReplacingUnused(
+                user.id,
+                email,
+                resetPassword
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendForgotPassword(user.id, {
                 expiredAt: this.helperDateService.formatToIso(
@@ -483,61 +545,61 @@ export class UserPasswordDomain {
 
         try {
             const password = this.authPasswordUtil.createPassword(newPassword);
-
-            const revokedSessions = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userDomain.updatePasswordInTx(
-                        tx,
-                        resetPassword.userId,
-                        password,
-                        resetPassword.userId
-                    );
-                    await this.passwordHistoryDomain.createInTx(
-                        tx,
-                        resetPassword.userId,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.forgot,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        resetPassword.userId
-                    );
-                    await this.userPasswordRepository.markUsedInTx(
-                        tx,
-                        resetPassword.id,
-                        password.passwordCreated
-                    );
-                    const sessions =
-                        await this.sessionDomain.revokeActiveByUserInTx(
-                            tx,
-                            resetPassword.userId,
-                            resetPassword.userId,
-                            password.passwordCreated
-                        );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.userResetPassword,
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userResetPassword,
+                    userId: resetPassword.userId,
+                    createdBy: resetPassword.userId,
+                }),
+            ];
+            if (twoFactorVerified) {
+                events.push(
+                    this.activityLogDomain.prepare({
+                        action: EnumActivityLogAction.userVerifyTwoFactor,
                         userId: resetPassword.userId,
                         createdBy: resetPassword.userId,
-                    });
-                    if (twoFactorVerified) {
-                        await this.userLoginDomain.recordTwoFactorVerificationInTx(
-                            tx,
-                            resetPassword.user,
-                            twoFactorVerified
-                        );
-                        this.activityLogDomain.stage({
-                            action: EnumActivityLogAction.userVerifyTwoFactor,
-                            userId: resetPassword.userId,
-                            createdBy: resetPassword.userId,
-                        });
-                    }
+                    })
+                );
+            }
 
-                    return sessions;
+            await this.databaseService.withTransaction(async tx => {
+                await this.userDomain.updatePasswordInTx(
+                    tx,
+                    resetPassword.userId,
+                    password,
+                    resetPassword.userId
+                );
+                await this.passwordHistoryDomain.createInTx(
+                    tx,
+                    resetPassword.userId,
+                    password.passwordHash,
+                    EnumPasswordHistoryType.forgot,
+                    password.passwordPeriodExpired,
+                    password.passwordCreated,
+                    resetPassword.userId
+                );
+                await this.userPasswordRepository.markUsedInTx(
+                    tx,
+                    resetPassword.id,
+                    password.passwordCreated
+                );
+                await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    resetPassword.userId,
+                    resetPassword.userId,
+                    password.passwordCreated
+                );
+                if (twoFactorVerified) {
+                    await this.userLoginDomain.recordTwoFactorVerificationInTx(
+                        tx,
+                        resetPassword.user,
+                        twoFactorVerified
+                    );
                 }
-            );
-            await this.sessionDomain.purgeRevokedLogins(
-                resetPassword.userId,
-                revokedSessions
-            );
+            });
+            await this.sessionDomain.purgeLoginsByUser(resetPassword.userId);
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendResetPassword(
                 resetPassword.userId

@@ -314,7 +314,7 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 );
 ```
 
-`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the domain skips the database write in that case. Otherwise one `withTransaction` stores the S3 reference through `UserRepository.updatePhotoProfileInTx` and stages `userUpdatePhotoProfile` through `ActivityLogDomain.stage`.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the domain skips the database write in that case. Otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event.
 
 **Multiple Files Upload:**
 

@@ -149,27 +149,23 @@ export class WorkspaceJoinRequestDomain {
             throw new WorkspaceJoinRequestDuplicateException();
         }
 
-        const joinRequest = await this.databaseService.withTransaction(
-            async tx => {
-                const created =
-                    await this.workspaceJoinRequestRepository.createPendingInTx(
-                        tx,
-                        {
-                            workspaceId: workspace.id,
-                            userId,
-                            message: create.message,
-                        }
-                    );
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.workspaceJoinRequested,
-                    userId: userId,
-                    createdBy: userId,
-                    workspaceId: workspace.id,
-                });
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceJoinRequested,
+                userId: userId,
+                createdBy: userId,
+                workspaceId: workspace.id,
+            }),
+        ];
 
-                return created;
-            }
-        );
+        const joinRequest =
+            await this.workspaceJoinRequestRepository.createPending({
+                workspaceId: workspace.id,
+                userId,
+                message: create.message,
+            });
+
+        this.activityLogDomain.stagePrepared(events);
 
         await this.sendJoinRequestNotifications(workspace, joinRequest, userId);
 
@@ -202,6 +198,26 @@ export class WorkspaceJoinRequestDomain {
             workspace.id
         );
         const reviewedAt = this.helperDateService.create();
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceJoinAccepted,
+                userId: reviewerId,
+                createdBy: reviewerId,
+                workspaceId: joinRequest.workspaceId,
+                metadata: { targetUserId: joinRequest.userId },
+            }),
+        ];
+        if (joinRequest.userId !== reviewerId) {
+            events.push(
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
+                    userId: joinRequest.userId,
+                    createdBy: reviewerId,
+                    workspaceId: joinRequest.workspaceId,
+                    metadata: { actorUserId: reviewerId },
+                })
+            );
+        }
 
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
@@ -217,23 +233,9 @@ export class WorkspaceJoinRequestDomain {
                 reviewerId,
                 reviewedAt
             );
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.workspaceJoinAccepted,
-                userId: reviewerId,
-                createdBy: reviewerId,
-                workspaceId: joinRequest.workspaceId,
-                metadata: { targetUserId: joinRequest.userId },
-            });
-            if (joinRequest.userId !== reviewerId) {
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
-                    userId: joinRequest.userId,
-                    createdBy: reviewerId,
-                    workspaceId: joinRequest.workspaceId,
-                    metadata: { actorUserId: reviewerId },
-                });
-            }
         });
+
+        this.activityLogDomain.stagePrepared(events);
 
         await this.notificationQueue.sendWorkspaceJoinAccepted(
             joinRequest.userId,
@@ -259,31 +261,35 @@ export class WorkspaceJoinRequestDomain {
         );
         const reviewedAt = this.helperDateService.create();
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceJoinRequestRepository.rejectInTx(
-                tx,
-                workspaceJoinRequestId,
-                reviewerId,
-                rejectReasonCode,
-                reviewedAt
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceJoinRejected,
                 userId: reviewerId,
                 createdBy: reviewerId,
                 workspaceId: workspace.id,
                 metadata: { targetUserId: joinRequest.userId },
-            });
-            if (joinRequest.userId !== reviewerId) {
-                this.activityLogDomain.stage({
+            }),
+        ];
+        if (joinRequest.userId !== reviewerId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                     userId: joinRequest.userId,
                     createdBy: reviewerId,
                     workspaceId: workspace.id,
                     metadata: { actorUserId: reviewerId },
-                });
-            }
-        });
+                })
+            );
+        }
+
+        await this.workspaceJoinRequestRepository.reject(
+            workspaceJoinRequestId,
+            reviewerId,
+            rejectReasonCode,
+            reviewedAt
+        );
+
+        this.activityLogDomain.stagePrepared(events);
 
         await this.notificationQueue.sendWorkspaceJoinRejected(
             joinRequest.userId,

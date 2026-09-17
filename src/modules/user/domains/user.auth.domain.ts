@@ -96,8 +96,7 @@ export class UserAuthDomain {
         } else if (
             !this.authPasswordUtil.validatePassword(password, user.password)
         ) {
-            await this.userPasswordDomain.increasePasswordAttempt(user.id);
-            this.userLoginDomain.stageLoginFailed(user.id);
+            await this.userLoginDomain.recordLoginFailed(user.id);
 
             throw new UserPasswordNotMatchException();
         }

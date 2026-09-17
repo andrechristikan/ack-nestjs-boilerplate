@@ -319,7 +319,7 @@ export class NotificationSecurityDomain {
             data.requestLog.userAgent
         );
         const city = this.requestContextService.resolveCity(
-            data.requestLog.geoLocation ?? undefined
+            data.requestLog.geoLocation
         );
 
         const promises = [

@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -73,6 +74,7 @@ export class WorkspaceInviteDomain {
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
@@ -280,43 +282,47 @@ export class WorkspaceInviteDomain {
 
         const tokenData = this.createInviteTokenData(create.expiryDuration);
 
-        const invite = await this.databaseService.withTransaction(async tx => {
-            const created =
-                await this.workspaceInviteRepository.createPendingInTx(tx, {
-                    workspaceId: workspace.id,
-                    email: create.email,
-                    workspaceRole: create.workspaceRole,
-                    projectId: create.projectId,
-                    projectRole: create.projectRole,
-                    hashedToken: tokenData.hashedToken,
-                    reference: tokenData.reference,
-                    expiredAt: tokenData.expiredAt,
-                    invitedByUserId: actorId,
-                });
-            this.activityLogDomain.stage({
+        const workspaceInviteId = this.databaseUtil.createId();
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteCreated,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: workspace.id,
                 metadata: existingUser
                     ? {
-                          workspaceInviteId: created.id,
+                          workspaceInviteId,
                           targetUserId: existingUser.id,
                       }
-                    : { workspaceInviteId: created.id },
-            });
-            if (existingUser && existingUser.id !== actorId) {
-                this.activityLogDomain.stage({
+                    : { workspaceInviteId },
+            }),
+        ];
+        if (existingUser && existingUser.id !== actorId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                     userId: existingUser.id,
                     createdBy: actorId,
                     workspaceId: workspace.id,
                     metadata: { actorUserId: actorId },
-                });
-            }
+                })
+            );
+        }
 
-            return created;
+        const invite = await this.workspaceInviteRepository.createPending({
+            workspaceInviteId,
+            workspaceId: workspace.id,
+            email: create.email,
+            workspaceRole: create.workspaceRole,
+            projectId: create.projectId,
+            projectRole: create.projectRole,
+            hashedToken: tokenData.hashedToken,
+            reference: tokenData.reference,
+            expiredAt: tokenData.expiredAt,
+            invitedByUserId: actorId,
         });
+
+        this.activityLogDomain.stagePrepared(events);
 
         await this.sendInviteNotification(
             workspace,
@@ -393,12 +399,8 @@ export class WorkspaceInviteDomain {
             existing.email
         );
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.workspaceInviteRepository.revokeInTx(
-                tx,
-                workspaceInviteId
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceInviteRevoked,
                 userId: actorId,
                 createdBy: actorId,
@@ -409,17 +411,23 @@ export class WorkspaceInviteDomain {
                           targetUserId: existingUser.id,
                       }
                     : { workspaceInviteId: workspaceInviteId },
-            });
-            if (existingUser && existingUser.id !== actorId) {
-                this.activityLogDomain.stage({
+            }),
+        ];
+        if (existingUser && existingUser.id !== actorId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     userId: existingUser.id,
                     createdBy: actorId,
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorId },
-                });
-            }
-        });
+                })
+            );
+        }
+
+        await this.workspaceInviteRepository.revoke(workspaceInviteId);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async acceptOnSignUpInTx(
@@ -475,6 +483,26 @@ export class WorkspaceInviteDomain {
         }
 
         const today = this.helperDateService.create();
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceInviteAccepted,
+                userId: userId,
+                createdBy: userId,
+                workspaceId: invite.workspaceId,
+                metadata: { targetUserId: invite.invitedByUserId },
+            }),
+        ];
+        if (invite.invitedByUserId !== userId) {
+            events.push(
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                    userId: invite.invitedByUserId,
+                    createdBy: userId,
+                    workspaceId: invite.workspaceId,
+                    metadata: { actorUserId: userId },
+                })
+            );
+        }
 
         await this.databaseService.withTransaction(async tx => {
             await this.workspaceMemberDomain.createInTx(
@@ -504,23 +532,9 @@ export class WorkspaceInviteDomain {
                     userId
                 );
             }
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.workspaceInviteAccepted,
-                userId: userId,
-                createdBy: userId,
-                workspaceId: invite.workspaceId,
-                metadata: { targetUserId: invite.invitedByUserId },
-            });
-            if (invite.invitedByUserId !== userId) {
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                    userId: invite.invitedByUserId,
-                    createdBy: userId,
-                    workspaceId: invite.workspaceId,
-                    metadata: { actorUserId: userId },
-                });
-            }
         });
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async previewInvite(inviteToken: string): Promise<IWorkspaceInvitePreview> {

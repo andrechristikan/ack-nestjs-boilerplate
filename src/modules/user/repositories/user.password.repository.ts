@@ -63,31 +63,27 @@ export class UserPasswordRepository implements IUserPasswordRepository {
         });
     }
 
-    async expireUnusedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<void> {
-        await tx.forgotPassword.updateMany({
-            where: { userId, isUsed: false },
-            data: { isUsed: true },
-        });
-    }
-
-    async createInTx(
-        tx: IDatabaseTransactionClient,
+    async createReplacingUnused(
         userId: string,
         email: string,
         { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate
     ): Promise<ForgotPassword> {
-        return tx.forgotPassword.create({
-            data: {
-                userId,
-                expiredAt,
-                reference,
-                token: hashedToken,
-                createdBy: userId,
-                to: email,
-            },
+        return this.databaseService.withTransaction(async tx => {
+            await tx.forgotPassword.updateMany({
+                where: { userId, isUsed: false },
+                data: { isUsed: true },
+            });
+
+            return tx.forgotPassword.create({
+                data: {
+                    userId,
+                    expiredAt,
+                    reference,
+                    token: hashedToken,
+                    createdBy: userId,
+                    to: email,
+                },
+            });
         });
     }
 

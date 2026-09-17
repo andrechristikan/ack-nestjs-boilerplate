@@ -86,25 +86,10 @@ export class SessionRepository implements ISessionRepository {
         });
     }
 
-    async findActive(userId: string): Promise<ISessionRef[]> {
-        return this.databaseService.client.session.findMany({
-            where: {
-                userId,
-                isRevoked: false,
-                expiredAt: {
-                    gte: this.helperDateService.create(),
-                },
-            },
-            select: {
-                id: true,
-            },
-        });
-    }
-
     async findOneActive(
         userId: string,
         sessionId: string
-    ): Promise<Session | null> {
+    ): Promise<ISession | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.session.findFirst({
@@ -115,6 +100,14 @@ export class SessionRepository implements ISessionRepository {
                     gte: today,
                 },
                 isRevoked: false,
+            },
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+                revokedBy: {
+                    select: UserRefSelect,
+                },
             },
         });
     }
@@ -148,11 +141,19 @@ export class SessionRepository implements ISessionRepository {
         tx: IDatabaseTransactionClient,
         sessionId: string,
         jti: string
-    ): Promise<Session> {
-        return tx.session.update({
-            where: { id: sessionId },
+    ): Promise<boolean> {
+        const { count } = await tx.session.updateMany({
+            where: {
+                id: sessionId,
+                isRevoked: false,
+                expiredAt: {
+                    gte: this.helperDateService.create(),
+                },
+            },
             data: { jti },
         });
+
+        return count > 0;
     }
 
     async revokeInTx(
@@ -161,11 +162,12 @@ export class SessionRepository implements ISessionRepository {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<Session> {
-        return tx.session.update({
+    ): Promise<boolean> {
+        const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,
                 userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
@@ -173,6 +175,8 @@ export class SessionRepository implements ISessionRepository {
                 revokedById: revokedBy,
             },
         });
+
+        return count > 0;
     }
 
     async revoke(
@@ -180,11 +184,12 @@ export class SessionRepository implements ISessionRepository {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<Session> {
-        return this.databaseService.client.session.update({
+    ): Promise<boolean> {
+        const { count } = await this.databaseService.client.session.updateMany({
             where: {
                 id: sessionId,
                 userId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
@@ -192,31 +197,28 @@ export class SessionRepository implements ISessionRepository {
                 revokedById: revokedBy,
             },
         });
+
+        return count > 0;
     }
 
     async revokeByAdmin(
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISession> {
-        return this.databaseService.client.session.update({
+    ): Promise<boolean> {
+        const { count } = await this.databaseService.client.session.updateMany({
             where: {
                 id: sessionId,
+                isRevoked: false,
             },
             data: {
                 isRevoked: true,
                 revokedAt,
                 revokedById: revokedBy,
             },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-            },
         });
+
+        return count > 0;
     }
 
     async revokeActiveByUser(

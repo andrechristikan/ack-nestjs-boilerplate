@@ -385,7 +385,7 @@ export class ProjectUserController {
     @Post('/member/:projectId/leave')
     async memberLeave(
         @ProjectCurrent() project: Project,
-        @ProjectMemberCurrent() projectMember: ProjectMember
+        @ProjectMemberCurrent() projectMember: ProjectMember | null
     ): Promise<void> {
         await this.projectMemberHttpService.leaveProject(
             project,

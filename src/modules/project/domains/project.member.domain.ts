@@ -1,5 +1,4 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
@@ -34,7 +33,6 @@ export class ProjectMemberDomain {
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -157,33 +155,37 @@ export class ProjectMemberDomain {
             throw new ProjectMemberAlreadyAssignedException();
         }
 
-        return this.databaseService.withTransaction(async tx => {
-            const member = await this.projectMemberRepository.createInTx(
-                tx,
-                project.id,
-                targetMember.userId,
-                role,
-                actorId
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberAssigned,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
-            });
-            if (targetMember.userId !== actorId) {
-                this.activityLogDomain.stage({
+            }),
+        ];
+        if (targetMember.userId !== actorId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                });
-            }
+                })
+            );
+        }
 
-            return member;
-        });
+        const member = await this.projectMemberRepository.create(
+            project.id,
+            targetMember.userId,
+            role,
+            actorId
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return member;
     }
 
     async updateMemberRole(
@@ -207,29 +209,30 @@ export class ProjectMemberDomain {
             newRole
         );
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.projectMemberRepository.updateRoleInTx(
-                tx,
-                targetMember.id,
-                newRole
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
-            });
-            if (targetMember.userId !== actorId) {
-                this.activityLogDomain.stage({
+            }),
+        ];
+        if (targetMember.userId !== actorId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                });
-            }
-        });
+                })
+            );
+        }
+
+        await this.projectMemberRepository.updateRole(targetMember.id, newRole);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async removeMember(
@@ -255,39 +258,51 @@ export class ProjectMemberDomain {
             targetMember.role
         );
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.projectMemberRepository.removeMemberInTx(
-                tx,
-                targetMember.id
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberRemoved,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
-            });
-            if (targetMember.userId !== actorId) {
-                this.activityLogDomain.stage({
+            }),
+        ];
+        if (targetMember.userId !== actorId) {
+            events.push(
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                     userId: targetMember.userId,
                     createdBy: actorId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: actorId },
-                });
-            }
-        });
+                })
+            );
+        }
+
+        await this.projectMemberRepository.removeMember(targetMember.id);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
-    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        await this.databaseService.withTransaction(async tx => {
-            await this.projectMemberRepository.removeMemberInTx(tx, member.id);
-            this.activityLogDomain.stage({
+    async leaveProject(
+        project: Project,
+        member: ProjectMember | null
+    ): Promise<void> {
+        if (!member) {
+            throw new ProjectMemberForbiddenException();
+        }
+
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberLeft,
                 userId: member.userId,
                 createdBy: member.userId,
                 workspaceId: project.workspaceId,
-            });
-        });
+            }),
+        ];
+
+        await this.projectMemberRepository.removeMember(member.id);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 }

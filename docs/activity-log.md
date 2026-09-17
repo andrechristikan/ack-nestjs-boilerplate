@@ -4,11 +4,11 @@ This documentation explains the features and usage of **Activity Log Module**: L
 
 ## Overview
 
-Activity Log records audited user actions. Domains call `ActivityLogDomain.stage` during the request. The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes staged events after the handler settles: success flushes every staged event; an error path flushes only events staged with `onError: true`. Flushed rows go through `ActivityLogRepository.createManyInTx` inside `DatabaseService.withTransaction`.
+Activity Log records audited user actions. During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues the prepared events with `ActivityLogDomain.stagePrepared`. The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes staged events after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`. Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
 
 An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
 
-**`userLoginFailed`:** On credential password mismatch, `UserAuthDomain` increments the password-attempt counter and calls `UserLoginDomain.stageLoginFailed`, which stages `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user. Contract in `ActivityLogContractByAction`: `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n description: `activityLog.userLoginFailed` ("Login failed with invalid credentials"). Login path: [Authentication](authentication.md). Analytic failed-login metrics count `userLoginFailed` rows: [Analytic](analytic.md).
+**Failed credential logins:** On a credential password mismatch, `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. When the attempt counter is already at the limit, `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. Both requests answer an error, and `onError: true` is what writes their rows. All three contracts in `ActivityLogContractByAction` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n descriptions: `activityLog.userLoginFailed` ("Login failed with invalid credentials") and `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached"). Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
 
 **Notes:**
 
@@ -39,12 +39,13 @@ An action one user takes on another user writes two rows: one owned by the actor
 
 | Component | Responsibility |
 |---|---|
-| `ActivityLogDomain.stage` | Validates contract and metadata, pushes an event onto the request-store stage list |
+| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
+| `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
 | `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
 | `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`), request log, and workspace |
-| `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createManyInTx` |
+| `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
-| `ActivityLogRepository` | Data access (Prisma), including `createManyInTx` |
+| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which runs the insert in its own transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
 | `ActivityLogContractByAction` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
 | `ActivityLogWorkspaceVolumeExcludedActions` | Target-side workspace and project actions left out of workspace volume metrics |
@@ -75,48 +76,67 @@ sequenceDiagram
 
     Client->>Controller: HTTP Request
     Controller->>Domain: business logic
-    Domain->>Storage: ActivityLogDomain.stage({ action, userId?, createdBy?, workspaceId?, metadata?, onError? })
+    Note over Domain: prepare({ action, userId?, createdBy?, workspaceId?, metadata?, onError? })<br/>validates before the audited write
+    Domain->>Domain: audited write
+    Domain->>Storage: stagePrepared(events)
     alt Success
         Domain-->>Interceptor: result
         Interceptor->>Domain: flushStaged({ isError: false })
-        Domain->>Repo: createManyInTx(rows)
+        Domain->>Repo: createMany(rows)
         Repo-->>Client: Success Response
     else Failure
         Domain-->>Interceptor: throws
         Interceptor->>Domain: flushStaged({ isError: true })
         Note over Domain: Only events with onError true
-        Domain->>Repo: createManyInTx(rows) when any qualify
+        Domain->>Repo: createMany(rows) when any qualify
         Repo-->>Client: Error Response
     end
 ```
 
 ## Staging an activity
 
-Domains call `ActivityLogDomain.stage` after the mutation they are auditing (or, for `userLoginFailed`, after a password mismatch). Metadata is validated against `ActivityLogContractByAction[action].metadata` at stage time. Example pattern from owner domains:
+Every caller follows one order: prepare and validate every event before the write it records can commit, then write, then stage the prepared events. A session or device path commits, then writes or purges the session cache, then stages. `prepare` validates the metadata against `ActivityLogContractByAction[action].metadata` and checks the user and workspace fields, so a contract failure throws before anything is committed, and a failed write stages nothing. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
 
 ```typescript
-this.activityLogDomain.stage({
-    action: EnumActivityLogAction.adminRoleCreate,
-    metadata: this.roleUtil.mapActivityLogMetadata(created),
-});
+const roleId = this.databaseUtil.createId();
+const events = [
+    this.prepareActivityLog(
+        EnumActivityLogAction.adminRoleCreate,
+        { id: roleId, name: data.name, type: data.type },
+        this.helperDateService.create()
+    ),
+];
+const created = await this.roleRepository.create(roleId, data);
+
+this.activityLogDomain.stagePrepared(events);
 ```
 
-`userLoginFailed` stages with an explicit target `userId`, the same user as `createdBy`, and empty metadata:
+`userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, empty metadata, and `onError: true`:
 
 ```typescript
-this.activityLogDomain.stage({
-    action: EnumActivityLogAction.userLoginFailed,
-    userId,
-    createdBy: userId,
-});
+const events = [
+    this.activityLogDomain.prepare({
+        action: EnumActivityLogAction.userLoginFailed,
+        userId,
+        createdBy: userId,
+        onError: true,
+    }),
+];
+await this.userRepository.increasePasswordAttempt(userId);
+
+this.activityLogDomain.stagePrepared(events);
 ```
 
-The contract's `user` value decides which user fields `stage` accepts:
+Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the commit, because `sessionCount` exists only once the revoke has run.
 
-| `user` | Row owner (`userId`) | `createdBy` | What `stage` carries |
+`onError: true` is set on `userLoginFailed`, on `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path, and on the five API key admin writes (status, name, dates, reset, delete). An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change. Every other event is success-only.
+
+The contract's `user` value decides which user fields `prepare` accepts:
+
+| `user` | Row owner (`userId`) | `createdBy` | What `prepare` carries |
 |---|---|---|---|
 | `payload` | The JWT user (`request.user.userId`), read by `ActivityLogInterceptor` and resolved at flush | The row owner | Neither `userId` nor `createdBy` |
-| `target` | The `userId` passed to `stage` | The `createdBy` passed to `stage`: the acting user, or the row's own user on a self or public path | Both `userId` and `createdBy` |
+| `target` | The `userId` passed to `prepare` | The `createdBy` passed to `prepare`: the acting user, or the row's own user on a self or public path | Both `userId` and `createdBy` |
 
 A missing required field, or a user field passed to a `payload` action, throws `ActivityLogContractInvalidException`. The contract's `workspace` value works the same way: `payload` reads the current workspace from the request store, `target` takes the staged `workspaceId`, and `none` stores `null`.
 
@@ -124,16 +144,17 @@ Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`
 
 ## Actor and target rows
 
-When one user acts on another user, the domain stages two rows. The **actor row** uses the action the actor performed and belongs to the actor. The **target row** uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor. When the actor and the affected user are the same person, the domain stages the actor row only; each stage site makes that comparison itself.
+When one user acts on another user, the domain prepares two rows. The **actor row** uses the action the actor performed and belongs to the actor. The **target row** uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor. When the actor and the affected user are the same person, the domain prepares the actor row only; each call site makes that comparison itself.
 
 ```mermaid
 flowchart TD
-    A[Domain completes a mutation on another user] --> B["stage actor row<br/>plain action, metadata.targetUserId"]
+    A[Domain handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
     B --> C{"affected user<br/>= actor?"}
     C -->|yes| E[Actor row only]
-    C -->|no| D["stage target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]
-    D --> F[ActivityLogInterceptor flushes every staged row in one transaction]
-    E --> F
+    C -->|no| D["prepare target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]
+    D --> G[write, then stagePrepared]
+    E --> G
+    G --> F[ActivityLogInterceptor flushes every staged row in one transaction]
 ```
 
 | Actor action (row of the actor) | Target action (row of the affected user) | Affected user |
@@ -159,9 +180,10 @@ flowchart TD
 | `projectMemberRemoved` | `projectMemberRemovedByAdmin` | The removed member |
 
 - **Invites:** The invite actor row is written whether or not the email has an account. The target row is written only when the email belongs to an active account.
-- **Admin onboarding:** Admin create and admin import also stage `userSendVerificationEmail` and `workspaceCreatedByAdmin` (the personal workspace) for each new user. Every per-user row belongs to the new user and has `createdBy` set to the admin; only `adminUserCreate` / `adminUserImport` belongs to the admin. Sign-up stages `userSignedUp` and `userSendVerificationEmail`, social sign-up stages `userCreated`, and both stage `workspaceCreated` for a personal workspace or the `workspaceInviteAccepted` pair for an invite token, with the new user as `createdBy`.
+- **Admin onboarding:** Admin create and admin import also write `userSendVerificationEmail` and `workspaceCreatedByAdmin` (the personal workspace) for each new user. Every per-user row belongs to the new user and has `createdBy` set to the admin; only `adminUserCreate` / `adminUserImport` belongs to the admin. Sign-up writes `userSignedUp` and `userSendVerificationEmail`, social sign-up writes `userCreated`, and both write `workspaceCreated` for a personal workspace or the `workspaceInviteAccepted` pair for an invite token, with the new user as `createdBy`.
 - **Self targets:** The admin single-session revoke and the admin device removal accept the admin's own account and then write the actor row only. Status change, temporary password, two-factor reset, and revoke-all reject the admin's own account with `UserNotSelfException` (400, `51001`) and write no row.
 - **Single-row actions:** An action whose actor is the affected user writes one row under its plain name: every self-service `user…` action, `userRemoveDevice`, `userRevokeSession`, `workspaceCreated`, `workspaceUpdated`, `workspaceVisibilityUpdated`, `workspaceDeleted`, `workspaceSwitched`, `workspaceJoinRequested`, `workspaceMemberLeft`, `projectCreated`, `projectUpdated`, `projectDeleted`, and `projectMemberLeft`. An invite resend writes no row.
+- **Revoke rows first:** An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair. Account self-deletion stages `userRevokeAllSessions` and then `userDeleteSelf`; the credential lockout stages `userRevokeAllSessions` and then `userReachMaxPasswordAttempt`. Both paths write both rows every time, including when no session was revoked. The password and two-factor paths that revoke every session write no revoke-all row.
 - **Counting:** `ActivityLogWorkspaceVolumeExcludedActions` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
 
 The pair model and the self check are bound by `.claude/rules/security.md` (Activity log).
@@ -178,7 +200,7 @@ Each flushed log contains:
 - **ipAddress** - from the request store `IRequestLog` (may be null)
 - **userAgent** - from the request store `IRequestLog` (JSON)
 - **geoLocation** - from the request store `IRequestLog` (JSON, may be null)
-- **metadata** - staged metadata (JSON, null when empty)
+- **metadata** - prepared metadata (JSON, null when empty)
 - **workspaceId** - from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
 - **createdAt** - timestamp
 
@@ -188,7 +210,7 @@ Each flushed log contains:
 type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 ```
 
-Stored as `null` when empty. Each action's schema is a strict zod object, so a key the schema does not declare fails the contract at stage time. Every id in the schemas below is required.
+Stored as `null` when empty. Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the event is prepared. Every id in the schemas below is required.
 
 | Actions | Keys |
 |---|---|
@@ -204,6 +226,7 @@ Stored as `null` when empty. Each action's schema is a strict zod object, so a k
 | `userRevokeAllSessionsByAdmin` | `actorUserId`, `sessionCount` |
 | `adminDeviceRemove` | `targetUserId`, `targetUsername`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDeviceByAdmin` | `actorUserId`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
+| `userRemoveDevice` | `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | API key, role, term policy, and notification setting actions | Their own schemas; every key optional |
 | Every other action | None |
 
@@ -211,7 +234,7 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema`, whi
 
 ### Description
 
-Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>` via `MessageService.setMessage`, passing staged metadata for placeholder interpolation. The text is rendered at flush and stored on the row. Strings live in `src/languages/<lang>/activityLog.json`. Target rows use fixed text with no placeholder ("Your workspace role has been updated"); the admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
+Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>` via `MessageService.setMessage`, passing the prepared metadata for placeholder interpolation. The text is rendered at flush and stored on the row. Strings live in `src/languages/<lang>/activityLog.json`. Target rows use fixed text with no placeholder ("Your workspace role has been updated"); the admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
 
 
 <!-- REFERENCES -->

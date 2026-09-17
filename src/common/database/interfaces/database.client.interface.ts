@@ -12,3 +12,7 @@ export type IDatabaseClient = ReturnType<DatabaseClientFactory['create']>;
 export type IDatabaseTransactionClient = Parameters<
     Parameters<IDatabaseClient['$transaction']>[0]
 >[0];
+
+export type IDatabaseTransactionOptions = NonNullable<
+    Prisma.PrismaClientOptions['transactionOptions']
+>;

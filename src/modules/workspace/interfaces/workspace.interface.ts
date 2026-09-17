@@ -55,6 +55,7 @@ export interface IWorkspaceInviteCreate {
 }
 
 export interface IWorkspaceInviteCreateData {
+    workspaceInviteId: string;
     workspaceId: string;
     email: string;
     workspaceRole: EnumWorkspaceMemberRole;

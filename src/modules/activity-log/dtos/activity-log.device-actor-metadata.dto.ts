@@ -1,3 +1,4 @@
+import { ActivityLogDeviceMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-metadata.dto';
 import { ActivityLogUserActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.user-actor-metadata.dto';
 import { z } from 'zod';
 
@@ -6,11 +7,9 @@ import { z } from 'zod';
  * @public
  */
 export const ActivityLogDeviceActorMetadataSchema =
-    ActivityLogUserActorMetadataSchema.extend({
-        deviceOwnershipId: z.string(),
-        deviceId: z.string(),
-        sessionCount: z.number(),
-    });
+    ActivityLogUserActorMetadataSchema.extend(
+        ActivityLogDeviceMetadataSchema.shape
+    );
 
 /**
  * Metadata of an admin actor row that removes a device of a user.

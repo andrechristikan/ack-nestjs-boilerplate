@@ -1,7 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationApiKeyData } from '@migration/data/migration.api-key.data';
+import { MigrationApiKeyData } from '@migration/data/migration.api-key.data';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import type { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
@@ -26,6 +27,7 @@ export class MigrationApiKeySeed
 
     private readonly env: EnumAppEnvironment;
     private readonly apiKeys: ApiKeyCreateRawRequestDto[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -36,36 +38,51 @@ export class MigrationApiKeySeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.apiKeys = migrationApiKeyData[this.env];
+        this.apiKeys = MigrationApiKeyData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Api Keys...');
         this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
 
-        try {
-            await this.databaseService.client.$transaction(
-                this.apiKeys.map(apiKey => {
-                    const key = this.apiKeyCredentialUtil.createKey(apiKey.key);
-                    const hashed = this.apiKeyCredentialUtil.createHash(
-                        key,
-                        apiKey.secret
-                    );
+        const rows = this.apiKeys.map(apiKey => {
+            const key = this.apiKeyCredentialUtil.createKey(apiKey.key);
 
-                    return this.databaseService.client.apiKey.upsert({
-                        where: {
-                            key: key,
-                        },
-                        create: {
-                            hash: hashed,
-                            key: key,
-                            type: apiKey.type,
-                            name: apiKey.name,
-                            isActive: true,
-                        },
-                        update: {},
-                    });
-                })
+            return {
+                key,
+                hash: this.apiKeyCredentialUtil.createHash(key, apiKey.secret),
+                type: apiKey.type,
+                name: apiKey.name,
+            };
+        });
+
+        try {
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const row of rows) {
+                        await tx.apiKey.upsert({
+                            where: {
+                                key: row.key,
+                            },
+                            create: {
+                                hash: row.hash,
+                                key: row.key,
+                                type: row.type,
+                                name: row.name,
+                                isActive: true,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding Api Keys');
@@ -81,18 +98,14 @@ export class MigrationApiKeySeed
         this.logger.log('Removing back Api Keys...');
 
         try {
-            await Promise.all([
-                ...this.apiKeys
-                    .map(apiKey => {
-                        return [
-                            this.apiKeyCache.deleteCacheByKey(
-                                this.apiKeyCredentialUtil.createKey(apiKey.key)
-                            ),
-                        ];
-                    })
-                    .flat(),
-                this.databaseService.client.apiKey.deleteMany({}),
-            ]);
+            await this.databaseService.client.apiKey.deleteMany({});
+            await Promise.all(
+                this.apiKeys.map(apiKey =>
+                    this.apiKeyCache.deleteCacheByKey(
+                        this.apiKeyCredentialUtil.createKey(apiKey.key)
+                    )
+                )
+            );
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing Api Keys');
             throw error;

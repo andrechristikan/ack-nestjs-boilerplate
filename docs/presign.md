@@ -179,12 +179,14 @@ export class UserProfileDomain {
         { access: EnumAwsS3Accessibility.public }
       );
 
-      await this.databaseService.withTransaction(async tx => {
-        await this.userRepository.updatePhotoProfileInTx(tx, userId, aws);
-        this.activityLogDomain.stage({
+      const events = [
+        this.activityLogDomain.prepare({
           action: EnumActivityLogAction.userUpdatePhotoProfile,
-        });
-      });
+        }),
+      ];
+      await this.userRepository.updatePhotoProfile(userId, aws);
+
+      this.activityLogDomain.stagePrepared(events);
 
       return;
     } catch (err: unknown) {
@@ -352,8 +354,8 @@ sequenceDiagram
 3. **Database Update Stage:**
    - Client notifies backend with S3 key and file size
    - Backend maps presign data to `IAwsS3`
-   - Repository updates user profile with S3 file reference
-   - The same transaction stages `userUpdatePhotoProfile`; `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
+   - `UserProfileDomain` prepares `userUpdatePhotoProfile`, then `UserRepository.updatePhotoProfile` stores the S3 file reference in one update with no transaction
+   - After the update the event is staged; `ActivityLogInterceptor` writes it with the IP address, user agent, and geolocation from the request store (`RequestLogStoreKey`)
 
 
 ### Term Policy Content Presign

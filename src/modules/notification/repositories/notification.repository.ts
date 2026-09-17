@@ -112,13 +112,18 @@ export class NotificationRepository implements INotificationRepository {
     ): Promise<Notification[]> {
         const today = this.helperDateService.create();
 
-        return this.databaseService.client.$transaction(
-            entries.map(({ kind, payload }) =>
-                this.databaseService.client.notification.create({
-                    data: this.buildCreateData(kind, payload, today),
-                })
-            )
-        );
+        return this.databaseService.withTransaction(async tx => {
+            const created: Notification[] = [];
+            for (const { kind, payload } of entries) {
+                created.push(
+                    await tx.notification.create({
+                        data: this.buildCreateData(kind, payload, today),
+                    })
+                );
+            }
+
+            return created;
+        });
     }
 
     async markAsRead(

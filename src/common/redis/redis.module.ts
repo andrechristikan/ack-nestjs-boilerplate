@@ -25,6 +25,7 @@ export class RedisCacheModule {
                         ),
                         useUnlink: true,
                         keyPrefixSeparator: ':',
+                        throwOnErrors: true,
                     }
                 );
             },

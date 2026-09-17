@@ -77,6 +77,16 @@ export class NotificationDomain {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userUpdateNotificationSetting,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
+                },
+            }),
+        ];
         await this.databaseService.withTransaction(async tx => {
             await this.notificationUserSettingRepository.updateUserSettingInTx(
                 tx,
@@ -86,14 +96,7 @@ export class NotificationDomain {
             await this.userDomain.touchUpdatedByInTx(tx, userId);
         });
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.userUpdateNotificationSetting,
-            metadata: {
-                channel: data.channel,
-                type: data.type,
-                isActive: data.isActive,
-            },
-        });
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async createDefaultsInTx(

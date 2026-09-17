@@ -118,6 +118,8 @@ When a user reaches the maximum allowed attempts (5 failed verifications), 2FA v
 5. Lock is stored in Redis cache with automatic expiration
 6. Lock duration increases exponentially based on attempt count
 
+A Redis failure while writing or clearing the lock is logged and the request continues; the attempt counter in the database still increments. A Redis failure while storing the login challenge answers 500, and a failure while deleting a used challenge is logged. Details: [Cache][ref-doc-cache].
+
 **Lock timing:**
 - Lock is set **after** the 5th failed attempt
 - Lock prevents **next** verification attempt
@@ -206,14 +208,22 @@ sequenceDiagram
     end
     API->>API: Generate TOTP secret
     API->>API: Encrypt secret (AES-256-GCM, user ID as AAD)
-    API->>Database: One transaction: consume the backup code (when given),<br/>save pendingSecret, reset attempt to 0
+    API->>API: prepare userSetupTwoFactor
+    alt backupCode given
+        API->>Database: UserTwoFactorRepository transaction: consume the backup code<br/>(only while the stored codes are unchanged),<br/>save pendingSecret, reset attempt to 0
+    else No backupCode
+        API->>Database: One update: save pendingSecret, reset attempt to 0
+    end
+    API->>API: stage userSetupTwoFactor
     API->>User: Return secret + otpauthUrl
     Note over User: Frontend generates QR code from otpauthUrl
     User->>User: Scan QR with authenticator app
     User->>API: POST /shared/user/2fa/enable {code}
     API->>API: Decrypt pendingSecret & verify code
     API->>API: Generate 8 backup codes
-    API->>Database: Move pendingSecret to secret, save hashed backup codes,<br/>set enabled=true, requiredSetup=false,<br/>confirmedAt (first enable only), lastUsedAt=now
+    API->>API: prepare userEnableTwoFactor
+    API->>Database: UserTwoFactorRepository transaction: move pendingSecret to secret,<br/>save hashed backup codes, set enabled=true, requiredSetup=false,<br/>confirmedAt (first enable only), lastUsedAt=now
+    API->>API: stage userEnableTwoFactor
     API->>User: Return backup codes
 ```
 
@@ -232,6 +242,9 @@ sequenceDiagram
     API->>Database: Check twoFactor.enabled
     API->>API: Generate challenge token
     API->>Cache: Store challenge (5min TTL)
+    alt Redis failure
+        API->>User: Error (500)
+    end
     API->>User: Return challengeToken
     User->>API: PATCH /public/user/login/2fa/verify {challengeToken, code}
     API->>Cache: Validate challenge
@@ -273,7 +286,8 @@ sequenceDiagram
 
     Admin->>API: PATCH /admin/user/2fa/:userId/reset
     API->>Database: One transaction: set requiredSetup=true, attempt=0,<br/>clear secret, pendingSecret and backup codes,<br/>revoke all user sessions
-    API->>API: Purge the revoked session ids from the session cache
+    API->>API: Purge every session key of the user from the session cache
+    API->>API: Stage the admin and user activity rows
     API->>User: Send reset notification email
     
     Note over User: User Next Login
@@ -390,9 +404,10 @@ sequenceDiagram
     par
         API->>Database: One transaction: reset 2FA (set requiredSetup=true),<br/>clear attempt counter, revoke all sessions
     and
-        API->>Cache: Clear lock (if exists)
+        API->>Cache: Clear lock (if exists; a failure is logged)
     end
-    API->>Cache: Delete exactly the revoked session keys
+    API->>Cache: Delete every session key of the user
+    API->>API: Stage adminUserResetTwoFactor and userResetTwoFactorByAdmin
     API->>Admin: Success confirmation
     
     Admin->>User: 2FA has been reset
@@ -444,14 +459,16 @@ sequenceDiagram
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
                     API->>Database: One transaction: change password, revoke all sessions,<br/>record the 2FA use
-                    API->>Cache: Delete exactly the revoked session keys
+                    API->>Cache: Delete every session key of the user
+                    API->>API: Stage userChangePassword and userVerifyTwoFactor
                     API->>User: Send password-changed notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
             API->>Database: One transaction: change password, revoke all sessions
-            API->>Cache: Delete exactly the revoked session keys
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userChangePassword
             API->>User: Send password-changed notification
             API->>User: Success
         end
@@ -493,14 +510,16 @@ sequenceDiagram
                 else 2FA Valid
                     API->>Database: Reset attempt to 0
                     API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions, record the 2FA use
-                    API->>Cache: Delete exactly the revoked session keys
+                    API->>Cache: Delete every session key of the user
+                    API->>API: Stage userResetPassword and userVerifyTwoFactor
                     API->>User: Send password-reset notification
                     API->>User: Success
                 end
             end
         else 2FA not enabled
             API->>Database: One transaction: reset password, consume the reset token,<br/>revoke all sessions
-            API->>Cache: Delete exactly the revoked session keys
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userResetPassword
             API->>User: Send password-reset notification
             API->>User: Success
         end
@@ -531,7 +550,8 @@ sequenceDiagram
         else 2FA Valid
             API->>Database: Reset attempt to 0
             API->>Database: One transaction: disable 2FA, clear secret,<br/>pendingSecret and backup codes, revoke all sessions
-            API->>Cache: Delete exactly the revoked session keys
+            API->>Cache: Delete every session key of the user
+            API->>API: Stage userDisableTwoFactor
             API->>User: Success
         end
     end

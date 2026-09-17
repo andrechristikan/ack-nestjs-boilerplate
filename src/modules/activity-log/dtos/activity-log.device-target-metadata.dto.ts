@@ -1,3 +1,4 @@
+import { ActivityLogDeviceMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-metadata.dto';
 import { ActivityLogUserTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.user-target-metadata.dto';
 import { z } from 'zod';
 
@@ -6,11 +7,9 @@ import { z } from 'zod';
  * @public
  */
 export const ActivityLogDeviceTargetMetadataSchema =
-    ActivityLogUserTargetMetadataSchema.extend({
-        deviceOwnershipId: z.string(),
-        deviceId: z.string(),
-        sessionCount: z.number(),
-    });
+    ActivityLogUserTargetMetadataSchema.extend(
+        ActivityLogDeviceMetadataSchema.shape
+    );
 
 /**
  * Metadata of a user row written when an admin removes one of that user's devices.

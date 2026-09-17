@@ -15,7 +15,6 @@ import type {
 } from '@modules/activity-log/interfaces/activity-log.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 
 @Injectable()
 export class ActivityLogRepository implements IActivityLogRepository {
@@ -163,12 +162,13 @@ export class ActivityLogRepository implements IActivityLogRepository {
         );
     }
 
-    async createManyInTx(
-        tx: IDatabaseTransactionClient,
+    async createMany(
         rows: IActivityLogCreateManyRow[]
     ): Promise<Prisma.BatchPayload> {
-        return tx.activityLog.createMany({
-            data: this.mapCreateManyData(rows),
-        });
+        return this.databaseService.withTransaction(async tx =>
+            tx.activityLog.createMany({
+                data: this.mapCreateManyData(rows),
+            })
+        );
     }
 }

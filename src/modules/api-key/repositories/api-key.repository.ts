@@ -43,12 +43,14 @@ export class ApiKeyRepository implements IApiKeyRepository {
     }
 
     async create(
+        apiKeyId: string,
         { name, type, startAt, endAt }: ApiKeyCreateRequestDto,
         key: string,
         hash: string
     ): Promise<ApiKey> {
         return this.databaseService.client.apiKey.create({
             data: {
+                id: apiKeyId,
                 name,
                 key,
                 hash,

@@ -13,6 +13,7 @@ import type { IResponsePagingReturn } from '@common/response/interfaces/response
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { PasswordHistoryDomain } from '@modules/password-history/domains/password-history.domain';
@@ -308,19 +309,22 @@ export class WorkspaceDomain {
                             );
                         }
 
-                        return rows;
+                        return {
+                            rows,
+                            events: this.prepareOnboardingActivities(
+                                inputs,
+                                rows,
+                                mode,
+                                adminPayloadAction
+                            ),
+                        };
                     },
                     { timeout: timeoutInMs }
                 );
 
-                this.stageOnboardingActivities(
-                    inputs,
-                    onboarded,
-                    mode,
-                    adminPayloadAction
-                );
+                this.activityLogDomain.stagePrepared(onboarded.events);
 
-                return onboarded;
+                return onboarded.rows;
             } catch (error: unknown) {
                 if (this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     continue;
@@ -333,20 +337,24 @@ export class WorkspaceDomain {
         throw new DatabaseUniqueValueGenerationFailedException();
     }
 
-    private stageOnboardingActivities(
+    private prepareOnboardingActivities(
         inputs: IUserCreateWithWorkspaceInput[],
         users: IUser[],
         mode: EnumUserCreateMode,
         adminPayloadAction?: IUserOnboardingAdminAction
-    ): void {
+    ): IActivityLogStagedEvent[] {
+        const events: IActivityLogStagedEvent[] = [];
         if (adminPayloadAction) {
-            this.activityLogDomain.stage({
-                action: adminPayloadAction,
-                metadata: this.userOnboardingDomain.buildAdminPayloadMetadata(
-                    adminPayloadAction,
-                    users
-                ),
-            });
+            events.push(
+                this.activityLogDomain.prepare({
+                    action: adminPayloadAction,
+                    metadata:
+                        this.userOnboardingDomain.buildAdminPayloadMetadata(
+                            adminPayloadAction,
+                            users
+                        ),
+                })
+            );
         }
 
         for (const [index, input] of inputs.entries()) {
@@ -355,15 +363,19 @@ export class WorkspaceDomain {
                 input,
                 users[index]
             )) {
-                this.activityLogDomain.stage({
-                    action: activity.action,
-                    userId: activity.userId,
-                    createdBy: activity.createdBy,
-                    workspaceId: activity.workspaceId,
-                    metadata: activity.metadata,
-                });
+                events.push(
+                    this.activityLogDomain.prepare({
+                        action: activity.action,
+                        userId: activity.userId,
+                        createdBy: activity.createdBy,
+                        workspaceId: activity.workspaceId,
+                        metadata: activity.metadata,
+                    })
+                );
             }
         }
+
+        return events;
     }
 
     async createWorkspace(
@@ -380,30 +392,31 @@ export class WorkspaceDomain {
 
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.workspaceCreated,
+                    userId: userId,
+                    createdBy: userId,
+                    workspaceId: workspaceId,
+                }),
+            ];
 
+            let workspace: Workspace;
             try {
-                return await this.databaseService.withTransaction(async tx => {
-                    const workspace = await this.createInTx(
-                        tx,
-                        userId,
-                        create,
-                        slug,
-                        workspaceId
-                    );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.workspaceCreated,
-                        userId: userId,
-                        createdBy: userId,
-                        workspaceId: workspace.id,
-                    });
-
-                    return workspace;
-                });
+                workspace = await this.databaseService.withTransaction(tx =>
+                    this.createInTx(tx, userId, create, slug, workspaceId)
+                );
             } catch (error: unknown) {
                 if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
                     throw error;
                 }
+
+                continue;
             }
+
+            this.activityLogDomain.stagePrepared(events);
+
+            return workspace;
         }
 
         throw new DatabaseUniqueValueGenerationFailedException();
@@ -418,21 +431,23 @@ export class WorkspaceDomain {
         actorId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateDetailsInTx(
-                tx,
-                workspaceId,
-                update
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateDetails(
+            workspaceId,
+            update
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async updateWorkspaceIsPublic(
@@ -440,21 +455,23 @@ export class WorkspaceDomain {
         actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateIsPublicInTx(
-                tx,
-                workspaceId,
-                isPublic
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateIsPublic(
+            workspaceId,
+            isPublic
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async updateWorkspaceSlug(
@@ -472,21 +489,23 @@ export class WorkspaceDomain {
             throw new WorkspaceSlugAlreadyExistsException();
         }
 
-        return this.databaseService.withTransaction(async tx => {
-            const row = await this.workspaceRepository.updateSlugInTx(
-                tx,
-                workspaceId,
-                slug
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
                 createdBy: actorId,
                 workspaceId: workspaceId,
-            });
+            }),
+        ];
 
-            return row;
-        });
+        const row = await this.workspaceRepository.updateSlug(
+            workspaceId,
+            slug
+        );
+
+        this.activityLogDomain.stagePrepared(events);
+
+        return row;
     }
 
     async switchWorkspace(userId: string, workspaceId: string): Promise<void> {
@@ -496,21 +515,32 @@ export class WorkspaceDomain {
             userId
         );
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.userDomain.setLastWorkspaceInTx(tx, userId, workspaceId);
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.workspaceSwitched,
                 userId: userId,
                 createdBy: userId,
                 workspaceId: workspaceId,
-            });
-        });
+            }),
+        ];
+
+        await this.userDomain.setLastWorkspace(userId, workspaceId);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async softDeleteWorkspace(
         workspaceId: string,
         actorId: string
     ): Promise<void> {
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.workspaceDeleted,
+                userId: actorId,
+                createdBy: actorId,
+                workspaceId: workspaceId,
+            }),
+        ];
         const deletedAt = this.helperDateService.create();
 
         await this.databaseService.withTransaction(async tx => {
@@ -522,7 +552,8 @@ export class WorkspaceDomain {
             await this.projectDomain.softDeleteByWorkspaceInTx(
                 tx,
                 workspaceId,
-                deletedAt
+                deletedAt,
+                actorId
             );
             await this.workspaceInviteRepository.expirePendingByWorkspaceInTx(
                 tx,
@@ -532,13 +563,9 @@ export class WorkspaceDomain {
                 tx,
                 workspaceId
             );
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.workspaceDeleted,
-                userId: actorId,
-                createdBy: actorId,
-                workspaceId: workspaceId,
-            });
         });
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async getListForAdmin(

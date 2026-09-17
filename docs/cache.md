@@ -29,6 +29,8 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
   - [RedisCacheModule](#rediscachemodule)
   - [CacheMainModule](#cachemainmodule)
   - [SessionDomainModule](#sessiondomainmodule)
+  - [Session Cache](#session-cache)
+  - [Redis Failures](#redis-failures)
 - [Configuration](#configuration)
   - [Redis Configuration](#redis-configuration)
   - [Module Import Order](#module-import-order)
@@ -88,10 +90,13 @@ createKeyv(
         connectionTimeout: 30000,
         namespace: 'Cache',
         useUnlink: true,
-        keyPrefixSeparator: ':'
+        keyPrefixSeparator: ':',
+        throwOnErrors: true
     }
 )
 ```
+
+`throwOnErrors: true` makes a failed Redis command reject instead of resolving. What each caller does with that rejection: [Redis Failures](#redis-failures).
 
 ### CacheMainModule
 
@@ -133,9 +138,39 @@ export class SessionCache {
 }
 ```
 
-`SessionCache` is the only injection site. `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache` and `SessionUtil`, and exports `SessionDomain` and `SessionCache`.
+`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)). `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache` and `SessionUtil`, and exports `SessionDomain` and `SessionCache`.
 
 Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
+
+### Session Cache
+
+`SessionCache` (`src/modules/session/caches/session.cache.ts`) stores one entry per login under the `session.keyPattern` key, with `{userId}` and `{sessionId}` substituted.
+
+| Method | What it does |
+|---|---|
+| `getLogin(userId, sessionId)` | Reads the entry through the cache manager; `null` on a miss |
+| `setLogin(userId, sessionId, jti, expiredAt)` | Writes the entry through the cache manager, with a TTL running to `expiredAt` |
+| `updateLogin(userId, sessionId, session, jti, expiredInMs)` | Rewrites the entry with the new `jti` and TTL as `SET … PX … XX` on the shared client, so it writes only while the entry still exists. It serializes the value with Keyv and prefixes the key with the store namespace, so the stored shape matches what `setLogin` writes. Returns whether it wrote |
+| `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
+| `deleteLoginsByUser(userId)` | Walks every master node with `SCAN` (`MATCH` on the user's key prefix, `COUNT` `SessionCachePurgeScanCount` = 1000, `TYPE string`) and `UNLINK`s each batch it finds |
+
+`SessionDomain` wraps the two deletes. `purgeRevokedLogins` calls `deleteLogins` and serves the paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device. `purgeLoginsByUser` calls `deleteLoginsByUser` and serves the paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset. Both run after the revoke has committed, and both log and swallow a failure, so the committed revoke still answers success. Each path then stages its activity rows. Flow narrative: [Authentication][ref-doc-authentication].
+
+A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `AuthJwtRefreshTokenInvalidException` (401, `50801`).
+
+### Redis Failures
+
+Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into two groups:
+
+| Group | Calls | On a Redis failure |
+|---|---|---|
+| Propagate | `SessionCache.setLogin` (every login), `SessionCache.updateLogin` (refresh), `AuthCache.createChallenge` (login with two-factor), `ApiKeyCache.deleteCacheByKey` (API key admin writes, `MigrationApiKeySeed.remove`) | The request answers 500 |
+| Caught in the cache class and logged | `AuthCache.clearChallenge`, `AuthCache.lockTwoFactorAttempt`, `AuthCache.clearLockTwoFactorAttempt`, `ApiKeyCache.setCacheByKey`, every `FeatureFlagCache` and `AnalyticCache` call | The request continues |
+| Caught in `SessionDomain` and logged | `SessionCache.deleteLogins`, `SessionCache.deleteLoginsByUser` | The request continues |
+
+`ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.
+
+An API key admin write that changes or deletes a key (status, name, dates, reset, delete) runs the database write, then stages its activity row with `onError: true`, then deletes the key's cache entry, in that order. When the delete fails, the request answers 500 with the database change applied and its activity row written. `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
 

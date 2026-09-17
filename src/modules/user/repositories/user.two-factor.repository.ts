@@ -1,6 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { Prisma } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
@@ -13,6 +14,39 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService
     ) {}
+
+    private buildVerifyTwoFactorArgs(
+        userId: string,
+        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Prisma.TwoFactorUpdateManyArgs {
+        const isBackupCode = method === EnumAuthTwoFactorMethod.backupCodes;
+
+        return {
+            where: {
+                userId,
+                ...(isBackupCode && {
+                    backupCodes: { equals: currentBackupCodes },
+                }),
+            },
+            data: {
+                lastUsedAt: this.helperDateService.create(),
+                ...(isBackupCode && {
+                    backupCodes: newBackupCodes,
+                }),
+            },
+        };
+    }
+
+    private buildSetupTwoFactorData(
+        pendingSecretEncrypted: string
+    ): Prisma.TwoFactorUpdateInput {
+        return {
+            pendingSecret: pendingSecretEncrypted,
+            attempt: 0,
+            updatedAt: this.helperDateService.create(),
+        };
+    }
 
     async createDisabledInTx(
         tx: IDatabaseTransactionClient,
@@ -33,72 +67,98 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        verified: IAuthTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
-        const isBackupCode = method === EnumAuthTwoFactorMethod.backupCodes;
-        const { count } = await tx.twoFactor.updateMany({
-            where: {
-                userId,
-                ...(isBackupCode && {
-                    backupCodes: { equals: currentBackupCodes },
-                }),
-            },
-            data: {
-                lastUsedAt: this.helperDateService.create(),
-                ...(isBackupCode && {
-                    backupCodes: newBackupCodes,
-                }),
-            },
-        });
+        const { count } = await tx.twoFactor.updateMany(
+            this.buildVerifyTwoFactorArgs(userId, verified, currentBackupCodes)
+        );
 
         return count > 0;
     }
 
-    async setupTwoFactorInTx(
-        tx: IDatabaseTransactionClient,
+    async verifyTwoFactor(
+        userId: string,
+        verified: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean> {
+        const { count } =
+            await this.databaseService.client.twoFactor.updateMany(
+                this.buildVerifyTwoFactorArgs(
+                    userId,
+                    verified,
+                    currentBackupCodes
+                )
+            );
+
+        return count > 0;
+    }
+
+    async setupTwoFactor(
         userId: string,
         pendingSecretEncrypted: string
     ): Promise<TwoFactor> {
-        const now = this.helperDateService.create();
-
-        return tx.twoFactor.update({
+        return this.databaseService.client.twoFactor.update({
             where: { userId },
-            data: {
-                pendingSecret: pendingSecretEncrypted,
-                attempt: 0,
-                updatedAt: now,
-            },
+            data: this.buildSetupTwoFactorData(pendingSecretEncrypted),
         });
     }
 
-    async enableTwoFactorInTx(
-        tx: IDatabaseTransactionClient,
+    async setupTwoFactorConsumingBackupCode(
+        userId: string,
+        pendingSecretEncrypted: string,
+        verified: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.twoFactor.updateMany(
+                this.buildVerifyTwoFactorArgs(
+                    userId,
+                    verified,
+                    currentBackupCodes
+                )
+            );
+            if (count === 0) {
+                return false;
+            }
+
+            await tx.twoFactor.update({
+                where: { userId },
+                data: this.buildSetupTwoFactorData(pendingSecretEncrypted),
+            });
+
+            return true;
+        });
+    }
+
+    async enableTwoFactor(
         userId: string,
         secretEncrypted: string,
         backupCodesHashed: string[]
     ): Promise<TwoFactor> {
-        const now = this.helperDateService.create();
-        const twoFactor = await tx.twoFactor.findUnique({
-            where: { userId },
-            select: {
-                confirmedAt: true,
-            },
-        });
+        return this.databaseService.withTransaction(async tx => {
+            const now = this.helperDateService.create();
+            const twoFactor = await tx.twoFactor.findUnique({
+                where: { userId },
+                select: {
+                    confirmedAt: true,
+                },
+            });
 
-        return tx.twoFactor.update({
-            where: { userId },
-            data: {
-                secret: secretEncrypted,
-                pendingSecret: null,
-                enabled: true,
-                requiredSetup: false,
-                confirmedAt: twoFactor?.confirmedAt ?? now,
-                backupCodes: backupCodesHashed,
-                lastUsedAt: now,
-                updatedAt: now,
-                updatedBy: userId,
-            },
+            return tx.twoFactor.update({
+                where: { userId },
+                data: {
+                    secret: secretEncrypted,
+                    pendingSecret: null,
+                    enabled: true,
+                    requiredSetup: false,
+                    confirmedAt: twoFactor?.confirmedAt ?? now,
+                    backupCodes: backupCodesHashed,
+                    lastUsedAt: now,
+                    updatedAt: now,
+                    updatedBy: userId,
+                },
+            });
         });
     }
 
@@ -122,14 +182,13 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
-    async regenerateTwoFactorBackupCodesInTx(
-        tx: IDatabaseTransactionClient,
+    async regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
     ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
-        return tx.twoFactor.update({
+        return this.databaseService.client.twoFactor.update({
             where: { userId },
             data: {
                 backupCodes: backupCodesHashed,

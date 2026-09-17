@@ -1,5 +1,4 @@
 import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IDeviceOwnershipAnalyticUserCount {
     userId: string;
@@ -21,10 +20,6 @@ export interface IDeviceOwnershipAnalyticCreatedRow {
 }
 
 export interface IDeviceOwnershipAnalyticRepository {
-    countRegistrations(startDate: Date, endDate: Date): Promise<number>;
-    groupByPlatform(): Promise<IAnalyticCountBucket[]>;
-    countWithPushToken(): Promise<number>;
-    countDevices(): Promise<number>;
     countOwnerships(): Promise<number>;
     countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]>;
     findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactiveRow[]>;

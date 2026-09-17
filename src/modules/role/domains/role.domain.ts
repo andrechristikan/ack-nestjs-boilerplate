@@ -1,3 +1,5 @@
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -11,6 +13,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
@@ -34,13 +37,19 @@ export class RoleDomain {
     constructor(
         private readonly roleRepository: RoleRepository,
         private readonly roleUtil: RoleUtil,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService
     ) {}
 
-    private stageActivityLog(action: EnumActivityLogAction, role: Role): void {
-        this.activityLogDomain.stage({
+    private prepareActivityLog(
+        action: EnumActivityLogAction,
+        role: IRole,
+        timestamp: Date
+    ): IActivityLogStagedEvent {
+        return this.activityLogDomain.prepare({
             action,
-            metadata: this.roleUtil.mapActivityLogMetadata(role),
+            metadata: this.roleUtil.mapActivityLogMetadata(role, timestamp),
         });
     }
 
@@ -91,9 +100,17 @@ export class RoleDomain {
             throw new RoleExistException();
         }
 
-        const created = await this.roleRepository.create(data);
+        const roleId = this.databaseUtil.createId();
+        const events = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleCreate,
+                { id: roleId, name: data.name, type: data.type },
+                this.helperDateService.create()
+            ),
+        ];
+        const created = await this.roleRepository.create(roleId, data);
 
-        this.stageActivityLog(EnumActivityLogAction.adminRoleCreate, created);
+        this.activityLogDomain.stagePrepared(events);
 
         return created;
     }
@@ -102,33 +119,46 @@ export class RoleDomain {
         id: string,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
-        const roleExists = await this.roleRepository.existsById(id);
-        if (!roleExists) {
+        const role = await this.roleRepository.findOneById(id);
+        if (!role) {
             throw new RoleNotFoundException();
         }
 
+        const events = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleUpdate,
+                { id: role.id, name: role.name, type: data.type },
+                this.helperDateService.create()
+            ),
+        ];
         const updated = await this.roleRepository.update(id, data);
 
-        this.stageActivityLog(EnumActivityLogAction.adminRoleUpdate, updated);
+        this.activityLogDomain.stagePrepared(events);
 
         return updated;
     }
 
     async deleteByAdmin(id: string): Promise<Role> {
-        const [roleExists, roleUsed] = await Promise.all([
-            this.roleRepository.existsById(id),
+        const [role, roleUsed] = await Promise.all([
+            this.roleRepository.findOneById(id),
             this.roleRepository.isUsedById(id),
         ]);
-
-        if (!roleExists) {
+        if (!role) {
             throw new RoleNotFoundException();
         } else if (roleUsed) {
             throw new RoleUsedException();
         }
 
+        const events = [
+            this.prepareActivityLog(
+                EnumActivityLogAction.adminRoleDelete,
+                role,
+                this.helperDateService.create()
+            ),
+        ];
         const deleted = await this.roleRepository.delete(id);
 
-        this.stageActivityLog(EnumActivityLogAction.adminRoleDelete, deleted);
+        this.activityLogDomain.stagePrepared(events);
 
         return deleted;
     }

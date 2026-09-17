@@ -2,7 +2,8 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationTermPolicyData } from '@migration/data/migration.term-policy.data';
+import { MigrationTermPolicyData } from '@migration/data/migration.term-policy.data';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { Logger } from '@nestjs/common';
@@ -26,6 +27,7 @@ export class MigrationTermPolicySeed
 
     private readonly env: EnumAppEnvironment;
     private readonly termPolicies: TermPolicyCreateRequestDto[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -35,7 +37,10 @@ export class MigrationTermPolicySeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.termPolicies = migrationTermPolicyData[this.env];
+        this.termPolicies = MigrationTermPolicyData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
@@ -45,25 +50,32 @@ export class MigrationTermPolicySeed
         );
 
         try {
-            await this.databaseService.client.$transaction(
-                this.termPolicies.map(termPolicy =>
-                    this.databaseService.client.termPolicy.upsert({
-                        where: {
-                            type_version: {
-                                type: termPolicy.type,
-                                version: termPolicy.version,
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const termPolicy of this.termPolicies) {
+                        await tx.termPolicy.upsert({
+                            where: {
+                                type_version: {
+                                    type: termPolicy.type,
+                                    version: termPolicy.version,
+                                },
                             },
-                        },
-                        create: {
-                            ...termPolicy,
-                            contents: this.databaseUtil.toPlainArray(
-                                termPolicy.contents
-                            ),
-                            status: EnumTermPolicyStatus.published,
-                        },
-                        update: {},
-                    })
-                )
+                            create: {
+                                ...termPolicy,
+                                contents: this.databaseUtil.toPlainArray(
+                                    termPolicy.contents
+                                ),
+                                status: EnumTermPolicyStatus.published,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding term policies');

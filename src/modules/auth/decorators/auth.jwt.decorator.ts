@@ -2,25 +2,34 @@ import { UseGuards, applyDecorators } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
-/**
- * Extracts the JWT payload (or a single property of it) from the authenticated request.
- * @public
- */
-export const AuthJwtPayload = createParamDecorator(
-    <T = IAuthJwtAccessTokenPayload>(
-        data: string,
-        ctx: ExecutionContext
-    ): T | undefined => {
+const AuthJwtPayloadParam = createParamDecorator<string | null, unknown>(
+    (field: string | null, ctx: ExecutionContext): unknown => {
         const { user } = ctx
             .switchToHttp()
-            .getRequest<IRequestApp & { user: T }>();
-        return data ? (user?.[data as keyof T] as T | undefined) : user;
+            .getRequest<IRequestApp<Record<string, unknown>>>();
+        if (!user) {
+            throw new RequestContextMissingException('request.user');
+        }
+
+        return field === null ? user : user[field];
     }
 );
+
+/**
+ * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request.
+ * @public
+ */
+export function AuthJwtPayload<
+    T = IAuthJwtAccessTokenPayload,
+    K extends Extract<keyof T, string> = Extract<keyof T, string>,
+>(field?: K): ParameterDecorator {
+    return AuthJwtPayloadParam(field ?? null);
+}
 
 /**
  * Extracts the raw JWT token from the Authorization header, stripping the scheme prefix.

@@ -5,23 +5,27 @@ import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/acti
 /** Maps session entities for audit. */
 @Injectable()
 export class SessionUtil {
-    mapActivityLogActorMetadata(session: ISession): IActivityLogMetadata {
+    mapActivityLogActorMetadata(
+        session: ISession,
+        timestamp: Date
+    ): IActivityLogMetadata {
         return {
             targetUserId: session.userId,
             targetUsername: session.user.username,
             sessionId: session.id,
-            timestamp: session.updatedAt ?? session.createdAt,
+            timestamp,
         };
     }
 
     mapActivityLogTargetMetadata(
         session: ISession,
-        actorUserId: string
+        actorUserId: string,
+        timestamp: Date
     ): IActivityLogMetadata {
         return {
             actorUserId,
             sessionId: session.id,
-            timestamp: session.updatedAt ?? session.createdAt,
+            timestamp,
         };
     }
 }

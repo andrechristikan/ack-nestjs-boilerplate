@@ -71,12 +71,15 @@ export class ApiKeyUtil {
         return apiKey && allowed.includes(apiKey.type);
     }
 
-    mapActivityLogMetadata(apiKey: ApiKey): IActivityLogMetadata {
+    mapActivityLogMetadata(
+        apiKey: Pick<ApiKey, 'id' | 'name' | 'type'>,
+        timestamp: Date
+    ): IActivityLogMetadata {
         return {
             apiKeyId: apiKey.id,
             apiKeyName: apiKey.name,
             apiKeyType: apiKey.type,
-            timestamp: apiKey.updatedAt ?? apiKey.createdAt,
+            timestamp,
         };
     }
 }

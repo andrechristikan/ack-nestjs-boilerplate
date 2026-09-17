@@ -28,18 +28,18 @@ export interface IWorkspaceJoinRequestRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
-    createPendingInTx(
-        tx: IDatabaseTransactionClient,
-        { workspaceId, userId, message }: IWorkspaceJoinRequestCreateData
-    ): Promise<WorkspaceJoinRequest>;
+    createPending({
+        workspaceId,
+        userId,
+        message,
+    }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest>;
     acceptInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
     ): Promise<void>;
-    rejectInTx(
-        tx: IDatabaseTransactionClient,
+    reject(
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,

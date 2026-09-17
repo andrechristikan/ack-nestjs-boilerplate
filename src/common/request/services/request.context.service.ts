@@ -8,7 +8,7 @@ export class RequestContextService {
         return hostname();
     }
 
-    resolveCity(geoLocation?: GeoLocation): string {
+    resolveCity(geoLocation: GeoLocation | null): string {
         return geoLocation?.city ?? 'Unknown Location';
     }
 

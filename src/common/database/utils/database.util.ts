@@ -38,6 +38,16 @@ export class DatabaseUtil {
     }
 
     /**
+     * True when `error` is a Prisma write conflict or deadlock (`P2034`) that aborted a transaction.
+     */
+    isWriteConflict(error: unknown): boolean {
+        return (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2034'
+        );
+    }
+
+    /**
      * Deep-clones `data` and casts it to a Prisma-compatible plain object.
      */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {

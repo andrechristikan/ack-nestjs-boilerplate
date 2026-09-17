@@ -13,6 +13,7 @@ import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import { AuthTwoFactorAlreadyEnabledException } from '@modules/auth/exceptions/auth.two-factor-already-enabled.exception';
 import { AuthTwoFactorBackupCodeRequiredException } from '@modules/auth/exceptions/auth.two-factor-backup-code-required.exception';
 import { AuthTwoFactorChallengeInvalidException } from '@modules/auth/exceptions/auth.two-factor-challenge-invalid.exception';
+import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorNotEnabledException } from '@modules/auth/exceptions/auth.two-factor-not-enabled.exception';
 import { AuthTwoFactorNotRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-not-required-setup.exception';
 import { AuthTwoFactorRequiredSetupException } from '@modules/auth/exceptions/auth.two-factor-required-setup.exception';
@@ -89,18 +90,19 @@ export class UserTwoFactorDomain {
             });
 
         try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userLoginDomain.recordTwoFactorVerificationInTx(
-                    tx,
-                    user,
-                    twoFactorVerified
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userVerifyTwoFactor,
                     userId: user.id,
                     createdBy: user.id,
-                });
-            });
+                }),
+            ];
+            await this.userLoginDomain.recordTwoFactorVerification(
+                user,
+                twoFactorVerified
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             const loginAt = this.helperDateService.create();
             const [tokens] = await Promise.all([
@@ -161,17 +163,18 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.withTransaction(async tx => {
-                await this.userTwoFactorRepository.enableTwoFactorInTx(
-                    tx,
-                    user.id,
-                    pendingSecret,
-                    backupCodes.hashes
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
-                });
-            });
+                }),
+            ];
+            await this.userTwoFactorRepository.enableTwoFactor(
+                user.id,
+                pendingSecret,
+                backupCodes.hashes
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -211,26 +214,32 @@ export class UserTwoFactorDomain {
                     user.id,
                     user.email
                 );
-            await this.databaseService.withTransaction(async tx => {
-                if (backupCodeVerified) {
-                    await this.userLoginDomain.recordTwoFactorVerificationInTx(
-                        tx,
-                        user,
-                        backupCodeVerified
-                    );
-                }
-
-                await this.userTwoFactorRepository.setupTwoFactorInTx(
-                    tx,
-                    user.id,
-                    encryptedSecret
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
                     createdBy: user.id,
-                });
-            });
+                }),
+            ];
+            if (backupCodeVerified) {
+                const isSetUp =
+                    await this.userTwoFactorRepository.setupTwoFactorConsumingBackupCode(
+                        user.id,
+                        encryptedSecret,
+                        backupCodeVerified,
+                        user.twoFactor?.backupCodes ?? []
+                    );
+                if (!isSetUp) {
+                    throw new AuthTwoFactorInvalidException();
+                }
+            } else {
+                await this.userTwoFactorRepository.setupTwoFactor(
+                    user.id,
+                    encryptedSecret
+                );
+            }
+
+            this.activityLogDomain.stagePrepared(events);
 
             return {
                 secret,
@@ -262,17 +271,18 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.withTransaction(async tx => {
-                await this.userTwoFactorRepository.enableTwoFactorInTx(
-                    tx,
-                    user.id,
-                    pendingSecret,
-                    backupCodes.hashes
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userEnableTwoFactor,
-                });
-            });
+                }),
+            ];
+            await this.userTwoFactorRepository.enableTwoFactor(
+                user.id,
+                pendingSecret,
+                backupCodes.hashes
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -299,31 +309,27 @@ export class UserTwoFactorDomain {
         });
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userDisableTwoFactor,
+                }),
+            ];
             const now = this.helperDateService.create();
-            const revokedSessions = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userTwoFactorRepository.disableTwoFactorInTx(
-                        tx,
-                        user.id
-                    );
-                    const sessions =
-                        await this.sessionDomain.revokeActiveByUserInTx(
-                            tx,
-                            user.id,
-                            user.id,
-                            now
-                        );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.userDisableTwoFactor,
-                    });
+            await this.databaseService.withTransaction(async tx => {
+                await this.userTwoFactorRepository.disableTwoFactorInTx(
+                    tx,
+                    user.id
+                );
+                await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    user.id,
+                    user.id,
+                    now
+                );
+            });
+            await this.sessionDomain.purgeLoginsByUser(user.id);
 
-                    return sessions;
-                }
-            );
-            await this.sessionDomain.purgeRevokedLogins(
-                user.id,
-                revokedSessions
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -350,16 +356,17 @@ export class UserTwoFactorDomain {
 
         try {
             const backupCodes = this.authTwoFactorDomain.generateBackupCodes();
-            await this.databaseService.withTransaction(async tx => {
-                await this.userTwoFactorRepository.regenerateTwoFactorBackupCodesInTx(
-                    tx,
-                    user.id,
-                    backupCodes.hashes
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userRegenerateTwoFactorBackupCodes,
-                });
-            });
+                }),
+            ];
+            await this.userTwoFactorRepository.regenerateTwoFactorBackupCodes(
+                user.id,
+                backupCodes.hashes
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             return backupCodes.codes;
         } catch (err: unknown) {
@@ -389,15 +396,29 @@ export class UserTwoFactorDomain {
         }
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.adminUserResetTwoFactor,
+                    metadata: this.userUtil.mapActivityLogActorMetadata(user),
+                }),
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userResetTwoFactorByAdmin,
+                    userId,
+                    createdBy: updatedBy,
+                    metadata: this.userUtil.mapActivityLogTargetMetadata(
+                        user,
+                        updatedBy
+                    ),
+                }),
+            ];
             const now = this.helperDateService.create();
-            const [revokedSessions] = await Promise.all([
+            await Promise.all([
                 this.databaseService.withTransaction(async tx => {
                     await this.userTwoFactorRepository.resetTwoFactorByAdminInTx(
                         tx,
                         userId
                     );
-
-                    return this.sessionDomain.revokeActiveByUserInTx(
+                    await this.sessionDomain.revokeActiveByUserInTx(
                         tx,
                         userId,
                         updatedBy,
@@ -406,29 +427,14 @@ export class UserTwoFactorDomain {
                 }),
                 this.authCache.clearLockTwoFactorAttempt(user),
             ]);
-            await this.sessionDomain.purgeRevokedLogins(
-                userId,
-                revokedSessions
-            );
+            await this.sessionDomain.purgeLoginsByUser(userId);
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendResetTwoFactorByAdmin(
                 user.id,
                 updatedBy
             );
-
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.adminUserResetTwoFactor,
-                metadata: this.userUtil.mapActivityLogActorMetadata(user),
-            });
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userResetTwoFactorByAdmin,
-                userId,
-                createdBy: updatedBy,
-                metadata: this.userUtil.mapActivityLogTargetMetadata(
-                    user,
-                    updatedBy
-                ),
-            });
 
             return;
         } catch (err: unknown) {

@@ -7,6 +7,7 @@ import { DatabaseClientFactory } from '@common/database/factories/database.clien
 import type {
     IDatabaseClient,
     IDatabaseTransactionClient,
+    IDatabaseTransactionOptions,
 } from '@common/database/interfaces/database.client.interface';
 
 @Injectable()
@@ -45,14 +46,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
 
     /**
-     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client.
+     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client; omitted `options` use Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
      */
     async withTransaction<T>(
         fn: (tx: IDatabaseTransactionClient) => Promise<T>,
-        options?: {
-            maxWait?: number;
-            timeout?: number;
-        }
+        options?: IDatabaseTransactionOptions
     ): Promise<T> {
         return this.client.$transaction(async tx => fn(tx), options);
     }

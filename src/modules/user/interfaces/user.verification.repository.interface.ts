@@ -1,5 +1,4 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { EnumVerificationType } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import type {
     IUserOnboardingVerificationRow,
@@ -18,12 +17,6 @@ export interface IUserVerificationRepository {
         id: string,
         verifiedAt: Date
     ): Promise<Verification>;
-    expireActiveByTypeInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumVerificationType,
-        expiredAt: Date
-    ): Promise<void>;
     createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -38,8 +31,7 @@ export interface IUserVerificationRepository {
         }: IUserOnboardingVerificationRow,
         createdBy: string
     ): Promise<Verification>;
-    createInTx(
-        tx: IDatabaseTransactionClient,
+    createReplacingActive(
         userId: string,
         userEmail: string,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,

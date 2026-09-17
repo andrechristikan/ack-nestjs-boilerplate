@@ -13,7 +13,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50000` | `app` | `50000` | 1 |
 | `50100` | `file` | `50100`–`50109` | 10 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
-| `50300` | `request` | `50300`–`50303` | 4 |
+| `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
@@ -86,6 +86,9 @@ Next free hundred: `52300`. The enum files are the source; this map follows them
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
 | `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
+| `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
+
+`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator (`RequestStore`) or `@AuthJwtPayload()` finds no value that its guard or middleware writes. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 

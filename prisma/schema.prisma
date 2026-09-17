@@ -514,6 +514,7 @@ model Workspace {
   updatedAt DateTime  @updatedAt
   updatedBy String?   @db.ObjectId
   deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
 
   @@unique(fields: [slug])
   @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
@@ -618,6 +619,7 @@ model Project {
   updatedAt DateTime  @updatedAt
   updatedBy String?   @db.ObjectId
   deletedAt DateTime?
+  deletedBy String?   @db.ObjectId
 
   @@unique(fields: [workspaceId, slug])
   @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])

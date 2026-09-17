@@ -118,9 +118,15 @@ export class RoleRepository implements IRoleRepository {
         return count > 0;
     }
 
-    async create(data: IRoleCreate): Promise<IRoleWithPolicies> {
+    async create(
+        roleId: string,
+        data: IRoleCreate
+    ): Promise<IRoleWithPolicies> {
         return this.databaseService.client.role.create({
-            data,
+            data: {
+                ...data,
+                id: roleId,
+            },
             include: { policies: true },
         });
     }

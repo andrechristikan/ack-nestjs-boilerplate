@@ -10,6 +10,8 @@ import type { IResponsePagingReturn } from '@common/response/interfaces/response
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
     ISession,
@@ -55,25 +57,16 @@ export class SessionDomain {
         );
     }
 
-    async deleteAllLogins(userId: string): Promise<void> {
-        const sessions = await this.sessionRepository.findActive(userId);
-        await this.sessionCache.deleteAllLogins(userId, sessions);
-
-        return;
-    }
-
-    async deleteOneLogin(userId: string, sessionId: string): Promise<void> {
-        const checkActive = await this.sessionRepository.findOneActive(
+    async validateActive(userId: string, sessionId: string): Promise<ISession> {
+        const session = await this.sessionRepository.findOneActive(
             userId,
             sessionId
         );
-        if (!checkActive) {
+        if (!session) {
             throw new SessionNotFoundException();
         }
 
-        await this.sessionCache.deleteOneLogin(userId, sessionId);
-
-        return;
+        return session;
     }
 
     async createInTx(
@@ -100,8 +93,15 @@ export class SessionDomain {
         tx: IDatabaseTransactionClient,
         sessionId: string,
         jti: string
-    ): Promise<Session> {
-        return this.sessionRepository.updateJtiInTx(tx, sessionId, jti);
+    ): Promise<void> {
+        const isUpdated = await this.sessionRepository.updateJtiInTx(
+            tx,
+            sessionId,
+            jti
+        );
+        if (!isUpdated) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
     }
 
     async revokeInTx(
@@ -110,14 +110,17 @@ export class SessionDomain {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<Session> {
-        return this.sessionRepository.revokeInTx(
+    ): Promise<void> {
+        const isRevoked = await this.sessionRepository.revokeInTx(
             tx,
             userId,
             sessionId,
             revokedBy,
             revokedAt
         );
+        if (!isRevoked) {
+            throw new SessionNotFoundException();
+        }
     }
 
     async revokeActiveByUserInTx(
@@ -151,28 +154,27 @@ export class SessionDomain {
     }
 
     async revoke(userId: string, sessionId: string): Promise<void> {
-        const checkActive = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!checkActive) {
-            throw new SessionNotFoundException();
-        }
+        await this.validateActive(userId, sessionId);
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRevokeSession,
+            }),
+        ];
         const revokedAt = this.helperDateService.create();
-        const revoked = await this.sessionRepository.revoke(
+        const isRevoked = await this.sessionRepository.revoke(
             userId,
             sessionId,
             userId,
             revokedAt
         );
-        await this.purgeRevokedLogins(userId, [revoked]);
+        if (!isRevoked) {
+            throw new SessionNotFoundException();
+        }
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.userRevokeSession,
-        });
+        await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
 
-        return;
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async revokeByAdmin(
@@ -180,39 +182,45 @@ export class SessionDomain {
         sessionId: string,
         revokedBy: string
     ): Promise<void> {
-        const checkActive = await this.sessionRepository.findOneActive(
-            userId,
-            sessionId
-        );
-        if (!checkActive) {
-            throw new SessionNotFoundException();
-        }
+        const session = await this.validateActive(userId, sessionId);
 
         const revokedAt = this.helperDateService.create();
-        const removed = await this.sessionRepository.revokeByAdmin(
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminSessionRevoke,
+                metadata: this.sessionUtil.mapActivityLogActorMetadata(
+                    session,
+                    revokedAt
+                ),
+            }),
+        ];
+        if (userId !== revokedBy) {
+            events.push(
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                    userId,
+                    createdBy: revokedBy,
+                    metadata: this.sessionUtil.mapActivityLogTargetMetadata(
+                        session,
+                        revokedBy,
+                        revokedAt
+                    ),
+                })
+            );
+        }
+
+        const isRevoked = await this.sessionRepository.revokeByAdmin(
             sessionId,
             revokedBy,
             revokedAt
         );
-        await this.purgeRevokedLogins(userId, [removed]);
-
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.adminSessionRevoke,
-            metadata: this.sessionUtil.mapActivityLogActorMetadata(removed),
-        });
-        if (userId !== revokedBy) {
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                userId,
-                createdBy: revokedBy,
-                metadata: this.sessionUtil.mapActivityLogTargetMetadata(
-                    removed,
-                    revokedBy
-                ),
-            });
+        if (!isRevoked) {
+            throw new SessionNotFoundException();
         }
 
-        return;
+        await this.purgeRevokedLogins(userId, [{ id: sessionId }]);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     /**
@@ -224,42 +232,83 @@ export class SessionDomain {
         sessions: ISessionRef[]
     ): Promise<void> {
         try {
-            await this.sessionCache.deleteAllLogins(userId, sessions);
+            await this.sessionCache.deleteLogins(userId, sessions);
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to purge revoked session cache');
         }
     }
 
-    /** Runs after the caller's transaction commits: purges exactly the revoked logins, then logs the pair when anything was revoked. */
-    async finalizeRevokeAllByAdmin(
+    /**
+     * Runs after the revoke is committed: purges every session login of the user from the
+     * cache. A purge failure is logged and swallowed, so the committed revoke still succeeds.
+     */
+    async purgeLoginsByUser(userId: string): Promise<void> {
+        try {
+            await this.sessionCache.deleteLoginsByUser(userId);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Failed to purge user session cache');
+        }
+    }
+
+    /** Prepares the admin revoke-all pair for a committed revoke; nothing when no session was revoked. */
+    prepareRevokeAllByAdmin(
         userId: string,
         revokedBy: string,
-        sessions: ISessionRef[]
-    ): Promise<void> {
-        await this.purgeRevokedLogins(userId, sessions);
-
-        if (sessions.length === 0) {
-            return;
+        sessionCount: number
+    ): IActivityLogStagedEvent[] {
+        if (sessionCount === 0) {
+            return [];
         }
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.adminSessionRevokeAll,
-            metadata: {
-                targetUserId: userId,
-                sessionCount: sessions.length,
-            },
-        });
-        if (userId !== revokedBy) {
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                userId,
-                createdBy: revokedBy,
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminSessionRevokeAll,
                 metadata: {
-                    actorUserId: revokedBy,
-                    sessionCount: sessions.length,
+                    targetUserId: userId,
+                    sessionCount,
                 },
-            });
+            }),
+        ];
+        if (userId !== revokedBy) {
+            events.push(
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    userId,
+                    createdBy: revokedBy,
+                    metadata: {
+                        actorUserId: revokedBy,
+                        sessionCount,
+                    },
+                })
+            );
         }
+
+        return events;
+    }
+
+    /** Prepares the self revoke-all row of a whole-user revoke; `onError` keeps it on the error-path flush. */
+    prepareRevokeAllSelf(
+        userId: string,
+        onError: boolean
+    ): IActivityLogStagedEvent[] {
+        return [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRevokeAllSessions,
+                userId,
+                createdBy: userId,
+                onError,
+            }),
+        ];
+    }
+
+    /** Runs after a whole-user revoke commits: purges every login of the user, then stages the prepared revoke-all events. */
+    async finalizeRevokeAll(
+        userId: string,
+        events: IActivityLogStagedEvent[]
+    ): Promise<void> {
+        await this.purgeLoginsByUser(userId);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
@@ -277,6 +326,11 @@ export class SessionDomain {
             throw new SessionNotFoundException();
         }
 
-        await this.finalizeRevokeAllByAdmin(userId, revokedBy, sessions);
+        const events = this.prepareRevokeAllByAdmin(
+            userId,
+            revokedBy,
+            sessions.length
+        );
+        await this.finalizeRevokeAll(userId, events);
     }
 }

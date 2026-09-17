@@ -1,4 +1,3 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationCursorReturn,
     IPaginationQueryCursorParams,
@@ -53,8 +52,5 @@ export interface IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    createManyInTx(
-        tx: IDatabaseTransactionClient,
-        rows: IActivityLogCreateManyRow[]
-    ): Promise<Prisma.BatchPayload>;
+    createMany(rows: IActivityLogCreateManyRow[]): Promise<Prisma.BatchPayload>;
 }

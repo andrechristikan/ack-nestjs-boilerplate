@@ -59,13 +59,10 @@ The App Module is the root module. It:
 
 **Location:** `src/common/common.module.ts`
 
-CommonModule registers shared infrastructure and the global feature modules. It configures:
-- Global configuration management (using `ConfigModule` and custom configs)
-- Caching and queueing (Redis, BullMQ)
-- Logging (LoggerModule) and error reporting (SentryModule, which exports `SentryService`)
-- Database access (DatabaseModule)
-- Authentication and authorization (`AuthDomainModule`, `PolicyDomainModule`, `RoleDomainModule`, `ApiKeyDomainModule`, `FeatureFlagDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, `ActivityLogDomainModule`, `NotificationDomainModule`)
-- Utilities for messaging, requests, responses, helpers, files, pagination, and Firebase
+CommonModule registers shared infrastructure and the global feature modules. Its `imports` array holds three groups, in this order:
+- Infrastructure: `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer and processor connections), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
+- Shared utilities: `HelperModule`, `PaginationModule`, `FileModule`, and `FirebaseModule`
+- The `@Global()` feature domains: `ActivityLogDomainModule`, `ApiKeyDomainModule`, `AuthDomainModule`, `FeatureFlagDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, and `NotificationDomainModule`
 
 ## Configs
 

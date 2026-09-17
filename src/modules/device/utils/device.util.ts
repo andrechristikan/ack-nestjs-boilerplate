@@ -23,31 +23,41 @@ export class DeviceUtil {
         }
     }
 
-    /** Projects an ownership into the metadata of the admin row that removed it. */
-    mapActivityLogActorMetadata(
-        deviceOwnership: IDeviceOwnership
+    /** Projects an ownership and the number of sessions its removal revoked into device activity metadata. */
+    mapActivityLogMetadata(
+        deviceOwnership: IDeviceOwnership,
+        sessionCount: number
     ): IActivityLogMetadata {
         return {
             deviceOwnershipId: deviceOwnership.id,
             deviceId: deviceOwnership.device.id,
+            sessionCount,
+        };
+    }
+
+    /** Projects an ownership into the metadata of the admin row that removed it. */
+    mapActivityLogActorMetadata(
+        deviceOwnership: IDeviceOwnership,
+        sessionCount: number
+    ): IActivityLogMetadata {
+        return {
+            ...this.mapActivityLogMetadata(deviceOwnership, sessionCount),
             targetUserId: deviceOwnership.userId,
             targetUsername: deviceOwnership.user.username,
             timestamp: deviceOwnership.updatedAt,
-            sessionCount: deviceOwnership._count.sessions,
         };
     }
 
     /** Projects an ownership into the metadata of the owner's row for an admin removal. */
     mapActivityLogTargetMetadata(
         deviceOwnership: IDeviceOwnership,
-        actorUserId: string
+        actorUserId: string,
+        sessionCount: number
     ): IActivityLogMetadata {
         return {
-            deviceOwnershipId: deviceOwnership.id,
-            deviceId: deviceOwnership.device.id,
+            ...this.mapActivityLogMetadata(deviceOwnership, sessionCount),
             actorUserId,
             timestamp: deviceOwnership.updatedAt,
-            sessionCount: deviceOwnership._count.sessions,
         };
     }
 }

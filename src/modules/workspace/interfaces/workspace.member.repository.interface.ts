@@ -53,20 +53,12 @@ export interface IWorkspaceMemberRepository {
         workspaceId: string,
         userId: string,
         role: EnumWorkspaceMemberRole,
-        createdBy: string
+        actorId: string
     ): Promise<WorkspaceMember>;
-    updateRoleInTx(
-        tx: IDatabaseTransactionClient,
+    updateRole(
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void>;
-    removeMemberInTx(
-        tx: IDatabaseTransactionClient,
-        targetMemberId: string
-    ): Promise<void>;
-    transferOwnershipInTx(
-        tx: IDatabaseTransactionClient,
-        fromMemberId: string,
-        toMemberId: string
-    ): Promise<void>;
+    removeMember(targetMemberId: string): Promise<void>;
+    transferOwnership(fromMemberId: string, toMemberId: string): Promise<void>;
 }

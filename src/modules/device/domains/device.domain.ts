@@ -25,6 +25,7 @@ import type {
     IDeviceRefresh,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
+import { DeviceRepository } from '@modules/device/repositories/device.repository';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable } from '@nestjs/common';
@@ -33,6 +34,7 @@ import { Injectable } from '@nestjs/common';
 export class DeviceDomain {
     constructor(
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
+        private readonly deviceRepository: DeviceRepository,
         private readonly sessionDomain: SessionDomain,
         private readonly deviceUtil: DeviceUtil,
         private readonly activityLogDomain: ActivityLogDomain,
@@ -74,9 +76,14 @@ export class DeviceDomain {
         userId: string,
         tokens: string[]
     ): Promise<number> {
-        const { count } = await this.deviceOwnershipRepository.cleanupTokens(
-            userId,
-            tokens
+        const deviceIds =
+            await this.deviceOwnershipRepository.findDeviceIdsByUserAndTokens(
+                userId,
+                tokens
+            );
+        const { count } = await this.deviceRepository.clearTokens(
+            deviceIds,
+            userId
         );
 
         return count;
@@ -86,9 +93,7 @@ export class DeviceDomain {
         thresholdInMs: number
     ): Promise<number> {
         const { count } =
-            await this.deviceOwnershipRepository.cleanupStaleTokens(
-                thresholdInMs
-            );
+            await this.deviceRepository.clearStaleTokens(thresholdInMs);
 
         return count;
     }
@@ -100,23 +105,74 @@ export class DeviceDomain {
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
     ): Promise<IDeviceLoginUpsert> {
-        return this.deviceOwnershipRepository.upsertForLoginInTx(
+        const upserted = await this.deviceRepository.upsertByFingerprintInTx(
             tx,
             userId,
             device,
             notificationProvider,
             now
         );
+        const { deviceOwnership, isNewOwnership } =
+            await this.deviceOwnershipRepository.upsertForLoginInTx(
+                tx,
+                userId,
+                upserted.id,
+                now
+            );
+
+        return {
+            device: upserted,
+            deviceOwnership,
+            isNewDevice: isNewOwnership,
+        };
     }
 
     async clearNotificationInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         deviceOwnershipId: string,
+        updatedBy: string,
         now: Date
     ): Promise<void> {
-        await this.deviceOwnershipRepository.clearNotificationInTx(
+        const deviceId =
+            await this.deviceOwnershipRepository.findLiveDeviceIdInTx(
+                tx,
+                userId,
+                deviceOwnershipId
+            );
+        if (deviceId === null) {
+            throw new DeviceNotFoundException();
+        }
+
+        await this.deviceRepository.clearNotificationByIdsInTx(
             tx,
-            deviceOwnershipId,
+            [deviceId],
+            updatedBy,
+            now
+        );
+    }
+
+    async revokeAllByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        revokedBy: string,
+        now: Date
+    ): Promise<void> {
+        const deviceIds =
+            await this.deviceOwnershipRepository.revokeAllByUserInTx(
+                tx,
+                userId,
+                revokedBy,
+                now
+            );
+        if (deviceIds.length === 0) {
+            return;
+        }
+
+        await this.deviceRepository.clearNotificationByIdsInTx(
+            tx,
+            deviceIds,
+            revokedBy,
             now
         );
     }
@@ -137,21 +193,30 @@ export class DeviceDomain {
         const notificationProvider =
             this.deviceUtil.resolveNotificationProvider(data.platform ?? null);
         const now = this.helperDateService.create();
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userDeviceRefresh,
+            }),
+        ];
 
         try {
             await this.databaseService.withTransaction(async tx => {
-                await this.deviceOwnershipRepository.refreshInTx(
+                const deviceId = await this.deviceOwnershipRepository.touchInTx(
                     tx,
                     userId,
                     deviceOwnershipId,
+                    now
+                );
+                await this.deviceRepository.refreshInTx(
+                    tx,
+                    deviceId,
                     data,
                     notificationProvider,
                     now
                 );
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userDeviceRefresh,
-                });
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -175,8 +240,8 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const revokedSessions = await this.databaseService.withTransaction(
-                async tx => {
+            const { revokedSessions, events } =
+                await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
                             tx,
@@ -185,26 +250,40 @@ export class DeviceDomain {
                             userId,
                             now
                         );
-                    await this.deviceOwnershipRepository.removeOwnershipInTx(
+                    const row =
+                        await this.deviceOwnershipRepository.removeOwnershipInTx(
+                            tx,
+                            userId,
+                            deviceOwnershipId,
+                            userId,
+                            now
+                        );
+                    await this.deviceRepository.clearNotificationByIdsInTx(
                         tx,
-                        userId,
-                        deviceOwnershipId,
+                        [row.deviceId],
                         userId,
                         now
                     );
-                    this.activityLogDomain.stage({
-                        action: EnumActivityLogAction.userRemoveDevice,
-                        userId: userId,
-                        createdBy: userId,
-                    });
+                    const prepared = [
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.userRemoveDevice,
+                            userId,
+                            createdBy: userId,
+                            metadata: this.deviceUtil.mapActivityLogMetadata(
+                                row,
+                                sessions.length
+                            ),
+                        }),
+                    ];
 
-                    return sessions;
-                }
-            );
+                    return { revokedSessions: sessions, events: prepared };
+                });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
+
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -232,7 +311,7 @@ export class DeviceDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { removed, revokedSessions } =
+            const { revokedSessions, events } =
                 await this.databaseService.withTransaction(async tx => {
                     const sessions =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -250,29 +329,46 @@ export class DeviceDomain {
                             removedBy,
                             now
                         );
+                    await this.deviceRepository.clearNotificationByIdsInTx(
+                        tx,
+                        [row.deviceId],
+                        removedBy,
+                        now
+                    );
+                    const prepared = [
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.adminDeviceRemove,
+                            metadata:
+                                this.deviceUtil.mapActivityLogActorMetadata(
+                                    row,
+                                    sessions.length
+                                ),
+                        }),
+                    ];
+                    if (userId !== removedBy) {
+                        prepared.push(
+                            this.activityLogDomain.prepare({
+                                action: EnumActivityLogAction.userRemoveDeviceByAdmin,
+                                userId,
+                                createdBy: removedBy,
+                                metadata:
+                                    this.deviceUtil.mapActivityLogTargetMetadata(
+                                        row,
+                                        removedBy,
+                                        sessions.length
+                                    ),
+                            })
+                        );
+                    }
 
-                    return { removed: row, revokedSessions: sessions };
+                    return { revokedSessions: sessions, events: prepared };
                 });
             await this.sessionDomain.purgeRevokedLogins(
                 userId,
                 revokedSessions
             );
 
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.adminDeviceRemove,
-                metadata: this.deviceUtil.mapActivityLogActorMetadata(removed),
-            });
-            if (userId !== removedBy) {
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-                    userId,
-                    createdBy: removedBy,
-                    metadata: this.deviceUtil.mapActivityLogTargetMetadata(
-                        removed,
-                        removedBy
-                    ),
-                });
-            }
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {

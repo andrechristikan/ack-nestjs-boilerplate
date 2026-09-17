@@ -74,27 +74,6 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async expireActiveByTypeInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumVerificationType,
-        expiredAt: Date
-    ): Promise<void> {
-        await tx.verification.updateMany({
-            where: {
-                userId,
-                type,
-                isUsed: false,
-                expiredAt: {
-                    gt: expiredAt,
-                },
-            },
-            data: {
-                expiredAt,
-            },
-        });
-    }
-
     async createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -124,24 +103,39 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async createInTx(
-        tx: IDatabaseTransactionClient,
+    async createReplacingActive(
         userId: string,
         userEmail: string,
         { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
         createdAt: Date
     ): Promise<Verification> {
-        return tx.verification.create({
-            data: {
-                userId,
-                expiredAt,
-                reference,
-                token: hashedToken,
-                type,
-                to: userEmail,
-                createdBy: userId,
-                createdAt,
-            },
+        return this.databaseService.withTransaction(async tx => {
+            await tx.verification.updateMany({
+                where: {
+                    userId,
+                    type,
+                    isUsed: false,
+                    expiredAt: {
+                        gt: createdAt,
+                    },
+                },
+                data: {
+                    expiredAt: createdAt,
+                },
+            });
+
+            return tx.verification.create({
+                data: {
+                    userId,
+                    expiredAt,
+                    reference,
+                    token: hashedToken,
+                    type,
+                    to: userEmail,
+                    createdBy: userId,
+                    createdAt,
+                },
+            });
         });
     }
 }

@@ -4,9 +4,11 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
 import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
@@ -31,16 +33,21 @@ export class TermPolicyContentDomain {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly activityLogDomain: ActivityLogDomain
+        private readonly activityLogDomain: ActivityLogDomain,
+        private readonly helperDateService: HelperDateService
     ) {}
 
-    private stageActivityLog(
+    private prepareActivityLog(
         action: EnumActivityLogAction,
-        termPolicy: TermPolicy
-    ): void {
-        this.activityLogDomain.stage({
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        timestamp: Date
+    ): IActivityLogStagedEvent {
+        return this.activityLogDomain.prepare({
             action,
-            metadata: this.termPolicyUtil.mapActivityLogMetadata(termPolicy),
+            metadata: this.termPolicyUtil.mapActivityLogMetadata(
+                termPolicy,
+                timestamp
+            ),
         });
     }
 
@@ -116,16 +123,20 @@ export class TermPolicyContentDomain {
                     }
                 ),
             };
-            const updated = await this.termPolicyRepository.updateContent(
+            const events = [
+                this.prepareActivityLog(
+                    EnumActivityLogAction.adminTermPolicyUpdateContent,
+                    termPolicy,
+                    this.helperDateService.create()
+                ),
+            ];
+            await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 termPolicy.contents as unknown as ITermPolicyContent[],
                 mappedContent
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyUpdateContent,
-                updated
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -161,15 +172,19 @@ export class TermPolicyContentDomain {
                     }
                 ),
             };
-            const updated = await this.termPolicyRepository.addContent(
+            const events = [
+                this.prepareActivityLog(
+                    EnumActivityLogAction.adminTermPolicyAddContent,
+                    termPolicy,
+                    this.helperDateService.create()
+                ),
+            ];
+            await this.termPolicyRepository.addContent(
                 termPolicyId,
                 mappedContent
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyAddContent,
-                updated
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {
@@ -196,16 +211,20 @@ export class TermPolicyContentDomain {
         }
 
         try {
-            const updated = await this.termPolicyRepository.removeContent(
+            const events = [
+                this.prepareActivityLog(
+                    EnumActivityLogAction.adminTermPolicyRemoveContent,
+                    termPolicy,
+                    this.helperDateService.create()
+                ),
+            ];
+            await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 termPolicy.contents as unknown as ITermPolicyContent[],
                 { language }
             );
 
-            this.stageActivityLog(
-                EnumActivityLogAction.adminTermPolicyRemoveContent,
-                updated
-            );
+            this.activityLogDomain.stagePrepared(events);
 
             return;
         } catch (err: unknown) {

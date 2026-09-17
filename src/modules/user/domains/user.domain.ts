@@ -24,6 +24,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
+import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -59,7 +60,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
-import { UserLoginDomain } from '@modules/user/domains/user.login.domain';
+import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
@@ -76,7 +77,7 @@ export class UserDomain {
         private readonly userVerificationDomain: UserVerificationDomain,
         private readonly helperHashService: HelperHashService,
         private readonly userOnboardingDomain: UserOnboardingDomain,
-        private readonly userLoginDomain: UserLoginDomain,
+        private readonly deviceDomain: DeviceDomain,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly notificationQueue: NotificationQueue,
@@ -160,6 +161,10 @@ export class UserDomain {
         return this.userRepository.findNameById(userId);
     }
 
+    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
+        await this.userRepository.setLastWorkspace(userId, workspaceId);
+    }
+
     async setLastWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -194,8 +199,8 @@ export class UserDomain {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User> {
-        return this.userRepository.deactivateForMaxPasswordAttemptInTx(
+    ): Promise<void> {
+        await this.userRepository.deactivateForMaxPasswordAttemptInTx(
             tx,
             userId
         );
@@ -213,14 +218,6 @@ export class UserDomain {
             password,
             updatedBy
         );
-    }
-
-    async markVerifiedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        verifiedAt: Date
-    ): Promise<User> {
-        return this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
     }
 
     async updateLoginInTx(
@@ -386,7 +383,7 @@ export class UserDomain {
         const now = this.helperDateService.create();
 
         try {
-            const { updated, revokedSessions } =
+            const { statusEvents, revokeAllEvents } =
                 await this.databaseService.withTransaction(async tx => {
                     const row =
                         await this.userRepository.updateStatusByAdminInTx(
@@ -394,36 +391,52 @@ export class UserDomain {
                             userId,
                             { status }
                         );
-                    const sessions = revokesAccess
-                        ? await this.sessionDomain.revokeActiveByUserInTx(
-                              tx,
-                              userId,
-                              updatedBy,
-                              now
-                          )
-                        : [];
+                    const prepared = [
+                        this.activityLogDomain.prepare({
+                            action: EnumActivityLogAction.adminUserUpdateStatus,
+                            metadata:
+                                this.userUtil.mapActivityLogActorMetadata(row),
+                        }),
+                        this.activityLogDomain.prepare({
+                            action,
+                            userId,
+                            createdBy: updatedBy,
+                            metadata:
+                                this.userUtil.mapActivityLogTargetMetadata(
+                                    row,
+                                    updatedBy
+                                ),
+                        }),
+                    ];
+                    let revokeAll: IActivityLogStagedEvent[] = [];
+                    if (revokesAccess) {
+                        const sessions =
+                            await this.sessionDomain.revokeActiveByUserInTx(
+                                tx,
+                                userId,
+                                updatedBy,
+                                now
+                            );
+                        revokeAll = this.sessionDomain.prepareRevokeAllByAdmin(
+                            userId,
+                            updatedBy,
+                            sessions.length
+                        );
+                    }
 
-                    return { updated: row, revokedSessions: sessions };
+                    return {
+                        statusEvents: prepared,
+                        revokeAllEvents: revokeAll,
+                    };
                 });
+            if (revokesAccess) {
+                await this.sessionDomain.finalizeRevokeAll(
+                    userId,
+                    revokeAllEvents
+                );
+            }
 
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.adminUserUpdateStatus,
-                metadata: this.userUtil.mapActivityLogActorMetadata(updated),
-            });
-            this.activityLogDomain.stage({
-                action,
-                userId,
-                createdBy: updatedBy,
-                metadata: this.userUtil.mapActivityLogTargetMetadata(
-                    updated,
-                    updatedBy
-                ),
-            });
-            await this.sessionDomain.finalizeRevokeAllByAdmin(
-                userId,
-                updatedBy,
-                revokedSessions
-            );
+            this.activityLogDomain.stagePrepared(statusEvents);
 
             return;
         } catch (err: unknown) {
@@ -463,14 +476,34 @@ export class UserDomain {
 
     async deleteSelf(userId: string): Promise<void> {
         try {
-            await this.userLoginDomain.revokeAllSessions(userId);
-            const deletedAt = this.helperDateService.create();
+            const revokeAllEvents = this.sessionDomain.prepareRevokeAllSelf(
+                userId,
+                false
+            );
+            const deleteSelfEvents = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userDeleteSelf,
+                }),
+            ];
+            const now = this.helperDateService.create();
             await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.deleteSelfInTx(tx, userId, deletedAt);
+                await this.userRepository.deleteSelfInTx(tx, userId, now);
+                await this.sessionDomain.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
+                await this.deviceDomain.revokeAllByUserInTx(
+                    tx,
+                    userId,
+                    userId,
+                    now
+                );
             });
-            this.activityLogDomain.stage({
-                action: EnumActivityLogAction.userDeleteSelf,
-            });
+            await this.sessionDomain.finalizeRevokeAll(userId, revokeAllEvents);
+
+            this.activityLogDomain.stagePrepared(deleteSelfEvents);
 
             return;
         } catch (err: unknown) {

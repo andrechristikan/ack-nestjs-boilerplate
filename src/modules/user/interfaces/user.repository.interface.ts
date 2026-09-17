@@ -67,26 +67,21 @@ export interface IUserRepository {
         id: string,
         { status }: UserUpdateStatusRequestDto
     ): Promise<User>;
-    updateProfileInTx(
-        tx: IDatabaseTransactionClient,
+    updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<User>;
-    updatePhotoProfileInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        photo: IAwsS3
-    ): Promise<User>;
+    updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User>;
     deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         deletedAt: Date
     ): Promise<User>;
-    claimUsernameInTx(
-        tx: IDatabaseTransactionClient,
+    claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User>;
+    setLastWorkspace(userId: string, workspaceId: string): Promise<void>;
     setLastWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -103,7 +98,8 @@ export interface IUserRepository {
     deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User>;
+    ): Promise<void>;
+    markVerified(userId: string, verifiedAt: Date): Promise<User>;
     markVerifiedInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

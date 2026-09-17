@@ -35,7 +35,7 @@ export interface IRoleRepository {
     existsById(id: string): Promise<boolean>;
     existsByName(name: string): Promise<boolean>;
     isUsedById(id: string): Promise<boolean>;
-    create(data: IRoleCreate): Promise<IRoleWithPolicies>;
+    create(roleId: string, data: IRoleCreate): Promise<IRoleWithPolicies>;
     update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;
     delete(id: string): Promise<Role>;
 }

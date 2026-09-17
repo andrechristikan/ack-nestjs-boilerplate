@@ -11,16 +11,25 @@ export interface IUserTwoFactorRepository {
     verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        verified: IAuthTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean>;
-    setupTwoFactorInTx(
-        tx: IDatabaseTransactionClient,
+    verifyTwoFactor(
+        userId: string,
+        verified: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean>;
+    setupTwoFactor(
         userId: string,
         pendingSecretEncrypted: string
     ): Promise<TwoFactor>;
-    enableTwoFactorInTx(
-        tx: IDatabaseTransactionClient,
+    setupTwoFactorConsumingBackupCode(
+        userId: string,
+        pendingSecretEncrypted: string,
+        verified: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean>;
+    enableTwoFactor(
         userId: string,
         secretEncrypted: string,
         backupCodesHashed: string[]
@@ -29,8 +38,7 @@ export interface IUserTwoFactorRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<TwoFactor>;
-    regenerateTwoFactorBackupCodesInTx(
-        tx: IDatabaseTransactionClient,
+    regenerateTwoFactorBackupCodes(
         userId: string,
         backupCodesHashed: string[]
     ): Promise<TwoFactor>;

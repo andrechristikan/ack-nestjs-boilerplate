@@ -6,12 +6,13 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Cache } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Auth cache: two-factor challenge tokens and attempt locking. */
 @Injectable()
 export class AuthCache {
+    private readonly logger = new Logger(AuthCache.name);
     private readonly challengeKeyPattern: string;
     private readonly challengeTtlInMs: number;
     private readonly lockKeyPattern: string;
@@ -67,7 +68,14 @@ export class AuthCache {
 
     async clearChallenge(token: string): Promise<void> {
         const key = this.challengeKeyPattern.replace('{token}', token);
-        await this.cacheManager.del(key);
+        try {
+            await this.cacheManager.del(key);
+        } catch (error: unknown) {
+            this.logger.error(
+                error,
+                'Two-factor challenge cache delete failed'
+            );
+        }
     }
 
     /** Locks 2FA in cache with exponential backoff TTL `2^(attempt/maxAttempt) * lockAttemptDurationInMs` to throttle brute force. */
@@ -76,9 +84,11 @@ export class AuthCache {
         const ttlExponentialInMs =
             Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDurationInMs;
-        await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
-
-        return;
+        try {
+            await this.cacheManager.set<boolean>(key, true, ttlExponentialInMs);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Two-factor lock cache write failed');
+        }
     }
 
     /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
@@ -94,8 +104,10 @@ export class AuthCache {
 
     async clearLockTwoFactorAttempt(user: IUser): Promise<void> {
         const key = this.lockKeyPattern.replace('{userId}', user.id);
-        await this.cacheManager.del(key);
-
-        return;
+        try {
+            await this.cacheManager.del(key);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Two-factor lock cache delete failed');
+        }
     }
 }

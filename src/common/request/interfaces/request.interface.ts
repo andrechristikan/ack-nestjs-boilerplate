@@ -13,8 +13,14 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
 
 export interface IRequestLog {
     userAgent: UserAgent;
-    ipAddress?: string | null;
-    geoLocation?: GeoLocation | null;
+    ipAddress: string | null;
+    geoLocation: GeoLocation | null;
+}
+
+export interface IRequestStoreParam {
+    storeKey: string;
+    field: string | null;
+    nullable: boolean;
 }
 
 export interface IRequestThrottlePolicy {

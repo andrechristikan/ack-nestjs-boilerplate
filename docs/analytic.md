@@ -17,7 +17,7 @@ Status codes for this module live in the `52100` block. Catalog: [Status Codes](
 - [Authorization](authorization.md): `EnumPolicySubject.analytic` on admin routes
 - [Cache](cache.md): `CacheMainProvider` and feature cache classes
 - [Configuration](configuration.md): `analytic.config.ts`
-- [Activity Log](activity-log.md): actions Analytic counts, including `userLoginFailed`
+- [Activity Log](activity-log.md): actions Analytic counts, including `userLoginFailed` and `userReachMaxPasswordAttempt`
 - [Workspace](workspace.md): `x-workspace-id` and workspace member roles
 - [Status Codes](status-codes.md): `52100` block
 
@@ -151,7 +151,7 @@ Exception class: `AnalyticInvalidDateRangeException`. Exception and status-code 
 
 ## Activity log seam
 
-Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`. Failed credential login stages `userLoginFailed` from `UserLoginDomain.stageLoginFailed` (called by `UserAuthDomain` after a password mismatch). Contract and description: [Activity Log](activity-log.md). Login path: [Authentication](authentication.md).
+Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`. A credential login with a wrong password writes `userLoginFailed` through `UserLoginDomain.recordLoginFailed`, and the attempt that meets the password-attempt limit writes `userRevokeAllSessions` and `userReachMaxPasswordAttempt` through `UserPasswordDomain.reachMaxPasswordAttempt`. `UserAuthDomain` calls both, and every one of these rows is prepared with `onError: true`, so they are written although the request answers an error. `UserLoginAnalyticDomain.lockoutMetrics` (`GET /admin/analytic/auth/lockout`) counts `userLoginFailed` and `userReachMaxPasswordAttempt`, and `findFailedLoginEvents` lists those two for the credential-stuffing signal. Contract and description: [Activity Log](activity-log.md). Login path: [Authentication](authentication.md).
 
 An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
 
@@ -161,6 +161,6 @@ An action one user takes on another writes an actor row and a target row ([Activ
 | Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
 | Workspace activity volume | Every action in the workspace except `ActivityLogWorkspaceVolumeExcludedActions` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
 
-- `authSessionRevoke` counts the rows of the user whose sessions were revoked, so an admin revoke counts once. An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
+- `authSessionRevoke` counts the rows of the user whose sessions were revoked, so an admin revoke counts once. Every account self-deletion writes `userRevokeAllSessions`, including one that revoked no session, so each self-deletion adds one to this metric and one to the `userDeleteSelf` count. Every credential lockout writes `userRevokeAllSessions` the same way, so each lockout also adds one to this metric. An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
 - The session-after-admin signal reads the target rows, whose `userId` is the user whose sessions were revoked, and flags a login by that same user within `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs`. An admin status change to `blocked` or `inactive` that revokes sessions writes `userRevokeAllSessionsByAdmin` too, so it feeds both metrics.
 - `ActivityLogWorkspaceVolumeExcludedActions` (owned by the activity-log module) lists the eleven workspace and project target actions. `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.

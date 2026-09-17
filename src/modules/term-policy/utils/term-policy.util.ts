@@ -72,12 +72,15 @@ export class TermPolicyUtil {
             .replace('{version}', version.toString());
     }
 
-    mapActivityLogMetadata(termPolicy: TermPolicy): IActivityLogMetadata {
+    mapActivityLogMetadata(
+        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        timestamp: Date
+    ): IActivityLogMetadata {
         return {
             termPolicyId: termPolicy.id,
             termPolicyType: termPolicy.type,
             termPolicyVersion: termPolicy.version,
-            timestamp: termPolicy.updatedAt ?? termPolicy.createdAt,
+            timestamp,
         };
     }
 

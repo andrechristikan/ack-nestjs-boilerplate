@@ -71,6 +71,7 @@ export interface ITermPolicyRepository {
         acceptedAt: Date
     ): Promise<ITermPolicyUserAcceptance>;
     create(
+        termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy>;

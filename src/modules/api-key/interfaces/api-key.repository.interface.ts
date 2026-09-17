@@ -20,6 +20,7 @@ export interface IApiKeyRepository {
         type?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<ApiKey>>;
     create(
+        apiKeyId: string,
         { name, type, startAt, endAt }: ApiKeyCreateRequestDto,
         key: string,
         hash: string

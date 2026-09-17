@@ -8,14 +8,11 @@ import {
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
+import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import {
-    SetMetadata,
-    UseGuards,
-    applyDecorators,
-    createParamDecorator,
-} from '@nestjs/common';
-import type { ExecutionContext } from '@nestjs/common';
-import { ClsServiceManager } from 'nestjs-cls';
+    RequestStore,
+    RequestStoreNullable,
+} from '@common/request/decorators/request.decorator';
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
@@ -26,17 +23,14 @@ export function ProjectProtected(): MethodDecorator {
 }
 
 /**
- * Extracts the current project that `ProjectGuard` stored in the request context.
+ * Reads the current project, or one of its fields, that `ProjectGuard` stored.
  * @public
  */
-export const ProjectCurrent = createParamDecorator(
-    (_: unknown, _ctx: ExecutionContext): Project | undefined => {
-        return (
-            ClsServiceManager.getClsService().get<Project>(ProjectStoreKey) ??
-            undefined
-        );
-    }
-);
+export function ProjectCurrent<K extends Extract<keyof Project, string>>(
+    field?: K
+): ParameterDecorator {
+    return RequestStore(ProjectStoreKey, field);
+}
 
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
@@ -59,15 +53,11 @@ export function ProjectMemberProtected(
 }
 
 /**
- * Extracts the current project member row that `ProjectMemberGuard` stored in the request context.
+ * Reads the caller's project member row, or one of its fields, stored by the role-less `@ProjectMemberProtected()`; null on every route that passes roles, because `ProjectRoleGuard` stores no member row.
  * @public
  */
-export const ProjectMemberCurrent = createParamDecorator(
-    (_: unknown, _ctx: ExecutionContext): ProjectMember | undefined => {
-        return (
-            ClsServiceManager.getClsService().get<ProjectMember>(
-                ProjectMemberStoreKey
-            ) ?? undefined
-        );
-    }
-);
+export function ProjectMemberCurrent<
+    K extends Extract<keyof ProjectMember, string>,
+>(field?: K): ParameterDecorator {
+    return RequestStoreNullable(ProjectMemberStoreKey, field);
+}

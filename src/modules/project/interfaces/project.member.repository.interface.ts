@@ -21,6 +21,12 @@ export interface IProjectMemberRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
     ): Promise<IResponsePagingReturn<IProjectMember>>;
+    create(
+        projectId: string,
+        userId: string,
+        role: EnumProjectMemberRole,
+        createdBy: string
+    ): Promise<IProjectMember>;
     createInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,
@@ -28,13 +34,9 @@ export interface IProjectMemberRepository {
         role: EnumProjectMemberRole,
         createdBy: string
     ): Promise<IProjectMember>;
-    updateRoleInTx(
-        tx: IDatabaseTransactionClient,
+    updateRole(
         targetMemberId: string,
         newRole: EnumProjectMemberRole
     ): Promise<void>;
-    removeMemberInTx(
-        tx: IDatabaseTransactionClient,
-        targetMemberId: string
-    ): Promise<void>;
+    removeMember(targetMemberId: string): Promise<void>;
 }

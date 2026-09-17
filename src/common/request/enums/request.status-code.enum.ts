@@ -7,4 +7,5 @@ export enum EnumRequestStatusCodeError {
     timeout = 50301,
     envForbidden = 50302,
     schemaMissing = 50303,
+    contextMissing = 50304,
 }

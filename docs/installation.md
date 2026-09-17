@@ -331,9 +331,15 @@ pnpm migration:seed
 ```
 
 **Remove all seeded data:**
+
+> [!WARNING]
+> `migration:remove` deletes more than the seeded rows: the `user` seed's removal deletes every user, session, and activity log in the database, and the API key, country, feature flag, role, and term policy seeds each delete their whole collection.
+
 ```bash
 pnpm migration:remove
 ```
+
+Every seeded row names the superadmin's fixed id (`MigrationUserSuperAdminId`) as its actor. When the database holds a superadmin created under a different id, `pnpm migration:seed` logs an error from the `user` seed and writes no user. Realigning it takes `pnpm migration:remove`, then `pnpm migration:seed`, which wipes the data above. Details: [Database Documentation][ref-doc-database].
 
 **Reset the database and reseed from scratch:**
 

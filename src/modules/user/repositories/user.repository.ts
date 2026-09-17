@@ -287,12 +287,11 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async updateProfileInTx(
-        tx: IDatabaseTransactionClient,
+    async updateProfile(
         userId: string,
         { countryId, ...data }: UserUpdateProfileRequestDto
     ): Promise<User> {
-        return tx.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 ...data,
@@ -301,12 +300,8 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async updatePhotoProfileInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        photo: IAwsS3
-    ): Promise<User> {
-        return tx.user.update({
+    async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 photo: this.databaseUtil.toPlainObject(photo),
@@ -328,15 +323,26 @@ export class UserRepository implements IUserRepository {
         }) as Promise<User>;
     }
 
-    async claimUsernameInTx(
-        tx: IDatabaseTransactionClient,
+    async claimUsername(
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User> {
-        return tx.user.update({
+        return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 username,
+            },
+        });
+    }
+
+    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
+        const today = this.helperDateService.create();
+
+        await this.databaseService.client.user.update({
+            where: { id: userId },
+            data: {
+                lastWorkspaceId: workspaceId,
+                lastWorkspaceChangedAt: today,
             },
         });
     }
@@ -398,11 +404,23 @@ export class UserRepository implements IUserRepository {
     async deactivateForMaxPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<User> {
-        return tx.user.update({
+    ): Promise<void> {
+        await tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 status: EnumUserStatus.inactive,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async markVerified(userId: string, verifiedAt: Date): Promise<User> {
+        return this.databaseService.client.user.update({
+            where: { id: userId, deletedAt: null },
+            data: {
+                isVerified: true,
+                verifiedAt,
+                updatedBy: userId,
             },
         });
     }

@@ -153,6 +153,13 @@ export class UserVerificationDomain {
         }
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userVerifiedEmail,
+                    userId: verification.userId,
+                    createdBy: verification.userId,
+                }),
+            ];
             const verifiedAt = this.helperDateService.create();
             await this.databaseService.withTransaction(async tx => {
                 await this.userVerificationRepository.markUsedInTx(
@@ -165,12 +172,9 @@ export class UserVerificationDomain {
                     verification.userId,
                     verifiedAt
                 );
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userVerifiedEmail,
-                    userId: verification.userId,
-                    createdBy: verification.userId,
-                });
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendVerifiedEmail(
                 verification.userId,
@@ -223,26 +227,21 @@ export class UserVerificationDomain {
             ) as IUserVerificationEmailCreate;
 
             const today = this.helperDateService.create();
-            await this.databaseService.withTransaction(async tx => {
-                await this.userVerificationRepository.expireActiveByTypeInTx(
-                    tx,
-                    user.id,
-                    EnumVerificationType.email,
-                    today
-                );
-                await this.userVerificationRepository.createInTx(
-                    tx,
-                    user.id,
-                    user.email,
-                    emailVerification,
-                    today
-                );
-                this.activityLogDomain.stage({
+            const events = [
+                this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: user.id,
                     createdBy: user.id,
-                });
-            });
+                }),
+            ];
+            await this.userVerificationRepository.createReplacingActive(
+                user.id,
+                user.email,
+                emailVerification,
+                today
+            );
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendVerificationEmail(user.id, {
                 expiredAt: this.helperDateService.formatToIso(
@@ -265,15 +264,17 @@ export class UserVerificationDomain {
 
     async markVerified(userId: string): Promise<void> {
         const verifiedAt = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userVerifiedEmail,
                 userId: userId,
                 createdBy: userId,
-            });
-        });
+            }),
+        ];
+
+        await this.userRepository.markVerified(userId, verifiedAt);
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async persistVerificationEmail(
@@ -282,27 +283,22 @@ export class UserVerificationDomain {
         verification: IUserVerificationCreate
     ): Promise<void> {
         const today = this.helperDateService.create();
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.userVerificationRepository.expireActiveByTypeInTx(
-                tx,
-                userId,
-                verification.type,
-                today
-            );
-            await this.userVerificationRepository.createInTx(
-                tx,
-                userId,
-                email,
-                verification,
-                today
-            );
-            this.activityLogDomain.stage({
+        const events = [
+            this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.userSendVerificationEmail,
                 userId: userId,
                 createdBy: userId,
-            });
-        });
+            }),
+        ];
+
+        await this.userVerificationRepository.createReplacingActive(
+            userId,
+            email,
+            verification,
+            today
+        );
+
+        this.activityLogDomain.stagePrepared(events);
     }
 
     async createFromOnboardingInTx(

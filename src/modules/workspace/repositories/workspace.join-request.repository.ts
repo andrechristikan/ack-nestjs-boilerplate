@@ -72,11 +72,12 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         });
     }
 
-    async createPendingInTx(
-        tx: IDatabaseTransactionClient,
-        { workspaceId, userId, message }: IWorkspaceJoinRequestCreateData
-    ): Promise<WorkspaceJoinRequest> {
-        return tx.workspaceJoinRequest.create({
+    async createPending({
+        workspaceId,
+        userId,
+        message,
+    }: IWorkspaceJoinRequestCreateData): Promise<WorkspaceJoinRequest> {
+        return this.databaseService.client.workspaceJoinRequest.create({
             data: {
                 workspaceId,
                 userId,
@@ -101,14 +102,13 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         });
     }
 
-    async rejectInTx(
-        tx: IDatabaseTransactionClient,
+    async reject(
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
     ): Promise<void> {
-        await tx.workspaceJoinRequest.update({
+        await this.databaseService.client.workspaceJoinRequest.update({
             where: { id: workspaceJoinRequestId },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.rejected,

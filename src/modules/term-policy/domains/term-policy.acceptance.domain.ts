@@ -106,6 +106,11 @@ export class TermPolicyAcceptanceDomain {
         }
 
         try {
+            const events = [
+                this.activityLogDomain.prepare({
+                    action: EnumActivityLogAction.userAcceptTermPolicy,
+                }),
+            ];
             await this.databaseService.withTransaction(async tx => {
                 await this.termPolicyRepository.acceptInTx(
                     tx,
@@ -115,10 +120,9 @@ export class TermPolicyAcceptanceDomain {
                     this.helperDateService.create()
                 );
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
-                this.activityLogDomain.stage({
-                    action: EnumActivityLogAction.userAcceptTermPolicy,
-                });
             });
+
+            this.activityLogDomain.stagePrepared(events);
 
             await this.notificationQueue.sendUserAcceptTermPolicy(user.id, {
                 termPolicyId: policy.id,

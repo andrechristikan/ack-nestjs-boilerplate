@@ -2,7 +2,6 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -35,8 +34,7 @@ export class ActivityLogDomain {
     constructor(
         private readonly activityLogRepository: ActivityLogRepository,
         private readonly activityLogUtil: ActivityLogUtil,
-        private readonly requestStoreService: RequestStoreService,
-        private readonly databaseService: DatabaseService
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     private getContract(action: EnumActivityLogAction): IActivityLogContract {
@@ -46,75 +44,6 @@ export class ActivityLogDomain {
         }
 
         return found;
-    }
-
-    stage(input: IActivityLogStageInput<EnumActivityLogAction>): void {
-        const contract = this.getContract(input.action);
-        const metadata = this.validateMetadata(
-            input.action,
-            input.metadata ?? {}
-        );
-
-        this.assertTargetOnlyField(contract.user, input.userId);
-        this.assertTargetOnlyField(contract.user, input.createdBy);
-        this.assertWorkspaceFields(contract.workspace, input.workspaceId);
-
-        const staged =
-            this.requestStoreService.get<IActivityLogStagedEvent[]>(
-                ActivityLogStageStoreKey
-            ) ?? [];
-
-        staged.push({
-            action: input.action,
-            metadata,
-            onError: input.onError === true,
-            ...(input.userId !== undefined ? { userId: input.userId } : {}),
-            ...(input.createdBy !== undefined
-                ? { createdBy: input.createdBy }
-                : {}),
-            ...(input.workspaceId !== undefined
-                ? { workspaceId: input.workspaceId }
-                : {}),
-        });
-
-        this.requestStoreService.set(ActivityLogStageStoreKey, staged);
-    }
-
-    async flushStaged({
-        payloadUserId,
-        isError,
-    }: IActivityLogFlushOptions): Promise<void> {
-        const staged = this.requestStoreService.get<IActivityLogStagedEvent[]>(
-            ActivityLogStageStoreKey
-        );
-        if (!staged?.length) {
-            return;
-        }
-
-        const toFlush = isError
-            ? staged.filter(event => event.onError)
-            : staged;
-
-        if (!toFlush.length) {
-            this.requestStoreService.set(ActivityLogStageStoreKey, []);
-            return;
-        }
-
-        const requestLog =
-            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
-        if (!requestLog) {
-            throw new ActivityLogContractInvalidException();
-        }
-
-        const rows: IActivityLogCreateManyRow[] = toFlush.map(event =>
-            this.buildFlushRow(event, payloadUserId, requestLog)
-        );
-
-        await this.databaseService.withTransaction(async tx => {
-            await this.activityLogRepository.createManyInTx(tx, rows);
-        });
-
-        this.requestStoreService.set(ActivityLogStageStoreKey, []);
     }
 
     private validateMetadata(
@@ -261,6 +190,82 @@ export class ActivityLogDomain {
             requestLog,
             metadata,
         };
+    }
+
+    prepare(
+        input: IActivityLogStageInput<EnumActivityLogAction>
+    ): IActivityLogStagedEvent {
+        const contract = this.getContract(input.action);
+        const metadata = this.validateMetadata(
+            input.action,
+            input.metadata ?? {}
+        );
+
+        this.assertTargetOnlyField(contract.user, input.userId);
+        this.assertTargetOnlyField(contract.user, input.createdBy);
+        this.assertWorkspaceFields(contract.workspace, input.workspaceId);
+
+        return {
+            action: input.action,
+            metadata,
+            onError: input.onError === true,
+            ...(input.userId !== undefined ? { userId: input.userId } : {}),
+            ...(input.createdBy !== undefined
+                ? { createdBy: input.createdBy }
+                : {}),
+            ...(input.workspaceId !== undefined
+                ? { workspaceId: input.workspaceId }
+                : {}),
+        };
+    }
+
+    stagePrepared(events: IActivityLogStagedEvent[]): void {
+        if (events.length === 0) {
+            return;
+        }
+
+        const staged =
+            this.requestStoreService.get<IActivityLogStagedEvent[]>(
+                ActivityLogStageStoreKey
+            ) ?? [];
+        staged.push(...events);
+
+        this.requestStoreService.set(ActivityLogStageStoreKey, staged);
+    }
+
+    async flushStaged({
+        payloadUserId,
+        isError,
+    }: IActivityLogFlushOptions): Promise<void> {
+        const staged = this.requestStoreService.get<IActivityLogStagedEvent[]>(
+            ActivityLogStageStoreKey
+        );
+        if (!staged?.length) {
+            return;
+        }
+
+        const toFlush = isError
+            ? staged.filter(event => event.onError)
+            : staged;
+
+        if (!toFlush.length) {
+            this.requestStoreService.set(ActivityLogStageStoreKey, []);
+            return;
+        }
+
+        const requestLog =
+            this.requestStoreService.get<IRequestLog>(RequestLogStoreKey);
+        if (!requestLog) {
+            throw new ActivityLogContractInvalidException();
+        }
+
+        const rows: IActivityLogCreateManyRow[] = toFlush.map(event =>
+            this.buildFlushRow(event, payloadUserId, requestLog)
+        );
+
+        await this.activityLogRepository.createMany(rows);
+
+        this.requestStoreService.set(ActivityLogStageStoreKey, []);
     }
 
     async getListOffsetByUser(

@@ -57,7 +57,7 @@ export class NotificationPushSecurityDomain {
             data.requestLog.userAgent
         );
         const city = this.requestContextService.resolveCity(
-            data.requestLog.geoLocation ?? undefined
+            data.requestLog.geoLocation
         );
         const loginAt = this.helperDateService.formatToRFC2822(
             this.helperDateService.createFromIso(data.loginAt)

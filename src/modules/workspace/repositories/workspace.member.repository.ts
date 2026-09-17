@@ -155,6 +155,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 userId,
                 role: EnumWorkspaceMemberRole.owner,
                 createdBy: userId,
+                updatedBy: userId,
             },
         });
     }
@@ -164,24 +165,24 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         workspaceId: string,
         userId: string,
         role: EnumWorkspaceMemberRole,
-        createdBy: string
+        actorId: string
     ): Promise<WorkspaceMember> {
         return tx.workspaceMember.create({
             data: {
                 workspaceId,
                 userId,
                 role,
-                createdBy,
+                createdBy: actorId,
+                updatedBy: actorId,
             },
         });
     }
 
-    async updateRoleInTx(
-        tx: IDatabaseTransactionClient,
+    async updateRole(
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
-        await tx.workspaceMember.update({
+        await this.databaseService.client.workspaceMember.update({
             where: { id: targetMemberId },
             data: {
                 role: newRole,
@@ -189,31 +190,29 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async removeMemberInTx(
-        tx: IDatabaseTransactionClient,
-        targetMemberId: string
-    ): Promise<void> {
-        await tx.workspaceMember.delete({
+    async removeMember(targetMemberId: string): Promise<void> {
+        await this.databaseService.client.workspaceMember.delete({
             where: { id: targetMemberId },
         });
     }
 
-    async transferOwnershipInTx(
-        tx: IDatabaseTransactionClient,
+    async transferOwnership(
         fromMemberId: string,
         toMemberId: string
     ): Promise<void> {
-        await tx.workspaceMember.update({
-            where: { id: fromMemberId },
-            data: {
-                role: EnumWorkspaceMemberRole.admin,
-            },
-        });
-        await tx.workspaceMember.update({
-            where: { id: toMemberId },
-            data: {
-                role: EnumWorkspaceMemberRole.owner,
-            },
+        await this.databaseService.withTransaction(async tx => {
+            await tx.workspaceMember.update({
+                where: { id: fromMemberId },
+                data: {
+                    role: EnumWorkspaceMemberRole.admin,
+                },
+            });
+            await tx.workspaceMember.update({
+                where: { id: toMemberId },
+                data: {
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+            });
         });
     }
 }

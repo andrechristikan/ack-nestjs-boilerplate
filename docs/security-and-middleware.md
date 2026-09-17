@@ -53,6 +53,7 @@ consumer
   - [@RequestTimeout](#requesttimeout)
   - [@RequestEnvProtected](#requestenvprotected)
   - [@RequestThrottle](#requestthrottle)
+  - [Store Parameter Decorators](#store-parameter-decorators)
 
 
 ## Authentication & Authorization
@@ -427,7 +428,7 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 
 Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows, and throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it). `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows, and throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it). `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. `IRequestLog` declares all three fields as present: `ipAddress` and `geoLocation` are `null` when unresolved, never absent. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are `@RequestStore(RequestLogStoreKey, '<field>')` and return that field. See [Store Parameter Decorators](#store-parameter-decorators).
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
 
@@ -490,7 +491,33 @@ async profile(
 
 See [Rate Limiting](#rate-limiting).
 
-> Client IP, geolocation, and user-agent are exposed via the `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators, which read the value resolved once per request into the request store under `RequestLogStoreKey`. See [Request Store](#request-store).
+### Store Parameter Decorators
+
+A parameter decorator reads the request store through `RequestStorePipe` (`src/common/request/pipes/request.store.pipe.ts`), an injectable pipe that receives `RequestStoreService` by injection. Two composers in `src/common/request/decorators/request.decorator.ts` build every store reader:
+
+**Signature:**
+```typescript
+RequestStore(storeKey: string, field?: string): ParameterDecorator
+RequestStoreNullable(storeKey: string, field?: string): ParameterDecorator
+```
+
+- Without `field`, the decorator returns the stored value; with `field`, it returns that property of the stored value.
+- `RequestStore` fails fast: when the store holds nothing under `storeKey`, the pipe throws `RequestContextMissingException` (500, `50304`, message `request.error.contextMissing`). The store key travels only in the exception's `rawError` and never reaches the response body. A missing value means the guard or middleware that writes the key did not run on the route.
+- `RequestStoreNullable` returns `null` when the store holds nothing under `storeKey`.
+
+The module decorators are thin wrappers, each typing `field` against its model:
+
+| Decorator | Composer | Store key | Written by |
+|---|---|---|---|
+| `@RequestIPAddress()`, `@RequestGeoLocation()`, `@RequestUserAgent()` | `RequestStore` with a fixed field | `RequestLogStoreKey` | `RequestRequestLogMiddleware` |
+| `@UserCurrent(field?)` | `RequestStore` | `UserStoreKey` | `UserGuard` |
+| `@ApiKeyPayload(field?)` | `RequestStore` | `ApiKeyStoreKey` | `ApiKeyXApiKeyGuard` |
+| `@WorkspaceCurrent(field?)` | `RequestStore` | `WorkspaceStoreKey` | `WorkspaceGuard` |
+| `@WorkspaceMemberCurrent(field?)` | `RequestStore` | `WorkspaceMemberStoreKey` | `WorkspaceMemberGuard` |
+| `@ProjectCurrent(field?)` | `RequestStore` | `ProjectStoreKey` | `ProjectGuard` |
+| `@ProjectMemberCurrent(field?)` | `RequestStoreNullable` | `ProjectMemberStoreKey` | `ProjectMemberGuard`; `null` on a role-gated project route |
+
+`@AuthJwtPayload<T, K>(field?)` reads `request.user` rather than the store, and fails fast the same way: an empty `request.user` throws `RequestContextMissingException`. See [Authentication][ref-doc-authentication].
 
 
 <!-- REFERENCES -->

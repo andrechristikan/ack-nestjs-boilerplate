@@ -57,13 +57,17 @@ The module covers four things: the workspace itself and its membership roles, in
 | `isPublic` | `Boolean` | Defaults to `false`. Only a public workspace accepts join requests |
 | `createdAt` / `createdBy` | `DateTime` / `String?` | |
 | `updatedAt` / `updatedBy` | `DateTime` / `String?` | |
-| `deletedAt` | `DateTime?` | Soft-delete marker. There is no `deletedBy` on this model |
+| `deletedAt` / `deletedBy` | `DateTime?` / `String?` | Soft-delete marker and the id of the user who deleted the workspace |
 
 `@@unique([slug])`; indexed on `[isPublic, deletedAt, createdAt desc]`, `[deletedAt, createdAt desc, id desc]`, `[deletedAt, name]`.
+
+`WorkspaceResponseSchema` declares every audit column, `deletedBy` included, so each workspace row in a response carries it. The user routes read live rows only, so `deletedBy` is `null` there; the admin routes apply no live filter, so a soft-deleted row shows who deleted it.
 
 ### `WorkspaceMember` (`WorkspaceMembers`)
 
 `workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`, plus the audit columns. `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete.
+
+A member row is created with `createdBy` and `updatedBy` set to the same user. `WorkspaceMemberRepository.createOwnerInTx`, called when a workspace is created, writes the owner. `WorkspaceMemberRepository.createInTx` writes the acting user it receives: the reviewer on a join-request accept, the invitee on an invite accept, and the seed actor in the workspace seed.
 
 ### `WorkspaceInvite` (`WorkspaceInvites`)
 
@@ -117,7 +121,7 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored. They return `undefined` when the matching guard did not run.
+**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored. Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field. Both are built on `RequestStore`, so a route that reads one without the matching guard answers `RequestContextMissingException` (500, `50304`). See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 
@@ -125,7 +129,7 @@ Admin routes reach the same resources through `@RoleProtected()` + `@PolicyProte
 
 ## Personal Workspace
 
-`UserOnboardingDomain.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug. `WorkspaceDomain.commitOnboarding` opens `withTransaction`: `UserOnboardingDomain.createManyInTx` writes the User rows; for each user it writes the password history row (when a password is set), the default notification settings, the email verification row (when one is issued), and a disabled `TwoFactor` row; `WorkspaceDomain.createOwnedForUsersInTx` / `createPersonalInTx` write each personal workspace plus its owner membership, `WorkspaceInviteDomain.acceptOnSignUpInTx` joins an invite-token sign-up, and `TermPolicyAcceptanceDomain.acceptPublishedInTx` writes the accepted policies. After the transaction commits, `commitOnboarding` stages the onboarding actions through `ActivityLogDomain.stage`, and `ActivityLogInterceptor` writes them once the handler returns. The rows are listed under [Activity Log](#activity-log). `UserAuthHttpService` (sign-up and social create) calls `WorkspaceInviteDomain.resolveForSignUp`, then forwards to `commitOnboarding`. `UserHttpService.createByAdmin` and `UserImportHttpService.importByAdmin` forward prepared inputs to the same composer. `UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not.
+`UserOnboardingDomain.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug. `WorkspaceDomain.commitOnboarding` opens `withTransaction`: `UserOnboardingDomain.createManyInTx` writes the User rows; for each user it writes the password history row (when a password is set), the default notification settings, the email verification row (when one is issued), and a disabled `TwoFactor` row; `WorkspaceDomain.createOwnedForUsersInTx` / `createPersonalInTx` write each personal workspace plus its owner membership, `WorkspaceInviteDomain.acceptOnSignUpInTx` joins an invite-token sign-up, and `TermPolicyAcceptanceDomain.acceptPublishedInTx` writes the accepted policies. The transaction callback prepares the onboarding events from the rows it wrote and returns them; after the commit, `commitOnboarding` stages them with `ActivityLogDomain.stagePrepared`, and `ActivityLogInterceptor` writes them once the handler returns. The rows are listed under [Activity Log](#activity-log). `UserAuthHttpService` (sign-up and social create) calls `WorkspaceInviteDomain.resolveForSignUp`, then forwards to `commitOnboarding`. `UserHttpService.createByAdmin` and `UserImportHttpService.importByAdmin` forward prepared inputs to the same composer. `UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not.
 
 `buildPersonalWorkspaceContexts` draws `workspace.slugMaxAttempts` (5) slug candidates per row and carries them on the context as `slugCandidates`. The `withTransaction` runs with the first candidate; a unique collision on `slug` rolls the transaction back and the next candidate is tried, and running out of candidates raises `DatabaseUniqueValueGenerationFailedException` (500, `51800`), so the caller never sees a leaked Prisma error. Admin CSV import writes all its rows in one `withTransaction` through `WorkspaceDomain.commitOnboarding`, which substitutes the same candidate index into every personal row of the batch and retries the whole batch, up to the smallest candidate count in it.
 
@@ -215,7 +219,7 @@ Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@Policy
 
 `removeMember` adds one check of its own, ahead of that call: the actor targets themselves. Use leave instead.
 
-**Transfer ownership** demotes the actor to `admin` and promotes the target to `owner` in one transaction. Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51619`); a non-member target throws `WorkspaceMemberNotFoundException` (404, `51606`).
+**Transfer ownership** demotes the actor to `admin` and promotes the target to `owner` in one transaction, which `WorkspaceMemberRepository.transferOwnership` opens itself. Transferring to yourself throws `WorkspaceSelfTransferException` (400, `51619`); a non-member target throws `WorkspaceMemberNotFoundException` (404, `51606`).
 
 **Leave** hard-deletes the caller's membership. The last remaining `owner` cannot leave: `WorkspaceLastOwnerException` (400, `51607`). Transfer ownership first.
 
@@ -225,7 +229,7 @@ Mounted under `/admin`. Gated by `@RoleProtected(EnumRoleType.admin)` + `@Policy
 
 An invite is addressed to an email, not to a user, so it works whether or not that address already has an account.
 
-**Create.** `POST /user/workspace/invite/create` requires `admin`. It generates a random token, stores only its SHA-256 hash, and mints a `WIN-` prefixed reference. `projectId` and `projectRole` must be supplied together or not at all (`WorkspaceInviteRoleRequiredException`, 400, `51611`), and the project must belong to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51610`). A second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51609`).
+**Create.** `POST /user/workspace/invite/create` requires `admin`. It generates a random token, stores only its SHA-256 hash, and mints a `WIN-` prefixed reference. The invite id is drawn with `DatabaseUtil.createId()` before the write, so the activity rows that carry `workspaceInviteId` are prepared before the invite exists. `projectId` and `projectRole` must be supplied together or not at all (`WorkspaceInviteRoleRequiredException`, 400, `51611`), and the project must belong to this workspace (`WorkspaceInviteProjectMismatchException`, 400, `51610`). A second pending invite to the same address in the same workspace throws `WorkspaceInviteDuplicateException` (400, `51609`).
 
 **Expiry** comes from the request's `expiryDuration` (`EnumWorkspaceInviteExpiry`), defaulting to `workspace.invite.expiredInDays` (7).
 
@@ -233,7 +237,7 @@ An invite is addressed to an email, not to a user, so it works whether or not th
 
 **Resend** rotates the token, reference, and expiry, then sends again. Its body is optional and carries `expiryDuration` alone (`WorkspaceInviteResendRequestSchema`, a `.pick()` of the create schema); omitting it falls back to `workspace.invite.expiredInDays` (7) rather than to the duration the original invite was created with. Only a `pending` invite may be resent or revoked, otherwise `WorkspaceInviteAlreadyProcessedException` (400, `51613`).
 
-**Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success one transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`, sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace, creates the project membership when the invite carried one, and writes the `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` activity log pair.
+**Claim.** `POST /user/workspace/invite/claim` is for an already-authenticated user. The token must hash to a `pending`, unexpired invite on an active workspace, and the invite email must match the caller's email (case-insensitive). Anything else, including an existing membership, collapses into `WorkspaceInviteInvalidException` (400, `51603`). On success one transaction creates the membership with `invite.workspaceRole`, marks the invite `accepted` with `acceptedAt` / `acceptedByUserId`, sets `user.lastWorkspaceId` and `lastWorkspaceChangedAt` to the joined workspace, and creates the project membership when the invite carried one. The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepared before the transaction and staged after it commits.
 
 A user who has no account yet redeems the invite through sign-up instead, by passing `inviteToken`. See [Personal Workspace](#personal-workspace).
 
@@ -246,7 +250,7 @@ A user asks to join a workspace they can see; an admin decides.
 - Only a workspace with `isPublic: true` accepts requests. A private one throws `WorkspaceNotPublicException` (400, `51614`).
 - Already being a member throws `WorkspaceJoinRequestAlreadyMemberException` (400, `51615`); a second pending request throws `WorkspaceJoinRequestDuplicateException` (400, `51616`).
 - On create, every reviewer (`owner` and `admin`) is notified. Each reviewer's review link is sealed (AES-256-GCM) with **that reviewer's** user id as authenticated data, so a link sealed for one reviewer does not open in another reviewer's job.
-- **Accept always creates a `member` membership.** The role is not configurable on this path. The membership creation, the status flip to `accepted` with `reviewedByUserId` / `reviewedAt`, and the activity log all run in one transaction.
+- **Accept always creates a `member` membership.** The role is not configurable on this path. The membership creation and the status flip to `accepted` with `reviewedByUserId` / `reviewedAt` run in one transaction; the activity pair is prepared before it and staged after it commits. Reject is a single update with no transaction.
 - Accept does **not** point the requester's `lastWorkspaceId` at the workspace they just joined, unlike an invite claim. They still have to switch to it.
 - Reject requires a `rejectReasonCode` from `EnumWorkspaceJoinRejectReason`.
 - Both outcomes notify the requester after the transaction commits: `workspaceJoinAccepted` on accept, `workspaceJoinRejected` (carrying the reason code) on reject.
@@ -260,24 +264,25 @@ The `cancelled` status is written only by workspace soft-delete. A requester has
 - A slug sent to `update/slug` is validated by `WorkspaceDomain.assertSlugAllowed` against `workspace.slugRegex` and `workspace.slugMaxLength`, throwing `WorkspaceSlugInvalidException` (400, `51620`), then checked against `WorkspaceRepository.existsBySlug`, which answers `WorkspaceSlugAlreadyExistsException` (400, `51605`) with no retry.
 - Uniqueness is **global**, matching `@@unique([slug])`.
 - `existsBySlug` counts holders across **all** rows including soft-deleted ones: the unique index has no `deletedAt` component, so a soft-deleted workspace still holds its slug, and the check agrees with the index.
-- `createWorkspace` walks its candidates and, for each one, opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`) and stages `workspaceCreated` through `ActivityLogDomain.stage`. A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
+- `createWorkspace` walks its candidates and, for each one, draws the workspace id, prepares `workspaceCreated`, and opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`). The event is staged only after a commit. A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`).
 - The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Soft Delete
 
-`DELETE /user/workspace/delete` requires `owner`. `WorkspaceDomain.softDeleteWorkspace` opens one `withTransaction`:
+`DELETE /user/workspace/delete` requires `owner`. `WorkspaceDomain.softDeleteWorkspace` prepares `workspaceDeleted`, then opens one `withTransaction`:
 
-1. `WorkspaceRepository.softDeleteInTx` sets `deletedAt` on the workspace; the audit extension stamps `updatedBy`.
-2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it.
+1. `WorkspaceRepository.softDeleteInTx` calls `tx.workspace.softDelete`, which sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller.
+2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it with the same `deletedAt` and `deletedBy` set to the caller.
 3. `WorkspaceInviteRepository.expirePendingByWorkspaceInTx` flips every `pending` invite to `expired`.
 4. `WorkspaceJoinRequestRepository.cancelPendingByWorkspaceInTx` flips every `pending` join request to `cancelled`.
-5. `ActivityLogDomain.stage` stages a `workspaceDeleted` activity log, written by `ActivityLogInterceptor` after the handler returns.
+
+After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writes it after the handler returns.
 
 **Not cascaded:** `WorkspaceMember` rows stay as they are, and `user.lastWorkspaceId` is not cleared for members still pointing at the deleted workspace. The slug also stays occupied. There is no restore.
 
 ## Activity Log
 
-Workspace actions stage their rows through `ActivityLogDomain.stage`, and `ActivityLogInterceptor` writes them once the handler returns. Every row in the table below carries the workspace id. An action taken on another user writes an actor row for the caller, carrying `targetUserId`, and a target row for the affected user, carrying `actorUserId`, with `createdBy` set to the caller. When the affected user is the caller, only the actor row is written.
+Workspace actions prepare their rows with `ActivityLogDomain.prepare` before the write and stage them with `ActivityLogDomain.stagePrepared` after it, and `ActivityLogInterceptor` writes them once the handler returns. Every row in the table below carries the workspace id. An action taken on another user writes an actor row for the caller, carrying `targetUserId`, and a target row for the affected user, carrying `actorUserId`, with `createdBy` set to the caller. When the affected user is the caller, only the actor row is written.
 
 | Operation | Actor row (caller) | Target row | Target row owner |
 |---|---|---|---|

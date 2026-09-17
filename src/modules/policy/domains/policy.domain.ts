@@ -87,11 +87,14 @@ export class PolicyDomain {
             throw new PolicyExistException();
         }
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminPolicyCreate,
+            }),
+        ];
         const created = await this.policyRepository.create(roleId, data);
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.adminPolicyCreate,
-        });
+        this.activityLogDomain.stagePrepared(events);
 
         return created;
     }
@@ -111,11 +114,14 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminPolicyUpdate,
+            }),
+        ];
         const updated = await this.policyRepository.update(id, data);
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.adminPolicyUpdate,
-        });
+        this.activityLogDomain.stagePrepared(events);
 
         return updated;
     }
@@ -131,11 +137,14 @@ export class PolicyDomain {
             throw new PolicyNotFoundException();
         }
 
+        const events = [
+            this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.adminPolicyDelete,
+            }),
+        ];
         const deleted = await this.policyRepository.delete(id);
 
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.adminPolicyDelete,
-        });
+        this.activityLogDomain.stagePrepared(events);
 
         return deleted;
     }

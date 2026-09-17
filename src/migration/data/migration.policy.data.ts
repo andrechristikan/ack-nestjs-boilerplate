@@ -5,7 +5,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
-const policyData: {
+const PolicyData: {
     role: string;
     policies: PolicyRequestDto[];
 }[] = [
@@ -26,15 +26,15 @@ const policyData: {
     },
 ];
 
-export const migrationPolicyData: Record<
+export const MigrationPolicyData: Record<
     EnumAppEnvironment,
     {
         role: string;
         policies: PolicyRequestDto[];
     }[]
 > = {
-    [EnumAppEnvironment.local]: policyData,
-    [EnumAppEnvironment.development]: policyData,
-    [EnumAppEnvironment.staging]: policyData,
-    [EnumAppEnvironment.production]: policyData,
+    [EnumAppEnvironment.local]: PolicyData,
+    [EnumAppEnvironment.development]: PolicyData,
+    [EnumAppEnvironment.staging]: PolicyData,
+    [EnumAppEnvironment.production]: PolicyData,
 };

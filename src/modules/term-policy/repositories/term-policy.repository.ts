@@ -210,11 +210,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     }
 
     async create(
+        termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.create({
             data: {
+                id: termPolicyId,
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,

@@ -29,9 +29,9 @@ import { SentryModule } from '@common/sentry/sentry.module';
  * Composes kit `forRoot()` modules and the app-wide `@Global()` feature domains.
  *
  * Bootstraps the following in order:
- * - Config, logger, Sentry, Redis cache, BullMQ connections, cache, database, and request pipeline
+ * - Config, message, logger, Sentry, Redis cache, BullMQ connections, cache, database, request, response
  * - Shared utilities: helper, pagination, file, Firebase
- * - Feature modules: activity log, API key, auth, term policy, notification
+ * - Feature modules: activity log, API key, auth, feature flag, role, policy, term policy, session, notification
  */
 @Module({
     controllers: [],

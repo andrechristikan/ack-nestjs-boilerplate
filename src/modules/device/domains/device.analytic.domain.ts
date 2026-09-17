@@ -9,30 +9,32 @@ import type {
     IDeviceOwnershipAnalyticInactiveRow,
     IDeviceOwnershipAnalyticUserCount,
 } from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceAnalyticDomain {
     constructor(
-        private readonly deviceOwnershipAnalyticRepository: DeviceOwnershipAnalyticRepository
+        private readonly deviceOwnershipAnalyticRepository: DeviceOwnershipAnalyticRepository,
+        private readonly deviceAnalyticRepository: DeviceAnalyticRepository
     ) {}
 
     countRegistrations(startDate: Date, endDate: Date): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countRegistrations(
+        return this.deviceAnalyticRepository.countRegistrations(
             startDate,
             endDate
         );
     }
 
     groupByPlatform(): Promise<IAnalyticCountBucket[]> {
-        return this.deviceOwnershipAnalyticRepository.groupByPlatform();
+        return this.deviceAnalyticRepository.groupByPlatform();
     }
 
     async pushTokenRate(): Promise<IAnalyticMetricRate> {
         const [withToken, total] = await Promise.all([
-            this.deviceOwnershipAnalyticRepository.countWithPushToken(),
-            this.deviceOwnershipAnalyticRepository.countDevices(),
+            this.deviceAnalyticRepository.countWithPushToken(),
+            this.deviceAnalyticRepository.countDevices(),
         ]);
         return {
             count: withToken,
@@ -46,7 +48,7 @@ export class DeviceAnalyticDomain {
     }
 
     countDevices(): Promise<number> {
-        return this.deviceOwnershipAnalyticRepository.countDevices();
+        return this.deviceAnalyticRepository.countDevices();
     }
 
     countPerUser(): Promise<IDeviceOwnershipAnalyticUserCount[]> {
