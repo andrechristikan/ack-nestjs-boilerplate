@@ -1,5 +1,5 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { StreamingBlobTypes } from '@smithy/types';
+import type { StreamingBlobTypes } from '@smithy/types';
 
 export interface IAwsS3 {
     bucket: string;

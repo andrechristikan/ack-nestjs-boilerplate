@@ -149,10 +149,18 @@ Both opt-in limiters run through `RequestThrottleService.evaluate()` (`src/commo
 Every handler carrying `@AuthJwtAccessProtected()` or `@AuthJwtRefreshProtected()` also carries `@RequestThrottle({ user: true })`. `user: true` on a request with no authenticated user is a silent no-op, so the `public` and `system` scopes, which never populate `req.user`, deliberately omit the switch. A JWT-protected handler that omits it keeps only the global per-IP limit, and nothing fails or logs to say so.
 
 ```typescript
+@UserProtected()
+@FeatureFlagProtected('changePassword')
 @AuthJwtAccessProtected()
 @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-@Post('/password/change')
-async endpoint() {}
+@Patch('/password/change')
+async changePassword(
+    @UserCurrent() user: IUser,
+    @Body({ schema: UserChangePasswordRequestSchema })
+    body: UserChangePasswordRequestDto
+): Promise<void> {
+    await this.userPasswordHttpService.changePassword(user, body);
+}
 ```
 
 Decorator order is irrelevant. `@RequestThrottle` writes metadata and mounts an interceptor; the metadata is read by a global guard for the `route` tier, and the interceptor runs after every guard for the `user` switch, so the `user` limiter always sees the verified `req.user` wherever the decorator sits in the stack.
@@ -210,7 +218,7 @@ All ten are listed in `request.cors.exposedHeader` and emitted as `Access-Contro
 
 ## CORS
 
-Manages cross-origin resource sharing (CORS) with flexible origin matching, credential handling, and security controls.
+Manages cross-origin resource sharing (CORS): origin matching with wildcard subdomains and explicit ports, and credential handling.
 
 **Implementation:** `RequestCorsMiddleware`
 
@@ -267,11 +275,12 @@ Restricts endpoint access based on environment.
 **Implementation:** `RequestEnvGuard`
 
 **Usage:**
+
 ```typescript
 @RequestEnvProtected(EnumAppEnvironment.development)
-@Get('/debug')
-async debugEndpoint() {}
 ```
+
+`RequestEnvProtected` takes one or more `EnumAppEnvironment` values. No controller stacks it.
 
 **Configuration:** See [Configuration][ref-doc-configuration]
 
@@ -283,11 +292,16 @@ Generates unique identifiers for request tracking.
 
 **Request Properties:**
 ```typescript
-interface IRequestApp extends Request {
-  id: string;            // UUID v7 request ID
-  correlationId: string; // Correlation ID for distributed tracing
+export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
+    Request,
+    'user'
+> {
+    correlationId: string;
+    user?: T;
 }
 ```
+
+`RequestRequestIdMiddleware` assigns `req.id` with UUID v7, copies it to the `x-request-id` header, and writes both `req.id` and `req.correlationId` into the request store. `correlationId` reuses inbound `x-correlation-id` when that header is a string; otherwise it is a new UUID v7.
 
 `id` and `correlationId` are dual-written: they stay on `req` (read by filters, interceptors, and pino `genReqId`) and are also written to the request store under `RequestIdStoreKey` / `RequestCorrelationIdStoreKey` for ambient deep access. See [Request Store](#request-store).
 
@@ -315,7 +329,7 @@ Extracts API version from URLs.
 **URL Pattern:**
 ```
 /{globalPrefix}/{versionPrefix}{version}/resource
-Example: /api/v1/users
+Example: /api/v1/shared/user/profile/get
 ```
 
 **Storage:** the resolved version is written to the request store under `RequestVersionStoreKey` (not on `req`). Response interceptors and exception filters read it from the store, falling back to config `app.urlVersion.version`. See [Request Store](#request-store).
@@ -388,11 +402,8 @@ Prevents long-running requests.
 ```
 
 **Custom Timeout:**
-```typescript
-@RequestTimeout('60s')
-@Get('/long-running')
-async operation() {}
-```
+
+Photo upload (`POST /shared/user/profile/photo/upload`) and user import (`POST /admin/user/import`) both set `@RequestTimeout('1m')`.
 
 **Supported Formats:** [ms][ref-ms] format (`'2s'`, `'1m'`, `'5h'`)
 
@@ -416,11 +427,11 @@ Per-request ambient metadata is carried in the generic `RequestStoreService` (`s
 
 Two further store keys are written outside `request.constant.ts`: `RequestWorkspaceMiddleware` writes the raw `x-workspace-id` header under the key configured by `workspace.storeKey`, and `WorkspaceGuard` writes the resolved workspace under `WorkspaceStoreKey` (`src/modules/workspace/constants/workspace.constant.ts`).
 
-**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.create()` reads `get<IRequestLog>(RequestLogStoreKey)!` before writing the row, and every audit-writing domain reads the same key and threads the `IRequestLog` to its repository. Reads use a non-null assertion (no fallback object), since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
+**Request log (`RequestLogStoreKey`):** `userAgent`, `ipAddress`, and `geoLocation` are resolved once per request by the injectable `RequestUtil.buildRequestLog(req)` (`src/common/request/utils/request.util.ts`), called from `RequestRequestLogMiddleware`. `ActivityLogDomain.flushStaged` reads `get<IRequestLog>(RequestLogStoreKey)` when it writes the staged rows, and throws `ActivityLogContractInvalidException` when the key is absent (the interceptor logs it). `UserLoginDomain` reads the same key with a non-null assertion (no fallback object) and threads the `IRequestLog` to the session and device writes, since the middleware always populates the key before any handler runs. Nothing recomputes ua/ip/geo. The `@RequestIPAddress()` / `@RequestGeoLocation()` / `@RequestUserAgent()` param decorators are thin store-readers: each returns the matching field from `get<IRequestLog>(RequestLogStoreKey)?.<field> ?? null`, resolved through `ClsServiceManager.getClsService()` because a param decorator has no injection context.
 
 `ClsModule.forRoot({ global: true, middleware: { mount: true } })` is registered in `RequestModule` (before `RequestMiddlewareModule`), so `ClsMiddleware` mounts the store before any request middleware writes to it. Each writer middleware sets only its own key.
 
-**Queue boundary exception:** the new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time. Workers run in a separate process with no CLS store, so the value must cross the boundary as data.
+**Queue boundary exception:** the new-device-login BullMQ job carries `requestLog` explicitly on its payload (`INotificationNewDeviceLoginPayload.requestLog`), snapshotted at enqueue time. A worker runs outside any HTTP request, so no CLS store is active there, and the value crosses the boundary as data.
 
 ## Decorators
 
@@ -433,12 +444,7 @@ Sets custom timeout for specific endpoints.
 RequestTimeout(seconds: ms.StringValue): MethodDecorator
 ```
 
-**Example:**
-```typescript
-@RequestTimeout('2m')
-@Post('/process')
-async processData() {}
-```
+Photo upload and user import both set `@RequestTimeout('1m')`.
 
 ### @RequestEnvProtected
 
@@ -449,12 +455,7 @@ Restricts endpoint access based on environment.
 RequestEnvProtected(...envs: EnumAppEnvironment[]): MethodDecorator
 ```
 
-**Example:**
-```typescript
-@RequestEnvProtected(EnumAppEnvironment.development)
-@Get('/admin/clear-cache')
-async clearCache() {}
-```
+Takes one or more `EnumAppEnvironment` values. No controller stacks it.
 
 ### @RequestThrottle
 
@@ -472,10 +473,15 @@ interface IRequestThrottleOptions {
 
 **Example:**
 ```typescript
+@UserProtected()
 @AuthJwtAccessProtected()
 @RequestThrottle({ user: true })
-@Get('/me')
-async endpoint() {}
+@Get('/profile/get')
+async profile(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
+}
 ```
 
 - **Method decorator only.** The return type is `MethodDecorator`, so placing it above a `@Controller` class is a TypeScript error, not a convention. Both readers take the metadata off `context.getHandler()` alone, so class-level options would be invisible even if the typing allowed them.

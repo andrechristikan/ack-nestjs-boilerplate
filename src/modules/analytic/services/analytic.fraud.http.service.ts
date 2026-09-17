@@ -1,7 +1,7 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
-import {
+import type {
     IAnalyticAccountTakeoverRow,
     IAnalyticApiKeyBurstRow,
     IAnalyticBackupCodeNewDeviceRow,
@@ -17,7 +17,7 @@ import {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class AnalyticFraudHttpService {

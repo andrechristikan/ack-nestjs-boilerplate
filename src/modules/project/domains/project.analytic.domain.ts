@@ -1,4 +1,4 @@
-import { IAnalyticProjectCreation } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticProjectCreation } from '@modules/analytic/interfaces/analytic.interface';
 import { ProjectAnalyticRepository } from '@modules/project/repositories/project.analytic.repository';
 import { Injectable } from '@nestjs/common';
 

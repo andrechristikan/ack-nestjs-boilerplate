@@ -55,4 +55,7 @@ exists to catch.
 
 `AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()`
 validates `process.env` against at boot. A new env var is added there as well as in
-`src/configs/` (`rules/config.md`).
+`src/configs/` (`rules/config.md`). An env boolean is `RequestBooleanStringSchema` (exactly
+`'true'` or `'false'`, parsed to a boolean); an encryption root secret is
+`RequestEncryptionSecretSchema` (exactly 64 base64url characters). A check both need is one of
+these shared schemas, never a file-local const in `app.env.dto.ts` (`rules/dto.md`).

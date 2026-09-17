@@ -4,10 +4,11 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 /**
  * Base workspace-join-request shape: the stored join request row and its review outcome.
+ * @public
  */
 export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -43,6 +44,10 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored workspace join request with its review outcome.
+ * @public
+ */
 export type WorkspaceJoinRequestResponseDto = z.infer<
     typeof WorkspaceJoinRequestResponseSchema
 >;

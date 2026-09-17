@@ -1,7 +1,7 @@
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
 

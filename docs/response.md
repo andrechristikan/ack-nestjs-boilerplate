@@ -52,43 +52,26 @@ Standard API response decorator with optional caching.
 
 ```typescript
 @Response('user.get', { schema: UserProfileResponseSchema })
-@Get('/:id')
-async getUser(@Param('id') id: string): Promise<IResponseReturn<UserProfileResponseDto>> {
-  return {
-    data: await this.userHttpService.get(id)
-  };
+@Get('/get/:userId')
+async get(
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+): Promise<IResponseReturn<UserProfileResponseDto>> {
+  return this.userHttpService.getOne(userId);
 }
 ```
 
 **Custom Status Code:**
 
+`@Post('/create')` has no `@HttpCode`, so Nest answers `201 Created`. The interceptor takes `httpStatus` from the Express response status unless the handler returns `metadata.httpStatus`. No HTTP service in this checkout returns that field.
+
 ```typescript
 @Response('user.create', { schema: DatabaseIdResponseSchema })
-@Post('/')
-async createUser(
-  @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+@Post('/create')
+async create(
+  @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+  @AuthJwtPayload('userId') createdBy: string
 ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-  try {
-    const data = await this.userService.create(dto);
-    
-    // Response: { statusCode: 201, message: "...", data: {...}, metadata: {...} }
-    return {
-      data,
-      metadata: {
-        statusCode: 201,
-        httpStatus: HttpStatus.CREATED
-      }
-    };
-  } catch {
-    // Response: { statusCode: 200, message: "...", data: {...}, metadata: {...} }
-    return {
-      data,
-      metadata: {
-        statusCode: 200,
-        httpStatus: HttpStatus.OK
-      }
-    };
-  }
+  return this.userHttpService.createByAdmin(body, createdBy);
 }
 ```
 
@@ -108,7 +91,7 @@ async markAllAsRead(
 
 // notification.http.service.ts
 async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
-  const count = await this.notificationService.markAllAsRead(userId);
+  const count = await this.notificationDomain.markAllAsRead(userId);
 
   return {
     metadata: {
@@ -135,9 +118,9 @@ Paginated API response decorator with optional caching. Supports both offset-bas
   - `cache` (boolean | object): Enable caching
 
 **Requirements:**
-- Request must include pagination parameters (see [Pagination Documentation][ref-doc-pagination])
-- Response must implement `IResponsePagingReturn<T>` interface
-- Must specify pagination `type`: `'offset'` or `'cursor'`
+- Handler returns `IResponsePagingReturn<T>`
+- Pagination query decorator supplies the params (see [Pagination Documentation][ref-doc-pagination])
+- `type` is `'offset'` or `'cursor'`
 
 **Interceptor:** `ResponsePagingInterceptor` - validates pagination data, supports offset and cursor-based pagination, includes search/filter/sort metadata
 
@@ -146,32 +129,37 @@ Paginated API response decorator with optional caching. Supports both offset-bas
 ```typescript
 @ResponsePaging('user.list', { schema: UserListResponseSchema })
 @Get('/list')
-async listUsers(
-  @PaginationOffsetQuery() pagination: IPaginationQueryOffsetParams
+async list(
+  @PaginationOffsetQuery({
+    availableSearch: UserDefaultAvailableSearch,
+    availableOrderBy: UserDefaultAvailableOrderBy,
+  })
+  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  const { data, ...others } = await this.userService.findAll(pagination);
-
-  // `others` carries type: 'offset', count, page, perPage, totalPage,
-  // hasNext, hasPrevious, nextPage, previousPage from PaginationService.offset
-  return { data, ...others };
+  return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
+
+`UserHttpService.getListOffsetByAdmin` forwards to the domain and repository. The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`.
 
 **Cursor-based Pagination:**
 
 ```typescript
-@ResponsePaging('user.list', { schema: UserListResponseSchema })
+@ResponsePaging('workspace.list', { schema: WorkspaceResponseSchema })
 @Get('/list')
-async listUsers(
-  @PaginationCursorQuery() pagination: IPaginationQueryCursorParams
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  const { data, ...others } = await this.userService.findAllCursor(pagination);
-
-  // `others` carries type: 'cursor', cursor, perPage, hasNext and optional count
-  // from PaginationService.cursor; the interceptor emits `cursor` as `nextCursor`
-  return { data, ...others };
+async list(
+  @PaginationCursorQuery({
+    availableSearch: WorkspaceDefaultAvailableSearch,
+    availableOrderBy: WorkspaceCursorAvailableOrderBy,
+  })
+  pagination: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>,
+  @AuthJwtPayload('userId') userId: string
+): Promise<IResponsePagingReturn<WorkspaceResponseDto>> {
+  return this.workspaceHttpService.getListForMember(userId, pagination);
 }
 ```
+
+The page fields (`type`, `cursor` emitted as `nextCursor`, `perPage`, `hasNext`, optional `count`) come from `PaginationService.cursor`.
 
 ### @ResponseFile
 
@@ -180,120 +168,35 @@ File download response decorator that handles CSV and PDF file downloads with pr
 **Parameters:** None
 
 **Requirements:**
-- Response must implement `IResponseFileReturn` interface (union of `IResponseCsvReturn` | `IResponsePdfReturn`)
-- Must specify `extension`: `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
-- CSV data must be a string (pre-converted to CSV format)
-- PDF data must be a Buffer
+- Handler returns `IResponseFileReturn` (`IResponseCsvReturn` | `IResponsePdfReturn`)
+- `extension` is `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
+- CSV data is a string (already converted)
+- PDF data is a Buffer
 - Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
-**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
+**Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
-**CSV Export (Auto-generated Filename):**
+**CSV export:**
 
-```typescript
-@ResponseFile()
-@Get('/export/csv')
-async exportUsersCsv(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  const csvData = this.fileService.writeCsv(users);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv
-    // Filename will be: export-{timestamp}.csv
-  };
-}
-```
-
-**CSV with Custom Filename:**
+`POST /admin/user/export` is the file-download route. `UserImportHttpService.exportByAdmin` maps rows to `UserExportResponseDto` and returns a CSV string. The interceptor fills the filename from `response.filenameExportPattern` (`export-{timestamp}.csv`) because this handler omits `filename`.
 
 ```typescript
 @ResponseFile()
-@Get('/export/users')
-async exportUsersCustom(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  const csvData = this.fileService.writeCsv(users);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: 'users-export.csv'
-  };
+@HttpCode(HttpStatus.OK)
+@Post('/export')
+async export(
+  @PaginationQueryFilterInEnum<EnumUserStatus>('status', UserDefaultStatus)
+  status?: Record<string, IPaginationIn>,
+  @PaginationQueryFilterEqualString('roleId')
+  roleId?: Record<string, IPaginationEqual>,
+  @PaginationQueryFilterEqualString('countryId')
+  countryId?: Record<string, IPaginationEqual>
+): Promise<IResponseFileReturn> {
+  return this.userImportHttpService.exportByAdmin(status, roleId, countryId);
 }
 ```
 
-**CSV with Formatted Data:**
-
-```typescript
-@ResponseFile()
-@Get('/export/report')
-async exportUsersReport(): Promise<IResponseCsvReturn> {
-  const users = await this.userService.findAll();
-  
-  const formattedData = users.map(user => ({
-    Name: user.name,
-    Email: user.email,
-    'Created At': new Date(user.createdAt).toLocaleDateString(),
-    Status: user.isActive ? 'Active' : 'Inactive'
-  }));
-  
-  const csvData = this.fileService.writeCsv(formattedData);
-  
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: 'user-report.csv'
-  };
-}
-```
-
-**PDF Export:**
-
-```typescript
-@ResponseFile()
-@Get('/export/pdf')
-async exportUsersPdf(): Promise<IResponsePdfReturn> {
-  const users = await this.userService.findAll();
-  
-  // Generate PDF using external library (e.g., pdfkit, puppeteer, jsPDF)
-  // Example: const pdfBuffer = await generatePdfReport(users);
-  const pdfBuffer = Buffer.from('...'); // Your PDF generation logic here
-  
-  return {
-    data: pdfBuffer,
-    extension: EnumFileExtensionDocument.pdf,
-    filename: 'users-report.pdf'
-  };
-}
-```
-
-**Dynamic Format Export:**
-
-```typescript
-@ResponseFile()
-@Get('/export')
-async exportUsers(@Query('format') format: 'csv' | 'pdf'): Promise<IResponseFileReturn> {
-  const users = await this.userService.findAll();
-  const timestamp = Date.now();
-  
-  if (format === 'pdf') {
-    // Generate PDF buffer using your preferred PDF library
-    const pdfBuffer = Buffer.from('...'); // Your PDF generation logic
-    return {
-      data: pdfBuffer,
-      extension: EnumFileExtensionDocument.pdf,
-      filename: `users-${timestamp}.pdf`
-    };
-  }
-  
-  const csvData = this.fileService.writeCsv(users);
-  return {
-    data: csvData,
-    extension: EnumFileExtensionDocument.csv,
-    filename: `users-${timestamp}.csv`
-  };
-}
-```
+`IResponsePdfReturn` is the other half of `IResponseFileReturn`: a `Buffer`, `EnumFileExtensionDocument.pdf`, and an explicit `filename`. The interceptor accepts that shape. CSV is the download this checkout serves.
 
 ## Serialization
 
@@ -358,11 +261,11 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 
 ```typescript
 @Response('role.delete')
-@Delete('/delete/:role')
+@Delete('/delete/:roleId')
 async delete(
   @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
-): Promise<void> {
-  await this.roleHttpService.delete(roleId);
+): Promise<IResponseReturn<void>> {
+  return this.roleHttpService.deleteByAdmin(roleId);
 }
 ```
 
@@ -500,12 +403,13 @@ Cursor pagination is forward-only. `ResponsePagingInterceptor` assigns `nextCurs
 **Basic Caching:**
 
 ```typescript
-@Response('user.get', { schema: UserProfileResponseSchema, cache: true })
-@Get('/:id')
-async getUser(
-  @Param('id') id: string
-): Promise<IResponseReturn<UserProfileResponseDto>> {
-  return { data: await this.userHttpService.get(id) };
+@Response('hello.hello', {
+  cache: true,
+  schema: HelloResponseSchema,
+})
+@Get('/')
+async hello(): Promise<IResponseReturn<HelloResponseDto>> {
+  return this.helloHttpService.hello();
 }
 ```
 
@@ -517,21 +421,7 @@ Apis:{key}
 
 **Custom Cache Configuration:**
 
-```typescript
-@Response('user.get', {
-  schema: UserProfileResponseSchema,
-  cache: {
-    key: 'user-detail',
-    ttl: 3600000 // milliseconds (1 hour)
-  }
-})
-@Get('/:id')
-async getUser(
-  @Param('id') id: string
-): Promise<IResponseReturn<UserProfileResponseDto>> {
-  return { data: await this.userHttpService.get(id) };
-}
-```
+`cache` also accepts `{ key, ttl }`. `key` becomes `CacheKey`; `ttl` is milliseconds and becomes `CacheTTL`. `GET /public/hello` passes `cache: true`, so the interceptor default key from `response.keyPattern` (`Apis:{key}`) applies and TTL comes from `redis.cache.ttlInMs`.
 
 See [NestJS Cache Manager](https://docs.nestjs.com/techniques/caching) and [Cache Documentation][ref-doc-cache] for configuration.
 

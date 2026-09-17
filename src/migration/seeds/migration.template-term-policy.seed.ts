@@ -5,9 +5,9 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { TermPolicyTemplateDomain } from '@modules/term-policy/domains/term-policy.template.domain';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';

@@ -1,11 +1,11 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumUserLoginWith } from '@generated/prisma-client';
-import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
-import { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { EnumUserLoginWith } from '@generated/prisma-client/client';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
+import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
+import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import {
+import type {
     IUser,
     IUserLoginOutcome,
 } from '@modules/user/interfaces/user.interface';

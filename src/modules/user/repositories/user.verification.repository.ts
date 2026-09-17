@@ -1,17 +1,17 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumUserStatus,
     EnumVerificationType,
-    Verification,
-} from '@generated/prisma-client';
-import {
+} from '@generated/prisma-client/client';
+import type { Verification } from '@generated/prisma-client/client';
+import type {
     IUserOnboardingVerificationRow,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';
-import { IUserVerificationRepository } from '@modules/user/interfaces/user.verification.repository.interface';
+import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

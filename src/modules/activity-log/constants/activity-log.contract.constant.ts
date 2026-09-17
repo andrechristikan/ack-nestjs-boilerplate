@@ -1,18 +1,31 @@
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import { ActivityLogActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.actor-metadata.dto';
 import { ActivityLogApiKeyMetadataSchema } from '@modules/activity-log/dtos/activity-log.api-key-metadata.dto';
-import { ActivityLogDeviceMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-metadata.dto';
+import { ActivityLogDeviceActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-actor-metadata.dto';
+import { ActivityLogDeviceTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.device-target-metadata.dto';
 import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activity-log.empty-metadata.dto';
+import { ActivityLogImportMetadataSchema } from '@modules/activity-log/dtos/activity-log.import-metadata.dto';
+import { ActivityLogInviteMetadataSchema } from '@modules/activity-log/dtos/activity-log.invite-metadata.dto';
 import { ActivityLogNotificationSettingMetadataSchema } from '@modules/activity-log/dtos/activity-log.notification-setting-metadata.dto';
 import { ActivityLogRoleMetadataSchema } from '@modules/activity-log/dtos/activity-log.role-metadata.dto';
-import { ActivityLogSessionMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-metadata.dto';
+import { ActivityLogSessionActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-actor-metadata.dto';
+import { ActivityLogSessionAllActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-all-actor-metadata.dto';
+import { ActivityLogSessionAllTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-all-target-metadata.dto';
+import { ActivityLogSessionTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-target-metadata.dto';
+import { ActivityLogTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.target-metadata.dto';
 import { ActivityLogTermPolicyMetadataSchema } from '@modules/activity-log/dtos/activity-log.term-policy-metadata.dto';
-import { ActivityLogUserMetadataSchema } from '@modules/activity-log/dtos/activity-log.user-metadata.dto';
+import { ActivityLogUserActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.user-actor-metadata.dto';
+import { ActivityLogUserTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.user-target-metadata.dto';
 import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { IActivityLogContract } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogContract } from '@modules/activity-log/interfaces/activity-log.interface';
 
+/**
+ * Per-action contract of an activity-log event: how its user and workspace resolve and the schema its metadata must match.
+ * @public
+ */
 export const ActivityLogContractByAction: Record<
     EnumActivityLogAction,
     IActivityLogContract
@@ -21,27 +34,27 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.userCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userBlocked]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserTargetMetadataSchema,
     },
     [EnumActivityLogAction.userUpdateStatus]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserTargetMetadataSchema,
     },
     [EnumActivityLogAction.userUpdatePasswordByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserTargetMetadataSchema,
     },
     [EnumActivityLogAction.userResetTwoFactorByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserTargetMetadataSchema,
     },
     [EnumActivityLogAction.userLoginCredential]: {
         user: EnumActivityLogUser.target,
@@ -96,17 +109,27 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.userRevokeSessionByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogSessionMetadataSchema,
+        metadata: ActivityLogSessionTargetMetadataSchema,
     },
     [EnumActivityLogAction.userRevokeAllSessionsByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogSessionAllTargetMetadataSchema,
     },
     [EnumActivityLogAction.userRemoveDevice]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogDeviceMetadataSchema,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userCreatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogUserTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.userRemoveDeviceByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogDeviceTargetMetadataSchema,
     },
 
     // Authenticated self-service
@@ -163,7 +186,7 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.userRevokeSession]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogSessionMetadataSchema,
+        metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userRevokeAllSessions]: {
         user: EnumActivityLogUser.payload,
@@ -215,7 +238,7 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.adminSessionRevoke]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogSessionMetadataSchema,
+        metadata: ActivityLogSessionActorMetadataSchema,
     },
     [EnumActivityLogAction.adminApiKeyCreate]: {
         user: EnumActivityLogUser.payload,
@@ -310,32 +333,37 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.adminUserCreate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserActorMetadataSchema,
     },
     [EnumActivityLogAction.adminUserUpdateStatus]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserActorMetadataSchema,
     },
     [EnumActivityLogAction.adminUserUpdatePassword]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserActorMetadataSchema,
     },
     [EnumActivityLogAction.adminUserResetTwoFactor]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogUserMetadataSchema,
+        metadata: ActivityLogUserActorMetadataSchema,
     },
     [EnumActivityLogAction.adminUserImport]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogImportMetadataSchema,
     },
     [EnumActivityLogAction.adminDeviceRemove]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogDeviceMetadataSchema,
+        metadata: ActivityLogDeviceActorMetadataSchema,
+    },
+    [EnumActivityLogAction.adminSessionRevokeAll]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogSessionAllActorMetadataSchema,
     },
 
     // Workspace / project — explicit workspaceId staged
@@ -367,12 +395,12 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.workspaceMemberRoleUpdated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.workspaceMemberRemoved]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.workspaceMemberLeft]: {
         user: EnumActivityLogUser.target,
@@ -382,22 +410,22 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.workspaceOwnershipTransferred]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.workspaceInviteCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogInviteMetadataSchema,
     },
     [EnumActivityLogAction.workspaceInviteAccepted]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.workspaceInviteRevoked]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogInviteMetadataSchema,
     },
     [EnumActivityLogAction.workspaceJoinRequested]: {
         user: EnumActivityLogUser.target,
@@ -407,12 +435,57 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.workspaceJoinAccepted]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.workspaceJoinRejected]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceCreatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceMemberRemovedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceOwnershipTransferredByOwner]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceInviteCreatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceInviteAcceptedByInvitee]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceInviteRevokedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceJoinAcceptedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceJoinRejectedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
     },
 
     [EnumActivityLogAction.projectCreated]: {
@@ -433,21 +506,36 @@ export const ActivityLogContractByAction: Record<
     [EnumActivityLogAction.projectMemberAssigned]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.projectMemberRoleUpdated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.projectMemberRemoved]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogActorMetadataSchema,
     },
     [EnumActivityLogAction.projectMemberLeft]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.projectMemberAssignedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.projectMemberRoleUpdatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.projectMemberRemovedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
     },
 };

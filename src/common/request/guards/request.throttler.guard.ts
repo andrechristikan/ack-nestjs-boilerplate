@@ -1,13 +1,14 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
     InjectThrottlerOptions,
     InjectThrottlerStorage,
     ThrottlerGuard,
-    ThrottlerModuleOptions,
     ThrottlerStorage,
 } from '@nestjs/throttler';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { ThrottlerModuleOptions } from '@nestjs/throttler';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 
 @Injectable()

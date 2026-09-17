@@ -1,4 +1,4 @@
-import {
+import type {
     RegisterQueueOptions,
     RegisterQueueOptionsFactory,
 } from '@nestjs/bullmq';

@@ -1,16 +1,18 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
     Prisma,
+} from '@generated/prisma-client/client';
+import type {
     Project,
     ProjectMember,
     WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { ProjectWorkspaceOwnerStoreKey } from '@modules/project/constants/project.constant';
@@ -20,7 +22,7 @@ import { ProjectMemberNotFoundException } from '@modules/project/exceptions/proj
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectRoleForbiddenException } from '@modules/project/exceptions/project.role-forbidden.exception';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -166,8 +168,19 @@ export class ProjectMemberDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.projectMemberAssigned,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
             });
+            if (targetMember.userId !== actorId) {
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.projectMemberAssignedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            }
 
             return member;
         });
@@ -198,14 +211,24 @@ export class ProjectMemberDomain {
             await this.projectMemberRepository.updateRoleInTx(
                 tx,
                 targetMember.id,
-                newRole,
-                actorId
+                newRole
             );
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
             });
+            if (targetMember.userId !== actorId) {
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            }
         });
     }
 
@@ -240,8 +263,19 @@ export class ProjectMemberDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.projectMemberRemoved,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
             });
+            if (targetMember.userId !== actorId) {
+                this.activityLogDomain.stage({
+                    action: EnumActivityLogAction.projectMemberRemovedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actorId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actorId },
+                });
+            }
         });
     }
 
@@ -251,6 +285,7 @@ export class ProjectMemberDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.projectMemberLeft,
                 userId: member.userId,
+                createdBy: member.userId,
                 workspaceId: project.workspaceId,
             });
         });

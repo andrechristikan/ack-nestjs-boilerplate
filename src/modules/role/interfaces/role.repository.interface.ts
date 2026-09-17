@@ -1,17 +1,18 @@
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IRole,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { Prisma, Role } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Role } from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
     findWithPaginationOffsetByAdmin(

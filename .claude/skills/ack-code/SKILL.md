@@ -1,6 +1,7 @@
 ---
 name: ack-code
-description: Build or repair src/ behaviour test-first, write seeds, and run the mechanical checks — explorer, planner, coder (seed-writer when migration), then offer reviewer, reviewer-e2e, and doc-writer. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for .claude/** (ack-claude-config).
+description: >-
+    Build or repair src/ behaviour test-first, write seeds, and run the mechanical checks — explorer, planner, coder (seed-writer when migration), then offer reviewer, reviewer-e2e, and doc-writer. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for .claude/** (ack-claude-config).
 disable-model-invocation: true
 ---
 
@@ -136,18 +137,19 @@ pnpm typecheck
 pnpm lint
 pnpm deadcode
 pnpm spell
-pnpm test --testPathPatterns '<module>'
+pnpm test <module>
 ```
 
 **The test run is SCOPED to the modules the work actually CHANGED.** Name each one. A module
 you only read is not in scope. A full `pnpm test` belongs to `/ack-spec` and to `pre-commit`.
 
-`collectCoverage` is `false`. Coverage is `pnpm test:cov`. A scoped coverage run exits 1
-while every spec passes because the threshold is GLOBAL — read the `Tests:` line and the
-per-file rows.
+`coverage.enabled` is `false` in `vitest.config.ts`. Coverage is `pnpm test:cov`. A scoped
+coverage run exits 1 while every spec passes because the threshold is GLOBAL — read the
+`Tests` line and the per-file rows.
 
-`deadcode` and `spell` ALWAYS exit 0. READ the output. `ts-prune` reports the whole kit
-surface by design — its entries are not findings (`rules/architecture.md`).
+`spell` ALWAYS exits 0. `deadcode` (knip) exits 1 only on an `error`-level finding; unused
+files and exports print as warnings — they are not findings (`rules/architecture.md`). READ
+both outputs and report them.
 
 A coverage gap beyond the TDD specs `coder` wrote is the owner's call. Name the file and
 the uncovered lines. `/ack-spec` writes those specs. This skill does not dispatch

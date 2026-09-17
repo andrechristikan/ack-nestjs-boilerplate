@@ -1,5 +1,5 @@
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     HealthCacheControlHeaderName,
@@ -11,22 +11,14 @@ import {
     HealthSystemCheckInstanceDoc,
     HealthSystemCheckThirdPartyDoc,
 } from '@modules/health/docs/health.system.doc';
-import {
-    HealthAwsResponseDto,
-    HealthAwsResponseSchema,
-} from '@modules/health/dtos/response/health.aws.response.dto';
-import {
-    HealthDatabaseResponseDto,
-    HealthDatabaseResponseSchema,
-} from '@modules/health/dtos/response/health.database.response.dto';
-import {
-    HealthInstanceResponseDto,
-    HealthInstanceResponseSchema,
-} from '@modules/health/dtos/response/health.instance.response.dto';
-import {
-    HealthThirdPartyResponseDto,
-    HealthThirdPartyResponseSchema,
-} from '@modules/health/dtos/response/health.third-party.response.dto';
+import { HealthAwsResponseSchema } from '@modules/health/dtos/response/health.aws.response.dto';
+import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseSchema } from '@modules/health/dtos/response/health.database.response.dto';
+import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { HealthInstanceResponseSchema } from '@modules/health/dtos/response/health.instance.response.dto';
+import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import { HealthThirdPartyResponseSchema } from '@modules/health/dtos/response/health.third-party.response.dto';
+import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthHttpService } from '@modules/health/services/health.http.service';
 import { Controller, Get, Header, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';

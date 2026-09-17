@@ -1,6 +1,6 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { TwoFactor } from '@generated/prisma-client';
-import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { TwoFactor } from '@generated/prisma-client/client';
+import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
 
 export interface IUserTwoFactorRepository {
     createDisabledInTx(
@@ -11,17 +11,18 @@ export interface IUserTwoFactorRepository {
     verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult
-    ): Promise<TwoFactor>;
+        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean>;
     setupTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        secretEncrypted: string,
-        iv: string
+        pendingSecretEncrypted: string
     ): Promise<TwoFactor>;
     enableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        secretEncrypted: string,
         backupCodesHashed: string[]
     ): Promise<TwoFactor>;
     disableTwoFactorInTx(
@@ -35,8 +36,7 @@ export interface IUserTwoFactorRepository {
     ): Promise<TwoFactor>;
     resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        updatedBy: string
+        userId: string
     ): Promise<TwoFactor>;
     increaseTwoFactorAttempt(userId: string): Promise<TwoFactor>;
     resetTwoFactorAttempt(userId: string): Promise<TwoFactor>;

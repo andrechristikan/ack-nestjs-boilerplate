@@ -3,19 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import Case from 'case';
 import { I18nService } from 'nestjs-i18n';
-import {
+import type {
     IMessageErrorOptions,
     IMessageSetOptions,
     IMessageValidationError,
     IMessageValidationImportError,
     IMessageValidationImportErrorParam,
 } from '@common/message/interfaces/message.interface';
-import { IMessageService } from '@common/message/interfaces/message.service.interface';
 import { MessageValidationIssueFallbackKey } from '@common/message/constants/message.constant';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 @Injectable()
-export class MessageService implements IMessageService {
+export class MessageService {
     private readonly defaultLanguage: EnumMessageLanguage;
     private readonly availableLanguage: EnumMessageLanguage[];
 

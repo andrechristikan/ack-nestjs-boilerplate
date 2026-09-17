@@ -1,0 +1,31 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "entry": [
+        "src/main.ts",
+        "src/migration.ts",
+        "src/instrument.ts",
+        "scripts/*.ts"
+    ],
+    "ignoreExportsUsedInFile": true,
+    "ignoreFiles": [],
+    "rules": {
+        "files": "warn",
+        "dependencies": "warn",
+        "devDependencies": "warn",
+        "exports": "warn",
+        "nsExports": "warn",
+        "types": "warn",
+        "nsTypes": "warn",
+        "enumMembers": "warn",
+        "namespaceMembers": "warn",
+        "catalog": "warn"
+    },
+    "ignoreDependencies": [
+        "pino-pretty",
+        "pino-roll",
+        "@nestjs/testing",
+        "@types/supertest",
+        "supertest",
+        "vitest-mock-extended"
+    ]
+}

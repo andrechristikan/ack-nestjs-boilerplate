@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions } from '@nestjs/swagger';
+import type { ApiParamOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `roleId`.
+ * @public
+ */
 export const PolicyDocParamsRoleId: ApiParamOptions[] = [
     {
         name: 'roleId',
@@ -11,6 +15,10 @@ export const PolicyDocParamsRoleId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameter `policyId`.
+ * @public
+ */
 export const PolicyDocParamsId: ApiParamOptions[] = [
     {
         name: 'policyId',

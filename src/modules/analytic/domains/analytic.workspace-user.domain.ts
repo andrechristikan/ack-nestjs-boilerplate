@@ -1,6 +1,6 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
+import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
     IAnalyticStatusCount,

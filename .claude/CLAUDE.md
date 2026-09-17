@@ -10,9 +10,12 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 
 ## Stack
 
-- NestJS 12 · TypeScript strict · Node >= 24.11 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
+- NestJS 12 · TypeScript 6 strict · Node >= 24.15 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
   **PNPM only** — `npm` and `yarn` are blocked by `engines` and by a `npx only-allow pnpm`
   preinstall guard
+- **Native ESM** (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`). Imports use
+  the `tsconfig.json` `paths` aliases (`rules/code-style.md`). SWC builds `src/`; Vitest runs
+  `test/`
 - Prisma 6 + **MongoDB 8 replica set** — a replica set is required, transactions do not work
   without one. There are NO migration files: schema shape is applied by `prisma db push`
 - Redis: cache on `db:0` through `CACHE_REDIS_URL`, BullMQ on `db:1` through
@@ -21,7 +24,8 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 - HTTP with Swagger under the configured `doc.prefix`; every transport shape is a **zod schema**
   (`zod` 4 + `zod-openapi`), validated through the global `RequestSchemaValidationPipe` on the way
   in and `ResponseInterceptor` on the way out; i18n through `nestjs-i18n` reading `src/languages/`
-- Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
+- Pino logging, Sentry (`src/instrument.ts` init, `src/common/sentry` reporting),
+  nest-commander seeding CLI, Vault for secrets
 - Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
 ## Layout
@@ -36,12 +40,13 @@ humans: `docs/project-structure.md` — not a standing read.
 src/
 ├── main.ts             # HTTP bootstrap — global prefix, versioning, trusted proxy, Swagger
 ├── migration.ts        # nest-commander entrypoint — boots MigrationModule, runs seeders
-├── instrument.ts       # Sentry init (imported first by main.ts)
+├── instrument.ts       # Sentry init and event scrubbing (node --import, and main.ts's first import)
 ├── swagger.ts          # Swagger/OpenAPI document builder
 ├── app/                # framework layer — app.module + the APP_FILTER chain
 ├── common/             # the shared module — database, cache, redis, pagination, request,
-│                       #   response, logger, message, helper, file, doc, aws, firebase
+│                       #   response, logger, message, helper, file, doc, aws, firebase, sentry
 ├── configs/            # registerAs config files + index.ts barrel
+├── generated/          # prisma-client/ (prisma generate) and package/ (generate:package), gitignored
 ├── languages/          # nestjs-i18n JSON, one file per module prefix
 ├── migration/          # SEEDS — data/, seeds/, bases/, enums/, interfaces/
 ├── modules/            # feature modules (repository pattern)
@@ -52,13 +57,15 @@ src/
                         #   processor/ aggregates every <feature>.processor.module.ts
 
 prisma/schema.prisma    # editable; applying it to MongoDB is the owner's — see "How work happens here"
-generated/              # prisma client, swagger, vault init, agent reports (gitignored)
+generated/              # swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
-test/                   # jest.json + specs mirroring src/
-scripts/ · ci/ · keys/
+test/                   # specs mirroring src/, collected by vitest.config.ts
+scripts/                # generate-secret.ts, generate-package.ts
+ci/ · keys/             # keys/ holds the generated JWT keys and encryption-secret.env (gitignored)
 
-tsconfig.json           # typecheck, jest, ts-prune, editor — src + test + scripts
+tsconfig.json           # typecheck, vitest, knip, editor — src + test + scripts + vitest.config.ts
 tsconfig.build.json     # nest build / nest start — src only; named by nest-cli.json
+knip.json               # pnpm deadcode
 ```
 
 `src/app/app.module.ts` registers the `APP_FILTER` providers in array order general →
@@ -68,16 +75,24 @@ the most specific catch runs first.
 ## Commands
 
 - `pnpm install` · `pnpm start:dev` · `pnpm build` · `pnpm start:prod`
+- `pnpm generate` — `db:generate` (`prisma generate`) then `generate:package`
+  (`src/generated/package/package.ts`). After a fresh checkout and after a `package.json`
+  version bump. CI and both dockerfiles run it
+- `pnpm generate:secret` (both) · `pnpm generate:secret:jwt` · `pnpm generate:secret:encryption`
+  — key material into `keys/`, printed as paths only; `--direct-insert` also upserts that
+  target's `.env` variables and rotates them
 - `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
-- `pnpm test` — `TZ=UTC jest --config test/jest.json`; `pnpm test:cov` adds coverage
+- `pnpm test` — `TZ=UTC vitest run --passWithNoTests`; `pnpm test:cov` adds `--coverage`
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
 - `pnpm db:studio` · `pnpm vault:pull`
 - `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
-- `pre-commit` runs lint-staged → typecheck → deadcode → spell → the test suite.
+- `pre-commit` runs lint-staged → typecheck → deadcode → spell → `NODE_ENV=test pnpm test`.
   `commit-msg` runs commitlint. Both are BLOCKING.
 
-**`deadcode` and `spell` always exit 0.** `spell` ends in `|| true` and `ts-prune` never
-signals. Their exit code means nothing: READ the output and report what it says.
+**`pnpm deadcode` is knip.** `knip.json` sets unused files, exports, types, enum members and
+dependencies to `warn`: they print and exit 0. Unlisted dependencies, unresolved imports,
+unlisted binaries and duplicate exports stay `error` and exit 1. **`spell` always exits 0**
+(it ends in `|| true`). For both, READ the output and report what it says.
 
 ## Skills
 
@@ -92,7 +107,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
 | `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
-| `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
+| `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md`, with agents and skills disabled |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from
 `.claude/skills/*/SKILL.md`, so adding a skill needs no second edit anywhere.
@@ -127,11 +142,11 @@ review of their own. A docs-only pass is `/ack-docs`; a docs update after a code
 `doc-writer` offer.
 
 **A test run is always scoped to the module the work actually CHANGED** —
-`pnpm test --testPathPatterns '<module>'`. No skill except `/ack-spec` runs the full
+`pnpm test <module>` (a Vitest path filter). No skill except `/ack-spec` runs the full
 suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
-`collectCoverage` is `false` in `test/jest.json`, so a scoped `pnpm test` does not apply the
-100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
-spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
+`coverage.enabled` is `false` in `vitest.config.ts`, so a scoped `pnpm test` does not apply
+the 100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
+spec passing because the threshold is global — read the `Tests` line and the per-file rows,
 not the exit code and not the global summary.
 
 **A coverage gap is never closed silently.** `/ack-spec` is the skill that writes specs —

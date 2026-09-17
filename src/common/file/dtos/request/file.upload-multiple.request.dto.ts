@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { IFile } from '@common/file/interfaces/file.interface';
+import type { IFile } from '@common/file/interfaces/file.interface';
 
 /**
  * Multipart body shape for endpoints accepting multiple file uploads.
+ * @public
  */
 export const FileUploadMultipleRequestSchema = z.strictObject({
     files: z
@@ -18,6 +19,10 @@ export const FileUploadMultipleRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Multipart body carrying several uploaded files.
+ * @public
+ */
 export type FileUploadMultipleRequestDto = z.infer<
     typeof FileUploadMultipleRequestSchema
 >;

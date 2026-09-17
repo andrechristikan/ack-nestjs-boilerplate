@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
-import ObjectID from 'bson-objectid';
+import { Prisma } from '@generated/prisma-client/client';
+import { ObjectId } from 'bson';
 
 /**
- * BSON ObjectID helpers and deep-clone casts to Prisma `JsonObject` types.
+ * BSON ObjectId helpers and deep-clone casts to Prisma `JsonObject` types.
  */
 @Injectable()
 export class DatabaseUtil {
     checkIdIsValid(id: string): boolean {
-        return ObjectID.isValid(id);
+        return ObjectId.isValid(id);
     }
 
     createId(): string {
-        return ObjectID().toHexString();
+        return new ObjectId().toHexString();
     }
 
     /**

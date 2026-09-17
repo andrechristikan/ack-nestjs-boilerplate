@@ -1,17 +1,17 @@
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
-import { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleDto } from '@modules/role/dtos/role.dto';
+import { Prisma } from '@generated/prisma-client/client';
+import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
+import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { Injectable } from '@nestjs/common';
 

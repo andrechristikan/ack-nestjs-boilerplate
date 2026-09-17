@@ -68,24 +68,23 @@ Basic API documentation decorator that sets up common operation metadata.
 - Custom headers:
   - `x-custom-lang` - **Customizable by frontend** - Custom language header (default: EN)
   - `x-correlation-id` - **Customizable by frontend** - Correlation identifier for tracking requests across services
-- Standard error responses:
+- Standard error responses (`DocStandardErrorResponse`):
   - Internal server error (500)
   - Request timeout (408)
   - Validation error (422)
-  - Environment forbidden error
-  - Parameter required error
+  - Environment forbidden error (403)
 
 **Usage:**
 
 ```typescript
 @Doc({
-    summary: 'Get user profile',
-    operation: 'getUserProfile',
-    description: 'Retrieve authenticated user profile information'
+    summary: 'get profile',
 })
-@Get('/profile')
-async getProfile() {
-    // implementation
+@Get('/profile/get')
+async profile(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
@@ -153,10 +152,14 @@ Documents file upload endpoints with multipart/form-data.
 **Auto-includes:**
 
 - Content-Type: multipart/form-data
-- File-related error responses:
+- File-related error responses (`DocFileErrorResponses`):
   - File extension invalid error
   - File required error
   - File required extract first error
+  - File exceeds the upload size cap
+  - Too many files
+  - Unexpected file field
+  - Malformed multipart body
 
 **Usage:**
 
@@ -277,7 +280,7 @@ async getSessions() {
 }
 ```
 
-A cursor route that allows no searchable field simply omits `availableSearch`, and the `search` query parameter is then absent from its Swagger entry.
+A cursor route that allows no searchable field omits `availableSearch`, and the `search` query parameter is then absent from its Swagger entry.
 
 ### DocResponseFile
 
@@ -288,6 +291,11 @@ Documents file download/response endpoints.
 - `options?: IDocResponseFileOptions`
   - `httpStatus?: HttpStatus` - HTTP status (default: 200)
   - `extension?: EnumFileExtensionDocument` - File extension (default: CSV)
+
+**Auto-includes:**
+
+- Produces: the MIME of `extension`
+- Export error responses: row cap exceeded (`exceedMaxDataExport`) and file size cap exceeded (`exceedMaxSizeExport`)
 
 **Usage:**
 
@@ -516,11 +524,13 @@ There are two ways to obtain the Swagger JSON file, both available outside produ
     - This file is written every time the app starts in a non-production environment.
     - You can use this file for CI/CD, external tools, or static documentation.
 
-Both methods provide the same OpenAPI spec. Use whichever fits your workflow (dynamic via URL or static via file).
+Both methods provide the same OpenAPI spec: one served live, one written to disk.
 
 ## Schema Documentation
 
 A DTO here is a zod schema plus the type inferred from it, and the OpenAPI schema object is produced from that same schema by [zod-openapi][ref-zod-openapi]. There is no separate annotation layer: the doc decorators call `createSchema(schema)` and hand the result to `@nestjs/swagger`.
+
+Each `*.dto.ts` file declares one schema and its inferred type. Both carry a one-line JSDoc summary followed by `@public`; the same convention covers decorators, enums, exceptions, and constants.
 
 ### .meta()
 
@@ -536,6 +546,10 @@ Everything else the OpenAPI schema carries comes from the zod type itself: `.min
 **Usage:**
 
 ```typescript
+/**
+ * Validates the body for changing the signed-in user password.
+ * @public
+ */
 export const UserChangePasswordRequestSchema =
     UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
         .partial()
@@ -558,6 +572,10 @@ export const UserChangePasswordRequestSchema =
             }),
         });
 
+/**
+ * Body for changing the signed-in user password.
+ * @public
+ */
 export type UserChangePasswordRequestDto = z.infer<
     typeof UserChangePasswordRequestSchema
 >;
@@ -565,22 +583,19 @@ export type UserChangePasswordRequestDto = z.infer<
 
 **With Composition:**
 
-A derived schema inherits the `.meta()` of every field it keeps, so only the new field needs annotating:
+A derived schema inherits the `.meta()` of every field it keeps, so only the new field carries its own:
 
 ```typescript
 export const UserForgotPasswordResetRequestSchema =
-    UserChangePasswordRequestSchema.pick({ newPassword: true })
-        .extend(
-            UserLoginVerifyTwoFactorRequestSchema.omit({
-                challengeToken: true,
-            }).partial().shape
-        )
-        .extend({
-            token: z.string().min(1).meta({
-                description: 'Forgot password token',
-                example: faker.string.alphanumeric(20),
-            }),
-        });
+    UserChangePasswordRequestSchema.pick({ newPassword: true }).extend({
+        method: UserLoginVerifyTwoFactorRequestSchema.shape.method.optional(),
+        code: UserLoginVerifyTwoFactorRequestSchema.shape.code,
+        backupCode: UserLoginVerifyTwoFactorRequestSchema.shape.backupCode,
+        token: z.string().min(1).meta({
+            description: 'Forgot password token',
+            example: faker.string.alphanumeric(20),
+        }),
+    });
 
 export type UserForgotPasswordResetRequestDto = z.infer<
     typeof UserForgotPasswordResetRequestSchema

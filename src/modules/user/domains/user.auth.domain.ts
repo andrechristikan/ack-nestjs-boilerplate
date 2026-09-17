@@ -8,8 +8,8 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-} from '@generated/prisma-client';
-import { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+} from '@generated/prisma-client/client';
+import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -29,7 +29,7 @@ import { UserPasswordNotSetException } from '@modules/user/exceptions/user.passw
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserLoginCredential,
@@ -275,13 +275,9 @@ export class UserAuthDomain {
         }
 
         const userId = this.databaseUtil.createId();
-        const password = this.authPasswordUtil.createPassword(
-            userId,
-            passwordString
-        );
+        const password = this.authPasswordUtil.createPassword(passwordString);
         const emailVerification =
             this.userVerificationDomain.verificationCreateVerification(
-                userId,
                 EnumVerificationType.email
             ) as IUserVerificationEmailCreate;
 
@@ -337,7 +333,7 @@ export class UserAuthDomain {
                 emailVerification.expiredAt
             ),
             reference: emailVerification.reference,
-            link: emailVerification.encryptedLink,
+            link: emailVerification.link,
             expiredInMinutes: emailVerification.expiredInMinutes,
         });
     }

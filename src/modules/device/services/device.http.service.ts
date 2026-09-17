@@ -1,15 +1,15 @@
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
-import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
+import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { Injectable } from '@nestjs/common';
 

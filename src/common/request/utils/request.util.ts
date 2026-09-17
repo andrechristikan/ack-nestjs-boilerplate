@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
-import {
+import type {
     GeoLocation,
     UserAgent,
     UserAgentBrowser,
@@ -12,8 +12,8 @@ import {
     UserAgentDevice,
     UserAgentEngine,
     UserAgentOs,
-} from '@generated/prisma-client';
-import {
+} from '@generated/prisma-client/client';
+import type {
     IRequestApp,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';

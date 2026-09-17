@@ -1,18 +1,19 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma, Workspace } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
-import { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
+import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
+import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -128,7 +129,6 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async updateDetailsInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<Workspace> {
         return tx.workspace.update({
@@ -136,7 +136,6 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             data: {
                 name,
                 description,
-                updatedBy: actorId,
             },
         });
     }
@@ -144,14 +143,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async updateIsPublicInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
         isPublic: boolean
     ): Promise<Workspace> {
         return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 isPublic,
-                updatedBy: actorId,
             },
         });
     }
@@ -159,14 +156,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async updateSlugInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
         slug: string
     ): Promise<Workspace> {
         return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 slug,
-                updatedBy: actorId,
             },
         });
     }
@@ -174,14 +169,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
         deletedAt: Date
     ): Promise<void> {
         await tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 deletedAt,
-                updatedBy: actorId,
             },
         });
     }

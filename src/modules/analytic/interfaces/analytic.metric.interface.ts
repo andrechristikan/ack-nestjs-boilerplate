@@ -27,11 +27,6 @@ export interface IAnalyticMetricRate {
     rate: number;
 }
 
-export interface IAnalyticMetricPair {
-    count: number;
-    total: number;
-}
-
 export interface IAnalyticBlockedUsers {
     trend: number;
     current: number;

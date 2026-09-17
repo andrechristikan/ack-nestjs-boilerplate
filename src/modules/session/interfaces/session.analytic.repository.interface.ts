@@ -1,7 +1,8 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface ISessionAnalyticSessionRow {
     id: string;

@@ -1,11 +1,13 @@
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
+import type {
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
-} from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+} from '@generated/prisma-client/client';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 export interface IWorkspaceMember extends WorkspaceMember {

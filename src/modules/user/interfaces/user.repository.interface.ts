@@ -1,15 +1,15 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.profile.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
@@ -20,10 +20,10 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     Prisma,
-    User,
-} from '@generated/prisma-client';
-import { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
+} from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IUserRepository {
     findWithPaginationOffset(
@@ -65,8 +65,7 @@ export interface IUserRepository {
     updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto,
-        updatedBy: string
+        { status }: UserUpdateStatusRequestDto
     ): Promise<User>;
     updateProfileInTx(
         tx: IDatabaseTransactionClient,

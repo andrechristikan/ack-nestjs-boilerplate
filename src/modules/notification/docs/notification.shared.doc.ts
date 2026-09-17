@@ -10,14 +10,10 @@ import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
-import {
-    NotificationResponseDto,
-    NotificationResponseSchema,
-} from '@modules/notification/dtos/response/notification.response.dto';
-import {
-    NotificationUserSettingResponseDto,
-    NotificationUserSettingResponseSchema,
-} from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
+import type { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
+import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function NotificationSharedListDoc(): MethodDecorator {

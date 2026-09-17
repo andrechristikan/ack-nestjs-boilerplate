@@ -1,7 +1,7 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -10,11 +10,11 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import {
     EnumWorkspaceInviteStatus,
     Prisma,
-    WorkspaceInvite,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite.repository.interface';
-import { IWorkspaceInviteCreateData } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite.repository.interface';
+import type { IWorkspaceInviteCreateData } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -47,8 +47,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async expirePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string
+        workspaceId: string
     ): Promise<void> {
         await tx.workspaceInvite.updateMany({
             where: {
@@ -57,7 +56,6 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             },
             data: {
                 status: EnumWorkspaceInviteStatus.expired,
-                updatedBy: actorId,
             },
         });
     }
@@ -154,14 +152,12 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 reference,
                 expiredAt,
                 invitedByUserId,
-                createdBy: invitedByUserId,
             },
         });
     }
 
     async rotateForResend(
         workspaceInviteId: string,
-        actorId: string,
         hashedToken: string,
         reference: string,
         expiredAt: Date
@@ -172,21 +168,18 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 token: hashedToken,
                 reference,
                 expiredAt,
-                updatedBy: actorId,
             },
         });
     }
 
     async revokeInTx(
         tx: IDatabaseTransactionClient,
-        workspaceInviteId: string,
-        actorId: string
+        workspaceInviteId: string
     ): Promise<void> {
         await tx.workspaceInvite.update({
             where: { id: workspaceInviteId },
             data: {
                 status: EnumWorkspaceInviteStatus.revoked,
-                updatedBy: actorId,
             },
         });
     }

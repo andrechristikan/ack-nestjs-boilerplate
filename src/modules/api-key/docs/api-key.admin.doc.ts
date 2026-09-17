@@ -16,18 +16,14 @@ import {
     ApiKeyDocQueryList,
 } from '@modules/api-key/constants/api-key.doc.constant';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
-import {
-    ApiKeyCreateResponseDto,
-    ApiKeyCreateResponseSchema,
-} from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import {
     ApiKeyDefaultAvailableOrderBy,
     ApiKeyDefaultAvailableSearch,
 } from '@modules/api-key/constants/api-key.list.constant';
-import {
-    ApiKeyResponseDto,
-    ApiKeyResponseSchema,
-} from '@modules/api-key/dtos/response/api-key.response.dto';
+import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
+import type { ApiKeyResponseDto } from '@modules/api-key/dtos/response/api-key.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(

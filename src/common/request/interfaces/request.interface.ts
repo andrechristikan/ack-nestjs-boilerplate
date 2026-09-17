@@ -1,6 +1,6 @@
-import { Request } from 'express';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { GeoLocation, UserAgent } from '@generated/prisma-client';
+import type { Request } from 'express';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 
 export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<

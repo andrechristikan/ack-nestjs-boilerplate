@@ -1,21 +1,22 @@
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
-    INotificationTemporaryPasswordPayload,
-    INotificationWorkspaceInvitePayload,
+    INotificationTemporaryPasswordPushPayload,
+    INotificationWorkspaceInvitePushPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushMaintenanceDomain } from '@modules/notification/domains/notification.push.maintenance.domain';
 import { NotificationPushSecurityDomain } from '@modules/notification/domains/notification.push.security.domain';
 import { NotificationPushWorkspaceDomain } from '@modules/notification/domains/notification.push.workspace.domain';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationPushProcessorService implements OnModuleInit {
@@ -58,7 +59,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     async processTemporaryPasswordByAdmin({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
+        INotificationPushQueuePayload<INotificationTemporaryPasswordPushPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -91,7 +92,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     async processWorkspaceInvite({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+        INotificationPushQueuePayload<INotificationWorkspaceInvitePushPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {
@@ -104,7 +105,7 @@ export class NotificationPushProcessorService implements OnModuleInit {
     async processWorkspaceJoinRequest({
         data: { send, data },
     }: Job<
-        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+        INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPushPayload>,
         IQueueResponse,
         EnumNotificationPushProcess
     >): Promise<IQueueResponse> {

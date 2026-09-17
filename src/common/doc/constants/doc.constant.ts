@@ -9,6 +9,7 @@ import { HttpStatus } from '@nestjs/common';
 /**
  * Maps request body types to MIME strings. `none` is excluded on purpose so `DocRequest`
  * skips `ApiConsumes` instead of emitting an invalid MIME type.
+ * @public
  */
 export const DocContentTypeMapping = {
     [EnumDocRequestBodyType.formData]: 'multipart/form-data',
@@ -17,6 +18,10 @@ export const DocContentTypeMapping = {
     [EnumDocRequestBodyType.formUrlencoded]: 'x-www-form-urlencoded',
 } as const;
 
+/**
+ * Error responses every documented endpoint can return: server error, timeout, validation and environment forbidden.
+ * @public
+ */
 export const DocStandardErrorResponse = {
     internalServerError: DocDefault({
         httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -40,6 +45,10 @@ export const DocStandardErrorResponse = {
     }),
 } as const;
 
+/**
+ * Pagination error responses shared by offset and cursor list endpoints.
+ * @public
+ */
 export const DocPaginationSharedErrorResponses = {
     orderByNotAllowed: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -73,6 +82,10 @@ export const DocPaginationSharedErrorResponses = {
     }),
 };
 
+/**
+ * Pagination error responses specific to cursor list endpoints.
+ * @public
+ */
 export const DocPaginationCursorErrorResponses = {
     invalidCursorPaginationParams: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -111,6 +124,10 @@ export const DocPaginationCursorErrorResponses = {
     }),
 };
 
+/**
+ * Pagination error responses specific to offset list endpoints.
+ * @public
+ */
 export const DocPaginationOffsetErrorResponses = {
     invalidOffsetPaginationParams: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -134,6 +151,10 @@ export const DocPaginationOffsetErrorResponses = {
     }),
 };
 
+/**
+ * File upload and export error responses for documented file endpoints.
+ * @public
+ */
 export const DocFileErrorResponses = {
     required: DocDefault({
         httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -182,6 +203,10 @@ export const DocFileErrorResponses = {
     }),
 };
 
+/**
+ * Swagger query parameters of an offset list endpoint: `perPage` and `page`.
+ * @public
+ */
 export const DocPaginationOffsetQueries = [
     {
         name: 'perPage',
@@ -201,6 +226,10 @@ export const DocPaginationOffsetQueries = [
     },
 ];
 
+/**
+ * Swagger query parameters of a cursor list endpoint: `perPage` and `cursor`.
+ * @public
+ */
 export const DocPaginationCursorQueries = [
     {
         name: 'perPage',

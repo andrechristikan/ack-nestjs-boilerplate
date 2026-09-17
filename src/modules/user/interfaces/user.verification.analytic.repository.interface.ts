@@ -1,4 +1,4 @@
-import { EnumVerificationType } from '@generated/prisma-client';
+import { EnumVerificationType } from '@generated/prisma-client/client';
 export interface IUserVerificationAnalyticUsedBucket {
     isUsed: boolean;
     count: number;

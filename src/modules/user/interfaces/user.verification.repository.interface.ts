@@ -1,6 +1,7 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { EnumVerificationType, Verification } from '@generated/prisma-client';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { EnumVerificationType } from '@generated/prisma-client/client';
+import type { Verification } from '@generated/prisma-client/client';
+import type {
     IUserOnboardingVerificationRow,
     IUserVerificationCreate,
 } from '@modules/user/interfaces/user.interface';

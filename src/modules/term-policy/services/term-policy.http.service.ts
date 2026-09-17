@@ -1,16 +1,17 @@
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { Injectable } from '@nestjs/common';
-import { Prisma, TermPolicy } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyHttpService {
@@ -45,13 +46,9 @@ export class TermPolicyHttpService {
     }
 
     async createByAdmin(
-        body: TermPolicyCreateRequestDto,
-        createdBy: string
+        body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        const created = await this.termPolicyDomain.createByAdmin(
-            body,
-            createdBy
-        );
+        const created = await this.termPolicyDomain.createByAdmin(body);
 
         return { data: created };
     }

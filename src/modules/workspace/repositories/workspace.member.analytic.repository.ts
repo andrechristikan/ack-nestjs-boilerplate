@@ -1,9 +1,9 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IAnalyticRoleCount,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { IWorkspaceMemberAnalyticRepository } from '@modules/workspace/interfaces/workspace.member.analytic.repository.interface';
+import type { IWorkspaceMemberAnalyticRepository } from '@modules/workspace/interfaces/workspace.member.analytic.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

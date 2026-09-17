@@ -1,13 +1,14 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Workspace } from '@generated/prisma-client';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { Workspace } from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)

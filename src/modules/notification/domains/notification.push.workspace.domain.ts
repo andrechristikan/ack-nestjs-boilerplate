@@ -1,17 +1,17 @@
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { MessageService } from '@common/message/services/message.service';
-import { EnumNotificationChannel } from '@generated/prisma-client';
-import {
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import type {
     INotificationSendPushPayload,
-    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInvitePushPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and delivers the workspace invite and join-request push messages. */
 @Injectable()
@@ -30,7 +30,7 @@ export class NotificationPushWorkspaceDomain {
             notificationId,
             userId,
         }: INotificationSendPushPayload,
-        data: INotificationWorkspaceInvitePayload
+        data: INotificationWorkspaceInvitePushPayload
     ): Promise<IQueueResponse> {
         if (!this.firebaseService.isInitialized()) {
             return {
@@ -94,7 +94,7 @@ export class NotificationPushWorkspaceDomain {
             notificationId,
             userId,
         }: INotificationSendPushPayload,
-        data: INotificationWorkspaceJoinRequestPayload
+        data: INotificationWorkspaceJoinRequestPushPayload
     ): Promise<IQueueResponse> {
         if (!this.firebaseService.isInitialized()) {
             return {

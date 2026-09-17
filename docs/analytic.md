@@ -152,3 +152,15 @@ Exception class: `AnalyticInvalidDateRangeException`. Exception and status-code 
 ## Activity log seam
 
 Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`. Failed credential login stages `userLoginFailed` from `UserLoginDomain.stageLoginFailed` (called by `UserAuthDomain` after a password mismatch). Contract and description: [Activity Log](activity-log.md). Login path: [Authentication](authentication.md).
+
+An action one user takes on another writes an actor row and a target row ([Activity Log](activity-log.md#actor-and-target-rows)). The metrics that read those actions count one side of each pair:
+
+| Metric | Actions counted | Route |
+|---|---|---|
+| `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/auth/session-revoke` |
+| Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
+| Workspace activity volume | Every action in the workspace except `ActivityLogWorkspaceVolumeExcludedActions` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
+
+- `authSessionRevoke` counts the rows of the user whose sessions were revoked, so an admin revoke counts once. An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
+- The session-after-admin signal reads the target rows, whose `userId` is the user whose sessions were revoked, and flags a login by that same user within `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs`. An admin status change to `blocked` or `inactive` that revokes sessions writes `userRevokeAllSessionsByAdmin` too, so it feeds both metrics.
+- `ActivityLogWorkspaceVolumeExcludedActions` (owned by the activity-log module) lists the eleven workspace and project target actions. `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.

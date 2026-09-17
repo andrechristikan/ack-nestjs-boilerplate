@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cache } from 'cache-manager';
-import { ApiKey } from '@generated/prisma-client';
+import type { Cache } from 'cache-manager';
+import type { ApiKey } from '@generated/prisma-client/client';
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 
 /** Reads and writes the cached API key record. */

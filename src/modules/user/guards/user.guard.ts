@@ -1,5 +1,6 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Reflector } from '@nestjs/core';
 import {

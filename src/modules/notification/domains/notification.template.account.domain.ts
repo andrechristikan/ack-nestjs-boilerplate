@@ -1,4 +1,4 @@
-import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
+import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
 import { Injectable, Logger } from '@nestjs/common';

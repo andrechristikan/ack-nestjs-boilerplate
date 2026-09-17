@@ -1,7 +1,7 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class AnalyticCache {

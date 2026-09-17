@@ -1,13 +1,14 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { EnumUserStatus, ForgotPassword } from '@generated/prisma-client';
-import {
+import { EnumUserStatus } from '@generated/prisma-client/client';
+import type { ForgotPassword } from '@generated/prisma-client/client';
+import type {
     IUser,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import { IUserPasswordRepository } from '@modules/user/interfaces/user.password.repository.interface';
+import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

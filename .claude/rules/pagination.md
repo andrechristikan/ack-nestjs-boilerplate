@@ -107,7 +107,7 @@ Two obligations follow:
 - **Never put a value in the payload.** A `where` carried inside the token publishes the scope IDs, the soft-delete convention and the search field names to anyone holding a cursor, and grows the token with the filter until it passes `PaginationMaxCursorLength`. The payload stays fixed-size regardless of filter complexity.
 - **Canonicalize before hashing.** Object keys are sorted recursively and `Date` is normalised to ISO before the hash. `JSON.stringify` is key-order dependent; without this, a reordered `where` would read as a changed query, and an un-normalised `Date` would hash to `{}` and let a changed date filter slip through the guard.
 
-Renaming a payload field still invalidates every cursor a client holds. **This repo has no consumer**, so that is free here — take the clean shape and change every call site, per `.claude/CLAUDE.md` #7. Nothing about it fails at `tsc`.
+Renaming a payload field still invalidates every cursor a client holds. **This repo has no consumer**, so that is free here — take the clean shape and change every call site (`.claude/CLAUDE.md` → "How to work here"). Nothing about it fails at `tsc`.
 
 ## Cursor ordering always ends with the cursor field
 

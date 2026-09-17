@@ -2,22 +2,21 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
     EnumVerificationType,
-    Verification,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Verification } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IUserOnboardingVerificationRow,
     IUserVerificationCreate,
     IUserVerificationEmailCreate,
@@ -52,8 +51,7 @@ export class UserVerificationDomain {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
-        private readonly helperNumberService: HelperNumberService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperNumberService: HelperNumberService
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
 
@@ -109,7 +107,6 @@ export class UserVerificationDomain {
 
     /** Builds an OTP verification for mobile numbers or a tokenized link verification for email. */
     verificationCreateVerification(
-        userId: string,
         type: EnumVerificationType
     ): IUserVerificationCreate {
         if (type === EnumVerificationType.mobileNumber) {
@@ -130,12 +127,8 @@ export class UserVerificationDomain {
         const token = this.verificationCreateToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
         const link = this.verificationLinkPattern
-            .replace('{homeUrl}', this.homeUrl)
-            .replace('{token}', token);
-        const encryptedLink = this.helperEncryptionService.aes256EncryptSimple(
-            link ?? '',
-            userId
-        );
+            .replace('{homeUrl}', () => this.homeUrl)
+            .replace('{token}', () => token);
 
         return {
             reference: this.verificationCreateReference(),
@@ -144,8 +137,7 @@ export class UserVerificationDomain {
             token,
             hashedToken,
             expiredInMinutes: this.verificationExpiredInMinutes,
-            link: link,
-            encryptedLink: encryptedLink,
+            link,
             resendInMinutes: this.verificationResendInMinutes,
         };
     }
@@ -176,6 +168,7 @@ export class UserVerificationDomain {
                 this.activityLogDomain.stage({
                     action: EnumActivityLogAction.userVerifiedEmail,
                     userId: verification.userId,
+                    createdBy: verification.userId,
                 });
             });
 
@@ -226,7 +219,6 @@ export class UserVerificationDomain {
 
         try {
             const emailVerification = this.verificationCreateVerification(
-                user.id,
                 EnumVerificationType.email
             ) as IUserVerificationEmailCreate;
 
@@ -248,6 +240,7 @@ export class UserVerificationDomain {
                 this.activityLogDomain.stage({
                     action: EnumActivityLogAction.userSendVerificationEmail,
                     userId: user.id,
+                    createdBy: user.id,
                 });
             });
 
@@ -256,7 +249,7 @@ export class UserVerificationDomain {
                     emailVerification.expiredAt
                 ),
                 reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
+                link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
             });
 
@@ -278,6 +271,7 @@ export class UserVerificationDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.userVerifiedEmail,
                 userId: userId,
+                createdBy: userId,
             });
         });
     }
@@ -306,6 +300,7 @@ export class UserVerificationDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.userSendVerificationEmail,
                 userId: userId,
+                createdBy: userId,
             });
         });
     }

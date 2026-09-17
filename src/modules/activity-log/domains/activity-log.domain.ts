@@ -1,13 +1,13 @@
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { ActivityLogContractByAction } from '@modules/activity-log/constants/activity-log.contract.constant';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import {
@@ -15,7 +15,7 @@ import {
     EnumActivityLogWorkspace,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
-import {
+import type {
     IActivityLog,
     IActivityLogContract,
     IActivityLogFlushOptions,
@@ -23,12 +23,12 @@ import {
     IActivityLogStageInput,
     IActivityLogStagedEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { IActivityLogCreateManyRow } from '@modules/activity-log/interfaces/activity-log.repository.interface';
+import type { IActivityLogCreateManyRow } from '@modules/activity-log/interfaces/activity-log.repository.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
-import { Workspace } from '@generated/prisma-client';
+import type { Workspace } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogDomain {
@@ -55,7 +55,8 @@ export class ActivityLogDomain {
             input.metadata ?? {}
         );
 
-        this.assertUserFields(contract.user, input.userId);
+        this.assertTargetOnlyField(contract.user, input.userId);
+        this.assertTargetOnlyField(contract.user, input.createdBy);
         this.assertWorkspaceFields(contract.workspace, input.workspaceId);
 
         const staged =
@@ -68,6 +69,9 @@ export class ActivityLogDomain {
             metadata,
             onError: input.onError === true,
             ...(input.userId !== undefined ? { userId: input.userId } : {}),
+            ...(input.createdBy !== undefined
+                ? { createdBy: input.createdBy }
+                : {}),
             ...(input.workspaceId !== undefined
                 ? { workspaceId: input.workspaceId }
                 : {}),
@@ -126,18 +130,18 @@ export class ActivityLogDomain {
         return parsed.data as IActivityLogMetadata;
     }
 
-    private assertUserFields(
+    private assertTargetOnlyField(
         resolution: EnumActivityLogUser,
-        userId: string | undefined
+        value: string | undefined
     ): void {
         if (resolution === EnumActivityLogUser.target) {
-            if (!userId) {
+            if (!value) {
                 throw new ActivityLogContractInvalidException();
             }
             return;
         }
 
-        if (userId !== undefined) {
+        if (value !== undefined) {
             throw new ActivityLogContractInvalidException();
         }
     }
@@ -184,6 +188,21 @@ export class ActivityLogDomain {
         return payloadUserId;
     }
 
+    private resolveCreatedBy(
+        resolution: EnumActivityLogUser,
+        stagedCreatedBy: string | undefined,
+        userId: string
+    ): string {
+        if (resolution === EnumActivityLogUser.target) {
+            if (!stagedCreatedBy) {
+                throw new ActivityLogContractInvalidException();
+            }
+            return stagedCreatedBy;
+        }
+
+        return userId;
+    }
+
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
         stagedWorkspaceId: string | null | undefined
@@ -224,9 +243,15 @@ export class ActivityLogDomain {
             contract.workspace,
             event.workspaceId
         );
+        const createdBy = this.resolveCreatedBy(
+            contract.user,
+            event.createdBy,
+            userId
+        );
 
         return {
             userId,
+            createdBy,
             workspaceId,
             action: event.action,
             description: this.activityLogUtil.getDescription(

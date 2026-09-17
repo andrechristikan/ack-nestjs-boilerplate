@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferationRow,
     IAnalyticImpossibleTravelRow,
@@ -7,30 +7,24 @@ import {
     IAnalyticNearLockoutRow,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import {
     AnalyticAdminListDoc,
     AnalyticAdminSummaryDoc,
 } from '@modules/analytic/docs/analytic.admin.doc';
-import {
-    AnalyticOptionalDateRangeRequestDto,
-    AnalyticOptionalDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
-import {
-    AnalyticWindowRequestDto,
-    AnalyticWindowRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.window.request.dto';
-import {
-    AnalyticJsonResponseSchema,
-    AnalyticSummaryResponseSchema,
-} from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import { AnalyticSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.summary.response.dto';
 import { AnalyticAnomalyHttpService } from '@modules/analytic/services/analytic.anomaly.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -45,7 +39,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.analytic.anomaly')
 @Controller({

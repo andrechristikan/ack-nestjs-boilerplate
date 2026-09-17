@@ -4,6 +4,7 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
  * Nested value object: one localized term or policy document stored in S3.
+ * @public
  */
 export const TermPolicyContentSchema = AwsS3ResponseSchema.extend({
     language: z.enum(EnumMessageLanguage).meta({
@@ -12,4 +13,8 @@ export const TermPolicyContentSchema = AwsS3ResponseSchema.extend({
     }),
 });
 
+/**
+ * One localized term policy document stored in S3.
+ * @public
+ */
 export type TermPolicyContentDto = z.infer<typeof TermPolicyContentSchema>;

@@ -28,7 +28,7 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
   - [Module Dependency Flow](#module-dependency-flow)
   - [RedisCacheModule](#rediscachemodule)
   - [CacheMainModule](#cachemainmodule)
-  - [SessionDomainModule](#sessionmodule)
+  - [SessionDomainModule](#sessiondomainmodule)
 - [Configuration](#configuration)
   - [Redis Configuration](#redis-configuration)
   - [Module Import Order](#module-import-order)
@@ -46,18 +46,7 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
 - **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
 - **Direct client consumer**: `RequestThrottlerStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
 
-**Example:**
-
-```
-❌ Without DRY:
-UserDomain → Creates Redis connection 1
-ProductService → Creates Redis connection 2
-OrderService → Creates Redis connection 3
-
-✅ With DRY:
-RedisCacheModule → Creates ONE Redis connection
-All services → Inject and reuse the same connection
-```
+`RedisCacheModule` creates one Redis connection. Cache classes, `SessionCacheProvider`, and `RequestThrottlerStorageService` inject that client.
 
 ### Global Module Pattern
 
@@ -178,6 +167,7 @@ Both cache modules register their own `CacheManagerModule.registerAsync` over th
 @Module({
     imports: [
         ConfigModule.forRoot(),
+        // ... MessageModule, LoggerModule, SentryModule ...
         RedisCacheModule.forRoot(),    // Redis connection first
         QueueModule.forRoot(), // BullMQ, own connections on QUEUE_REDIS_URL
         CacheMainModule.forRoot(),     // Depends on RedisCacheModule

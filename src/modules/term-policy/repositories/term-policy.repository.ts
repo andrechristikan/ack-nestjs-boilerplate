@@ -1,29 +1,29 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type {
     ITermPolicyContent,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
+import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
     Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyRepository implements ITermPolicyRepository {
@@ -211,8 +211,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
 
     async create(
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[],
-        createdBy: string
+        contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.create({
             data: {
@@ -220,7 +219,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 version,
                 status: EnumTermPolicyStatus.draft,
                 contents: this.databaseUtil.toPlainArray(contents),
-                createdBy,
             },
         });
     }
@@ -236,8 +234,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async updateContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        content: ITermPolicyContent,
-        updatedBy: string
+        content: ITermPolicyContent
     ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(
             c => c.language === content.language
@@ -252,15 +249,13 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             },
             data: {
                 contents: this.databaseUtil.toPlainArray(contents),
-                updatedBy,
             },
         });
     }
 
     async addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContent,
-        updatedBy: string
+        newContent: ITermPolicyContent
     ): Promise<TermPolicy> {
         return this.databaseService.client.termPolicy.update({
             where: {
@@ -273,7 +268,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                         Prisma.TermPolicyContentCreateInput
                     >(newContent),
                 },
-                updatedBy,
             },
         });
     }
@@ -281,8 +275,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async removeContent(
         termPolicyId: string,
         contents: ITermPolicyContent[],
-        { language }: TermPolicyRemoveContentRequestDto,
-        updatedBy: string
+        { language }: TermPolicyRemoveContentRequestDto
     ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(c => c.language === language);
         if (contentIndex !== -1) {
@@ -295,7 +288,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             },
             data: {
                 contents: this.databaseUtil.toPlainArray(contents),
-                updatedBy,
             },
         });
     }
@@ -303,8 +295,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     async publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        updatedBy: string
+        contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
         return tx.termPolicy.update({
             where: {
@@ -314,7 +305,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 status: EnumTermPolicyStatus.published,
                 publishedAt: this.helperDateService.create(),
                 contents,
-                updatedBy,
             },
         });
     }

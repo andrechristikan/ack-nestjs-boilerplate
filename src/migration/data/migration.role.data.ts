@@ -1,5 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { EnumRoleType, Prisma } from '@generated/prisma-client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 
 const roleData: Prisma.RoleCreateInput[] = [
     {

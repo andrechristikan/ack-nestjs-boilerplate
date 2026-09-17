@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
+/**
+ * Validates the body for toggling a feature flag and its rollout.
+ * @public
+ */
 export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
     isEnable: z.boolean().meta({
         description: 'Status of the feature flag',
@@ -20,6 +24,10 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Body for toggling a feature flag and its rollout.
+ * @public
+ */
 export type FeatureFlagUpdateStatusRequestDto = z.infer<
     typeof FeatureFlagUpdateStatusRequestSchema
 >;

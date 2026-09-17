@@ -1,5 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 
 const featureFlagData: Prisma.FeatureFlagCreateInput[] = [
     {

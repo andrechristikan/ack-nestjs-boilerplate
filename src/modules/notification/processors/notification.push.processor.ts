@@ -3,23 +3,24 @@ import {
     FirebaseRateLimitDurationInMs,
 } from '@common/firebase/constants/firebase.constant';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationNewDeviceLoginPayload,
     INotificationPushCleanupTokenQueuePayload,
     INotificationPushQueuePayload,
-    INotificationTemporaryPasswordPayload,
-    INotificationWorkspaceInvitePayload,
+    INotificationTemporaryPasswordPushPayload,
+    INotificationWorkspaceInvitePushPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessorService } from '@modules/notification/services/notification.push.processor.service';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueProcessor } from '@queues/decorators/queue.decorator';
 import { EnumQueue } from '@queues/enums/queue.enum';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /**
  * Consumes the push queue (FCM); rate-limited to stay under Firebase send quota.
@@ -34,9 +35,10 @@ export class NotificationPushProcessor extends QueueProcessorBase {
     private readonly logger = new Logger(NotificationPushProcessor.name);
 
     constructor(
-        private readonly notificationPushProcessorService: NotificationPushProcessorService
+        private readonly notificationPushProcessorService: NotificationPushProcessorService,
+        sentryService: SentryService
     ) {
-        super();
+        super(sentryService);
     }
 
     /** Dispatches each job to its handler by job name. */
@@ -64,7 +66,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.temporaryPasswordByAdmin:
                     return this.notificationPushProcessorService.processTemporaryPasswordByAdmin(
                         job as Job<
-                            INotificationPushQueuePayload<INotificationTemporaryPasswordPayload>,
+                            INotificationPushQueuePayload<INotificationTemporaryPasswordPushPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -80,7 +82,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.workspaceInvite:
                     return this.notificationPushProcessorService.processWorkspaceInvite(
                         job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceInvitePayload>,
+                            INotificationPushQueuePayload<INotificationWorkspaceInvitePushPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >
@@ -88,7 +90,7 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                 case EnumNotificationPushProcess.workspaceJoinRequest:
                     return this.notificationPushProcessorService.processWorkspaceJoinRequest(
                         job as Job<
-                            INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+                            INotificationPushQueuePayload<INotificationWorkspaceJoinRequestPushPayload>,
                             IQueueResponse,
                             EnumNotificationPushProcess
                         >

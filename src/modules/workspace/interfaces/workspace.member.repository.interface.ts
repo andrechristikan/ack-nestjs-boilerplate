@@ -1,17 +1,17 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
-    WorkspaceMember,
-} from '@generated/prisma-client';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+} from '@generated/prisma-client/client';
+import type { WorkspaceMember } from '@generated/prisma-client/client';
+import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberRepository {
     findOneByWorkspaceAndUser(
@@ -57,7 +57,6 @@ export interface IWorkspaceMemberRepository {
     ): Promise<WorkspaceMember>;
     updateRoleInTx(
         tx: IDatabaseTransactionClient,
-        actorId: string,
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void>;
@@ -68,7 +67,6 @@ export interface IWorkspaceMemberRepository {
     transferOwnershipInTx(
         tx: IDatabaseTransactionClient,
         fromMemberId: string,
-        toMemberId: string,
-        actorId: string
+        toMemberId: string
     ): Promise<void>;
 }

@@ -8,8 +8,8 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import {
     CACHE_MANAGER,
     CacheModule as CacheManagerModule,
-    CacheOptions,
 } from '@nestjs/cache-manager';
+import type { CacheOptions } from '@nestjs/cache-manager';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SessionAnalyticDomain } from '@modules/session/domains/session.analytic.domain';

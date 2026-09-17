@@ -1,13 +1,13 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+} from '@generated/prisma-client/client';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 
 export interface IUserAnalyticGroupCount<T extends string = string> {
     key: T;

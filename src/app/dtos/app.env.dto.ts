@@ -3,25 +3,19 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumRequestTimezone } from '@common/request/enums/request.enum';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
-
-/**
- * An env boolean is exactly `'true'` or `'false'`. Every other spelling fails the boot.
- */
-const AppEnvBooleanSchema = z.stringbool({
-    truthy: ['true'],
-    falsy: ['false'],
-    case: 'sensitive',
-});
+import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
+import { RequestEncryptionSecretSchema } from '@common/request/validations/request.encryption-secret.validation';
 
 /**
  * Validated shape of all application environment variables.
+ * @public
  */
 export const AppEnvSchema = z
     .object({
         APP_NAME: z.string().min(1),
         APP_ENV: z.enum(EnumAppEnvironment),
         APP_LANGUAGE: z.enum(EnumMessageLanguage),
-        APP_ENCRYPTION_SECRET_KEY: z.string().min(32).max(64),
+        APP_ENCRYPTION_SECRET_KEY: RequestEncryptionSecretSchema,
         APP_TIMEZONE: z.enum(EnumRequestTimezone),
 
         EMAIL_NO_REPLY: z.email().optional(),
@@ -35,19 +29,19 @@ export const AppEnvSchema = z
         HTTP_PORT: z.coerce.number().int(),
         HTTP_TRUSTED_PROXY: z.string().optional(),
 
-        LOGGER_ENABLE: AppEnvBooleanSchema,
+        LOGGER_ENABLE: RequestBooleanStringSchema,
         LOGGER_LEVEL: z.enum(EnumLoggerLevel),
-        LOGGER_INTO_FILE: AppEnvBooleanSchema,
-        LOGGER_PRETTIER: AppEnvBooleanSchema,
-        LOGGER_AUTO: AppEnvBooleanSchema,
+        LOGGER_INTO_FILE: RequestBooleanStringSchema,
+        LOGGER_PRETTIER: RequestBooleanStringSchema,
+        LOGGER_AUTO: RequestBooleanStringSchema,
 
         CORS_ALLOWED_ORIGIN: z.string().min(1),
 
-        URL_VERSIONING_ENABLE: AppEnvBooleanSchema,
+        URL_VERSIONING_ENABLE: RequestBooleanStringSchema,
         URL_VERSION: z.coerce.number().int().min(1),
 
         DATABASE_URL: z.string().min(1),
-        DATABASE_DEBUG: AppEnvBooleanSchema,
+        DATABASE_DEBUG: RequestBooleanStringSchema,
 
         AUTH_JWT_AUDIENCE: z.string().min(1),
         AUTH_JWT_ISSUER: z.string().min(1),
@@ -69,7 +63,7 @@ export const AppEnvSchema = z
             .regex(/^\d+[smhd]$/),
 
         AUTH_TWO_FACTOR_ISSUER: z.string().min(1),
-        AUTH_TWO_FACTOR_ENCRYPTION_KEY: z.string().min(1),
+        AUTH_TWO_FACTOR_ENCRYPTION_KEY: RequestEncryptionSecretSchema,
 
         AUTH_SOCIAL_GOOGLE_CLIENT_ID: z.string().optional(),
         AUTH_SOCIAL_GOOGLE_CLIENT_SECRET: z.string().optional(),
@@ -127,4 +121,8 @@ export const AppEnvSchema = z
         }
     });
 
+/**
+ * Validated application environment variables, inferred from `AppEnvSchema`.
+ * @public
+ */
 export type AppEnvDto = z.infer<typeof AppEnvSchema>;

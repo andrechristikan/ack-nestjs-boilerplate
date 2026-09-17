@@ -1,17 +1,17 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticEventRow,
     IActivityLogAnalyticListRow,
     IActivityLogAnalyticRepository,
 } from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
-import { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogAnalyticRepository implements IActivityLogAnalyticRepository {
@@ -77,6 +77,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
     }
 
     async countByWorkspaceInRange(
+        excludedActions: EnumActivityLogAction[],
         workspaceId: string,
         startDate: Date,
         endDate: Date
@@ -84,12 +85,14 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
         return this.databaseService.client.activityLog.count({
             where: {
                 workspaceId,
+                action: { notIn: excludedActions },
                 createdAt: { gte: startDate, lt: endDate },
             },
         });
     }
 
     async groupActivityByWorkspaceInRange(
+        excludedActions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date,
         take = 20
@@ -98,6 +101,7 @@ export class ActivityLogAnalyticRepository implements IActivityLogAnalyticReposi
             by: ['workspaceId'],
             where: {
                 workspaceId: { not: null },
+                action: { notIn: excludedActions },
                 createdAt: { gte: startDate, lt: endDate },
             },
             _count: { _all: true },

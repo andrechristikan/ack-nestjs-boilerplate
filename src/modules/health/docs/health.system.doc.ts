@@ -4,22 +4,14 @@ import {
     DocAuth,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    HealthAwsResponseDto,
-    HealthAwsResponseSchema,
-} from '@modules/health/dtos/response/health.aws.response.dto';
-import {
-    HealthDatabaseResponseDto,
-    HealthDatabaseResponseSchema,
-} from '@modules/health/dtos/response/health.database.response.dto';
-import {
-    HealthInstanceResponseDto,
-    HealthInstanceResponseSchema,
-} from '@modules/health/dtos/response/health.instance.response.dto';
-import {
-    HealthThirdPartyResponseDto,
-    HealthThirdPartyResponseSchema,
-} from '@modules/health/dtos/response/health.third-party.response.dto';
+import { HealthAwsResponseSchema } from '@modules/health/dtos/response/health.aws.response.dto';
+import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import { HealthDatabaseResponseSchema } from '@modules/health/dtos/response/health.database.response.dto';
+import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import { HealthInstanceResponseSchema } from '@modules/health/dtos/response/health.instance.response.dto';
+import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import { HealthThirdPartyResponseSchema } from '@modules/health/dtos/response/health.third-party.response.dto';
+import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 
 export function HealthSystemCheckAwsDoc(): MethodDecorator {
     return applyDecorators(

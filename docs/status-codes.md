@@ -2,9 +2,9 @@
 
 This document catalogs every application `statusCode` in the boilerplate, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. `module` + `statusCodeKey` identify an error more stably than the raw integer, which is why the envelope carries both.
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocate new codes in those enums using the next free hundred in the block map below. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
+The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. A new module takes the next free hundred in the block map below; the allocation procedure is `.claude/rules/status-code.md`. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
 
 ## Block map
 
@@ -13,12 +13,12 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `50000` | `app` | `50000` | 1 |
 | `50100` | `file` | `50100`–`50109` | 10 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
-| `50300` | `request` | `50300`–`50304` | 5 |
+| `50300` | `request` | `50300`–`50303` | 4 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50708` | 9 |
-| `50800` | `auth` | `50800`–`50814` | 15 |
+| `50800` | `auth` | `50800`–`50816` | 17 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
 | `51100` | `policy` | `51100`–`51103` | 4 |
@@ -32,8 +32,9 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51900` | `response` | `51900`–`51902` | 3 |
 | `52000` | `activity-log` | `52000` | 1 |
 | `52100` | `analytic` | `52100` | 1 |
+| `52200` | `helper` | `52200`–`52201` | 2 |
 
-Next free hundred: `52200` (verify by scanning enums before claiming).
+Next free hundred: `52300`. The enum files are the source; this map follows them.
 
 ## `app`
 
@@ -83,9 +84,8 @@ Next free hundred: `52200` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `validation` | `50300` | `validation` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` | There are validation errors. |
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
-| `paramRequired` | `50302` | `paramRequired` | 400 (`BAD_REQUEST`) | `request.error.paramRequired` | Required parameter is missing. |
-| `envForbidden` | `50303` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
-| `schemaMissing` | `50304` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
+| `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
@@ -158,6 +158,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `twoFactorAttemptTemporaryLock` | `50812` | `twoFactorAttemptTemporaryLock` | 429 (`TOO_MANY_REQUESTS`) | `auth.error.twoFactorAttemptTemporaryLock` | Too many incorrect two-factor attempts. Two-factor authentication is temporarily locked. Please try again after {retryAfterSeconds}s. |
 | `twoFactorMethodRequired` | `50813` | `twoFactorMethodRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorMethodRequired` | A two-factor authentication method is required. |
 | `twoFactorSetupRequired` | `50814` | `twoFactorSetupRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorSetupRequired` | Start two-factor setup before confirming the code. |
+| `twoFactorSecretUnavailable` | `50815` | `twoFactorSecretUnavailable` | 409 (`CONFLICT`) | `auth.error.twoFactorSecretUnavailable` | Authenticator codes can't be checked for this account. Sign in with a backup code, then set up two-factor authentication again using another backup code. |
+| `twoFactorBackupCodeRequired` | `50816` | `twoFactorBackupCodeRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorBackupCodeRequired` | Two-factor authentication is already enabled. Provide an unused backup code to set up a new authenticator. |
 
 ## `country`
 
@@ -308,6 +310,15 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | member | statusCode | statusCodeKey | httpStatus | messagePath | description |
 |---|---|---|---|---|---|
 | `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
+
+## `helper`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `decryptFailed` | `52200` | `decryptFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.decryptFailed` | We couldn't read protected data for this request. |
+| `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
+
+`HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
 
 ## Related documents
 

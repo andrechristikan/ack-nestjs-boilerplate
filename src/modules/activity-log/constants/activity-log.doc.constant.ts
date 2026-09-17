@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger query parameters of the admin activity-log list by workspace.
+ * @public
+ */
 export const ActivityLogDocQueryListByWorkspace: ApiQueryOptions[] = [
     {
         name: 'userId',

@@ -1,21 +1,19 @@
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
-import {
+import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import type {
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
-import {
-    UserCheckEmailRequestDto,
-    UserCheckUsernameRequestDto,
-} from '@modules/user/dtos/request/user.check.request.dto';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import {
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
+import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
+import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
     IUser,
     IUserCheckEmail,
     IUserCheckUsername,
@@ -59,10 +57,11 @@ export class UserHttpService {
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const input = await this.userDomain.prepareCreateByAdmin(
-            { countryId, email, name, roleId, username },
-            createdBy
-        );
+        const { input, passwordString } =
+            await this.userDomain.prepareCreateByAdmin(
+                { countryId, email, name, roleId, username },
+                createdBy
+            );
         const [created] = await this.workspaceDomain.commitOnboarding(
             [input],
             EnumUserCreateMode.admin,
@@ -72,7 +71,7 @@ export class UserHttpService {
         if (input.password) {
             await this.userDomain.notifyWelcomeByAdmin(
                 created.id,
-                input.password.passwordEncrypted,
+                passwordString,
                 input.password.passwordCreated,
                 input.password.passwordExpired,
                 createdBy

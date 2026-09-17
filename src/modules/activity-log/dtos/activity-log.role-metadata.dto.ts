@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the activity-log metadata of a role action.
+ * @public
+ */
 export const ActivityLogRoleMetadataSchema = z
     .strictObject({
         roleId: z.string(),
@@ -9,6 +13,10 @@ export const ActivityLogRoleMetadataSchema = z
     })
     .partial();
 
+/**
+ * Activity-log metadata of a role action.
+ * @public
+ */
 export type ActivityLogRoleMetadataDto = z.infer<
     typeof ActivityLogRoleMetadataSchema
 >;

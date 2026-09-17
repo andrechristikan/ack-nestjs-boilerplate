@@ -1,13 +1,12 @@
-import {
+import { Injectable, Logger } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    Injectable,
-    Logger,
     NestInterceptor,
 } from '@nestjs/common';
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, concatMap } from 'rxjs/operators';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 
 /**

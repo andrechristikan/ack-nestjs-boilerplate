@@ -1,6 +1,6 @@
 import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckResult, HealthCheckStatus } from '@nestjs/terminus';
+import type { HealthCheckResult, HealthCheckStatus } from '@nestjs/terminus';
 
 /**
  * Recognizes a Terminus check result and maps its status onto the module's own enum.

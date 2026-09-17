@@ -1,14 +1,15 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogWorkspaceVolumeExcludedActions } from '@modules/activity-log/constants/activity-log.analytic.constant';
+import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticEventRow,
     IActivityLogAnalyticListRow,
 } from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
-import { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ActivityLogAnalyticDomain {
@@ -60,6 +61,7 @@ export class ActivityLogAnalyticDomain {
         endDate: Date
     ): Promise<number> {
         return this.activityLogAnalyticRepository.countByWorkspaceInRange(
+            ActivityLogWorkspaceVolumeExcludedActions,
             workspaceId,
             startDate,
             endDate
@@ -72,6 +74,7 @@ export class ActivityLogAnalyticDomain {
         take?: number
     ): Promise<IAnalyticWorkspaceCount[]> {
         return this.activityLogAnalyticRepository.groupActivityByWorkspaceInRange(
+            ActivityLogWorkspaceVolumeExcludedActions,
             startDate,
             endDate,
             take

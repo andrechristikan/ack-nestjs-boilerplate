@@ -3,8 +3,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
-import { Algorithm } from 'jsonwebtoken';
-import { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { Algorithm } from 'jsonwebtoken';
+import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
 import { AuthDomain } from '@modules/auth/domains/auth.domain';
 

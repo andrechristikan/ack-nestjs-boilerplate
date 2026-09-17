@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the optional start and end date query of an analytics route.
+ * @public
+ */
 export const AnalyticOptionalDateRangeRequestSchema = z.strictObject({
     startDate: z.coerce.date().optional().meta({
         description: 'Optional range start (inclusive)',
@@ -11,6 +15,10 @@ export const AnalyticOptionalDateRangeRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Optional analytics date range query.
+ * @public
+ */
 export type AnalyticOptionalDateRangeRequestDto = z.infer<
     typeof AnalyticOptionalDateRangeRequestSchema
 >;

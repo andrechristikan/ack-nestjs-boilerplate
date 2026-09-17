@@ -1,21 +1,21 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { NotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationCreate,
     INotificationCreateEntry,
 } from '@modules/notification/interfaces/notification.interface';
-import { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
+import type { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,
-    Notification,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 
 @Injectable()
 export class NotificationRepository implements INotificationRepository {

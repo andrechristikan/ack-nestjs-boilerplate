@@ -1,32 +1,34 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     CreateTemplateCommand,
-    CreateTemplateCommandInput,
-    CreateTemplateCommandOutput,
     DeleteTemplateCommand,
-    DeleteTemplateCommandInput,
-    DeleteTemplateCommandOutput,
     GetSendQuotaCommand,
     GetTemplateCommand,
-    GetTemplateCommandInput,
-    GetTemplateCommandOutput,
     ListTemplatesCommand,
-    ListTemplatesCommandInput,
-    ListTemplatesCommandOutput,
     SESClient,
     SendBulkTemplatedEmailCommand,
+    SendTemplatedEmailCommand,
+    UpdateTemplateCommand,
+} from '@aws-sdk/client-ses';
+import type {
+    CreateTemplateCommandInput,
+    CreateTemplateCommandOutput,
+    DeleteTemplateCommandInput,
+    DeleteTemplateCommandOutput,
+    GetTemplateCommandInput,
+    GetTemplateCommandOutput,
+    ListTemplatesCommandInput,
+    ListTemplatesCommandOutput,
     SendBulkTemplatedEmailCommandInput,
     SendBulkTemplatedEmailCommandOutput,
-    SendTemplatedEmailCommand,
     SendTemplatedEmailCommandInput,
     SendTemplatedEmailCommandOutput,
-    UpdateTemplateCommand,
     UpdateTemplateCommandInput,
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
-import { IAwsSESService } from '@common/aws/interfaces/aws.ses-service.interface';
-import {
+import type {
     IAwsSESGetTemplate,
     IAwsSESSend,
     IAwsSESSendBulk,
@@ -34,7 +36,7 @@ import {
 } from '@common/aws/interfaces/aws.ses.interface';
 
 @Injectable()
-export class AwsSESService implements IAwsSESService, OnModuleInit {
+export class AwsSESService implements OnModuleInit {
     private readonly logger = new Logger(AwsSESService.name);
 
     private readonly iamKey: string | null;

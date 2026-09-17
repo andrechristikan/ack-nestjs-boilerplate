@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import { EnumProjectMemberRole } from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 
+/**
+ * Validates the body for changing a project member role.
+ * @public
+ */
 export const ProjectMemberUpdateRoleRequestSchema = z.strictObject({
     role: z.enum(EnumProjectMemberRole).meta({
         description:
@@ -9,6 +13,10 @@ export const ProjectMemberUpdateRoleRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Body for changing a project member role.
+ * @public
+ */
 export type ProjectMemberUpdateRoleRequestDto = z.infer<
     typeof ProjectMemberUpdateRoleRequestSchema
 >;

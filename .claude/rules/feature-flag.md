@@ -27,7 +27,7 @@ rollout question is not settled here.
 ## Rollout and targeting
 
 - **`targetUserIds` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
-- **Rollout buckets stickily.** `md5('<key>:<identifier>')` salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
+- **Rollout buckets stickily.** `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100, salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
 - **`isEnable: false` outranks both.** A targeted user is still rejected when the flag is globally off — that is what makes it a kill switch.
 
 ## Anonymous callers — fail closed

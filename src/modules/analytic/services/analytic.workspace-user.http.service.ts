@@ -1,5 +1,5 @@
 import { AnalyticWorkspaceUserDomain } from '@modules/analytic/domains/analytic.workspace-user.domain';
-import {
+import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
     IAnalyticStatusCount,

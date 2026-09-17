@@ -31,6 +31,7 @@ src
   ├── app
   ├── common
   ├── configs
+  ├── generated
   ├── languages
   ├── migration
   ├── modules
@@ -42,7 +43,9 @@ src
   └── swagger.ts
 ```
 
-```
+`src/generated/` is written by `pnpm generate` and not tracked by git: `prisma-client/` (the Prisma client, from `pnpm db:generate`) and `package/package.ts` (the `version`, `author`, and `repository` fields of `package.json`, from `pnpm generate:package`). Application code imports both through the `@generated/*` alias.
+
+The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), and every import between `src/` folders goes through a `tsconfig.json` path alias (`@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@generated/*`, plus `@instrument`, `@swagger`, `@main`, and `@migration` for the root files).
 
 ## App Module
 
@@ -59,7 +62,7 @@ The App Module is the root module. It:
 CommonModule registers shared infrastructure and the global feature modules. It configures:
 - Global configuration management (using `ConfigModule` and custom configs)
 - Caching and queueing (Redis, BullMQ)
-- Logging (LoggerModule)
+- Logging (LoggerModule) and error reporting (SentryModule, which exports `SentryService`)
 - Database access (DatabaseModule)
 - Authentication and authorization (`AuthDomainModule`, `PolicyDomainModule`, `RoleDomainModule`, `ApiKeyDomainModule`, `FeatureFlagDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, `ActivityLogDomainModule`, `NotificationDomainModule`)
 - Utilities for messaging, requests, responses, helpers, files, pagination, and Firebase
@@ -68,10 +71,7 @@ CommonModule registers shared infrastructure and the global feature modules. It 
 
 **Location:** `src/configs/`
 
-Typed `registerAs` files:
-- Database, Redis, Logger, Auth, AWS, Email, Firebase, Feature Flags, User, Session, Request/Response
-- Each file (e.g., `database.config.ts`, `auth.config.ts`) holds env vars, settings, and validation for its domain
-- `index.ts` exports them for `ConfigModule`
+Typed `registerAs` files. `src/configs/index.ts` loads every `*.config.ts` in that folder into `ConfigModule`. Each file holds env vars, settings, and validation for its concern. The catalog is [Configuration](configuration.md).
 
 ## Languages
 
@@ -114,13 +114,15 @@ The router folder mounts everything the application exposes. It includes:
 
 **Location:** `src/instrument.ts`
 
-The instrument file configures Sentry. It is imported at the start of bootstrap so Sentry is initialized before anything else. Key responsibilities include:
+The instrument file configures Sentry. It is loaded before the application code, through `node --import ./dist/instrument.js` in the start scripts and `import '@instrument'` at the top of `src/main.ts`, so Sentry is initialized before anything else. Key responsibilities include:
 - Initializing Sentry with DSN and configuration based on the environment
 - Configuring sampling rates for traces and profiles (higher in development, lower in production)
 - Implementing custom filtering logic in `beforeSend` to drop non-fatal `QueueException` events, requests to the excluded noise routes (`LoggerExcludedRoutes`: health, docs, hello, metrics, favicon, root), responses with a status code below 500, and events at `info` or `debug` level
 - Forwarding Pino logs to Sentry Logs through `Sentry.pinoIntegration`, limited to `warn`, `error`, and `fatal` in production and all levels elsewhere
+- Excluding the same noise routes from traces in `tracesSampler`
+- Scrubbing every outgoing event, transaction, breadcrumb, and log (`beforeSend`, `beforeSendTransaction`, `beforeBreadcrumb`, `beforeSendLog`): URLs masked, query strings dropped, sensitive headers, cookies, and body fields redacted. See [Logger](logger.md)
 - Setting maximum breadcrumbs, value lengths, and stack trace attachment policies
-- Does not send PII to Sentry
+- Sends no default PII to Sentry (`sendDefaultPii: false`)
 
 ## Migration Entrypoint
 
@@ -224,7 +226,7 @@ Custom decorators to add metadata or modify behavior of classes, methods, or pro
 Documentation files or Swagger decorators for API documentation and reference.
 
 ### DTOs (Data Transfer Objects)
-Classes that define the shape of data sent and received on API endpoints.
+Zod schemas that define the shape of data sent and received on API endpoints, each paired with the type inferred from it. One `*.dto.ts` file holds one schema.
 
 ### Enums
 Type-safe enumerations for status codes, types, or other fixed sets of values relevant to the module's domain.
@@ -242,7 +244,7 @@ Health-check indicators that report the status of a dependency or subsystem (use
 Authorization and access control logic, protecting routes and resources based on user roles or permissions.
 
 ### Interfaces
-TypeScript interfaces for contracts between services, repositories, and other components, promoting loose coupling and testability.
+TypeScript interfaces for data shapes and for repository contracts (`*.repository.interface.ts`). Services, domains, and utils are injected as classes and carry no header interface.
 
 ### Interceptors
 Logic to intercept and modify requests or responses, such as logging, caching, or response transformation.
@@ -279,16 +281,17 @@ Below are explanations for the root folders and files outside `src/`:
 ### Folders
 
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
-- **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
+- **.husky/**: Git hooks. `pre-commit` runs `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `pnpm test`; `commit-msg` runs commitlint.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
 - **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
-- **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
-- **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
+- **generated/**: Auto-generated output: the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git. The Prisma client lives in `src/generated/` (see [Structure](#structure)).
+- **coverage/**: Vitest coverage output from `pnpm test:cov`. Not tracked by git.
+- **keys/**: The JWT key pairs, the JWKS files, and `encryption-secret.env`, all written by `pnpm generate:secret`. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
-- **scripts/**: Utility scripts for tasks like key generation.
-- **test/**: Jest configuration (`jest.json`). The spec suite is meant to mirror `src/`, but no spec files are committed, so `pnpm test` passes through `--passWithNoTests`.
+- **scripts/**: `generate-secret.ts` (JWT keys, JWKS, and encryption secrets; `pnpm generate:secret`) and `generate-package.ts` (`pnpm generate:package`). Node runs both directly as TypeScript.
+- **test/**: The Vitest spec tree, mirroring `src/` (`test/**/*.spec.ts`, matched by `vitest.config.ts`). It holds no spec files, so `pnpm test` passes through `--passWithNoTests`.
 
 ### Files
 
@@ -296,19 +299,21 @@ Below are explanations for the root folders and files outside `src/`:
 - **.dockerignore**: Specifies files and directories to exclude from Docker builds.
 - **.env.example**: Example environment variable file for reference and onboarding. `.env` itself is not tracked by git.
 - **.gitignore**: Specifies files and directories to exclude from Git version control.
-- **.npmrc**: Configuration for npm package manager behavior.
+- **.npmrc**: Package manager settings (`engine-strict = true`, so the `engines` versions are enforced on install).
 - **.prettierignore**: Specifies files and directories to exclude from Prettier formatting.
 - **.prettierrc**: Configuration for Prettier code formatter.
 - **.swcrc**: Configuration for SWC JavaScript/TypeScript compiler.
 - **cspell.json**: Configuration for code spell checking to maintain code quality and consistency.
 - **docker-compose.yml**: Docker Compose configuration for orchestrating multi-container Docker applications, such as local development environments.
-- **eslint.config.mjs**: ESLint configuration for code linting and style enforcement.
+- **eslint.config.mjs**: ESLint flat configuration. It applies `typescript-eslint` recommended rules, `eslint-plugin-security` (every recommended rule at `error`, `detect-object-injection` off, and `detect-non-literal-fs-filename` off for the notification and term-policy template domains and for `scripts/`), and import bans: `Math.random`, `crypto-js`, a bare `'crypto'` import (use `node:crypto`), `lodash` and a default `lodash-es` import (use named `lodash-es` imports), and `@generated/prisma-client/internal`.
+- **knip.json**: The `pnpm deadcode` configuration. Entries are `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, and `scripts/*.ts`. Unused files, exports, types, enum members, and dependencies report as warnings; every other knip rule (unlisted or unresolved imports, unlisted binaries, duplicate exports) is an error.
 - **nest-cli.json**: Configuration for NestJS CLI, defining project structure and build options.
 - **package.json**: Node.js project manifest, listing dependencies, scripts, and metadata.
 - **pnpm-lock.yaml**: pnpm lockfile.
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
-- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by `ts-prune` through `pnpm deadcode` (`--project tsconfig.json`), and by the editor. Its `include` covers `src/**/*`, `test/**/*`, and `scripts/**/*`, and it carries the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@config`, `@modules/*`, `@router/*`, `@migration/*`, `@test/*`, `@generated/*`, `@prisma/client`, `@queues/*`, `@package`).
+- **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by knip, by Vitest (`resolve.tsconfigPaths`), and by the editor. It targets native ESM (`module` and `moduleResolution` `nodenext`, `verbatimModuleSyntax`, `isolatedModules`). Its `include` covers `src/**/*`, `test/**/*`, `scripts/**/*`, and `vitest.config.ts`, and it carries the path aliases (`@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@instrument`, `@swagger`, `@main`, `@migration`).
 - **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test` and `scripts`.
+- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `test/**/*.spec.ts`, and v8 coverage over `src/**/*.ts` (modules, enums, interfaces, constants, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. Coverage collection is off unless `--coverage` is passed.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

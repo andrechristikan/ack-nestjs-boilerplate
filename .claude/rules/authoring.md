@@ -104,3 +104,20 @@ other languages semantically, so English examples cost nothing.
 ## What is NOT here
 
 Comment policy and class member layout are `rules/code-style.md`. Neither is restated here.
+
+## Frontmatter
+
+A skill's `SKILL.md` and an agent's `.md` open with YAML frontmatter, and its `description` is
+a folded block scalar, whatever the text:
+
+```yaml
+---
+name: coder
+description: >-
+    Writes feature code under src/** against the project rules, test-first. …
+---
+```
+
+A plain scalar containing `: ` does not parse under a strict YAML parser, and a skill or agent
+whose frontmatter does not parse has no name and no description for the loader. The
+`SessionStart` hook (`.claude/hooks/session-skills.sh`) reads the folded form.

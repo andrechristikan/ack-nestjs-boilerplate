@@ -1,7 +1,7 @@
 import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -10,7 +10,7 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -22,7 +22,7 @@ import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserImportPrepared,
@@ -115,8 +115,8 @@ export class UserImportDomain {
         const passwords = Array(totalData)
             .fill(0)
             .map(() => this.authPasswordUtil.createPasswordRandom());
-        const passwordHasheds = userIds.map((e, i) =>
-            this.authPasswordUtil.createPassword(e, passwords[i])
+        const passwordHasheds = passwords.map(password =>
+            this.authPasswordUtil.createPassword(password)
         );
         const workspaceContexts =
             this.userOnboardingDomain.buildPersonalWorkspaceContexts(usernames);
@@ -152,12 +152,13 @@ export class UserImportDomain {
             })
         );
 
-        return { inputs, passwordHasheds };
+        return { inputs, passwordHasheds, passwordStrings: passwords };
     }
 
     async notifyImported(
         users: IUser[],
         passwordHasheds: IUserImportPrepared['passwordHasheds'],
+        passwordStrings: IUserImportPrepared['passwordStrings'],
         createdBy: string
     ): Promise<void> {
         await Promise.all(
@@ -165,7 +166,7 @@ export class UserImportDomain {
                 this.notificationQueue.sendWelcomeByAdmin(
                     newUser.id,
                     {
-                        password: passwordHasheds[index].passwordEncrypted,
+                        password: passwordStrings[index],
                         passwordCreatedAt: this.helperDateService.formatToIso(
                             passwordHasheds[index].passwordCreated
                         ),

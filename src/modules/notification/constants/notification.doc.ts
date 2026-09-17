@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions } from '@nestjs/swagger';
+import type { ApiParamOptions } from '@nestjs/swagger';
 
 export const NotificationDocParamsId: ApiParamOptions[] = [
     {

@@ -9,13 +9,17 @@ import {
     FileSizeInBytes,
 } from '@common/file/constants/file.constant';
 import { FileUploadErrorInterceptor } from '@common/file/interceptors/file.upload-error.interceptor';
-import {
+import type {
     IFileUploadMultiple,
     IFileUploadMultipleField,
     IFileUploadMultipleFieldOptions,
     IFileUploadSingle,
 } from '@common/file/interfaces/file.interface';
 
+/**
+ * Accepts one file under a single multipart field, with a size limit.
+ * @public
+ */
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
@@ -30,6 +34,10 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     );
 }
 
+/**
+ * Accepts several files under one multipart field, with size and count limits.
+ * @public
+ */
 export function FileUploadMultiple(
     options?: IFileUploadMultiple
 ): MethodDecorator {
@@ -49,6 +57,10 @@ export function FileUploadMultiple(
     );
 }
 
+/**
+ * Accepts files under several named multipart fields, each with its own count limit.
+ * @public
+ */
 export function FileUploadMultipleFields(
     fields: IFileUploadMultipleField[],
     options?: IFileUploadMultipleFieldOptions

@@ -17,11 +17,11 @@ How to clone, install, seed, and run the project locally.
 - [Prerequisites](#prerequisites)
   - [Required Tools](#required-tools)
 - [Clone Repository](#clone-repository)
-- [🔧 Standard Installation](#-standard-installation)
+- [Standard Installation](#standard-installation)
   - [Install Packages](#install-packages)
   - [Create Environment](#create-environment)
   - [Generate Keys](#generate-keys)
-- [🐳 Installation with Docker](#-installation-with-docker)
+- [Installation with Docker](#installation-with-docker)
   - [What's Included](#whats-included)
   - [Prerequisites](#prerequisites-1)
   - [Create Environment](#create-environment-1)
@@ -41,20 +41,20 @@ How to clone, install, seed, and run the project locally.
 > [!NOTE]
 > ACK NestJS Boilerplate uses PNPM for package management. All documentation examples will use PNPM commands.
 
-Before starting, install the following tools and packages. We recommend using the LTS (Long Term Support) versions for stability and compatibility.
+Required tools:
 
 ### Required Tools
 
 | Tool | Version |
 |------|---------|
-| [Node.js](https://nodejs.org) | v24.11.0+ |
+| [Node.js](https://nodejs.org) | >= 24.15.0 |
 | [MongoDB](https://docs.mongodb.com/) | v8+ (compose uses `mongo:latest`) |
 | [Redis](https://redis.io) | v8+ (compose uses `redis:latest`) |
 | [PNPM](http://pnpm.io) | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | [Git](https://git-scm.com) | v2.39.x |
 
 > [!IMPORTANT]
-> MongoDB must be configured to run as a **replica set** for database transactions to work properly. You can either use [Docker installation](#-installation-with-docker) for automatic setup or create a database on [MongoDB Atlas][ref-mongodb] which supports replica sets by default.
+> MongoDB runs as a replica set. Prisma transactions need one. Use [Docker installation](#installation-with-docker) or a [MongoDB Atlas][ref-mongodb] replica set.
 
 ## Clone Repository
 
@@ -71,7 +71,7 @@ cd ack-nestjs-boilerplate
 git branch
 ```
 
-## 🔧 Standard Installation
+## Standard Installation
 
 Standard installation assumes all dependencies are installed correctly and available in your environment.
 
@@ -97,30 +97,40 @@ cp .env.example .env
 
 ### Generate Keys
 
-ACK NestJS Boilerplate uses **ES256** algorithm for Access Tokens and **ES512** for Refresh Tokens. You need to generate cryptographic key pairs for JWT authentication.
+ACK NestJS Boilerplate uses **ES256** for Access Tokens and **ES512** for Refresh Tokens, and two encryption root secrets: `APP_ENCRYPTION_SECRET_KEY` (notification job payloads) and `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (stored TOTP secrets). `scripts/generate-secret.ts` generates all of them.
 
-#### Generate Key Pairs
+#### Generate Key Pairs and Secrets
 
 > [!WARNING]
-> Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
+> Back up the existing `keys/` directory and `.env` before regenerating. New JWT keys invalidate every issued token, and new encryption secrets leave existing ciphertext (stored TOTP secrets, queued notification jobs) undecryptable.
 
 ```bash
-# Generate keys and JWKS files
-pnpm generate:keys
+# JWT keys, JWKS files, and both encryption secrets
+pnpm generate:secret
 
-# Or automatically update .env with key IDs (development only)
-pnpm generate:keys --direct-insert
+# Same, and upsert every generated variable into .env
+pnpm generate:secret --direct-insert
+
+# One target only
+pnpm generate:secret:jwt [--direct-insert]
+pnpm generate:secret:encryption [--direct-insert]
 ```
 
-**What this command does:**
-- Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
-- Generates JWKS (JSON Web Key Set) files in `/keys` directory
-- Creates `access-jwks.json` and `refresh-jwks.json` for public key distribution
-- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console, to avoid leaking private keys into terminal history or CI logs
-- With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
+**What `jwt` does:**
+- Creates private/public key pairs for both access and refresh tokens, saved as PEM files in `keys/` (private keys `0600`)
+- Writes `keys/access-jwks.json` and `keys/refresh-jwks.json` for public key distribution
+- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console
+- With `--direct-insert`: upserts `AUTH_JWT_ACCESS_TOKEN_KID`, `AUTH_JWT_REFRESH_TOKEN_KID`, and the four `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` variables into `.env`, and nothing else
+
+**What `encryption` does:**
+- Draws `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`, each 48 random bytes encoded as 64 base64url characters
+- Writes both as `KEY=value` lines to `keys/encryption-secret.env` (mode `0600`) and prints only that path
+- With `--direct-insert`: upserts those two variables into `.env`, and nothing else
+
+`all` (the plain `pnpm generate:secret`) runs `jwt`, then `encryption`, with the same `--direct-insert` choice for both. `--direct-insert` creates `.env` from `.env.example` when it is absent and sets `.env` to mode `0600`. The `keys/` directory is gitignored.
 
 > [!NOTE]
-> **Populating `.env`**: The application reads the `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` variables as base64 (DER), not as raw PEM. Use `--direct-insert` to have the script write the correctly-encoded values into `.env` for you. The `/keys/*.pem` files are kept as PEM artifacts and are not meant to be pasted directly into `.env`.
+> **Populating `.env`**: The application reads the `AUTH_JWT_*_PRIVATE_KEY` / `AUTH_JWT_*_PUBLIC_KEY` variables as base64 (DER), not as raw PEM. `--direct-insert` writes the correctly-encoded values into `.env`. The `keys/*.pem` files are PEM artifacts and do not go into `.env` as they are. Without `--direct-insert`, the two encryption lines in `keys/encryption-secret.env` are copied into `.env` by hand.
 
 #### Hosting JWKS Files
 
@@ -143,7 +153,7 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI="https://<your_domain>/.well-known/refresh-jwks.
 ```
 
 
-## 🐳 Installation with Docker
+## Installation with Docker
 
 > [!NOTE]
 > You can skip this section if all dependencies are already installed and you do not want to use Docker for your setup.
@@ -209,24 +219,19 @@ AUTH_JWT_REFRESH_TOKEN_JWKS_URI=http://localhost:3011/.well-known/refresh-jwks.j
 
 ### Generate Keys
 
-Key generation for Docker installation follows the same process as standard installation, but with automatic Docker-hosted JWKS serving.
+Key generation for Docker installation follows the same process as standard installation; the JWKS files are served by a Compose container.
 
-#### Generate Key Pairs
+#### Generate Key Pairs and Secrets
 
 > [!WARNING]
-> Always backup your existing keys before regenerating. There is no way to rollback once new keys are generated and old tokens will become invalid.
+> Back up the existing `keys/` directory and `.env` before regenerating. New JWT keys invalidate every issued token, and new encryption secrets leave existing ciphertext undecryptable.
 
 ```bash
-# Generate keys and automatically update .env with key IDs (recommended for Docker)
-pnpm generate:keys --direct-insert
+# Generate the JWT keys, JWKS files, and encryption secrets, and write them into .env
+pnpm generate:secret --direct-insert
 ```
 
-**What this command does:**
-- Creates private/public key pairs for both access and refresh tokens, saved as PEM files in the `/keys` directory
-- Generates JWKS (JSON Web Key Set) files in `/keys` directory
-- Creates `access-jwks.json` and `refresh-jwks.json` for Docker container serving
-- Prints only the output file paths and the generated key IDs (KIDs); key material is **never** printed to the console
-- With `--direct-insert` flag: Automatically updates your `.env` file with the generated keys and key IDs
+The command writes `keys/access-jwks.json` and `keys/refresh-jwks.json`, which the `jwks-server` container mounts read-only, and `keys/encryption-secret.env`. See [Generate Keys](#generate-keys) for what each target writes.
 
 #### Docker JWKS Hosting
 
@@ -239,7 +244,7 @@ The Docker setup includes a JWKS server that automatically hosts the generated k
 
 ### Run Containers
 
-Now you're ready to start the complete Docker environment with all services.
+Start the Docker environment.
 
 > [!NOTE]
 > By default, Docker installation only sets up dependencies (MongoDB, Redis, JWKS server, BullMQ dashboard). The API container is not included. To also run the API container, use the `apis` profile.
@@ -302,12 +307,16 @@ The bundled config runs Vault with a persistent file backend, auto-initialized a
 
 ## Generate Database Client
 
-Prisma uses a generated client to provide type-safe database access and query building. You must generate the Prisma Client every time you change your Prisma schema (in `prisma/schema.prisma`).
+`pnpm generate` writes the two gitignored generated sources the build imports:
 
-**Generate database client from Prisma Schema:**
+- `pnpm db:generate` (`prisma generate`): the Prisma client, from `prisma/schema.prisma` into `src/generated/prisma-client` (ESM, the `prisma-client` generator)
+- `pnpm generate:package`: `src/generated/package/package.ts`, the `version`, `author`, and `repository` fields of `package.json` that `app.config.ts` reads
+
 ```bash
-pnpm db:generate
+pnpm generate
 ```
+
+`pnpm typecheck`, `pnpm build`, and `pnpm start:dev` resolve imports from both files, so `pnpm generate` runs after `pnpm install` and again after every change to `prisma/schema.prisma` or those `package.json` fields. The CI lint workflow and both dockerfiles run it before building.
 
 ## Database Migration & Seeding
 
@@ -356,7 +365,7 @@ For a complete guide and module details, see [Database Documentation][ref-doc-da
 
 ## Run Project
 
-Congratulations! You're now ready to start the project. Make sure all your services (MongoDB, Redis) are running before starting the application.
+The application starts once MongoDB and Redis are running:
 
 ```bash
 # Start in development mode with hot reload

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumProjectMemberRole } from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 
+/**
+ * Validates the body for assigning a workspace member to a project.
+ * @public
+ */
 export const ProjectMemberAssignRequestSchema = z.strictObject({
     userId: z
         .string()
@@ -18,6 +22,10 @@ export const ProjectMemberAssignRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Body for assigning a workspace member to a project.
+ * @public
+ */
 export type ProjectMemberAssignRequestDto = z.infer<
     typeof ProjectMemberAssignRequestSchema
 >;

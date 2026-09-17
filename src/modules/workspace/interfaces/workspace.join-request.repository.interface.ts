@@ -1,5 +1,5 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -7,9 +7,9 @@ import {
 import {
     EnumWorkspaceJoinRejectReason,
     Prisma,
-    WorkspaceJoinRequest,
-} from '@generated/prisma-client';
-import { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
+} from '@generated/prisma-client/client';
+import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
+import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceJoinRequestRepository {
     existsPendingByWorkspaceAndUser(
@@ -47,7 +47,6 @@ export interface IWorkspaceJoinRequestRepository {
     ): Promise<void>;
     cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string
+        workspaceId: string
     ): Promise<void>;
 }

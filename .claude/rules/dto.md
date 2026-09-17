@@ -36,6 +36,12 @@ export type UserUpdateProfileRequestDto = z.infer<
 >;
 ```
 
+- **One `*.dto.ts` file declares exactly one zod schema const** — the exported one — and its
+  `z.infer` type. No file-local helper schema and no second exported schema beside it. A
+  nested shape is inlined into the parent object. A piece reused across schemas is a custom
+  schema in `src/common/request/validations/request.<name>.validation.ts`
+  (`RequestMongoIdSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
+  file.
 - The schema is the source of truth; the type is `z.infer` of it and is never hand-written
   beside it. A hand-written interface mirroring a schema drifts (`rules/code-style.md`).
 - The `Schema` const is what a decorator, a pipe and a doc factory receive. The `Dto` type is
@@ -92,4 +98,4 @@ from the named schema instead (`rules/code-style.md`).
 
 A DTO spec asserts that parsing returns exactly the declared fields, that an undeclared field
 is stripped, and that nothing sensitive rides along. That spec is the executable form of the
-opt-in rule, and DTOs are inside `collectCoverageFrom` (`rules/testing.md`).
+opt-in rule, and DTOs are inside the coverage set (`rules/testing.md`).

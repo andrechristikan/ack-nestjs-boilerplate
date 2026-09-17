@@ -70,7 +70,7 @@ Standardized error response + Sentry (if applicable)
 - Resolve localized error message using [Message System][ref-doc-message]
 - Set response headers
 - Format into `ResponseErrorDto`
-- Send to Sentry (conditions vary by filter)
+- Log the error and report it through `SentryService.captureException` from `src/common/sentry` (conditions vary by filter). See [Logger][ref-doc-logger]
 
 ## Error Response Structure
 
@@ -142,7 +142,7 @@ x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
-A rate-limited 429 additionally carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (the global throttler guard, the per-route guard, or the per-user interceptor) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
+A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (the global throttler guard, the per-route guard, or the per-user interceptor) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 

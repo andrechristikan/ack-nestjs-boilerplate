@@ -1,5 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
 
 const countryData = [
     {

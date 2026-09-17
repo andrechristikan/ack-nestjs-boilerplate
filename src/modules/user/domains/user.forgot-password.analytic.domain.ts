@@ -1,5 +1,5 @@
-import { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type { IAnalyticForgotPasswordConversion } from '@modules/analytic/interfaces/analytic.interface';
+import type {
     IUserForgotPasswordAnalyticRow,
     IUserForgotPasswordAnalyticUserCount,
 } from '@modules/user/interfaces/user.forgot-password.analytic.repository.interface';

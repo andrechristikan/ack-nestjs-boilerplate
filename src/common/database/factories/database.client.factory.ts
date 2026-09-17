@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@generated/prisma-client';
+import { PrismaClient } from '@generated/prisma-client/client';
+import type { IDatabaseClientOptions } from '@common/database/interfaces/database.client.interface';
 import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
 
 @Injectable()
 export class DatabaseClientFactory extends PrismaClient<
-    Prisma.PrismaClientOptions,
+    IDatabaseClientOptions,
     'query' | 'error' | 'warn' | 'info'
 > {
     constructor(private readonly databaseExtensionUtil: DatabaseExtensionUtil) {

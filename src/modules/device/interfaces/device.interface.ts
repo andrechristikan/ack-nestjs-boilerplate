@@ -1,10 +1,10 @@
-import {
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
+import type {
     Device,
     DeviceOwnership,
-    EnumDevicePlatform,
     Session,
-} from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+} from '@generated/prisma-client/client';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceIdentity {
     fingerprint: string;

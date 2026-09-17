@@ -1,5 +1,5 @@
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
-import {
+import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
     IAnalyticBlockedUsers,

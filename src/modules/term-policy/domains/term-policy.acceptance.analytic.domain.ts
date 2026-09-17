@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
 } from '@modules/analytic/interfaces/analytic.interface';

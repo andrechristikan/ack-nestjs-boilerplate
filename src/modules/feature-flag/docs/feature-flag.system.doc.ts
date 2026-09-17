@@ -10,10 +10,8 @@ import {
     FeatureFlagDefaultAvailableOrderBy,
     FeatureFlagDefaultAvailableSearch,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
-import {
-    FeatureFlagResponseDto,
-    FeatureFlagResponseSchema,
-} from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import type { FeatureFlagResponseDto } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function FeatureFlagSystemListDoc(): MethodDecorator {

@@ -1,9 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
+import type {
     IAnalyticAnomalySummary,
     IAnalyticDeviceProliferationRow,
     IAnalyticImpossibleTravelRow,
@@ -19,7 +19,7 @@ import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { UserLoginAnalyticDomain } from '@modules/user/domains/user.login.analytic.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()

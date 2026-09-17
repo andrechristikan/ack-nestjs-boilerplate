@@ -1,6 +1,6 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -10,10 +10,10 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
     Prisma,
-    WorkspaceJoinRequest,
-} from '@generated/prisma-client';
-import { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request.repository.interface';
-import { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
+} from '@generated/prisma-client/client';
+import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
+import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request.repository.interface';
+import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -81,7 +81,6 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 workspaceId,
                 userId,
                 message,
-                createdBy: userId,
             },
         });
     }
@@ -98,7 +97,6 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 status: EnumWorkspaceJoinRequestStatus.accepted,
                 reviewedByUserId: reviewerId,
                 reviewedAt,
-                updatedBy: reviewerId,
             },
         });
     }
@@ -117,15 +115,13 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 rejectReasonCode,
                 reviewedByUserId: reviewerId,
                 reviewedAt,
-                updatedBy: reviewerId,
             },
         });
     }
 
     async cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string
+        workspaceId: string
     ): Promise<void> {
         await tx.workspaceJoinRequest.updateMany({
             where: {
@@ -134,7 +130,6 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             },
             data: {
                 status: EnumWorkspaceJoinRequestStatus.cancelled,
-                updatedBy: actorId,
             },
         });
     }

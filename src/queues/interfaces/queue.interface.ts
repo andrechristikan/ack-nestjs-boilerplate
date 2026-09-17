@@ -1,4 +1,4 @@
-import { WorkerOptions } from 'bullmq';
+import type { WorkerOptions } from 'bullmq';
 
 export interface IQueueResponse {
     message: string;

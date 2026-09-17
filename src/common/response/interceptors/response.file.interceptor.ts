@@ -1,17 +1,16 @@
-import {
+import { Injectable, StreamableFile } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    Injectable,
     NestInterceptor,
-    StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { FileService } from '@common/file/services/file.service';
-import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.exceed-max-size-export.exception';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
@@ -88,8 +87,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
     }
 
     private createDisposition(filename: string, fallback: string): string {
-        const ascii =
-            this.fileService.sanitizeFilename(filename) || fallback;
+        const ascii = this.fileService.sanitizeFilename(filename) || fallback;
 
         return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
     }

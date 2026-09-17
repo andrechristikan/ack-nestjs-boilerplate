@@ -5,10 +5,8 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { PolicyDocParamsRoleId } from '@modules/policy/constants/policy.doc.constant';
-import {
-    PolicyListResponseDto,
-    PolicyListResponseSchema,
-} from '@modules/policy/dtos/response/policy.list.response.dto';
+import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
+import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function PolicySystemListByRoleDoc(): MethodDecorator {

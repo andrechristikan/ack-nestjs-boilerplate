@@ -6,7 +6,7 @@ This documentation explains the features and usage of **Device Module**: Located
 
 Devices are the clients users log in from. Each device is identified by a `fingerprint` and can be owned by multiple users through `DeviceOwnership`.
 
-When a device ownership is removed, all active sessions for that device-user pair are invalidated in Redis and the database, which logs the client out.
+When a device ownership is removed, all active sessions for that device-user pair are revoked in the database, and the revoked session keys are purged from Redis after the commit, which logs the client out.
 
 ## Related Documents
 
@@ -89,14 +89,20 @@ When listing devices, the API shows only the devices owned by the user, with ses
 
 ## What Happens When a Device Ownership is Removed
 
-Removing a device ownership (device per user) is composed by `DeviceDomain.remove` (self-service) and `DeviceDomain.removeByAdmin` (admin). Redis is cleared first, then one `withTransaction` lands the database effects atomically.
+Removing a device ownership (device per user) is composed by `DeviceDomain.remove` (self-service) and `DeviceDomain.removeByAdmin` (admin). One `withTransaction` lands the database effects atomically, and the Redis purge runs after it commits.
 
-1. **Deletes the session keys from Redis** (`SessionDomain.deleteLoginsByDeviceOwnership`), causing immediate 401 on any subsequent request using those tokens. The session list is read before that delete.
-2. **Revokes the active sessions** for that device-user pair (`SessionDomain.revokeByDeviceOwnershipInTx`): `isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user.
-3. **Updates the `DeviceOwnership` record** (`DeviceOwnershipRepository.removeOwnershipInTx`): marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedById` set to the acting user: the owner on the self-service path, the admin on the admin path) and updates `updatedBy`. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity. The same write updates the shared `Device` row: clears `notificationToken` and `notificationProvider`, updates `lastActiveAt` and `updatedBy`, so the push token is invalidated for every user owning that device.
-4. **Creates an activity log** through `ActivityLogDomain.recordInTx` with action `userRemoveDevice`. Its `createdBy` is the acting user, so an admin removal is still traceable to the admin.
+1. **Revokes the active sessions** for that device-user pair (`SessionDomain.revokeByDeviceOwnershipInTx`): `isRevoked: true`, `revokedAt: now`, `revokedById` and `updatedBy` set to the acting user. The call returns the ids of the sessions it revoked.
+2. **Updates the `DeviceOwnership` record** (`DeviceOwnershipRepository.removeOwnershipInTx`): marks as revoked (`isRevoked: true`, `revokedAt: now`, `revokedBy` connected to the acting user: the owner on the self-service path, the admin on the admin path), with `updatedBy` stamped from the request actor. The ownership record is retained for audit trail; its own `lastActiveAt` is left at the value of the last real activity. The same write updates the shared `Device` row: clears `notificationToken` and `notificationProvider`, updates `lastActiveAt`, and the audit extension stamps its `updatedBy` through the nested write, so the push token is invalidated for every user owning that device.
+3. **Purges the revoked session keys from Redis** once the transaction has committed (`SessionDomain.purgeRevokedLogins`). Exactly the ids returned in step 1 are deleted, so any later request carrying those tokens gets 401. A purge failure is logged and the removal still succeeds; the unpurged keys keep passing the session check until their TTL expires.
+4. **Stages the activity log** through `ActivityLogDomain.stage`, which `ActivityLogInterceptor` writes after the handler returns. The rows depend on the path:
 
-The admin endpoint carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`, and `ActivityLogInterceptor` writes that record against the admin after the handler returns, outside the `withTransaction`. One admin removal therefore leaves two activity-log records with different subjects: `userRemoveDevice` on the target user and `adminDeviceRemove` on the admin.
+| Path | Rows |
+|---|---|
+| Self-service (`remove`) | `userRemoveDevice`, empty metadata; `userId` and `createdBy` are the device owner |
+| Admin (`removeByAdmin`), another user's device | `adminDeviceRemove` on the admin, plus `userRemoveDeviceByAdmin` on the device owner with `createdBy` set to the admin |
+| Admin (`removeByAdmin`), the admin's own device | `adminDeviceRemove` only |
+
+On the admin path the rows are staged after the transaction commits. `adminDeviceRemove` carries `targetUserId`, `targetUsername`, `deviceOwnershipId`, `deviceId`, `timestamp`, and `sessionCount`; `userRemoveDeviceByAdmin` carries `actorUserId` in place of the two target keys. See [Activity Log][ref-doc-activity-log].
 
 ```mermaid
 sequenceDiagram
@@ -106,11 +112,14 @@ sequenceDiagram
     participant Database
 
     Client->>API: DELETE /shared/user/device/remove/:deviceOwnershipId
-    API->>Database: Read active sessions for this device-user pair
-    API->>Redis: Delete the session keys read above
-    API->>Database: withTransaction: revoke sessions,<br/>revoke DeviceOwnership + clear Device push token,<br/>recordInTx (userRemoveDevice)
+    API->>Database: withTransaction: revoke active sessions of this device-user pair,<br/>revoke DeviceOwnership + clear Device push token,<br/>stage userRemoveDevice
+    Database-->>API: Committed, revoked session ids returned
+    API->>Redis: Delete exactly the revoked session keys
+    alt Purge fails
+        API->>API: Log the error, continue
+    end
     Note over Redis: Tokens for this device-user pair are now invalid
-    API-->>Client: 200 OK
+    API-->>Client: 200 OK (ActivityLogInterceptor writes the staged log)
     Note over Client: Client using this device gets 401 on next request
     Note over Client: Sessions of other users owning the same device are unaffected
 ```
@@ -122,7 +131,7 @@ sequenceDiagram
 - The ownership is looked up first. One that does not exist, belongs to another user, or is already revoked produces a 404 with status code `51300` (`EnumDeviceStatusCodeError.notFound`).
 - `notificationProvider` is re-derived from `platform` and written together with `name` and `notificationToken` on the shared `Device` row.
 - `lastActiveAt` is stamped on both the `DeviceOwnership` and the `Device`.
-- `DeviceDomain.refresh` opens a `withTransaction` that calls `DeviceOwnershipRepository.refreshInTx` and `ActivityLogDomain.recordInTx` (`userDeviceRefresh`).
+- `DeviceDomain.refresh` opens a `withTransaction` that calls `DeviceOwnershipRepository.refreshInTx` and stages `userDeviceRefresh` through `ActivityLogDomain.stage`.
 - The refresh write leaves `lastLoginAt` and `lastIPAddress` on `User` untouched; the login path stamps those.
 - The handler returns `200 OK` with no data payload.
 
@@ -161,7 +170,7 @@ Device endpoints are protected using `EnumPolicySubject.device`. Admin endpoints
 )
 ```
 
-Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`, but no policy subject check since users can only manage their own devices. The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities, and `DELETE /admin/user/:userId/device/remove/:deviceOwnershipId` also carries `@ActivityLog(EnumActivityLogAction.adminDeviceRemove)`.
+Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccessProtected()`, `@UserProtected()`, and `@TermPolicyAcceptanceProtected()`, but no policy subject check since users can only manage their own devices. The admin endpoints add `@RoleProtected(EnumRoleType.admin)` on top of the policy abilities.
 
 
 <!-- REFERENCES -->
@@ -169,3 +178,4 @@ Shared (user self-service) endpoints carry `@ApiKeyProtected()`, `@AuthJwtAccess
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-notification]: notification.md
+[ref-doc-activity-log]: activity-log.md

@@ -17,14 +17,10 @@ import {
     WorkspaceDefaultAvailableSearch,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
-import {
-    WorkspaceMemberResponseDto,
-    WorkspaceMemberResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import {
-    WorkspaceResponseDto,
-    WorkspaceResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.response.dto';
+import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import type { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import type { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 

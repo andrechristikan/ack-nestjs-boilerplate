@@ -1,15 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumPasswordHistoryType,
-    PasswordHistory,
     Prisma,
-} from '@generated/prisma-client';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+} from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
+import type { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { Injectable } from '@nestjs/common';
 

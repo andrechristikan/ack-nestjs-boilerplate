@@ -1,4 +1,4 @@
-import { IAnalyticStatusCount } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticStatusCount } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IWorkspaceInviteAnalyticRepository {
     groupByStatus(

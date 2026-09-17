@@ -1,11 +1,11 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import { INotificationPublishTermPolicyPayload } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationPublishTermPolicyPayload } from '@modules/notification/interfaces/notification.interface';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and sends the term-policy publication email to every active user, in batches. */
 @Injectable()

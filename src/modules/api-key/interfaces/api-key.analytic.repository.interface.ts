@@ -1,5 +1,5 @@
-import { EnumApiKeyType } from '@generated/prisma-client';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IApiKeyAnalyticCreatedRow {
     id: string;

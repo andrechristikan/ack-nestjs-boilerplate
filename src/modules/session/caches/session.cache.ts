@@ -1,6 +1,9 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionCacheProvider } from '@modules/session/constants/session.constant';
-import { ISessionCache } from '@modules/session/interfaces/session.interface';
+import type {
+    ISessionCache,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
 import { Cache } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -94,7 +97,7 @@ export class SessionCache {
     /** Bulk-deletes all given session cache entries for a user. */
     async deleteAllLogins(
         userId: string,
-        sessions: { id: string }[]
+        sessions: ISessionRef[]
     ): Promise<void> {
         if (sessions.length > 0) {
             const keys = sessions.map(session =>

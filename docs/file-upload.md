@@ -138,7 +138,7 @@ File extension enums for validation. These enums are used with `FileExtensionPip
 - `EnumFileExtension`: both a const object merging every group above and a union type of the five enums
 
 **When to Use:**
-- Combine multiple enums for flexible validation: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`
+- Mix members of several enums to accept more than one kind: `[EnumFileExtensionImage.jpg, EnumFileExtensionDocument.pdf]`
 - Use specific enum for strict type control: only `EnumFileExtensionImage` values
 - CSV enum is typically used with `FileCsvParsePipe` for data import features
 
@@ -314,51 +314,17 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 );
 ```
 
-`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the service skips the database write in that case. The repository call that stores the S3 reference takes the `IRequestLog` the service reads from the request store under `RequestLogStoreKey`.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the domain skips the database write in that case. Otherwise one `withTransaction` stores the S3 reference through `UserRepository.updatePhotoProfileInTx` and stages `userUpdatePhotoProfile` through `ActivityLogDomain.stage`.
 
 **Multiple Files Upload:**
 
-`@FileUploadMultiple` wires the interceptor for an array of files, and `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
+`@FileUploadMultiple` wires `FilesInterceptor` for an array of files under one field. Default field is `files`, default max count is `FileMaxMultiple` (`3`), and default size is `FileSizeInBytes` (`10mb`). `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
 
 ```typescript
-@Post('/documents/upload')
 @FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
-async uploadDocuments(
-  @UploadedFiles(
-    FileExtensionPipe([
-      EnumFileExtensionDocument.pdf,
-      EnumFileExtensionImage.png,
-    ])
-  )
-  files: IFile[]
-) {
-  const uploadedFiles = [];
-
-  for (const file of files) {
-    const extension = this.fileService.extractExtensionFromFilename(
-      file.originalname
-    ) as EnumFileExtension;
-
-    const key = this.fileService.createRandomFilename({
-      path: 'documents',
-      prefix: 'doc',
-      extension,
-    });
-
-    await this.awsS3Service.putItem(
-      {
-        key,
-        size: file.size,
-        file: file.buffer,
-      },
-      { access: EnumAwsS3Accessibility.private }
-    );
-    uploadedFiles.push(key);
-  }
-
-  return { files: uploadedFiles };
-}
 ```
+
+Upload routes use `@FileUploadSingle`: `POST /shared/user/profile/photo/upload` and `POST /admin/user/import`.
 
 ### CSV Import
 
@@ -369,12 +335,20 @@ The pipe chain order is the contract: presence, then extension, then parse, then
 The row shape is an ordinary request schema. `UserImportRequestSchema` picks `email`, `name` and `username` off `UserCreateRequestSchema`, so the import reuses the same field constraints as user creation:
 
 ```typescript
+/**
+ * Validates one row of a user import CSV.
+ * @public
+ */
 export const UserImportRequestSchema = UserCreateRequestSchema.pick({
     email: true,
     name: true,
     username: true,
 });
 
+/**
+ * One row of a user import CSV.
+ * @public
+ */
 export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
 ```
 
@@ -387,7 +361,6 @@ export type UserImportRequestDto = z.infer<typeof UserImportRequestSchema>;
   action: [EnumPolicyAction.read, EnumPolicyAction.create],
 })
 @RoleProtected(EnumRoleType.admin)
-@ActivityLog(EnumActivityLogAction.adminUserImport)
 @UserProtected()
 @AuthJwtAccessProtected()
 @ApiKeyProtected()
@@ -412,74 +385,20 @@ async import(
 }
 ```
 
-The row cap on this route is `user.maxDataImport`, which is `50`.
+The row cap on this route is `user.maxDataImport`, which is `50`. The `adminUserImport` activity log is staged by the import flow, not declared on the route (see [Activity Log](activity-log.md)).
 
 `FileCsvParsePipe` can also be used on its own when you only need the raw rows. It returns `T[]` of plain objects with no schema validation applied.
 
 ### Multiple Field Upload
 
-Upload files from different form fields simultaneously.
+`@FileUploadMultipleFields` wires `FileFieldsInterceptor` for named fields, each with its own `maxFiles`. Default size is `FileSizeInBytes`. No controller uses it.
 
 ```typescript
-@Post('/profile/complete')
 @FileUploadMultipleFields([
   { field: 'avatar', maxFiles: 1 },
   { field: 'documents', maxFiles: 1 },
   { field: 'certificates', maxFiles: 1 }
 ])
-async uploadCompleteProfile(
-  @UploadedFiles() files: {
-    avatar?: IFile[],
-    documents?: IFile[],
-    certificates?: IFile[]
-  }
-) {
-  const result = {};
-  
-  if (files.avatar) {
-    const avatar = files.avatar[0];
-    const filename = this.fileService.createRandomFilename({
-      path: 'avatars',
-      prefix: 'avatar',
-      extension: this.fileService.extractExtensionFromFilename(
-        avatar.originalname
-      ) as EnumFileExtension
-    });
-    await this.awsS3Service.putItem(
-      {
-        key: filename,
-        size: avatar.size,
-        file: avatar.buffer,
-      },
-      { access: EnumAwsS3Accessibility.private }
-    );
-    result.avatar = filename;
-  }
-  
-  if (files.documents) {
-    result.documents = [];
-    for (const doc of files.documents) {
-      const filename = this.fileService.createRandomFilename({
-        path: 'documents',
-        prefix: 'doc',
-        extension: this.fileService.extractExtensionFromFilename(
-          doc.originalname
-        ) as EnumFileExtension
-      });
-      await this.awsS3Service.putItem(
-        {
-          key: filename,
-          size: doc.size,
-          file: doc.buffer,
-        },
-        { access: EnumAwsS3Accessibility.private }
-      );
-      result.documents.push(filename);
-    }
-  }
-  
-  return result;
-}
 ```
 
 ## Error Handling
@@ -523,6 +442,8 @@ Thrown during CSV validation with detailed error context. The exception carries 
 | Exceed Max Files | 50107 | 422 | `file.error.exceedMaxFiles` | The request carries more files than the route's global `limits.files` |
 | Field Unexpected | 50108 | 422 | `file.error.fieldUnexpected` | A file arrived on a field the route does not accept |
 | Multipart Invalid | 50109 | 422 | `file.error.multipartInvalid` | The multipart body is malformed, or a part / field limit was hit |
+| Exceed Max Export | 50104 | 422 | `file.error.exceedMaxDataExport` | An export query returns more rows than its cap (`user.maxDataExport` for the user export) |
+| Exceed Max Size Export | 50105 | 422 | `file.error.exceedMaxSizeExport` | The generated export file exceeds `file.maxSizeExportInBytes` (2 MB) |
 | Validation Failed | 50300 | 422 | `file.error.validationDto` | Schema validation failed, with per-row details |
 
 Every code except `50300` comes from `EnumFileStatusCodeError`. `Validation Failed` reuses `EnumRequestStatusCodeError.validation`, so its `statusCodeKey` is `validation` while its `module` is still `file`. The full catalog is [Status Codes](status-codes.md).

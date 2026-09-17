@@ -1,34 +1,35 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseService } from '@common/database/services/database.service';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Session,
-} from '@generated/prisma-client';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { Session } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import type {
+    ISession,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { Injectable } from '@nestjs/common';
+import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class SessionDomain {
+    private readonly logger = new Logger(SessionDomain.name);
+
     constructor(
         private readonly sessionRepository: SessionRepository,
         private readonly sessionUtil: SessionUtil,
         private readonly sessionCache: SessionCache,
         private readonly activityLogDomain: ActivityLogDomain,
-        private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -71,24 +72,6 @@ export class SessionDomain {
         }
 
         await this.sessionCache.deleteOneLogin(userId, sessionId);
-
-        return;
-    }
-
-    /**
-     * Reads the still-active sessions before their rows are revoked: the read filters on
-     * active rows, so a caller that revokes first purges nothing and leaves live logins.
-     */
-    async deleteLoginsByDeviceOwnership(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        const sessions =
-            await this.sessionRepository.findActiveByDeviceOwnership(
-                userId,
-                deviceOwnershipId
-            );
-        await this.sessionCache.deleteAllLogins(userId, sessions);
 
         return;
     }
@@ -142,7 +125,7 @@ export class SessionDomain {
         userId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<{ id: string }[]> {
+    ): Promise<ISessionRef[]> {
         return this.sessionRepository.revokeActiveByUserInTx(
             tx,
             userId,
@@ -157,7 +140,7 @@ export class SessionDomain {
         deviceOwnershipId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<{ id: string }[]> {
+    ): Promise<ISessionRef[]> {
         return this.sessionRepository.revokeByDeviceOwnershipInTx(
             tx,
             userId,
@@ -177,18 +160,13 @@ export class SessionDomain {
         }
 
         const revokedAt = this.helperDateService.create();
-        await Promise.all([
-            this.databaseService.withTransaction(async tx => {
-                await this.sessionRepository.revokeInTx(
-                    tx,
-                    userId,
-                    sessionId,
-                    userId,
-                    revokedAt
-                );
-            }),
-            this.sessionCache.deleteOneLogin(userId, sessionId),
-        ]);
+        const revoked = await this.sessionRepository.revoke(
+            userId,
+            sessionId,
+            userId,
+            revokedAt
+        );
+        await this.purgeRevokedLogins(userId, [revoked]);
 
         this.activityLogDomain.stage({
             action: EnumActivityLogAction.userRevokeSession,
@@ -211,29 +189,94 @@ export class SessionDomain {
         }
 
         const revokedAt = this.helperDateService.create();
-        const [removed] = await Promise.all([
-            this.databaseService.withTransaction(async tx => {
-                return this.sessionRepository.revokeByAdminInTx(
-                    tx,
-                    sessionId,
-                    revokedBy,
-                    revokedAt
-                );
-            }),
-            this.sessionCache.deleteOneLogin(userId, sessionId),
-        ]);
+        const removed = await this.sessionRepository.revokeByAdmin(
+            sessionId,
+            revokedBy,
+            revokedAt
+        );
+        await this.purgeRevokedLogins(userId, [removed]);
 
-        const metadata = this.sessionUtil.mapActivityLogMetadata(removed);
         this.activityLogDomain.stage({
             action: EnumActivityLogAction.adminSessionRevoke,
-            metadata,
+            metadata: this.sessionUtil.mapActivityLogActorMetadata(removed),
         });
-        this.activityLogDomain.stage({
-            action: EnumActivityLogAction.userRevokeSessionByAdmin,
-            userId,
-            metadata,
-        });
+        if (userId !== revokedBy) {
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                userId,
+                createdBy: revokedBy,
+                metadata: this.sessionUtil.mapActivityLogTargetMetadata(
+                    removed,
+                    revokedBy
+                ),
+            });
+        }
 
         return;
+    }
+
+    /**
+     * Runs after the revoke is committed: purges exactly the revoked logins from the session
+     * cache. A purge failure is logged and swallowed, so the committed revoke still succeeds.
+     */
+    async purgeRevokedLogins(
+        userId: string,
+        sessions: ISessionRef[]
+    ): Promise<void> {
+        try {
+            await this.sessionCache.deleteAllLogins(userId, sessions);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Failed to purge revoked session cache');
+        }
+    }
+
+    /** Runs after the caller's transaction commits: purges exactly the revoked logins, then logs the pair when anything was revoked. */
+    async finalizeRevokeAllByAdmin(
+        userId: string,
+        revokedBy: string,
+        sessions: ISessionRef[]
+    ): Promise<void> {
+        await this.purgeRevokedLogins(userId, sessions);
+
+        if (sessions.length === 0) {
+            return;
+        }
+
+        this.activityLogDomain.stage({
+            action: EnumActivityLogAction.adminSessionRevokeAll,
+            metadata: {
+                targetUserId: userId,
+                sessionCount: sessions.length,
+            },
+        });
+        if (userId !== revokedBy) {
+            this.activityLogDomain.stage({
+                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                userId,
+                createdBy: revokedBy,
+                metadata: {
+                    actorUserId: revokedBy,
+                    sessionCount: sessions.length,
+                },
+            });
+        }
+    }
+
+    async revokeAllByAdmin(userId: string, revokedBy: string): Promise<void> {
+        if (userId === revokedBy) {
+            throw new UserNotSelfException();
+        }
+
+        const revokedAt = this.helperDateService.create();
+        const sessions = await this.sessionRepository.revokeActiveByUser(
+            userId,
+            revokedBy,
+            revokedAt
+        );
+        if (sessions.length === 0) {
+            throw new SessionNotFoundException();
+        }
+
+        await this.finalizeRevokeAllByAdmin(userId, revokedBy, sessions);
     }
 }

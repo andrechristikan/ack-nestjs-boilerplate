@@ -1,21 +1,21 @@
 import { EnumNotificationProcess } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailBulkQueuePayload,
     INotificationEmailQueuePayload,
     INotificationEmailUnregisteredQueuePayload,
-    INotificationForgotPasswordPayload,
+    INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationPublishTermPolicyPayload,
-    INotificationTemporaryPasswordPayload,
-    INotificationVerificationEmailPayload,
+    INotificationTemporaryPasswordEncryptedPayload,
+    INotificationVerificationEmailEncryptedPayload,
     INotificationVerifiedEmailPayload,
     INotificationVerifiedMobileNumberPayload,
-    INotificationWelcomeByAdminPayload,
-    INotificationWorkspaceInvitePayload,
-    INotificationWorkspaceInviteUnregisteredPayload,
+    INotificationWelcomeByAdminEncryptedPayload,
+    INotificationWorkspaceInviteEncryptedPayload,
+    INotificationWorkspaceInviteUnregisteredEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailAccountDomain } from '@modules/notification/domains/notification.email.account.domain';
 import { NotificationEmailSecurityDomain } from '@modules/notification/domains/notification.email.security.domain';
@@ -23,7 +23,7 @@ import { NotificationEmailTermPolicyDomain } from '@modules/notification/domains
 import { NotificationEmailWorkspaceDomain } from '@modules/notification/domains/notification.email.workspace.domain';
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 @Injectable()
 export class NotificationEmailProcessorService {
@@ -60,7 +60,7 @@ export class NotificationEmailProcessorService {
 
     async processWelcomeByAdmin(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWelcomeByAdminPayload>,
+            INotificationEmailQueuePayload<INotificationWelcomeByAdminEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -73,7 +73,7 @@ export class NotificationEmailProcessorService {
 
     async processTemporaryPasswordByAdmin(
         job: Job<
-            INotificationEmailQueuePayload<INotificationTemporaryPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationTemporaryPasswordEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -110,7 +110,7 @@ export class NotificationEmailProcessorService {
 
     async processVerificationEmail(
         job: Job<
-            INotificationEmailQueuePayload<INotificationVerificationEmailPayload>,
+            INotificationEmailQueuePayload<INotificationVerificationEmailEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -136,7 +136,7 @@ export class NotificationEmailProcessorService {
 
     async processForgotPassword(
         job: Job<
-            INotificationEmailQueuePayload<INotificationForgotPasswordPayload>,
+            INotificationEmailQueuePayload<INotificationForgotPasswordEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -199,7 +199,7 @@ export class NotificationEmailProcessorService {
 
     async processWorkspaceInvite(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWorkspaceInvitePayload>,
+            INotificationEmailQueuePayload<INotificationWorkspaceInviteEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -212,7 +212,7 @@ export class NotificationEmailProcessorService {
 
     async processWorkspaceInviteUnregistered(
         job: Job<
-            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredPayload>,
+            INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >
@@ -225,7 +225,7 @@ export class NotificationEmailProcessorService {
 
     async processWorkspaceJoinRequest(
         job: Job<
-            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestPayload>,
+            INotificationEmailQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload>,
             IQueueResponse,
             EnumNotificationProcess
         >

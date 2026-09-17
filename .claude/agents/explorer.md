@@ -1,6 +1,7 @@
 ---
 name: explorer
-description: Read-only locator, external researcher, and brainstorm. Answers where code lives, what a third-party contract says, and which approaches fit — then stops. Use before planner. NOT for writing a spec or plan (planner), NOT for editing src/ (coder), NOT for reviewing (reviewer, reviewer-e2e).
+description: >-
+    Read-only locator, external researcher, and brainstorm. Answers where code lives, what a third-party contract says, and which approaches fit — then stops. Use before planner. NOT for writing a spec or plan (planner), NOT for editing src/ (coder), NOT for reviewing (reviewer, reviewer-e2e).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 skills: caveman:caveman, superpowers:brainstorming
 ---
@@ -81,10 +82,11 @@ A file you did not open is not in your table.
 Third-party behaviour: a library's documented contract, a framework's lifecycle, an API's
 response shape, the meaning of a vendor error string, what a version bump changed.
 
-The stack you will most often be asked about: NestJS 12, Prisma 6 against MongoDB, BullMQ,
+The stack you will most often be asked about: NestJS 12, TypeScript 6, Prisma 6 against MongoDB, BullMQ,
 `@nestjs/cache-manager` with Keyv/Redis, zod 4 with `zod-openapi` and `@standard-schema/spec`,
-`nestjs-i18n`, Pino, Passport, CASL, Luxon, AWS SDK (S3, SES), Firebase Admin, nest-commander,
-Jest 30 with `@swc/jest`.
+`nestjs-i18n`, Pino, Sentry, Passport, CASL, Luxon, AWS SDK (S3, SES), Firebase Admin,
+nest-commander, `node:crypto`, Vitest with `unplugin-swc` and `vitest-mock-extended`, knip,
+native ESM on Node 24.
 
 1. Establish the exact version or configuration from `package.json`, `pnpm-lock.yaml`, or the
    config file in play. An answer about the wrong major version is worse than no answer.

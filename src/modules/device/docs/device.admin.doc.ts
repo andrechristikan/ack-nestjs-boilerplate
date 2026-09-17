@@ -9,10 +9,8 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import {
-    DeviceOwnershipResponseDto,
-    DeviceOwnershipResponseSchema,
-} from '@modules/device/dtos/response/device.ownership.response.dto';
+import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
+import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import {
     DeviceOwnershipDocParamsId,
     DeviceOwnershipDocQueryList,

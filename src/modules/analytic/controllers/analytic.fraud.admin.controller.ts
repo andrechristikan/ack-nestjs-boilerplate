@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticAccountTakeoverRow,
     IAnalyticApiKeyBurstRow,
     IAnalyticBackupCodeNewDeviceRow,
@@ -13,37 +13,29 @@ import {
     IAnalyticSharedFingerprintRow,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import {
     AnalyticAdminListDoc,
     AnalyticAdminRiskScoreDoc,
     AnalyticAdminSummaryDoc,
 } from '@modules/analytic/docs/analytic.admin.doc';
-import {
-    AnalyticDateRangeRequestDto,
-    AnalyticDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
-import {
-    AnalyticFraudRiskScoresRequestDto,
-    AnalyticFraudRiskScoresRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
-import {
-    AnalyticWindowRequestDto,
-    AnalyticWindowRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.window.request.dto';
-import {
-    AnalyticFraudRiskScoreResponseSchema,
-    AnalyticJsonResponseSchema,
-    AnalyticSummaryResponseSchema,
-} from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import { AnalyticFraudRiskScoresRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
+import type { AnalyticFraudRiskScoresRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
+import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
+import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import { AnalyticSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.summary.response.dto';
 import { AnalyticFraudHttpService } from '@modules/analytic/services/analytic.fraud.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -58,7 +50,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.analytic.fraud')
 @Controller({

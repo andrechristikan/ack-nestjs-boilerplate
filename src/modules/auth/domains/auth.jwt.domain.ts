@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Algorithm } from 'jsonwebtoken';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { createPrivateKey, createPublicKey } from 'crypto';
-import {
+import type { Algorithm } from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
+import type { JwtSignOptions } from '@nestjs/jwt';
+import { createPrivateKey, createPublicKey } from 'node:crypto';
+import type {
     IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -12,8 +13,11 @@ import {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumUserLoginFrom, EnumUserLoginWith } from '@generated/prisma-client';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import {
+    EnumUserLoginFrom,
+    EnumUserLoginWith,
+} from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
 /** Signs, verifies and rotates the access/refresh token pair. See docs/authentication.md. */

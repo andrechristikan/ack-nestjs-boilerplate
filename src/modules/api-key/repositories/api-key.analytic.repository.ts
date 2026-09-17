@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type {
     IApiKeyAnalyticCreatedRow,
     IApiKeyAnalyticRepository,
 } from '@modules/api-key/interfaces/api-key.analytic.repository.interface';

@@ -1,4 +1,4 @@
-import { IHelperEmailValidation } from '@common/helper/interfaces/helper.interface';
+import type { IHelperEmailValidation } from '@common/helper/interfaces/helper.interface';
 
 export function validateEmail(value: string): IHelperEmailValidation {
     const regex = new RegExp(/\S+@\S+\.\S+/);

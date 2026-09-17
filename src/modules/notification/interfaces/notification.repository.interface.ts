@@ -1,15 +1,15 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationCreate,
     INotificationCreateEntry,
 } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationChannel,
-    Notification,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 
 export interface INotificationRepository {
     findWithPaginationCursor(

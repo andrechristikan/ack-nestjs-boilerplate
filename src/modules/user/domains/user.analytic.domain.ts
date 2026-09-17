@@ -1,11 +1,11 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import {
+import type { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
     IUserAnalyticSignUpRow,
@@ -17,7 +17,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserAnalyticDomain {

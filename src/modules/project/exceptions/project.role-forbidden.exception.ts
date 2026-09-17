@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
+/**
+ * Raised when the caller lacks the project role the route requires.
+ * @public
+ */
 export class ProjectRoleForbiddenException extends AppBaseException {
     readonly module = 'project';
     readonly statusCode = EnumProjectStatusCodeError.roleForbidden;

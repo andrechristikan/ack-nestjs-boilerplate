@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
     IAnalyticBlockedUsers,
@@ -23,15 +23,11 @@ import {
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import { AnalyticAdminMetricDoc } from '@modules/analytic/docs/analytic.admin.doc';
-import {
-    AnalyticDateRangeRequestDto,
-    AnalyticDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
-import {
-    AnalyticOptionalDateRangeRequestDto,
-    AnalyticOptionalDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
-import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
 import { AnalyticDashboardHttpService } from '@modules/analytic/services/analytic.dashboard.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -45,7 +41,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.analytic')
 @Controller({

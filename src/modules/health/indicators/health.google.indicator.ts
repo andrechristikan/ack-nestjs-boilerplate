@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * Reports Google OAuth credential presence as a Terminus health indicator.
@@ -46,9 +44,7 @@ export class HealthGoogleIndicator {
             const message =
                 err instanceof Error ? err.message : 'Unknown error';
 
-            return indicator.down(
-                `HealthGoogleIndicator Failed - ${message}`
-            );
+            return indicator.down(`HealthGoogleIndicator Failed - ${message}`);
         }
     }
 }

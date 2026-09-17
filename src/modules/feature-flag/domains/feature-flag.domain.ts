@@ -1,9 +1,10 @@
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { FeatureFlag, Prisma } from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagPredefinedKeyEmptyException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-empty.exception';
@@ -11,7 +12,7 @@ import { FeatureFlagPredefinedKeyLengthExceededException } from '@modules/featur
 import { FeatureFlagPredefinedKeyNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-not-found.exception';
 import { FeatureFlagPredefinedKeyTypeInvalidException } from '@modules/feature-flag/exceptions/feature-flag.predefined-key-type-invalid.exception';
 import { FeatureFlagServiceUnavailableException } from '@modules/feature-flag/exceptions/feature-flag.service-unavailable.exception';
-import {
+import type {
     IFeatureFlagMetadata,
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
@@ -52,7 +53,7 @@ export class FeatureFlagDomain {
         key: string,
         identifier: string
     ): boolean {
-        const hash = this.helperHashService.md5Hash(`${key}:${identifier}`);
+        const hash = this.helperHashService.sha256Hash(`${key}:${identifier}`);
         const num = Number.parseInt(hash.slice(0, 8), 16);
         const percentage = num % 100;
 

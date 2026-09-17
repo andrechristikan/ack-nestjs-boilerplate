@@ -1,16 +1,13 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumProjectMemberRole,
-    Prisma,
-    ProjectMember,
-} from '@generated/prisma-client';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import type { ProjectMember } from '@generated/prisma-client/client';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { IProjectMemberRepository } from '@modules/project/interfaces/project.member.repository.interface';
+import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -93,14 +90,12 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async updateRoleInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        newRole: EnumProjectMemberRole,
-        actorId: string
+        newRole: EnumProjectMemberRole
     ): Promise<void> {
         await tx.projectMember.update({
             where: { id: targetMemberId },
             data: {
                 role: newRole,
-                updatedBy: actorId,
             },
         });
     }

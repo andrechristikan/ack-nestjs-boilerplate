@@ -10,11 +10,10 @@ import {
     PolicyDocParamsId,
     PolicyDocParamsRoleId,
 } from '@modules/policy/constants/policy.doc.constant';
-import { PolicyDto, PolicySchema } from '@modules/policy/dtos/policy.dto';
-import {
-    PolicyListResponseDto,
-    PolicyListResponseSchema,
-} from '@modules/policy/dtos/response/policy.list.response.dto';
+import { PolicySchema } from '@modules/policy/dtos/policy.dto';
+import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
+import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
+import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function PolicyAdminListDoc(): MethodDecorator {

@@ -3,19 +3,19 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailSendPayload,
-    INotificationForgotPasswordPayload,
+    INotificationForgotPasswordEncryptedPayload,
     INotificationNewDeviceLoginPayload,
     INotificationSendPushPayload,
-    INotificationTemporaryPasswordPayload,
+    INotificationTemporaryPasswordEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Writes and fans out the password, two-factor and new-device login notifications. */
 @Injectable()
@@ -34,7 +34,7 @@ export class NotificationSecurityDomain {
     async processTemporaryPasswordByAdmin(
         userId: string,
         proceedBy: string,
-        data: INotificationTemporaryPasswordPayload
+        data: INotificationTemporaryPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userDomain.getOneActive(userId),
@@ -90,7 +90,10 @@ export class NotificationSecurityDomain {
             promises.push(
                 this.notificationPushQueue.sendTemporaryPasswordByAdmin(
                     pushPayload,
-                    data
+                    {
+                        passwordCreatedAt: data.passwordCreatedAt,
+                        passwordExpiredAt: data.passwordExpiredAt,
+                    }
                 )
             );
         }
@@ -139,7 +142,7 @@ export class NotificationSecurityDomain {
 
     async processForgotPassword(
         userId: string,
-        data: INotificationForgotPasswordPayload
+        data: INotificationForgotPasswordEncryptedPayload
     ): Promise<IQueueResponse> {
         const user = await this.userDomain.getOneActive(userId);
 

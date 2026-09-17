@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { IRequestStoreService } from '@common/request/interfaces/request.store.service.interface';
 
 @Injectable()
-export class RequestStoreService implements IRequestStoreService {
+export class RequestStoreService {
     constructor(private readonly clsService: ClsService) {}
 
     set<T>(key: string, value: T): void {

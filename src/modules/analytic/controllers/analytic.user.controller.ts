@@ -1,12 +1,10 @@
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import { AnalyticUserSummaryDoc } from '@modules/analytic/docs/analytic.user.doc';
-import {
-    AnalyticOptionalDateRangeRequestDto,
-    AnalyticOptionalDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
-import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.metric.response.dto';
-import { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import type { AnalyticOptionalDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
+import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-summary.response.dto';
+import type { IAnalyticWorkspaceSummary } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -20,7 +18,7 @@ import {
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Workspace } from '@generated/prisma-client';
+import type { Workspace } from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.analytic')
 @Controller({

@@ -1,11 +1,12 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
+import type { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
 import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
-import { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
+import type { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
 /**
  * Builds a pipe that validates every parsed CSV row against `schema`,

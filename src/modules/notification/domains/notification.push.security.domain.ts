@@ -2,16 +2,16 @@ import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import { EnumNotificationChannel } from '@generated/prisma-client';
-import {
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import type {
     INotificationNewDeviceLoginPayload,
     INotificationSendPushPayload,
-    INotificationTemporaryPasswordPayload,
+    INotificationTemporaryPasswordPushPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { Injectable } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Renders and delivers the password, two-factor and new-device login push messages. */
 @Injectable()
@@ -158,7 +158,7 @@ export class NotificationPushSecurityDomain {
             notificationId,
             userId,
         }: INotificationSendPushPayload,
-        data: INotificationTemporaryPasswordPayload
+        data: INotificationTemporaryPasswordPushPayload
     ): Promise<IQueueResponse> {
         if (!this.firebaseService.isInitialized()) {
             return {

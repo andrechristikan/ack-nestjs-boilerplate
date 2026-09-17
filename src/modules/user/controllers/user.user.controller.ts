@@ -13,7 +13,7 @@ import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.user')
 @Controller({

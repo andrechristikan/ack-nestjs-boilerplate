@@ -1,9 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ResponseSchema } from '@common/response/dtos/response.dto';
-import {
-    ResponsePagingMetadataDto,
-    ResponsePagingMetadataSchema,
-} from '@common/response/dtos/response.paging-metadata.dto';
+import { ResponsePagingMetadataSchema } from '@common/response/dtos/response.paging-metadata.dto';
+import type { ResponsePagingMetadataDto } from '@common/response/dtos/response.paging-metadata.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumPaginationOrderDirectionType,
@@ -13,6 +11,7 @@ import {
 /**
  * Paginated response envelope without `data`. A route documenting a page adds it with
  * `.extend({ data: z.array(item) })`.
+ * @public
  */
 export const ResponsePagingSchema = ResponseSchema.extend({
     metadata: ResponsePagingMetadataSchema.meta({
@@ -47,6 +46,7 @@ export const ResponsePagingSchema = ResponseSchema.extend({
 
 /**
  * Paginated response envelope: statusCode, message, paging metadata, and a `data` array.
+ * @public
  */
 export type ResponsePagingDto<T> = {
     statusCode: number;

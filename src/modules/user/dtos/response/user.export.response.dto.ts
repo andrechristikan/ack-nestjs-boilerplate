@@ -3,6 +3,7 @@ import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.re
 
 /**
  * Flattened user row for CSV export: the role and the term-policy flags become scalar columns.
+ * @public
  */
 export const UserExportResponseSchema = UserListResponseSchema.omit({
     role: true,
@@ -35,4 +36,8 @@ export const UserExportResponseSchema = UserListResponseSchema.omit({
     }),
 });
 
+/**
+ * Flattened user row for CSV export.
+ * @public
+ */
 export type UserExportResponseDto = z.infer<typeof UserExportResponseSchema>;

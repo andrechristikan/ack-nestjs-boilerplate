@@ -1,6 +1,7 @@
 ---
 name: ack-spec
-description: Write and repair unit specs against code that already exists, until coverage is 100%. The code is the specification and always wins — it is never changed here. Use for a failing suite, a coverage gap, or orphan specs. NOT for feature code.
+description: >-
+    Write and repair unit specs against code that already exists, until coverage is 100%. The code is the specification and always wins — it is never changed here. Use for a failing suite, a coverage gap, or orphan specs. NOT for feature code.
 disable-model-invocation: true
 ---
 
@@ -34,12 +35,12 @@ If making the suite green requires touching `src/`, stop and say so.
 Run the suite for the named scope first, and read the failure.
 
 ```bash
-pnpm test --testPathPatterns '<scope>'
+pnpm test <scope>
 ```
 
-**The flag is PLURAL.** Jest 30 rejects `--testPathPattern`.
+The scope is a path fragment; Vitest runs every spec whose path contains it.
 
-**Clear the jest cache before believing a coverage gap.**
+**Clear the Vitest cache (`pnpm exec vitest --clearCache`) before believing a coverage gap.**
 
 ## 2 — Dispatch
 
@@ -58,15 +59,15 @@ one that does.**
 pnpm test:cov
 ```
 
-Every other skill runs `--testPathPatterns '<module>'` without coverage and stops there. A
-spec repair reaches past its own scope: a global mock, a shared fixture, a relocated helper,
-and the **100% global threshold, which is measured only when `--coverage` is on**.
-`collectCoverage` is `false` in `test/jest.json`, so `pnpm test` never applies the
+Every other skill runs `pnpm test <module>` without coverage and stops there. A spec repair
+reaches past its own scope: a global mock, a shared fixture, a relocated helper, and the
+**100% global threshold, which is measured only when `--coverage` is on**.
+`coverage.enabled` is `false` in `vitest.config.ts`, so `pnpm test` never applies the
 threshold. Report the totals with the command that produced them.
 
-Controllers, repositories, domains, and caches sit outside `collectCoverageFrom` —
-a gap there is not an `/ack-spec` gap (`rules/testing.md`). Expanding the jest globs is an
-owner change to `test/jest.json`.
+Controllers, processors, repositories, and the paths on the coverage denylist sit outside
+the coverage set — a gap there is not an `/ack-spec` gap (`rules/testing.md`). Changing the
+denylist is an owner change to `vitest.config.ts`.
 
 **100% is the bar.** A file in scope still short of it is another `test-writer` dispatch,
 until the per-file rows read 100 across statements, branches, functions and lines. Read the
@@ -83,7 +84,7 @@ It is not a waiver.
   The owner takes it to `/ack-code`.
 - **No review, no boot.** This skill dispatches `test-writer` and nothing else.
 - Never delete or skip a spec to reach green.
-- Never lower the coverage threshold, exclude a file from `collectCoverageFrom`, or add an
+- Never lower the coverage threshold, add a path to the coverage denylist, or add an
   ignore comment.
 - **Never `--no-verify` on your own initiative.**
 - Never stage or commit unless the owner asks in that exchange.

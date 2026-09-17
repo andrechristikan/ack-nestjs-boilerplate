@@ -9,14 +9,10 @@ import {
     DocResponseFile,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    UserListResponseDto,
-    UserListResponseSchema,
-} from '@modules/user/dtos/response/user.list.response.dto';
-import {
-    UserProfileResponseDto,
-    UserProfileResponseSchema,
-} from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
+import type { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
+import type { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
 import {
     UserDocParamsId,
     UserDocQueryList,
@@ -27,10 +23,8 @@ import {
 } from '@modules/user/constants/user.list.constant';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import {
-    DatabaseIdResponseDto,
-    DatabaseIdResponseSchema,
-} from '@common/database/dtos/response/database.id.response.dto';
+import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
+import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 

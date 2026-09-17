@@ -16,10 +16,8 @@ import {
     ProjectDefaultAvailableOrderBy,
     ProjectDefaultAvailableSearch,
 } from '@modules/project/constants/project.list.constant';
-import {
-    ProjectResponseDto,
-    ProjectResponseSchema,
-} from '@modules/project/dtos/response/project.response.dto';
+import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
+import type { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 

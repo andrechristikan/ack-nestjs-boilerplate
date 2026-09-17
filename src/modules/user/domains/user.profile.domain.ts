@@ -2,16 +2,19 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
-import { IAwsS3, IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type {
+    IAwsS3,
+    IAwsS3Presign,
+} from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import {
+import type {
     IFile,
     IFileRandomFilenameOptions,
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
@@ -19,7 +22,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
-import {
+import type {
     IUserGeneratePhotoProfile,
     IUserProfile,
     IUserUpdatePhotoProfile,

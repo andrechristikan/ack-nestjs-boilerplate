@@ -1,22 +1,24 @@
 import {
-    ExecutionContext,
     SetMetadata,
     UseGuards,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import {
     ApiKeyStoreKey,
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
-import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
 import { ClsServiceManager } from 'nestjs-cls';
 
 /**
- * Extracts the authenticated API key (or one of its properties) from the request store.
+ * Resolves the authenticated `ApiKey` from the request store.
  * Requires `@ApiKeyProtected()` or `@ApiKeySystemProtected()` on the route.
+ * @public
  */
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     <T = ApiKey>(data: string, _ctx: ExecutionContext): T => {
@@ -28,6 +30,7 @@ export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
 
 /**
  * Requires a valid X-API-Key and restricts the route to system-type API keys.
+ * @public
  */
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
@@ -38,6 +41,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
 
 /**
  * Requires a valid X-API-Key and restricts the route to default-type API keys.
+ * @public
  */
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(

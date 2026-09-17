@@ -4,6 +4,7 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Base project shape: the stored project row.
+ * @public
  */
 export const ProjectResponseSchema = DatabaseResponseSchema.omit({
     deletedBy: true,
@@ -26,4 +27,8 @@ export const ProjectResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored project.
+ * @public
+ */
 export type ProjectResponseDto = z.infer<typeof ProjectResponseSchema>;

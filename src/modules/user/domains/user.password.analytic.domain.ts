@@ -1,10 +1,10 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IAnalyticPasswordExpiry } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticPasswordExpiry } from '@modules/analytic/interfaces/analytic.interface';
 import { PasswordHistoryAnalyticDomain } from '@modules/password-history/domains/password-history.analytic.domain';
-import { IPasswordHistoryAnalyticRow } from '@modules/password-history/interfaces/password-history.analytic.repository.interface';
+import type { IPasswordHistoryAnalyticRow } from '@modules/password-history/interfaces/password-history.analytic.repository.interface';
 import { UserAnalyticDomain } from '@modules/user/domains/user.analytic.domain';
 import { Injectable } from '@nestjs/common';
-import { EnumPasswordHistoryType } from '@generated/prisma-client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserPasswordAnalyticDomain {

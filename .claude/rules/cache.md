@@ -17,7 +17,7 @@ this one lock".
 
 A feature that caches gets a cache class at
 `src/modules/<feature>/caches/<module>[.<concern>].cache.ts` — `SessionCache`,
-`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`. It holds the cache manager and the
+`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`, `AnalyticCache`. It holds the cache manager and the
 `keyPattern` it reads from config. It is not a service: no `Service` in the class or file
 name, and it has no header interface (`rules/architecture.md`). `<feature>.domain.module.ts` still
 provides it (`rules/nest-wiring.md`). Every get, set and delete for that module goes

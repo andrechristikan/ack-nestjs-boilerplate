@@ -4,8 +4,10 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma-client"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma-client"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 model ApiKey {
@@ -334,7 +336,7 @@ model TwoFactor {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @db.ObjectId
   secret        String?
-  iv            String?
+  pendingSecret String?
   backupCodes   String[]  @default([])
   enabled       Boolean   @default(false)
   requiredSetup Boolean   @default(false)
@@ -851,6 +853,8 @@ enum EnumActivityLogAction {
   userRegenerateTwoFactorBackupCodes
   userDeviceRefresh
   userLogout
+  userCreatedByAdmin
+  userRemoveDeviceByAdmin
 
   adminSessionRevoke
   adminApiKeyCreate
@@ -877,6 +881,7 @@ enum EnumActivityLogAction {
   adminUserResetTwoFactor
   adminUserImport
   adminDeviceRemove
+  adminSessionRevokeAll
 
   workspaceCreated
   workspaceUpdated
@@ -893,6 +898,15 @@ enum EnumActivityLogAction {
   workspaceJoinRequested
   workspaceJoinAccepted
   workspaceJoinRejected
+  workspaceCreatedByAdmin
+  workspaceMemberRoleUpdatedByAdmin
+  workspaceMemberRemovedByAdmin
+  workspaceOwnershipTransferredByOwner
+  workspaceInviteCreatedByAdmin
+  workspaceInviteAcceptedByInvitee
+  workspaceInviteRevokedByAdmin
+  workspaceJoinAcceptedByAdmin
+  workspaceJoinRejectedByAdmin
 
   projectCreated
   projectUpdated
@@ -901,6 +915,9 @@ enum EnumActivityLogAction {
   projectMemberRoleUpdated
   projectMemberRemoved
   projectMemberLeft
+  projectMemberAssignedByAdmin
+  projectMemberRoleUpdatedByAdmin
+  projectMemberRemovedByAdmin
 }
 
 enum EnumDevicePlatform {

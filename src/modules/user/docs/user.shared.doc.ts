@@ -1,7 +1,5 @@
-import {
-    AwsS3PresignResponseDto,
-    AwsS3PresignResponseSchema,
-} from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import type { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -12,31 +10,19 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { FileUploadSingleRequestSchema } from '@common/file/dtos/request/file.upload-single.request.dto';
-import {
-    AuthTokenResponseDto,
-    AuthTokenResponseSchema,
-} from '@modules/auth/dtos/response/auth.token.response.dto';
+import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
+import type { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
 import { UserDocParamsMobileNumberId } from '@modules/user/constants/user.doc.constant';
-import {
-    UserProfileResponseDto,
-    UserProfileResponseSchema,
-} from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserTwoFactorEnableResponseDto,
-    UserTwoFactorEnableResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import {
-    UserTwoFactorSetupResponseDto,
-    UserTwoFactorSetupResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import {
-    UserTwoFactorStatusResponseDto,
-    UserTwoFactorStatusResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import {
-    UserMobileNumberResponseDto,
-    UserMobileNumberResponseSchema,
-} from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
+import type { UserProfileResponseDto } from '@modules/user/dtos/response/user.profile.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import type { UserTwoFactorSetupResponseDto } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
+import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
+import type { UserMobileNumberResponseDto } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserSharedRefreshDoc(): MethodDecorator {
@@ -262,7 +248,8 @@ export function UserSharedClaimUsernameDoc(): MethodDecorator {
 export function UserSharedTwoFactorSetupDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'Start two-factor setup and receive secret',
+            summary:
+                'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
         }),
         DocGuard({
             termPolicy: true,
@@ -270,6 +257,9 @@ export function UserSharedTwoFactorSetupDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,
+        }),
+        DocRequest({
+            bodyType: EnumDocRequestBodyType.json,
         }),
         DocResponse<UserTwoFactorSetupResponseDto>('user.twoFactor.setup', {
             schema: UserTwoFactorSetupResponseSchema,

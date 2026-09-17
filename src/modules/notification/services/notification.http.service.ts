@@ -1,11 +1,12 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Notification, Prisma } from '@generated/prisma-client';
-import { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
-import { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
+import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
+import type { NotificationUserSettingResponseDto } from '@modules/notification/dtos/response/notification.user-setting.response.dto';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
 import { Injectable } from '@nestjs/common';
 

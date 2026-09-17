@@ -1,6 +1,6 @@
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@generated/prisma-client';
+import type { Role } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleUtil {

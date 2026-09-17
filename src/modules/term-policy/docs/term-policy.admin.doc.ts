@@ -1,7 +1,5 @@
-import {
-    AwsS3PresignResponseDto,
-    AwsS3PresignResponseSchema,
-} from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
+import type { AwsS3PresignResponseDto } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
 import {
     Doc,
     DocAuth,
@@ -18,10 +16,8 @@ import {
     TermPolicyListAdminDocQuery,
 } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
-import {
-    TermPolicyResponseDto,
-    TermPolicyResponseSchema,
-} from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import type { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function TermPolicyAdminListDoc(): MethodDecorator {

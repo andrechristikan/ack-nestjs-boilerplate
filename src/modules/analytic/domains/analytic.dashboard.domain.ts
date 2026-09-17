@@ -1,7 +1,7 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
+import type {
     IAnalyticApiKeyActiveExpired,
     IAnalyticApiKeyLifecycle,
     IAnalyticBlockedUsers,
@@ -46,7 +46,7 @@ import {
     EnumActivityLogAction,
     EnumUserStatus,
     EnumVerificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -323,7 +323,6 @@ export class AnalyticDashboardDomain {
                         EnumActivityLogAction.userRevokeSessionByAdmin,
                         EnumActivityLogAction.userRevokeAllSessions,
                         EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                        EnumActivityLogAction.adminSessionRevoke,
                     ],
                     startDate,
                     endDate

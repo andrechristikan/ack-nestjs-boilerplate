@@ -44,11 +44,11 @@ unrelated ones.
 
 ## Prisma-owned enums are imported, never re-declared (HARD)
 
-An enum declared in `prisma/schema.prisma` is imported from `@generated/prisma-client`
-(aliased `@prisma/client`):
+An enum declared in `prisma/schema.prisma` is imported from the generated client entry,
+`@generated/prisma-client/client`:
 
 ```ts
-import { EnumUserStatus } from '@generated/prisma-client';
+import { EnumUserStatus } from '@generated/prisma-client/client';
 ```
 
 A module-local re-declaration of a schema-owned enum is a second source of truth with a

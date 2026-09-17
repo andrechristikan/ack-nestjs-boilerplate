@@ -1,0 +1,6 @@
+{
+    "error": {
+        "decryptFailed": "We couldn't read protected data for this request.",
+        "encryptionSecretInvalid": "We couldn't process protected data for this request."
+    }
+}

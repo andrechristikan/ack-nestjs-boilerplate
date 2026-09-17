@@ -1,6 +1,7 @@
 ---
 name: reviewer-e2e
-description: Read-only flow review from the entry point to its true end — HTTP request through guards, controller, services, repository and Prisma, and every hand-off into a BullMQ processor, notification, or cascade, repeating until nothing is left in flight. Reports defects. Does not call the endpoint and does not write a test. Requires a SCOPE. NOT for rule-and-boot checks (reviewer), NOT for locating (explorer), NOT for writing anything.
+description: >-
+    Read-only flow review from the entry point to its true end — HTTP request through guards, controller, services, repository and Prisma, and every hand-off into a BullMQ processor, notification, or cascade, repeating until nothing is left in flight. Reports defects. Does not call the endpoint and does not write a test. Requires a SCOPE. NOT for rule-and-boot checks (reviewer), NOT for locating (explorer), NOT for writing anything.
 tools: Read, Grep, Glob, Bash
 skills: caveman:caveman
 ---
@@ -91,11 +92,13 @@ Every HTTP request crosses them whether or not the change touched them:
   no schema is refused outright** (`RequestSchemaMissingException`), and a key the schema does
   not declare is rejected by a strict request schema (`rules/validation.md`).
 - **`APP_INTERCEPTOR`** — `RequestTimeoutInterceptor` and `RequestActorInterceptor`
-  (`src/common/request/request.module.ts`). The response interceptor that reads `metadata`
+  (`src/common/request/request.module.ts`, the actor the audit stamping reads),
+  `ActivityLogInterceptor` (`activity-log.domain.module.ts`, flushes staged activity), and the
+  Sentry SDK's tracing interceptor (`SentryModule`). The response interceptor that reads `metadata`
   off the returned envelope is route-local, mounted by `@Response()` /
   `@ResponsePaging()` / `@ResponseFile()`, not an `APP_INTERCEPTOR`.
 - **The route-local guard stack**, bottom-up: api key → JWT → feature flag → user status →
-  activity log → workspace → project → role → policy → term policy. The order is exact
+  workspace → project → role → policy → term policy. The order is exact
   (`rules/http.md`).
 - **On the way out, the five `APP_FILTER`s** registered in `app.module.ts` in array order general
   → base-exception → http → validation → validation-import, evaluated in REVERSE so the most
@@ -112,9 +115,9 @@ flight.**
 
 | Hand-off | Follow it to |
 |---|---|
-| a queue class method — `<module>/queues/<module>[.<concern>].queue.ts` calling `add` or `upsertJobScheduler` | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, the processor service, the domain, the repository, Prisma |
+| a queue class method — `<module>/queues/<module>[.<concern>].queue.ts` calling `add` or `upsertJobScheduler` | the `@QueueProcessor` for that `EnumQueue` member, its `switch (job.name)` branch, the processor service, the domain, the repository, Prisma — and whether every secret field was encrypted before `add` |
 | a processor that enqueues again | the next processor, and what IT enqueues in turn |
-| a notification send | the email or push processor-service, the template it renders, and the SES / Firebase call |
+| a notification send | the `Notification<Concern>Domain` fan-out, the email or push queue, the `NotificationEmail<Concern>Domain` / `NotificationPush<Concern>Domain`, where a sealed field is decrypted, and the SES template / Firebase call |
 | a soft-delete cascade | every child `updateMany` inside the same transaction, and whether it filtered to live rows |
 | an S3 presign issued | what the client is now permitted to do with it, and for how long |
 
@@ -125,7 +128,8 @@ whose processor enqueues nothing.
 **The defects this catches are the ones nothing else does:** a job enqueued onto a queue no
 processor is registered for, a cascade that loops back to its own trigger, an enqueue inside a
 transaction that fires before the commit, a processor whose retry repeats a non-idempotent write,
-a notification payload carrying a credential, a soft-delete cascade whose `updateMany` rewrote
+a notification payload carrying a credential in plaintext, a nested write with no CLS actor
+leaving audit fields `null`, a soft-delete cascade whose `updateMany` rewrote
 `deletedAt` on already-deleted rows.
 
 **Fan-out is a graph, not a line.** Say how many hand-offs you followed and where each ended — a
@@ -145,6 +149,10 @@ trace that stopped early is worse than one that says it stopped.
 .claude/rules/dto.md
 .claude/rules/exceptions.md
 ```
+
+HTTP extras bind when the path crosses HTTP. They sit in this list so a controller trace never
+skips them. A queue-only or CLI-only path still takes `agent-communication.md` plus the surface
+rows it actually crosses.
 
 ## Verify before reporting
 

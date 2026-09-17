@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type {
     IDeviceOwnershipAnalyticCreatedRow,
     IDeviceOwnershipAnalyticInactiveRow,
     IDeviceOwnershipAnalyticRepository,

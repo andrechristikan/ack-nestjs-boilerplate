@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * Reports JWKS URI shape as a Terminus health indicator.

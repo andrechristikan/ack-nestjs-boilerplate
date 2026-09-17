@@ -1,6 +1,7 @@
-import { Injectable, PipeTransform, Type, mixin } from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { PipeTransform, Type } from '@nestjs/common';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import {
+import type {
     IPaginationCursorPipeReturn,
     IPaginationOffsetPipeReturn,
     IPaginationOrderBy,

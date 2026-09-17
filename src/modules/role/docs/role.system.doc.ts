@@ -10,10 +10,8 @@ import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
-import {
-    RoleListResponseDto,
-    RoleListResponseSchema,
-} from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function RoleSystemListDoc(): MethodDecorator {

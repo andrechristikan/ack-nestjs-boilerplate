@@ -1,11 +1,15 @@
-import { ExecutionContext, UseGuards, applyDecorators } from '@nestjs/common';
+import { UseGuards, applyDecorators } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
-/** Extracts the JWT payload (or a single property of it) from the authenticated request. */
+/**
+ * Extracts the JWT payload (or a single property of it) from the authenticated request.
+ * @public
+ */
 export const AuthJwtPayload = createParamDecorator(
     <T = IAuthJwtAccessTokenPayload>(
         data: string,
@@ -18,7 +22,10 @@ export const AuthJwtPayload = createParamDecorator(
     }
 );
 
-/** Extracts the raw JWT token from the Authorization header, stripping the scheme prefix. */
+/**
+ * Extracts the raw JWT token from the Authorization header, stripping the scheme prefix.
+ * @public
+ */
 export const AuthJwtToken = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): string | undefined => {
         const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
@@ -29,12 +36,18 @@ export const AuthJwtToken = createParamDecorator(
     }
 );
 
-/** Protects a route with JWT access token authentication. */
+/**
+ * Protects a route with JWT access token authentication.
+ * @public
+ */
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtAccessGuard));
 }
 
-/** Protects a route with JWT refresh token authentication; used by token refresh endpoints. */
+/**
+ * Protects a route with JWT refresh token authentication; used by token refresh endpoints.
+ * @public
+ */
 export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtRefreshGuard));
 }

@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     ITermPolicyAcceptanceAnalyticRepository,
     ITermPolicyAcceptanceAnalyticRow,
 } from '@modules/term-policy/interfaces/term-policy.acceptance.analytic.repository.interface';

@@ -1,12 +1,16 @@
 ---
 name: ack-claude-config
-description: Rework the Claude harness for this repo — .claude/** : CLAUDE.md, rules, agents, skills, settings, hooks. Not the application config in src/configs/, and not settings for anything the app runs. Runs in this session with agents and other skills disabled, because the subject IS the configuration those would be reading. Use when the owner wants to change how Claude works in this repo. NOT for src/, test/, docs/, or prisma/.
+description: >-
+    Rework the Claude harness for this repo — .claude/** (CLAUDE.md, rules, agents, skills, settings, hooks) and .github/copilot-instructions.md, the digest of the rules. Not the application config in src/configs/, and not settings for anything the app runs. Runs in this session with agents and other skills disabled, because the subject IS the configuration those would be reading. Use when the owner wants to change how Claude works in this repo. NOT for src/, test/, docs/, or prisma/.
 disable-model-invocation: true
 disallowed-tools: Agent, Skill
 ---
 
-You edit `.claude/**` directly, here. `Agent` and `Skill` are removed from your tool pool for
-this turn — nothing dispatches, nothing else loads.
+You edit `.claude/**` and `.github/copilot-instructions.md` directly, here. `Agent` and
+`Skill` are removed from your tool pool for this turn — nothing dispatches, nothing else loads.
+
+`.github/copilot-instructions.md` is a digest of `.claude/rules/` for another assistant. It
+changes whenever a rule it summarises changes, and it states nothing the rules do not.
 
 ## Why no agents
 

@@ -10,7 +10,8 @@ explorer or planner.
 
 `db:generate` (`prisma generate`) · `db:format` (`prisma format`) · `prisma validate`. All
 three read and write files only. Run `db:generate` after a schema edit so
-`generated/prisma-client` matches what you wrote and the code you hand back typechecks.
+`src/generated/prisma-client/` matches what you wrote and the code you hand back typechecks.
+`pnpm generate` runs it together with `generate:package`.
 
 ## What the owner runs
 
@@ -54,7 +55,7 @@ Read the existing models before editing; match them.
   columns are stamped by the extended client, not by hand (`rules/database.md`).
 - `@@map("<PluralPascalCase>")` names the collection; the model name is singular PascalCase.
 - Fields are camelCase (`rules/naming.md`); relation scalars are `String @db.ObjectId`.
-- Enums are declared in the schema and imported from `@generated/prisma-client`, never
+- Enums are declared in the schema and imported from `@generated/prisma-client/client`, never
   re-declared in a module (`rules/enum.md`).
 - Every index is declared for a query that exists. A new index that duplicates an existing
   prefix is dead weight — check the model's current `@@index` list before adding one.

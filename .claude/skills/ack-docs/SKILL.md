@@ -1,6 +1,7 @@
 ---
 name: ack-docs
-description: Check docs/*.md and the root README.md against the code on this checkout and repair what has gone stale. Final state only. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for feature code.
+description: >-
+    Check docs/*.md and the root README.md against the code on this checkout and repair what has gone stale. Final state only. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for feature code.
 disable-model-invocation: true
 ---
 

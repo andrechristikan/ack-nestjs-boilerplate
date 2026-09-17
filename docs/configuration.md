@@ -93,12 +93,12 @@ env: EnumAppEnvironment
 timezone: string
 ```
 
-**`version`** - Application version from package.json
+**`version`** - Application version, read from `src/generated/package/package.ts`
 ```typescript
 version: string
 ```
 
-**`author`** - Author information from package.json
+**`author`** - Author information, read from `src/generated/package/package.ts`
 ```typescript
 author: {
   name: string;                   // Author name
@@ -106,7 +106,7 @@ author: {
 }
 ```
 
-**`url`** - Repository URL from package.json
+**`url`** - Repository URL, read from `src/generated/package/package.ts`
 ```typescript
 url: string
 ```
@@ -136,10 +136,12 @@ urlVersion: {
 }
 ```
 
-**`encryptionSecretKey`** - AES-256 encryption secret key
+**`encryptionSecretKey`** - Root secret for application-level encryption
 ```typescript
-encryptionSecretKey: string     // Secret key used to derive AES-256 encryption key for sensitive data
+encryptionSecretKey: string     // From APP_ENCRYPTION_SECRET_KEY: 64 base64url characters (48 random bytes)
 ```
+
+> `src/generated/package/package.ts` is written by `pnpm generate:package` (part of `pnpm generate`) from the `version`, `author`, and `repository` fields of `package.json`. `encryptionSecretKey` is the HKDF key material `HelperEncryptionService` uses for the notification job payloads; the notification queue classes and email domains read it. See [Notification](notification.md).
 
 ### Auth Configuration
 
@@ -210,7 +212,7 @@ twoFactor: {
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
   lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
-    key: string;                  // Encryption key for TOTP secrets
+    key: string;                  // Root secret for TOTP secrets, from AUTH_TWO_FACTOR_ENCRYPTION_KEY (64 base64url characters)
   };
 }
 ```
@@ -434,8 +436,8 @@ cors: {
 > - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable or configuration
 > - Multiple origins can be specified using comma separation (converted to array)
 > - **Subdomain wildcards** are supported (e.g., `*.example.com` matches `api.example.com` and `example.com`)
-> - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
-> - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
+> - **Exact port matching** is supported (e.g., `api.example.com:3000`); port wildcards are not supported
+> - **Protocol-agnostic**: both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
 > - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 > - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
@@ -530,6 +532,11 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 **`maxDataImport`** - User CSV import row cap
 ```typescript
 maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
+```
+
+**`maxDataExport`** - User CSV export row cap
+```typescript
+maxDataExport: number           // Maximum users `UserImportDomain.exportByAdmin` returns (default: 500); one row more raises FileExceedMaxDataExportException
 ```
 
 **`default`** - Default role and country assigned to new users
@@ -927,13 +934,23 @@ push: {
 **File**: `src/configs/file.config.ts`
 **Interface**: `IConfigFile`
 
-This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
+This configuration holds the file import and export limits.
 
 #### Configuration Keys:
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100)
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); read by `FileCsvValidationPipe`
+```
+
+**`maxDataExport`** - CSV export row cap
+```typescript
+maxDataExport: number           // Default export row cap (default: 1000)
+```
+
+**`maxSizeExportInBytes`** - Export file size cap
+```typescript
+maxSizeExportInBytes: number    // Largest file `ResponseFileInterceptor` sends (bytes('2mb')); a larger buffer raises FileExceedMaxSizeExportException
 ```
 
 ### Workspace Configuration

@@ -1,17 +1,17 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type {
     ISessionAnalyticListRow,
     ISessionAnalyticRepository,
     ISessionAnalyticSessionRow,
     ISessionAnalyticUserCount,
 } from '@modules/session/interfaces/session.analytic.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class SessionAnalyticRepository implements ISessionAnalyticRepository {

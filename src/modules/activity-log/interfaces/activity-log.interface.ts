@@ -1,6 +1,6 @@
-import { ActivityLog } from '@generated/prisma-client';
-import { EnumActivityLogAction } from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+import type { ActivityLog } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
@@ -21,6 +21,7 @@ export interface IActivityLogStagedEvent {
     metadata: IActivityLogMetadata;
     onError: boolean;
     userId?: string;
+    createdBy?: string;
     workspaceId?: string | null;
 }
 
@@ -35,34 +36,11 @@ export interface IActivityLogFlushOptions {
     isError: boolean;
 }
 
-type StageUserFields<U extends EnumActivityLogUser> =
-    U extends EnumActivityLogUser.target
-        ? { userId: string }
-        : { userId?: never };
-
-type StageWorkspaceFields<W extends EnumActivityLogWorkspace> =
-    W extends EnumActivityLogWorkspace.target
-        ? { workspaceId: string }
-        : W extends EnumActivityLogWorkspace.none
-          ? { workspaceId?: null }
-          : { workspaceId?: never };
-
-export type IActivityLogStageInputForContract<C extends IActivityLogContract> =
-    {
-        action: EnumActivityLogAction;
-        metadata?: IActivityLogMetadata;
-        /**
-         * When true, one stage covers both success and error: the interceptor
-         * flushes this event on either path. Default false = success path only.
-         */
-        onError?: boolean;
-    } & StageUserFields<C['user']> &
-        StageWorkspaceFields<C['workspace']>;
-
 export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
     action: A;
     metadata?: IActivityLogMetadata;
     onError?: boolean;
     userId?: string;
+    createdBy?: string;
     workspaceId?: string | null;
 };

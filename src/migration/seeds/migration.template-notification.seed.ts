@@ -1,6 +1,6 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { NotificationTemplateAccountDomain } from '@modules/notification/domains/notification.template.account.domain';
 import { NotificationTemplateSecurityDomain } from '@modules/notification/domains/notification.template.security.domain';
 import { NotificationTemplateTermPolicyDomain } from '@modules/notification/domains/notification.template.term-policy.domain';

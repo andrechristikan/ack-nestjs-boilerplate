@@ -5,7 +5,10 @@ import {
     EnumHealthStatus,
 } from '@modules/health/enums/health.enum';
 
-/** Response shape of the database health check. */
+/**
+ * Response shape of the database health check.
+ * @public
+ */
 export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
     status: HealthResponseSchema.shape.status.meta({
         description: 'Overall health status of the checked database indicators',
@@ -55,6 +58,10 @@ export const HealthDatabaseResponseSchema = HealthResponseSchema.extend({
     }),
 });
 
+/**
+ * Database health check result.
+ * @public
+ */
 export type HealthDatabaseResponseDto = z.infer<
     typeof HealthDatabaseResponseSchema
 >;

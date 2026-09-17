@@ -1,16 +1,15 @@
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    Policy,
     Prisma,
-    Role,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Policy, Role } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
@@ -18,7 +17,7 @@ import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RolePredefinedNotFoundException } from '@modules/role/exceptions/role.predefined-not-found.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
-import {
+import type {
     IRole,
     IRoleCreate,
     IRoleUpdate,
@@ -27,7 +26,7 @@ import {
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleUtil } from '@modules/role/utils/role.util';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

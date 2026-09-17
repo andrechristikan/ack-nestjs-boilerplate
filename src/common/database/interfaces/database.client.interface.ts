@@ -1,4 +1,9 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
+
+export interface IDatabaseClientOptions extends Prisma.PrismaClientOptions {
+    log: Prisma.LogDefinition[];
+}
 
 export type IDatabaseClient = ReturnType<DatabaseClientFactory['create']>;
 

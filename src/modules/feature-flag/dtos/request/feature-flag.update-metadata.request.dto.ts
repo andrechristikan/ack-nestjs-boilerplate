@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the body for replacing the metadata of a feature flag.
+ * @public
+ */
 export const FeatureFlagUpdateMetadataRequestSchema = z.strictObject({
     metadata: z
         .record(
@@ -31,6 +35,10 @@ export const FeatureFlagUpdateMetadataRequestSchema = z.strictObject({
         }),
 });
 
+/**
+ * Body for replacing the metadata of a feature flag.
+ * @public
+ */
 export type FeatureFlagUpdateMetadataRequestDto = z.infer<
     typeof FeatureFlagUpdateMetadataRequestSchema
 >;

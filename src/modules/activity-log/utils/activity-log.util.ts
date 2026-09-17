@@ -1,8 +1,8 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -9,10 +9,8 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
-import {
-    SessionResponseDto,
-    SessionResponseSchema,
-} from '@modules/session/dtos/response/session.response.dto';
+import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
+import type { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
 import {
     SessionDocParamsId,
     SessionDocQueryList,
@@ -55,5 +53,22 @@ export function SessionAdminRevokeDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
         DocResponse('session.revoke')
+    );
+}
+
+export function SessionAdminRevokeAllDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'admin revoke all user Sessions',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true, termPolicy: true }),
+        DocResponse('session.revokeAll')
     );
 }

@@ -77,6 +77,7 @@ This document covers authentication only: proving who the caller is. What an aut
         - [Getting API Key Payload](#getting-api-key-payload)
     - [API Key Authentication Flow](#api-key-authentication-flow)
 - [Session Management](#session-management)
+    - [Session Endpoints](#session-endpoints)
     - [Session Storage](#session-storage)
         - [Redis (Primary - Validation)](#redis-primary---validation)
         - [Database (Secondary - Management)](#database-secondary---management)
@@ -150,7 +151,7 @@ graph TD
 Access and refresh tokens are JWTs ([RFC 7519][ref-jwt]). This project signs them with ECDSA: ES256 for access, ES512 for refresh. Specs: [JWT.io][ref-jwt].
 
 > [!NOTE]
-> Before using JWT authentication, you must generate cryptographic key pairs. See the [Installation Documentation - Generate Keys][ref-doc-installation] section for detailed instructions on key generation.
+> JWT authentication uses cryptographic key pairs. Generation is [Installation Documentation - Generate Keys][ref-doc-installation].
 
 ### JWT Configuration
 
@@ -282,9 +283,9 @@ Credential checks run in a fixed order and each one throws before the next is re
 Two branches then short-circuit before any session or token is created:
 
 - **Email not verified**: a new email verification is issued, the verification email is sent, and the login fails with `UserEmailNotVerifiedException`.
-- **Two-factor enabled**: no session and no tokens are created. The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`. When `isRequiredSetup` is true the secret is provisioned in the same response, which additionally carries `otpauthUrl` and `secret`. See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
+- **Two-factor enabled**: no session and no tokens are created. The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`. When `isRequiredSetup` is true the secret is provisioned in the same response, which also carries `otpauthUrl` and `secret`. See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
 
-Session creation also enforces the device constraint. The device upsert, the device-ownership lookup, the revocation of every still-active session bound to that device-user pair, and the creation of the new session record all happen inside one database transaction. The Redis side follows afterwards: the new session key is written and the superseded session keys are deleted in the same parallel batch, alongside the new-device login notification when the device ownership was created rather than reused.
+Session creation also enforces the device constraint. The device upsert, the device-ownership lookup, the revocation of every still-active session bound to that device-user pair, and the creation of the new session record all happen inside one database transaction. The Redis side follows after the commit: the new session key is written and exactly the superseded session ids are purged (`SessionDomain.purgeRevokedLogins`) in the same parallel batch, alongside the new-device login notification when the device ownership was created rather than reused. A purge failure is logged and the login still succeeds.
 
 #### JWT Refresh Token Flow
 
@@ -357,7 +358,7 @@ Endpoint: `POST /shared/user/logout`. Protected by `@AuthJwtAccessProtected`, `@
 The handler reads `userId`, `sessionId`, and `deviceOwnershipId` from the access-token payload, then:
 
 1. Verifies the session is still active (`404 session.error.notFound` otherwise) and deletes its Redis key.
-2. `UserLoginDomain.logout` opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx`, `DeviceDomain.clearNotificationInTx`, and `ActivityLogDomain.recordInTx` (`userLogout`).
+2. `UserLoginDomain.logout` opens `this.databaseService.withTransaction` and composes `SessionDomain.revokeInTx` and `DeviceDomain.clearNotificationInTx`, then stages `userLogout` through `ActivityLogDomain.stage`; `ActivityLogInterceptor` writes the row once the handler returns.
 
 ```mermaid
 sequenceDiagram
@@ -371,7 +372,7 @@ sequenceDiagram
     API->>Database: Find active session by userId:sessionId
     alt Session active
         API->>Redis: Delete session login key
-        API->>Database: withTransaction: revoke session record,<br/>clear the device push token,<br/>recordInTx (userLogout)
+        API->>Database: withTransaction: revoke session record,<br/>clear the device push token,<br/>stage userLogout
         API-->>Client: 200 OK (user.logout)
     else Session not found
         API-->>Client: 404 Not Found (SessionNotFoundException)
@@ -465,27 +466,27 @@ A type alias derived from `IAuthJwtAccessTokenPayload` with `Omit`. The refresh 
 To protect an endpoint with JWT access token validation, use the `@AuthJwtAccessProtected` decorator:
 
 ```typescript
+@UserProtected()
 @AuthJwtAccessProtected()
-@Get('/profile')
-async getProfile() {
-    // This endpoint requires a valid access token
-    // Token signature (ES256) is verified
-    // Session existence is validated in Redis
-    // jti is validated against cached session
-    return { message: 'Profile data' };
+@Get('/profile/get')
+async profile(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
 }
 ```
 
-For refresh token endpoints (typically only used in the refresh endpoint itself), use `@AuthJwtRefreshProtected`:
+Refresh uses `@AuthJwtRefreshProtected` on `POST /refresh`:
 
 ```typescript
+@UserProtected()
 @AuthJwtRefreshProtected()
 @Post('/refresh')
-async refresh() {
-    // This endpoint requires a valid refresh token
-    // Token signature (ES512) is verified
-    // jti is validated against cached session
-    return { message: 'Token refreshed' };
+async refresh(
+    @UserCurrent() user: IUser,
+    @AuthJwtToken() refreshToken: string
+): Promise<IResponseReturn<IAuthToken>> {
+    return this.userAuthHttpService.refresh(user, refreshToken);
 }
 ```
 
@@ -493,47 +494,36 @@ async refresh() {
 
 To access the JWT payload in your controller, use the `@AuthJwtPayload()` decorator:
 
-```typescript
-@AuthJwtAccessProtected()
-@Get('/me')
-async getCurrentUser(
-    @AuthJwtPayload() payload: IAuthJwtAccessTokenPayload
-) {
-    // Access user information from token
-    return {
-        userId: payload.userId,
-        email: payload.email,
-        username: payload.username,
-        sessionId: payload.sessionId,
-        roleId: payload.roleId
-    };
-}
-```
-
-You can also extract specific fields:
+Shared profile reads `userId` from the payload:
 
 ```typescript
+@UserProtected()
 @AuthJwtAccessProtected()
-@Get('/user-id')
-async getUserId(
+@Get('/profile/get')
+async profile(
     @AuthJwtPayload('userId') userId: string
-) {
-    return { userId };
+): Promise<IResponseReturn<IUserProfile>> {
+    return this.userProfileHttpService.getProfile(userId);
 }
 ```
+
+`@AuthJwtPayload()` without a key returns the full `IAuthJwtAccessTokenPayload`.
 
 #### Getting Raw Token
 
 To access the raw JWT token string, use the `@AuthJwtToken()` decorator:
 
+Refresh is the call site:
+
 ```typescript
-@AuthJwtAccessProtected()
-@Get('/verify')
-async verifyToken(
-    @AuthJwtToken() token: string
-) {
-    // Access raw token for additional processing
-    return { token };
+@UserProtected()
+@AuthJwtRefreshProtected()
+@Post('/refresh')
+async refresh(
+    @UserCurrent() user: IUser,
+    @AuthJwtToken() refreshToken: string
+): Promise<IResponseReturn<IAuthToken>> {
+    return this.userAuthHttpService.refresh(user, refreshToken);
 }
 ```
 
@@ -653,9 +643,9 @@ sequenceDiagram
 
 Social login joins the credential login path once the user is resolved, so the two-factor branch and the device constraint apply exactly as they do for credential login. The email-verification branch does not: a social user who is not yet verified is marked verified in place before the shared path runs, so `UserEmailNotVerifiedException` is never reached from a social login. A user whose status is not `active` is rejected with `UserInactiveForbiddenException` at the same point, whether the record was just created or already existed.
 
-Both routes are additionally gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
+Both routes are also gated by `@FeatureFlagProtected('loginWithGoogle')` / `@FeatureFlagProtected('loginWithApple')` and `@ApiKeyProtected()`. A missing or malformed `Authorization` header fails with `AuthSocialGoogleRequiredException` / `AuthSocialAppleRequiredException` (401) before any token verification runs.
 
-When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path: the default user role is resolved, the username is checked against the allowed pattern, the bad-word list, and existing usernames, the workspace context is resolved (from `inviteToken` when present, otherwise a personal workspace), the record is created, and a welcome email is sent. Supplying an `inviteToken` additionally requires the `workspace` flag's `invitationAllowed` metadata, and an invite token that resolves to nothing fails with `WorkspaceInviteInvalidException`.
+When the account does not exist and the flag's `signUpAllowed` metadata is true, the user is created on this path: the default user role is resolved, the username is checked against the allowed pattern, the bad-word list, and existing usernames, the workspace context is resolved (from `inviteToken` when present, otherwise a personal workspace), the record is created, and a welcome email is sent. Supplying an `inviteToken` also requires the `workspace` flag's `invitationAllowed` metadata, and an invite token that resolves to nothing fails with `WorkspaceInviteInvalidException`.
 
 ### Google Authentication
 
@@ -826,8 +816,8 @@ export default registerAs(
 ```
 
 **Configuration Options:**
-- `strategy`: OTP strategy — `totp` (time-based)
-- `algorithm`: Hash algorithm used for TOTP generation — `sha1`
+- `strategy`: OTP strategy, `totp` (time-based)
+- `algorithm`: Hash algorithm used for TOTP generation, `sha1`
 - `issuer`: Label shown in the authenticator app, from `AUTH_TWO_FACTOR_ISSUER`
 - `periodInSeconds`: Token validity window in seconds (default: 30), passed straight to otplib
 - `digits`: Number of digits in the OTP code (default: `6`)
@@ -840,6 +830,7 @@ export default registerAs(
 - `lockAttemptDurationInMs`: Lockout duration after max attempts exceeded (default: `2m`)
 - `backupCodes.count`: Number of backup codes generated (default: `8`)
 - `backupCodes.length`: Length of each backup code (default: `10`)
+- `encryption.key`: Root secret for the stored TOTP secrets, from `AUTH_TWO_FACTOR_ENCRYPTION_KEY` (exactly 64 base64url characters)
 
 ### Flow
 
@@ -910,12 +901,17 @@ Default API keys are used for standard external integrations and third-party acc
 @ApiKeyProtected()
 ```
 
-**Example Usage:**
+Public login stacks it:
+
 ```typescript
+@FeatureFlagProtected('loginWithCredential')
 @ApiKeyProtected()
-@Get('/api/external/data')
-async getExternalData(@ApiKeyPayload() apiKey: ApiKey) {
-    return { data: 'accessible with default API key' };
+@Post('/login/credential')
+async loginWithCredential(
+    @Body({ schema: UserLoginRequestSchema })
+    body: UserLoginRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
+    return this.userAuthHttpService.loginCredential(body);
 }
 ```
 
@@ -935,20 +931,19 @@ System API keys are used for internal system operations that bypass standard aut
 @ApiKeySystemProtected()
 ```
 
-**Example Usage:**
+Health checks stack it on `HealthSystemController` (`VERSION_NEUTRAL`, path `/health` under `/system`):
+
 ```typescript
 @ApiKeySystemProtected()
-@Post('/api/system/maintenance')
-async runMaintenance(@ApiKeyPayload() apiKey: ApiKey) {
-    // System-level endpoint
-    // No user authentication required
-    return { status: 'maintenance completed' };
+@Get('/aws')
+async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
+    return this.healthHttpService.checkAws();
 }
 ```
 
 ### Request Format
 
-API keys are sent via the `x-api-key` header with the format `${key}:${secret}`:
+API keys are sent via the `x-api-key` header with the format `${key}:${secret}`. The stored `key` carries the environment it was minted in as a prefix, `<APP_ENV>_<random>` (for example `local_fyFGb7ywyM37TqDY8nuhAmGW5` for the seeded default key), and the header sends that full value:
 
 **Header Format:**
 ```
@@ -956,7 +951,7 @@ x-api-key: ${key}:${secret}
 ```
 
 **Format Rules:**
-- Pattern: `key:secret`
+- Pattern: `key:secret`, where `key` is the full `<APP_ENV>_<random>` value
 - Separator: Colon (`:`)
 - Both key and secret are required
 - No spaces allowed
@@ -969,16 +964,14 @@ x-api-key: ${key}:${secret}
 **Default API Key Protection:**
 
 ```typescript
+@FeatureFlagProtected('loginWithCredential')
 @ApiKeyProtected()
-@Get('/external/data')
-async getExternalData(@ApiKeyPayload() apiKey: ApiKey) {
-    // Endpoint requires default API key
-    // apiKey contains full API key schema from database
-    return {
-        message: 'Data accessed with default API key',
-        apiKeyId: apiKey.id,
-        apiKeyName: apiKey.name
-    };
+@Post('/login/credential')
+async loginWithCredential(
+    @Body({ schema: UserLoginRequestSchema })
+    body: UserLoginRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
+    return this.userAuthHttpService.loginCredential(body);
 }
 ```
 
@@ -986,38 +979,15 @@ async getExternalData(@ApiKeyPayload() apiKey: ApiKey) {
 
 ```typescript
 @ApiKeySystemProtected()
-@Post('/system/maintenance')
-async runMaintenance(@ApiKeyPayload() apiKey: ApiKey) {
-    // Endpoint requires system API key
-    // Bypasses user authentication
-    // Used for system-level operations
-    return {
-        message: 'Maintenance task executed',
-        executedBy: apiKey.name
-    };
+@Get('/aws')
+async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
+    return this.healthHttpService.checkAws();
 }
 ```
 
 #### Getting API Key Payload
 
-Access the full API key data using `@ApiKeyPayload()` decorator:
-
-**Full Payload:**
-```typescript
-@ApiKeyProtected()
-@Get('/resource')
-async getResource(@ApiKeyPayload() apiKey: ApiKey) {
-    // Access full API key object
-    return {
-        keyId: apiKey.id,
-        keyName: apiKey.name,
-        keyType: apiKey.type,
-        isActive: apiKey.isActive
-    };
-}
-```
-
-The decorator resolves the key from the request store (`ApiKeyStoreKey`) through the CLS service, so it works only on a route already carrying `@ApiKeyProtected()` or `@ApiKeySystemProtected()`. Its exported signature takes no argument: destructure the returned `ApiKey` to read a single field.
+`@ApiKeyPayload()` returns the `ApiKey` stored under `ApiKeyStoreKey` through CLS. It works only on a route already carrying `@ApiKeyProtected()` or `@ApiKeySystemProtected()`. The exported signature takes no argument: destructure the returned `ApiKey` to read a single field.
 
 ### API Key Authentication Flow
 
@@ -1087,6 +1057,29 @@ Sessions sit on `DeviceOwnership` (one user on one device). That pair may hold o
 Storage:
 - **Redis:** validation and TTL, for both access and refresh tokens
 - **Database:** listing, management, and audit trail
+
+### Session Endpoints
+
+Global prefix `/api` and version `v1` apply as elsewhere.
+
+| Method | Path | Scope |
+|---|---|---|
+| `GET` | `/shared/user/session/list` | The caller's own sessions (cursor) |
+| `DELETE` | `/shared/user/session/revoke/:sessionId` | Revoke one of the caller's sessions |
+| `GET` | `/admin/user/:userId/session/list` | A user's sessions (offset), filterable by `isRevoked` |
+| `DELETE` | `/admin/user/:userId/session/revoke/:sessionId` | Revoke one session of a user |
+| `DELETE` | `/admin/user/:userId/session/revoke-all` | Revoke every active session of a user |
+
+The admin routes carry `@RoleProtected(EnumRoleType.admin)` and `@PolicyProtected` on `user: [read]` plus `session: [read]` (list) or `session: [read, delete]` (both revoke routes), and no workspace guard. Every session route is throttled with `@RequestThrottle({ user: true })`.
+
+**Revoke all (admin).** `DELETE /admin/user/:userId/session/revoke-all` revokes every active session of the user in one transaction, then deletes exactly those session ids from Redis. It answers with the message `session.revokeAll`.
+
+| Case | Exception | statusCode | HTTP |
+|---|---|---|---|
+| `userId` is the admin's own account | `UserNotSelfException` | `51001` | 400 |
+| The user holds no active session, or does not exist | `SessionNotFoundException` | `50400` | 404 |
+
+Neither case revokes a session or writes an activity-log row. A successful call writes `adminSessionRevokeAll` for the admin and `userRevokeAllSessionsByAdmin` for the user, each carrying `sessionCount`. The single-session admin revoke writes `adminSessionRevoke` and `userRevokeSessionByAdmin`, and writes only `adminSessionRevoke` when the admin revokes a session of their own account. See [Activity Log][ref-doc-activity-log] and [Status Codes][ref-doc-status-codes].
 
 ### Session Storage
 
@@ -1171,20 +1164,20 @@ graph TB
     P[View Sessions] --> Q[Query Database]
     Q --> R[Display Active Sessions List]
     
-    T[Revoke Session] --> U[Delete from Redis]
-    T --> S[Update Database]
-    U --> V[All Tokens Invalid Immediately<br/>jti validation fails]
+    T[Revoke Session] --> S[Mark Revoked in Database]
+    S --> U[Purge Revoked Ids from Redis<br/>after the commit]
+    U --> V[All Tokens Invalid Immediately<br/>session lookup fails]
 ```
 
 #### What Happens on Revocation
 
 When a session is revoked:
 
-1. **Redis**: Session is deleted immediately
-2. **Database**: Session record is updated with revocation metadata:
+1. **Database**: Session record is updated with revocation metadata, and the write is awaited (inside a transaction when the revoke is part of a larger operation):
    - `isRevoked = true`
    - `revokedAt = now`
    - `revokedById = userId` (who initiated the revocation)
+2. **Redis**: After the commit, `SessionDomain.purgeRevokedLogins(userId, sessions)` deletes exactly the revoked session ids. A purge failure is logged and the request still succeeds; an unpurged key keeps passing the session check until its TTL expires.
 3. **Access Tokens**: All access tokens for this session become invalid immediately (jti validation fails)
 4. **Refresh Tokens**: All refresh tokens for this session become invalid immediately (jti validation fails)
 5. **Active Requests**: Any subsequent API calls with tokens from this session will be rejected with 401 Unauthorized
@@ -1225,11 +1218,11 @@ When a session is revoked:
 
 5. **Revocation**
    - User or admin revokes session
-   - Session deleted from Redis immediately
    - Database record marked as revoked
+   - Revoked session id purged from Redis after the write
    - All tokens for this session become invalid immediately
 
-**What invalidates sessions.** Skipping any of these would leave a live token for an account the user believes they secured, so each one deletes the Redis entry and revokes the database record together:
+**What invalidates sessions.** Each trigger revokes the session rows in the database first, then purges exactly the revoked ids from Redis once the write has committed (`SessionDomain.purgeRevokedLogins`). The JWT guards read Redis, so a revoked token fails on the first request after the purge. A purge failure is logged and does not fail the request. Logout and self account deletion follow a different order, stated in their rows. The constraint when changing this: `.claude/rules/security.md` (Session invalidation).
 
 | Trigger | Scope |
 |---|---|
@@ -1237,13 +1230,17 @@ When a session is revoked:
 | Forgot-password reset (`PATCH /public/user/password/reset`) | All sessions of the user |
 | Admin temporary password | All sessions of the target user |
 | Two-factor disable, and admin two-factor reset | All sessions of the user |
-| Self account deletion | All sessions of the user |
+| Self account deletion | Redis keys of every active session of the user, deleted before the soft-delete transaction; the session rows are left unrevoked |
 | Device removal, by the user or an admin | All sessions bound to that device ownership |
 | Re-login from an already-owned device | Prior active sessions on that device-user pair |
-| Logout (`POST /shared/user/logout`) | The current session only |
-| Session revoke, by the user or an admin | The named session only |
+| Logout (`POST /shared/user/logout`) | The current session only; its Redis key is deleted before the transaction that revokes the row |
+| Session revoke, by the user or an admin | The named session only; the database write is awaited, then the purge runs |
+| Admin revoke-all (`DELETE /admin/user/:userId/session/revoke-all`) | All sessions of the target user |
+| Admin status change to `blocked` or `inactive` (`PATCH /admin/user/update/:userId/status`) | All sessions of the target user |
 
-A status change (inactive or blocked) does not delete the Redis entries. It is enforced per request instead: `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call and rejects a blocked account (`UserBlockedForbiddenException`), any other non-active status (`UserInactiveForbiddenException`), and an expired password (`UserPasswordExpiredException`). It also rejects an unverified email (`UserEmailNotVerifiedException`) unless the route opts out with `@UserProtected(false)`. The same re-read is why a password that expires mid-session locks the caller out without any session being revoked.
+**Status change by an admin.** Setting a user to `blocked` or `inactive` revokes every active session of that user in the same transaction as the status write, then deletes exactly those session ids from Redis. A user with no active session changes status without an error, and no revoke-all rows are written. When at least one session was revoked, the call writes `adminSessionRevokeAll` and `userRevokeAllSessionsByAdmin` next to the status pair (`adminUserUpdateStatus` with `userBlocked` or `userUpdateStatus`). Setting a user to `active` leaves sessions untouched.
+
+Account status is also enforced per request: `UserGuard`, applied through `@UserProtected()`, re-reads the user from the database on every call and rejects a blocked account (`UserBlockedForbiddenException`), any other non-active status (`UserInactiveForbiddenException`), and an expired password (`UserPasswordExpiredException`). It also rejects an unverified email (`UserEmailNotVerifiedException`) unless the route opts out with `@UserProtected(false)`. The same re-read is why a password that expires mid-session locks the caller out without any session being revoked.
 
 ### Session Validation Flow
 
@@ -1306,5 +1303,7 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for providing the idea and co
 [ref-doc-authorization]: authorization.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md
+[ref-doc-activity-log]: activity-log.md
+[ref-doc-status-codes]: status-codes.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

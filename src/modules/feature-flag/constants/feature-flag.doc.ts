@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 export const FeatureFlagDocParamsId: ApiParamOptions[] = [
     {

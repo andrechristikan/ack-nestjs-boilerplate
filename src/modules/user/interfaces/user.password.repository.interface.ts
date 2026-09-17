@@ -1,6 +1,6 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { ForgotPassword } from '@generated/prisma-client';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { ForgotPassword } from '@generated/prisma-client/client';
+import type {
     IUser,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';

@@ -2,11 +2,12 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumProjectMemberRole } from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base project-member shape: the row binding a user to the project they are assigned to.
+ * @public
  */
 export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -54,6 +55,10 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Project member with the user it binds.
+ * @public
+ */
 export type ProjectMemberResponseDto = z.infer<
     typeof ProjectMemberResponseSchema
 >;

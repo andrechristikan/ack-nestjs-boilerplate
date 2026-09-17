@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `projectId`.
+ * @public
+ */
 export const ProjectDocParamsId: ApiParamOptions[] = [
     {
         name: 'projectId',
@@ -11,6 +15,10 @@ export const ProjectDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger path parameters `projectId` and `projectMemberId`.
+ * @public
+ */
 export const ProjectMemberDocParamsId: ApiParamOptions[] = [
     {
         name: 'projectId',
@@ -28,6 +36,10 @@ export const ProjectMemberDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin project list: `workspaceId`.
+ * @public
+ */
 export const ProjectAdminListDocQueries: ApiQueryOptions[] = [
     {
         name: 'workspaceId',

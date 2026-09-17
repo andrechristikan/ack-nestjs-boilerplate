@@ -2,7 +2,7 @@ import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/aut
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.social-apple-invalid.exception';
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
-import {
+import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
     IAuthSocialPayload,
@@ -11,7 +11,7 @@ import { AuthSocialDomain } from '@modules/auth/domains/auth.social.domain';
 import { SessionForbiddenException } from '@modules/session/exceptions/session.forbidden.exception';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { Injectable } from '@nestjs/common';
-import { TokenPayload } from 'google-auth-library';
+import type { TokenPayload } from 'google-auth-library';
 
 @Injectable()
 export class AuthDomain {

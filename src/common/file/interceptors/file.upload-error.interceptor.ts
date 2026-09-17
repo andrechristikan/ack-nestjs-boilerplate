@@ -1,8 +1,7 @@
-import {
+import { HttpException, Injectable } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    HttpException,
-    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import {

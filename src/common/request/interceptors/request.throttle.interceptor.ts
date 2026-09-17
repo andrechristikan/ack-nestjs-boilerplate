@@ -1,18 +1,18 @@
-import {
+import { Injectable } from '@nestjs/common';
+import type {
     CallHandler,
     ExecutionContext,
-    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { Observable } from 'rxjs';
 import {
     RequestThrottleHandledStoreKey,
     RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
-import {
+import type {
     IRequestApp,
     IRequestThrottleOptions,
     IRequestThrottlePolicy,

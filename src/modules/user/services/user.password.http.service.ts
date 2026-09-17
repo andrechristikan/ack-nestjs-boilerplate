@@ -1,8 +1,8 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
+import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { Injectable } from '@nestjs/common';
 

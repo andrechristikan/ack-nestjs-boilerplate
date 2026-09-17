@@ -24,22 +24,14 @@ import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
-import {
-    WorkspaceInviteResponseDto,
-    WorkspaceInviteResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.invite.response.dto';
-import {
-    WorkspaceJoinRequestResponseDto,
-    WorkspaceJoinRequestResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
-import {
-    WorkspaceMemberResponseDto,
-    WorkspaceMemberResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.member.response.dto';
-import {
-    WorkspaceResponseDto,
-    WorkspaceResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.response.dto';
+import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
+import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import type { WorkspaceJoinRequestResponseDto } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
+import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import type { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
+import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import type { WorkspaceResponseDto } from '@modules/workspace/dtos/response/workspace.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 

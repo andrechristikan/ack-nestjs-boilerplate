@@ -1,13 +1,13 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
-import { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
-import { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
-import { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
-import { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { HealthAwsResponseDto } from '@modules/health/dtos/response/health.aws.response.dto';
+import type { HealthDatabaseResponseDto } from '@modules/health/dtos/response/health.database.response.dto';
+import type { HealthInstanceResponseDto } from '@modules/health/dtos/response/health.instance.response.dto';
+import type { HealthResponseDto } from '@modules/health/dtos/response/health.response.dto';
+import type { HealthThirdPartyResponseDto } from '@modules/health/dtos/response/health.third-party.response.dto';
 import { HealthDomain } from '@modules/health/domains/health.domain';
 import { HealthUtil } from '@modules/health/utils/health.util';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { HealthCheckResult } from '@nestjs/terminus';
+import type { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
 export class HealthHttpService {

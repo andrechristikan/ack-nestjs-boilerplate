@@ -2,21 +2,21 @@ import {
     FirebaseInvalidTokenCodes,
     FirebaseMaxSendPushBatchSize,
 } from '@common/firebase/constants/firebase.constant';
-import {
+import type {
     IFirebasePushPayload,
     IFirebasePushResult,
 } from '@common/firebase/interfaces/firebase.interface';
-import { IFirebaseService } from '@common/firebase/interfaces/firebase.service.interface';
 import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
-import { App as FirebaseApp } from 'firebase-admin/app';
+import type { App as FirebaseApp } from 'firebase-admin/app';
 import { Messaging, getMessaging } from 'firebase-admin/messaging';
 
 @Injectable()
-export class FirebaseService implements IFirebaseService, OnModuleInit {
+export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
 
     private readonly projectId: string | null;

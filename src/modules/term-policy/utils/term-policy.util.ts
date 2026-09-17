@@ -1,16 +1,13 @@
-import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
-import { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    EnumTermPolicyType,
-    Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {

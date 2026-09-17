@@ -1,10 +1,11 @@
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { RoleGuard } from '@modules/role/guards/role.guard';
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 /**
  * Restricts a route to the given role types via RoleGuard.
+ * @public
  */
 export function RoleProtected(
     ...requiredRoles: EnumRoleType[]

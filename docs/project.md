@@ -147,7 +147,7 @@ Admin routes carry no project or workspace guard. They take the project id from 
 - A slug sent to `update/:projectId/slug` is validated by `ProjectDomain.assertSlugAllowed`: over `project.slugMaxLength`, or failing `project.slugRegex`, throws `ProjectSlugInvalidException` (400, `51707`). A slug already held in the workspace throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
 - `existsBySlugInWorkspace`, the check behind slug update, counts holders across **all** rows including soft-deleted ones. The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug, and the check agrees with the index.
-- `createProject` walks its candidates and, for each one, opens a `withTransaction` that calls `ProjectRepository.createInTx` and `ActivityLogDomain.recordInTx` (`projectCreated`). A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
+- `createProject` walks its candidates and, for each one, opens a `withTransaction` that calls `ProjectRepository.createInTx` and stages `projectCreated` through `ActivityLogDomain.stage`. A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate. Any other error is rethrown untouched, and exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (500, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
 
 ## Membership
 
@@ -164,11 +164,20 @@ A project member must already be a workspace member. `assignMember` resolves the
 
 **There is no last-admin protection on leave.** Nothing counts remaining admins, so the last project `admin` can leave and the project can be left with no members at all. The workspace owner still reaches it through the bypass.
 
-Every membership change writes an activity log entry (`projectMemberAssigned`, `projectMemberRoleUpdated`, `projectMemberRemoved`, `projectMemberLeft`).
+Every membership change writes activity log rows inside its transaction. Assign, update role, and remove write an actor row for the caller carrying `targetUserId`, and a target row for the affected member carrying `actorUserId`, with `createdBy` set to the caller:
+
+| Operation | Actor row | Target row |
+|---|---|---|
+| Assign | `projectMemberAssigned` | `projectMemberAssignedByAdmin` |
+| Update role | `projectMemberRoleUpdated` | `projectMemberRoleUpdatedByAdmin` |
+| Remove | `projectMemberRemoved` | `projectMemberRemovedByAdmin` |
+| Leave | `projectMemberLeft` | none |
+
+A caller who assigns themselves or updates their own role gets the actor row only. Both rows of a pair carry the project's `workspaceId`. See [Activity Log][ref-doc-activity-log].
 
 ## Soft Delete
 
-`ProjectDomain.softDeleteProject` opens one `withTransaction` that calls `ProjectRepository.softDeleteInTx` (stamps `deletedAt` and `updatedBy`) and `ActivityLogDomain.recordInTx` (`projectDeleted`). **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
+`ProjectDomain.softDeleteProject` opens one `withTransaction` that calls `ProjectRepository.softDeleteInTx` (sets `deletedAt`; the audit extension stamps `updatedBy`) and stages `projectDeleted` through `ActivityLogDomain.stage`. **It cascades to nothing**: `ProjectMember` rows and any invite referencing the project are left as they are, and the slug stays occupied.
 
 After deletion the project disappears from `ProjectGuard` and from the user-scope list, but the admin routes still return it because they apply no active filter. There is no restore and no hard delete.
 
@@ -218,5 +227,6 @@ Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this
 [ref-doc-status-codes]: status-codes.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
+[ref-doc-activity-log]: activity-log.md
 
 [ref-contributor-gzerox]: https://github.com/Gzerox

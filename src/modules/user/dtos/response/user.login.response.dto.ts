@@ -5,6 +5,7 @@ import { UserTwoFactorResponseSchema } from '@modules/user/dtos/response/user.tw
 
 /**
  * Login outcome: either the issued token pair, or the two-factor challenge that gates it.
+ * @public
  */
 export const UserLoginResponseSchema = z.object({
     isTwoFactorEnable: z.boolean().meta({
@@ -30,4 +31,8 @@ export const UserLoginResponseSchema = z.object({
     }),
 });
 
+/**
+ * Login outcome: tokens or a two-factor challenge.
+ * @public
+ */
 export type UserLoginResponseDto = z.infer<typeof UserLoginResponseSchema>;

@@ -1,22 +1,22 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
-    WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member.repository.interface';
+import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -178,7 +178,6 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     async updateRoleInTx(
         tx: IDatabaseTransactionClient,
-        actorId: string,
         targetMemberId: string,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
@@ -186,7 +185,6 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where: { id: targetMemberId },
             data: {
                 role: newRole,
-                updatedBy: actorId,
             },
         });
     }
@@ -203,21 +201,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async transferOwnershipInTx(
         tx: IDatabaseTransactionClient,
         fromMemberId: string,
-        toMemberId: string,
-        actorId: string
+        toMemberId: string
     ): Promise<void> {
         await tx.workspaceMember.update({
             where: { id: fromMemberId },
             data: {
                 role: EnumWorkspaceMemberRole.admin,
-                updatedBy: actorId,
             },
         });
         await tx.workspaceMember.update({
             where: { id: toMemberId },
             data: {
                 role: EnumWorkspaceMemberRole.owner,
-                updatedBy: actorId,
             },
         });
     }

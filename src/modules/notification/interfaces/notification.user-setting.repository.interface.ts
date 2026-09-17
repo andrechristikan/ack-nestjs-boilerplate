@@ -1,10 +1,10 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-    NotificationUserSetting,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
 export interface INotificationUserSettingRepository {
     findUserSetting(userId: string): Promise<NotificationUserSetting[]>;

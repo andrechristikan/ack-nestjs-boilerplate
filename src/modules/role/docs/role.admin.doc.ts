@@ -16,11 +16,10 @@ import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
-import {
-    RoleListResponseDto,
-    RoleListResponseSchema,
-} from '@modules/role/dtos/response/role.list.response.dto';
-import { RoleDto, RoleSchema } from '@modules/role/dtos/role.dto';
+import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
+import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import { RoleSchema } from '@modules/role/dtos/role.dto';
+import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function RoleAdminListDoc(): MethodDecorator {

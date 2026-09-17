@@ -5,7 +5,6 @@ export type {
     IAnalyticBucketsResult,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
-    IAnalyticMetricPair,
     IAnalyticBlockedUsers,
     IAnalyticLockoutMetrics,
     IAnalyticPasswordExpiry,
@@ -30,18 +29,15 @@ export type {
 
 export type {
     IAnalyticAnomalySummary,
-    IAnalyticAnomalySummaryMeta,
     IAnalyticImpossibleTravelRow,
     IAnalyticLoginSpikeIpRow,
     IAnalyticNearLockoutRow,
     IAnalyticDeviceProliferationRow,
-    IAnalyticDeviceProliferationResult,
     IAnalyticLoginTimeAnomalyRow,
 } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 
 export type {
     IAnalyticFraudSummary,
-    IAnalyticFraudSummaryMeta,
     IAnalyticFraudRiskScore,
     IAnalyticCredentialStuffingRow,
     IAnalyticAccountTakeoverRow,

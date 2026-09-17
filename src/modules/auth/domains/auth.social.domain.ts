@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LoginTicket, OAuth2Client, TokenPayload } from 'google-auth-library';
-import verifyAppleToken, {
-    VerifyAppleIdTokenResponse,
-} from 'verify-apple-id-token';
+import { LoginTicket, OAuth2Client } from 'google-auth-library';
+import type { TokenPayload } from 'google-auth-library';
+import verifyAppleToken from 'verify-apple-id-token';
+import type { VerifyAppleIdTokenResponse } from 'verify-apple-id-token';
 
 /** Verifies Google and Apple identity tokens. See docs/authentication.md. */
 @Injectable()
@@ -51,7 +51,7 @@ export class AuthSocialDomain {
     }
 
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
-        return verifyAppleToken({
+        return verifyAppleToken.default({
             idToken: token,
             clientId: [this.appleClientId, this.appleSignInClientId],
         });

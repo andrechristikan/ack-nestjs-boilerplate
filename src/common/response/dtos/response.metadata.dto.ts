@@ -3,6 +3,7 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
 /**
  * Per-response context: language, timing, versioning, and request/correlation IDs.
+ * @public
  */
 export const ResponseMetadataSchema = z.object({
     language: z.enum(EnumMessageLanguage).meta({
@@ -37,6 +38,7 @@ export const ResponseMetadataSchema = z.object({
 
 /**
  * Extensible: carries additional metadata fields alongside the declared ones.
+ * @public
  */
 export type ResponseMetadataDto = z.infer<typeof ResponseMetadataSchema> &
     Record<string, unknown>;

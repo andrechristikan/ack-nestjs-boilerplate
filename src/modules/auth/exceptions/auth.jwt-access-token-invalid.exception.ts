@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 
+/**
+ * Raised when the JWT access token is missing or invalid.
+ * @public
+ */
 export class AuthJwtAccessTokenInvalidException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.jwtAccessTokenInvalid;

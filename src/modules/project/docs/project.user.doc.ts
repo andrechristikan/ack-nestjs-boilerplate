@@ -17,14 +17,10 @@ import {
     ProjectDefaultAvailableSearch,
     ProjectMemberDefaultAvailableOrderBy,
 } from '@modules/project/constants/project.list.constant';
-import {
-    ProjectMemberResponseDto,
-    ProjectMemberResponseSchema,
-} from '@modules/project/dtos/response/project.member.response.dto';
-import {
-    ProjectResponseDto,
-    ProjectResponseSchema,
-} from '@modules/project/dtos/response/project.response.dto';
+import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
+import type { ProjectMemberResponseDto } from '@modules/project/dtos/response/project.member.response.dto';
+import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
+import type { ProjectResponseDto } from '@modules/project/dtos/response/project.response.dto';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -10,14 +10,13 @@ import {
     RequestLanguageStoreKey,
     RequestVersionStoreKey,
 } from '@common/request/constants/request.constant';
-import { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
-import { IResponseMetadataService } from '@common/response/interfaces/response.metadata.service.interface';
+import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
 /**
  * Builds the standard response metadata from the request store and mirrors it to response headers.
  */
 @Injectable()
-export class ResponseMetadataService implements IResponseMetadataService {
+export class ResponseMetadataService {
     private readonly defaultLanguage: EnumMessageLanguage;
     private readonly urlVersion: string;
     private readonly repoVersion: string;

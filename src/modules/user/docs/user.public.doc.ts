@@ -5,18 +5,12 @@ import {
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
-import {
-    AuthTokenResponseDto,
-    AuthTokenResponseSchema,
-} from '@modules/auth/dtos/response/auth.token.response.dto';
-import {
-    UserLoginResponseDto,
-    UserLoginResponseSchema,
-} from '@modules/user/dtos/response/user.login.response.dto';
-import {
-    UserTwoFactorEnableResponseDto,
-    UserTwoFactorEnableResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
+import type { AuthTokenResponseDto } from '@modules/auth/dtos/response/auth.token.response.dto';
+import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
+import type { UserLoginResponseDto } from '@modules/user/dtos/response/user.login.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
 export function UserPublicLoginCredentialDoc(): MethodDecorator {

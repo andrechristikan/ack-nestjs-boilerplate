@@ -3,6 +3,10 @@ import { faker } from '@faker-js/faker';
 import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
+/**
+ * Validates the body for creating a user as an admin.
+ * @public
+ */
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
     email: z
         .string()
@@ -43,4 +47,8 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         }),
 });
 
+/**
+ * Body for creating a user as an admin.
+ * @public
+ */
 export type UserCreateRequestDto = z.infer<typeof UserCreateRequestSchema>;

@@ -8,14 +8,12 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
-import {
-    AnalyticFraudRiskScoreResponseDto,
-    AnalyticFraudRiskScoreResponseSchema,
-    AnalyticJsonResponseDto,
-    AnalyticJsonResponseSchema,
-    AnalyticSummaryResponseDto,
-    AnalyticSummaryResponseSchema,
-} from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import { AnalyticSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.summary.response.dto';
+import type { AnalyticFraudRiskScoreResponseDto } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
+import type { AnalyticJsonResponseDto } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import type { AnalyticSummaryResponseDto } from '@modules/analytic/dtos/response/analytic.summary.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function AnalyticAdminMetricDoc(summary: string): MethodDecorator {

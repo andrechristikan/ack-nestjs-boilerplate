@@ -7,35 +7,34 @@ not settled here. No other agent reads those docs as a standing step.
 
 ## Decorator order (HARD — exact, never reorder)
 
-NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last in source order. Guards run in that same direction: the decorator NEAREST the method executes FIRST, the one farthest executes last. In the list below a higher number runs earlier — execution flows #16 → #1. A guard that depends on state an earlier guard sets (e.g. one needing `request.user`, which `@AuthJwtAccessProtected` populates) must sit ABOVE that guard in source, so it runs after it.
+NestJS evaluates stacked decorators bottom-up, so the HTTP method is always last in source order. Guards run in that same direction: the decorator NEAREST the method executes FIRST, the one farthest executes last. In the list below a higher number runs earlier — execution flows #15 → #1. A guard that depends on state an earlier guard sets (e.g. one needing `request.user`, which `@AuthJwtAccessProtected` populates) must sit ABOVE that guard in source, so it runs after it.
 
-`@FeatureFlagProtected` (#12) therefore sits ABOVE `@AuthJwtAccessProtected` (#13), not below it: the flag guard reads `request.user` to apply a flag's `targetUserIds` and `rolloutPercent`, and Passport writes `request.user` inside the JWT guard. Written below the JWT guard it would run first, see `undefined`, and silently skip targeting and rollout on every route — the flag would degrade to a plain on/off switch with no signal that anything was lost.
+`@FeatureFlagProtected` (#11) therefore sits ABOVE `@AuthJwtAccessProtected` (#12), not below it: the flag guard reads `request.user` to apply a flag's `targetUserIds` and `rolloutPercent`, and Passport writes `request.user` inside the JWT guard. Written below the JWT guard it would run first, see `undefined`, and silently skip targeting and rollout on every route — the flag would degrade to a plain on/off switch with no signal that anything was lost.
 
 ```typescript
 @ExampleDoc()                          // 1.  Swagger doc factory
 @Response('example.action')            // 2.  @Response / @ResponsePaging / @ResponseFile
 @TermPolicyAcceptanceProtected(...)    // 3.  Term policy
-@PolicyProtected({...})         // 4.  CASL policy         — admin routes
+@PolicyProtected({...})                // 4.  CASL policy         — admin routes
 @RoleProtected(...)                    // 5.  Role                — admin routes
 @ProjectMemberProtected()              // 6.  Project membership
 @ProjectProtected()                    // 7.  Project exists
 @WorkspaceMemberProtected(...)         // 8.  Workspace membership — pass roles to also gate by role
 @WorkspaceProtected()                  // 9.  Workspace exists
-@ActivityLog(...)                      // 10. Activity log
-@UserProtected()                       // 11. User status
-@FeatureFlagProtected(...)             // 12. Feature flag        — any route the flagged feature owns
-@AuthJwtAccessProtected()              // 13. JWT (access or refresh)
-@ApiKeyProtected()                     // 14. API key
-@HttpCode(HttpStatus.OK)               // 15. HTTP status — only when it differs from the default
-@Get('/endpoint')                      // 16. HTTP method — always last
+@UserProtected()                       // 10. User status
+@FeatureFlagProtected(...)             // 11. Feature flag        — any route the flagged feature owns
+@AuthJwtAccessProtected()              // 12. JWT (access or refresh)
+@ApiKeyProtected()                     // 13. API key
+@HttpCode(HttpStatus.OK)               // 14. HTTP status — only when it differs from the default
+@Get('/endpoint')                      // 15. HTTP method — always last
 ```
 
-Reordering is a defect even when the app still boots: the order encodes which gate rejects first — and because guards run bottom-up, the gate NEAREST the method rejects first (API key before JWT before user status before activity log before workspace before project before role before policy before term policy). A reshuffle changes which error a caller sees.
+Reordering is a defect even when the app still boots: the order encodes which gate rejects first — and because guards run bottom-up, the gate NEAREST the method rejects first (API key before JWT before user status before workspace before project before role before policy before term policy). A reshuffle changes which error a caller sees.
 
 - **`@HttpCode` belongs ONLY on `@Post`.** Nest defaults POST to `201 Created` and every other method to `200 OK`, so `@HttpCode(HttpStatus.OK)` above a `@Get` / `@Put` / `@Patch` / `@Delete` is a no-op that reads as if the route were doing something unusual. Delete it — and delete the `HttpCode` / `HttpStatus` imports when the file has no `@Post` left that needs them.
 - **`@RequestThrottle({...})` sits OUTSIDE this order.** It mounts an interceptor, not a guard, and interceptors run after every guard regardless of declaration order or class-versus-method placement. Place it consistently and move on — no position silently degrades it.
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
-- `@ActivityLog` requires `@AuthJwtAccessProtected` — it logs both success and failure against a user. Metadata is set through `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`, never returned in the response shape, and never carries a secret.
+- **Activity is not a decorator.** A domain stages an event with `ActivityLogDomain.stage(...)` after the business step, and the global `ActivityLogInterceptor` flushes it; metadata is validated by the action's contract, returned through a typed response schema, and never carries a secret (`rules/security.md`).
 - `@Workspace*Protected()` / `@Project*Protected()` are composable decorators each wrapping one or two guards — stack the ones a route needs, do not assume one implies another. `@WorkspaceMemberProtected(...roles)` is ONE decorator: with no `roles` it stacks only `WorkspaceMemberGuard`; with `roles` it also stacks `WorkspaceRoleGuard` — there is no separate `@WorkspaceRoleProtected`. `WorkspaceMemberGuard`/`WorkspaceRoleGuard` read the loaded user from CLS, so the whole Workspace* family sits above `@UserProtected()`. `@Project*Protected()` sits above the whole Workspace* family — `ProjectGuard` reads the already-validated workspace from CLS to scope the project lookup (cross-workspace IDOR check). `@ProjectMemberProtected(...roles)` takes project roles the same way, but **stacks differently from its workspace twin**: with no roles it uses `ProjectMemberGuard` (a `ProjectMember` row is required), with roles it uses `ProjectRoleGuard` ALONE. It must not stack both — a workspace `owner` legitimately has no `ProjectMember` row, and the strict membership guard would reject them before the owner bypass inside `ProjectRoleGuard` could run. Never on admin routes — admin read-only endpoints use `@RoleProtected` (+ `@PolicyProtected` once a route needs it) with no workspace/project scoping at all, since admin reads across every workspace.
 - A new `@<X>Protected()` follows the stack in this file. Flow narrative for the existing
   guards: `docs/authorization.md` — explorer or planner.
@@ -138,7 +137,8 @@ That line is mechanical on purpose. "Is a session really a sub-resource of a use
 
 The second grammar closes on the action because the action is the only segment that never narrows: everything before it is addressing, so putting it anywhere but last splits the address in two.
 
-- **The action is ONE word, and it is a VERB.** `accept` · `add` · `assign` · `change` · `check` · `claim` · `create` · `delete` · `disable` · `enable` · `export` · `forgot` · `generate` · `get` · `import` · `leave` · `list` · `login` · `logout` · `preview` · `publish` · `refresh` · `regenerate` · `reject` · `remove` · `resend` · `reset` · `revoke` · `send` · `setup` · `sign-up` · `switch` · `transfer` · `update` · `upload` · `verify`. Extend this list when a genuinely new verb is needed — a path whose last segment is a NOUN is usually the defect, not a missing entry. The two exceptions are named below: health probes, and an action qualified by HOW it is performed.
+- **The action is ONE word, and it is a VERB.** `accept` · `add` · `assign` · `change` · `check` · `claim` · `create` · `delete` · `disable` · `enable` · `export` · `forgot` · `generate` · `get` · `import` · `leave` · `list` · `login` · `logout` · `preview` · `publish` · `refresh` · `regenerate` · `reject` · `remove` · `resend` · `reset` · `revoke` · `revoke-all` · `send` · `setup` · `sign-up` · `switch` · `transfer` · `update` · `upload` · `verify`. Extend this list when a genuinely new verb is needed — a path whose last segment is a NOUN is usually the defect, not a missing entry. The two exceptions are named below: health probes, and an action qualified by HOW it is performed.
+- **`<verb>-all` is one action: `<verb>` applied to every row the path addresses.** It is allowed only when `<verb>` is on the list above and the path carries no row id — `@Delete('/revoke-all')` beside `@Delete('/revoke/:sessionId')`. It is a scope on the verb, not a target folded into it, so `read-all` stays wrong: `read` is the target of `update`, and the path is `/update/:notificationId/read`.
 - **Health probes are exempt.** `/health/aws`, `/health/database`, `/health/instance` are noun-only by convention and carry no action. Do not "fix" them.
 - **Never fold the target into the action with a dash.** `update-role`, `update-slug`, `soft-delete`, `update-status`, `read-all`, `change-password`, `generate-presign`, `regenerate-backup-codes` are wrong. The target is its own segment, because that is the only position that scales: a second attribute adds a sibling segment instead of inventing a second compound verb. A dash inside a single lexical word is NOT that: `sign-up` is one verb, and it is the kebab spelling of the `signUp` used everywhere in code — the same mapping as `mobile-number` ↔ `mobileNumber`. Never collapse it to `signup`; that breaks the mapping the whole repo relies on.
 - **An action MAY end on a noun when that noun names HOW the action is performed, not WHAT it acts on.** `/login/credential`, `/login/social/google` — the trailing segment is the credential type, and the flow's own sub-steps nest under the same namespace (`/login/2fa/verify`). This is the only place a path may close on a noun. It does NOT license `/list/user-setting`, where the trailing noun is a different resource being listed.
@@ -164,6 +164,7 @@ GOOD  @Delete('/member/:projectId/:projectMemberId/remove')   scope id, then row
 GOOD  @Delete('/revoke/:sessionId')                           own resource — the controller mounts at
                                                               path: '/user/:userId/session', so `session`
                                                               is ITS resource and the action leads
+GOOD  @Delete('/revoke-all')                                  own resource, every row — `<verb>-all`
 GOOD  @Post('/login/credential')                              action qualified by HOW — see the noun rule
 GOOD  @Post('/sign-up')                                       one lexical verb, kebab of `signUp`
 
@@ -193,7 +194,7 @@ BAD   @Post('/get/:termPolicyId/content/:language')           -> @Get('/content/
 
 A new `x-*` request header is not live until it is registered. Adding the middleware, the config entry, and the guard that reads it is only half the job.
 
-- **Register the name in `request.config.ts` → `cors.allowedHeader`.** Without it the browser preflight rejects the header, the request never reaches Nest, and the feature is dead from every browser client while still working from curl and Postman. `tsc`, lint, and jest all stay green — nothing but a real cross-origin request catches this.
+- **Register the name in `request.config.ts` → `cors.allowedHeader`.** Without it the browser preflight rejects the header, the request never reaches Nest, and the feature is dead from every browser client while still working from curl and Postman. `tsc`, lint, and Vitest all stay green — nothing but a real cross-origin request catches this.
 - **The header name lives in a config file, never as a literal in the middleware or guard** (`x-workspace-id` → `workspace.headerName`, `x-anonymous-id` → `featureFlag.anonymous.headerName`). The CORS entry is the one place the raw string is repeated, because `cors.allowedHeader` is a flat transport allow-list.
 - **A header the server READS must be in `allowedHeader`; a header the server SETS and the client must read needs `exposedHeaders` instead.** They are different lists solving different halves of CORS.
 

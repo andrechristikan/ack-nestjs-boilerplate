@@ -479,8 +479,8 @@ PaginationQueryFilterDate(
 **Parameters:**
 - `field`: Query parameter name
 - `options.type`:
-  - `EnumPaginationFilterDateBetweenType.start`: Greater than or equal (`gte`) — use for start date
-  - `EnumPaginationFilterDateBetweenType.end`: Less than or equal (`lte`) — use for end date
+  - `EnumPaginationFilterDateBetweenType.start`: Greater than or equal (`gte`), the start date bound
+  - `EnumPaginationFilterDateBetweenType.end`: Less than or equal (`lte`), the end date bound
   - Undefined: emits the `equal` key; exact date match
 - `options.dayOf`: Day adjustment option (`EnumHelperDateDayOf`)
 
@@ -930,7 +930,7 @@ async getListOffsetByAdmin(
     roleId?: Record<string, IPaginationEqual>,
     countryId?: Record<string, IPaginationEqual>
 ): Promise<IResponsePagingReturn<IUser>> {
-    return this.userService.getListOffsetByAdmin(
+    return this.userDomain.getListOffsetByAdmin(
         pagination,
         status,
         roleId,
@@ -1061,7 +1061,7 @@ async list(
     })
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 ): Promise<IResponsePagingReturn<UserListResponseDto>> {
-    return this.userService.getListOffsetByAdmin(pagination);
+    return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
 

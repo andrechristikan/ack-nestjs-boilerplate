@@ -2,7 +2,7 @@ import {
     PaginationOffsetQuery,
     PaginationQueryFilterEqualBoolean,
 } from '@common/pagination/decorators/pagination.decorator';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
@@ -12,7 +12,7 @@ import {
     Response,
     ResponsePaging,
 } from '@common/response/decorators/response.decorator';
-import {
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -21,7 +21,7 @@ import {
     EnumPolicySubject,
     EnumRoleType,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -33,7 +33,7 @@ import {
 } from '@modules/device/docs/device.admin.doc';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
-import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';

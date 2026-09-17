@@ -1,10 +1,10 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IUserVerificationAnalyticRepository,
     IUserVerificationAnalyticUsedBucket,
 } from '@modules/user/interfaces/user.verification.analytic.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumVerificationType } from '@generated/prisma-client';
+import { EnumVerificationType } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserVerificationAnalyticRepository implements IUserVerificationAnalyticRepository {

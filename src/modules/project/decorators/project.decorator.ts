@@ -1,8 +1,5 @@
-import {
-    EnumProjectMemberRole,
-    Project,
-    ProjectMember,
-} from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import type { Project, ProjectMember } from '@generated/prisma-client/client';
 import {
     ProjectMemberStoreKey,
     ProjectRoleMetaKey,
@@ -12,20 +9,26 @@ import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
 import {
-    ExecutionContext,
     SetMetadata,
     UseGuards,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 
-/** Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace. */
+/**
+ * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
+ * @public
+ */
 export function ProjectProtected(): MethodDecorator {
     return applyDecorators(UseGuards(ProjectGuard));
 }
 
-/** Extracts the current project that `ProjectGuard` stored in the request context. */
+/**
+ * Extracts the current project that `ProjectGuard` stored in the request context.
+ * @public
+ */
 export const ProjectCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): Project | undefined => {
         return (
@@ -40,6 +43,7 @@ export const ProjectCurrent = createParamDecorator(
  * it. Pass `roles` to instead require the caller's project membership role to be one of them, which
  * a workspace owner satisfies without holding a `ProjectMember` row at all; omit `roles` to demand a
  * `ProjectMember` row of the caller with no bypass.
+ * @public
  */
 export function ProjectMemberProtected(
     ...roles: EnumProjectMemberRole[]
@@ -54,7 +58,10 @@ export function ProjectMemberProtected(
     );
 }
 
-/** Extracts the current project member row that `ProjectMemberGuard` stored in the request context. */
+/**
+ * Extracts the current project member row that `ProjectMemberGuard` stored in the request context.
+ * @public
+ */
 export const ProjectMemberCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): ProjectMember | undefined => {
         return (

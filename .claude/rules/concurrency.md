@@ -46,8 +46,9 @@ a `never`-returning handler otherwise gives.
 Two forms are NOT this rule, because neither has an `await` to attach a `try` to:
 
 - **The process entrypoint.** `bootstrap().catch(...)` in `src/main.ts` and `src/migration.ts` runs
-  at module level, where there is no enclosing async function and — this package is CommonJS —
-  no top-level `await`.
+  at module level, outside any async function; its handler writes the failure to stderr and
+  exits the process, which a failed boot needs because the registered shutdown hooks keep the
+  event loop alive.
 - **A promise that is deliberately never awaited.** Fire-and-forget work whose failure must not
   reach the caller still needs a `.catch()` so the rejection does not become unhandled. The
   activity-log interceptor is not this case: it **awaits** flush inside `concatMap` (or an
@@ -68,9 +69,9 @@ Inside `withTransaction`, every collaborator is an `*InTx(tx, ...)` method that 
 statements on `tx`. Reaching back to `databaseService.client` silently escapes the
 transaction. A single-row delete that must stay atomic with other writes is
 `tx.<model>.softDelete(...)`. A multi-row delete on this repository's own model is one
-`updateMany`, with `updatedBy` stamped by hand and the rows filtered to those still live —
-an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their
-real deletion time.
+`updateMany` filtered to the rows still live — an unfiltered `updateMany` rewrites
+`deletedAt` on rows deleted earlier and destroys their real deletion time. Audit fields follow
+`rules/database.md`: the hook stamps `updatedBy`, and `deletedBy` is set explicitly.
 
 ## A generated unique value retries, then throws
 

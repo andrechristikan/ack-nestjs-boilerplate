@@ -1,15 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumDeviceNotificationProvider,
     Prisma,
-} from '@generated/prisma-client';
-import {
+} from '@generated/prisma-client/client';
+import type {
     IDeviceIdentity,
     IDeviceLoginUpsert,
     IDeviceOwnership,
@@ -29,7 +29,6 @@ export interface IDeviceOwnershipRepository {
     clearNotificationInTx(
         tx: IDatabaseTransactionClient,
         deviceOwnershipId: string,
-        userId: string,
         now: Date
     ): Promise<void>;
     removeOwnershipInTx(

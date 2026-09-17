@@ -2,7 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { AwsServiceUnavailableException } from '@common/aws/exceptions/aws.service-unavailable.exception';
-import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -11,7 +11,7 @@ import { TermPolicyContentExistException } from '@modules/term-policy/exceptions
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import {
+import type {
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
@@ -22,8 +22,8 @@ import { Injectable } from '@nestjs/common';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyContentDomain {
@@ -102,8 +102,7 @@ export class TermPolicyContentDomain {
 
     async updateContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload,
-        updatedBy: string
+        { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
@@ -120,8 +119,7 @@ export class TermPolicyContentDomain {
             const updated = await this.termPolicyRepository.updateContent(
                 termPolicyId,
                 termPolicy.contents as unknown as ITermPolicyContent[],
-                mappedContent,
-                updatedBy
+                mappedContent
             );
 
             this.stageActivityLog(
@@ -141,8 +139,7 @@ export class TermPolicyContentDomain {
 
     async addContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload,
-        updatedBy: string
+        { key, size, language }: ITermPolicyContentUpload
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
@@ -166,8 +163,7 @@ export class TermPolicyContentDomain {
             };
             const updated = await this.termPolicyRepository.addContent(
                 termPolicyId,
-                mappedContent,
-                updatedBy
+                mappedContent
             );
 
             this.stageActivityLog(
@@ -187,8 +183,7 @@ export class TermPolicyContentDomain {
 
     async removeContentByAdmin(
         termPolicyId: string,
-        language: EnumMessageLanguage,
-        updatedBy: string
+        language: EnumMessageLanguage
     ): Promise<void> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
@@ -204,8 +199,7 @@ export class TermPolicyContentDomain {
             const updated = await this.termPolicyRepository.removeContent(
                 termPolicyId,
                 termPolicy.contents as unknown as ITermPolicyContent[],
-                { language },
-                updatedBy
+                { language }
             );
 
             this.stageActivityLog(

@@ -1,7 +1,19 @@
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 
+/**
+ * Request-store key holding the workspace the workspace guard resolved.
+ * @public
+ */
 export const WorkspaceStoreKey = 'WorkspaceStore';
+/**
+ * Request-store key holding the caller's workspace membership.
+ * @public
+ */
 export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
+/**
+ * Route metadata key holding the workspace roles `@WorkspaceMemberProtected` requires.
+ * @public
+ */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /**
@@ -10,6 +22,7 @@ export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
  * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
  * excludes any document where `deletedAt` was never persisted at all — as opposed to persisted and
  * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
+ * @public
  */
 export const WorkspaceActiveFilter: NonNullable<
     Prisma.WorkspaceWhereInput['OR']

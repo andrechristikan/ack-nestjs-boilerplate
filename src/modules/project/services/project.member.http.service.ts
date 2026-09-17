@@ -1,12 +1,13 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
     IResponsePagingReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Project, ProjectMember } from '@generated/prisma-client';
-import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
-import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';

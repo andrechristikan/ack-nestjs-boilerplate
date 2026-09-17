@@ -4,10 +4,8 @@ import {
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import {
-    CountryResponseDto,
-    CountryResponseSchema,
-} from '@modules/country/dtos/response/country.response.dto';
+import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
+import type { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import {
     CountryDefaultAvailableOrderBy,
     CountryDefaultAvailableSearch,

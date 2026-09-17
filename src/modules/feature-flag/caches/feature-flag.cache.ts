@@ -2,8 +2,8 @@ import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FeatureFlag } from '@generated/prisma-client';
-import { Cache } from 'cache-manager';
+import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { Cache } from 'cache-manager';
 
 /** Read-through cache over the feature flag record. */
 @Injectable()

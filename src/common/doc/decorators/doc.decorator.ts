@@ -10,11 +10,11 @@ import {
     ApiQuery,
     ApiResponse,
     ApiSecurity,
-    SchemaObject,
 } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
-import {
+import type {
     IDocAuthOptions,
     IDocDefaultOptions,
     IDocGuardOptions,
@@ -76,6 +76,7 @@ function createSchemaObject(doc: IDocOfOptions): SchemaObject {
 
 /**
  * Documents a single response with the standard envelope (message, statusCode, optional data).
+ * @public
  */
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     return applyDecorators(
@@ -89,6 +90,7 @@ export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
 
 /**
  * Documents a response that may match one of several schemas (OpenAPI `oneOf`).
+ * @public
  */
 export function DocOneOf(
     httpStatus: HttpStatus,
@@ -109,6 +111,7 @@ export function DocOneOf(
 
 /**
  * Documents a response that may match any combination of schemas (OpenAPI `anyOf`).
+ * @public
  */
 export function DocAnyOf(
     httpStatus: HttpStatus,
@@ -129,6 +132,7 @@ export function DocAnyOf(
 
 /**
  * Documents a response that must satisfy all provided schemas (OpenAPI `allOf`).
+ * @public
  */
 export function DocAllOf(
     httpStatus: HttpStatus,
@@ -149,6 +153,7 @@ export function DocAllOf(
 
 /**
  * Base endpoint doc: operation metadata, language/correlation headers, and standard error responses.
+ * @public
  */
 export function Doc(options?: IDocOptions): MethodDecorator {
     return applyDecorators(
@@ -190,6 +195,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 /**
  * Documents params and queries. `ApiConsumes` is added only when `bodyType`
  * maps to a known MIME type; `none` or omitted skips it.
+ * @public
  */
 export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
@@ -218,6 +224,7 @@ export function DocRequest(options?: IDocRequestOptions): MethodDecorator {
 
 /**
  * Documents a multipart/form-data file upload request plus file-related error responses.
+ * @public
  */
 export function DocRequestFile(
     options?: IDocRequestFileOptions
@@ -255,6 +262,7 @@ export function DocRequestFile(
 
 /**
  * Documents the 403 responses for each enabled authorization guard (role, policy, term policy).
+ * @public
  */
 export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
     const oneOfForbidden: IDocOfOptions[] = [];
@@ -285,6 +293,7 @@ export function DocGuard(options?: IDocGuardOptions): MethodDecorator {
 
 /**
  * Documents auth schemes (JWT, social, x-api-key) and their 401 responses per enabled option.
+ * @public
  */
 export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
     const docs: MethodDecorator[] = [];
@@ -364,6 +373,7 @@ export function DocAuth(options?: IDocAuthOptions): MethodDecorator {
 
 /**
  * Documents a standard JSON success response with an i18n message and optional data schema.
+ * @public
  */
 export function DocResponse<T = void>(
     messagePath: string,
@@ -386,6 +396,7 @@ export function DocResponse<T = void>(
  * Documents a paginated response: data array plus cursor/offset queries, search, and order.
  * Reflects the public HTTP query contract only (`orderBy` as a single field), not richer
  * internal pagination shapes.
+ * @public
  */
 export function DocResponsePaging<T>(
     messagePath: string,
@@ -451,6 +462,7 @@ export function DocResponsePaging<T>(
 
 /**
  * Documents a file download response (non-JSON), defaulting to CSV.
+ * @public
  */
 export function DocResponseFile(
     options?: IDocResponseFileOptions

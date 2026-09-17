@@ -1,4 +1,4 @@
-import { IAnalyticStatusCount } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticStatusCount } from '@modules/analytic/interfaces/analytic.interface';
 import { WorkspaceInviteAnalyticRepository } from '@modules/workspace/repositories/workspace.invite.analytic.repository';
 import { Injectable } from '@nestjs/common';
 

@@ -65,7 +65,7 @@ For details, see the official Prisma documentation: [Prisma for MongoDB][ref-pri
 
 ## Generate Database Client
 
-Prisma uses a generated client to provide type-safe database access and query building. You must generate the Prisma Client every time you change your Prisma schema (`prisma/schema.prisma`).
+Prisma uses a generated client for type-safe queries. A schema edit in `prisma/schema.prisma` takes `pnpm db:generate` to write the client into `src/generated/prisma-client`.
 
 **When to Generate Prisma client?**
 - After any change to your Prisma schema (e.g., adding, removing, or updating models/fields).
@@ -76,7 +76,7 @@ Prisma uses a generated client to provide type-safe database access and query bu
 pnpm db:generate
 ```
 
-This command will read your Prisma schema and generate the client code in `generated/prisma-client`. The generated client is required for your application to interact with the database using Prisma.
+This command reads `prisma/schema.prisma` and writes the client into `src/generated/prisma-client` (gitignored). The `prisma-client` generator emits ESM with `.js` import extensions; application code imports it from `@generated/prisma-client/client`, and ESLint rejects an import from its `internal/` folder. `pnpm generate` runs this command together with `pnpm generate:package`.
 
 
 ## Seeding
@@ -93,7 +93,7 @@ Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed comm
 - `pnpm migration:remove` — removes all seeded data from the database.
 - `pnpm migration:fresh` — force-resets the database schema (`prisma db push --force-reset`) then immediately re-seeds all data. Useful during development when you need a clean slate.
 
-**Order matters, and it lives in the `package.json` scripts, not in `migration.module.ts`:**
+**The order lives in the `package.json` scripts:**
 
 - `migration:seed` runs `apiKey` → `country` → `featureFlag` → `role` → `policy` → `termPolicy` → `user` → `workspace`. A seed that references another's rows runs after it: `policy` needs `role`, `user` needs both `role` and `country`, and `workspace` needs the seeded users.
 - `migration:remove` runs `workspace` → `user` → `apiKey` → `featureFlag` → `country` → `policy` → `role` → `termPolicy`, removing the referrer before anything it references.
@@ -162,8 +162,7 @@ This script automatically configures essential S3 bucket settings in the correct
 
 **Why Sequential Configuration Matters:**
 
-The configuration must be applied in a specific order because AWS S3 policies have dependencies. 
-For example, you must configure public access blocks before setting bucket policies.
+The seed applies the steps in this order because AWS S3 policies depend on each other: the public access block is configured before the bucket policy.
 
 **How to Run:**
 
@@ -200,7 +199,7 @@ When you run `pnpm migration:seed`, the following initial data will be created i
 ### API Keys
 
 > [!WARNING]
-> These are development keys. Always regenerate API keys for production environments.
+> These keys and their secret are published in this repository. They are seeded in `local` only.
 
 Two API keys are created for authentication and service access. They are seeded in the `local` environment only; `development`, `staging`, and `production` seed no api key.
 
@@ -242,7 +241,7 @@ Three user roles are created with different permission levels:
 ### Users
 
 > [!WARNING]
-> These are test accounts with default passwords. Change or remove these accounts in production environments.
+> These accounts use a password published in this repository, and the superadmin and admin accounts are seeded in every environment.
 
 The seeded users differ per environment. This is controlled by `migrationUserData` in `src/migration/data/migration.user.data.ts`:
 
@@ -514,19 +513,19 @@ type TermPolicyContent {
 
 ## Audit Fields and Soft Delete
 
-Audit fields are stamped automatically by a Prisma Client Extension named `audit-actor`. `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers; `DatabaseClientFactory.create()` applies it with `$extends`. Repositories do not set `createdBy` / `updatedBy` by hand; the extension fills them from the authenticated request actor.
+Audit fields are stamped automatically by a Prisma Client Extension named `audit-actor`. `DatabaseExtensionUtil.build()` (`src/common/database/utils/database.extension.util.ts`) defines it with `Prisma.defineExtension`, closing over the actor getter, the clock, and the stampers; `DatabaseClientFactory.create()` applies it with `$extends`. A repository write reached only from an authenticated HTTP request leaves `createdBy` / `updatedBy` to the extension, which fills them from the request actor. A write that also runs with no actor (a queue processor, a seed, a public route) passes the audit value explicitly.
 
 ### Client Access Surface
 
 Three roles, wired together in `src/common/database/database.module.ts`:
 
-- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`.
-- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the DMMF `modelFields` / `modelRelations` maps and the stamping methods, and builds the extension in `build()`.
-- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes one public member: `client`.
+- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
+- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
+- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
 
 The extension carries the `create` / `createMany` / `update` / `updateMany` / `upsert` query hooks and the `softDelete` / `restore` model methods, all registered against `$allModels`. `IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically; the leaf types the extension needs (`IDatabaseRow`, `IDatabaseSoftDeleteArgs`, `IDatabaseRestoreArgs`, and their data shapes) live in `interfaces/database.extension.interface.ts`.
 
-`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token, the factory, and the extension util stay unexported; `DatabaseModule` exports only `DatabaseService` and `DatabaseUtil`.
+`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports `DatabaseService`, `DatabaseUtil`, and `DatabaseExtensionUtil`.
 
 The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 
@@ -535,26 +534,26 @@ What that means for callers:
 - Repositories and migration seeds read and write through `databaseService.client.<model>`. There is no alternative: `DatabaseService` does not extend `PrismaClient` and exposes no model delegate. Every query through `client` participates in actor stamping and gains the `softDelete` / `restore` methods.
 - A Prisma extended client does not expose `$on`, so the event log handlers are registered against the raw `DatabaseClientFactory` instance. `$connect`, `$disconnect`, `$transaction`, and `$runCommandRaw` all work on `client`.
 - `$transaction` accepts both Prisma forms: the array form for a sequential batch with no branching, and the callback form when the work needs a read between writes, must branch on an intermediate result, or spans more than one repository. Both run on `client`, so audit stamping still fires inside them. In the callback form every statement uses the `tx` client; a call back to `databaseService.client` escapes the transaction.
-- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`DeviceOwnershipRepository` owns `DeviceOwnership` and `Device`). Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written by `ActivityLogRepository.create` and `createInTx`. Feature domains record a log inside a caller-owned transaction through `ActivityLogDomain.recordInTx`.
+- A repository issues statements only against the model it owns, plus satellite models that have no repository of their own (`DeviceOwnershipRepository` owns `DeviceOwnership` and `Device`). Another model's row is reached through that model's repository, composed by a domain. `ActivityLog` is written only by `ActivityLogRepository.createManyInTx`: feature domains stage events through `ActivityLogDomain.stage`, and `ActivityLogInterceptor` flushes them after the handler settles. See [Activity Log][ref-doc-activity-log].
 - When a write spans more than one repository, the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not). The constraint when changing this: `rules/database.md`.
 - The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
 
 - On `create`, `createMany`, `update`, `updateMany`, and `upsert`, the extension fills `createdBy` and `updatedBy` from the current request actor.
-- The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user carries no actor, and nothing is stamped.
-- A field is filled only when the model actually has that column and the caller left it null. An explicit value the caller passes always wins.
+- The actor is the authenticated `request.user.userId`, written into the request store under `RequestActorStoreKey` by the global `RequestActorInterceptor` after JWT authentication. A request with no authenticated user, a queue processor, and a seed carry no actor, and nothing is stamped.
+- A field is filled only when the model has that column and the caller left it null. An explicit value the caller passes always wins.
 - `createdBy`, `updatedBy`, and `deletedBy` are `String? @db.ObjectId`; they store the actor's user id.
 
-**Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved from the Prisma DMMF rather than the parent's field set, and the recursion continues to any deeper level.
+**Stamping recurses into nested writes.** `DatabaseExtensionUtil.stampRelations` walks the payload's relation fields, and `stampNestedWrite` stamps every write verb a relation container can hold: `create`, `createMany`, `connectOrCreate`, `update`, `updateMany`, and `upsert`. Each nested write is stamped against the **related** model, resolved through `DatabaseModelRelations`, and the recursion continues to any deeper level.
 
-For a caller this means a nested write needs no hand-written `createdBy` / `updatedBy`. Keep one only where the value is deliberately not the acting user.
+For a caller this means a nested write on an authenticated request needs no hand-written `createdBy` / `updatedBy`. An explicit one appears only where the value is not the acting user or no actor exists.
 
 ### Soft Delete and Restore
 
-The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceDomain.softDeleteWorkspace` opens `withTransaction` that also soft-deletes still-active projects (`ProjectDomain.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and records `workspaceDeleted` through `ActivityLogDomain.recordInTx`.
+The extension adds two methods to every model. They are meaningful only on models that carry both soft-delete columns `deletedAt` and `deletedBy`; `User` is currently the only such model. `Workspace` and `Project` carry `deletedAt` alone. `WorkspaceRepository.softDeleteInTx` and `ProjectRepository.softDeleteInTx` stamp that column through a plain `update` on the model they own. `WorkspaceDomain.softDeleteWorkspace` opens `withTransaction` that also soft-deletes still-active projects (`ProjectDomain.softDeleteByWorkspaceInTx`), expires pending invites, cancels pending join requests, and stages `workspaceDeleted` through `ActivityLogDomain.stage`.
 
-- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserDomain.deleteSelf` revokes the live sessions, then opens a `withTransaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`) and `ActivityLogDomain.recordInTx` (`userDeleteSelf`).
+- `softDelete({ where, data? })` sets `deletedAt` (defaults to now), `deletedBy` and `updatedBy` (default to the actor), and merges caller `data` (business fields and nested writes) into the same update. `data` may carry an explicit `deletedAt`, `deletedBy`, or `updatedBy` alongside the business fields, and that value wins over the default. `UserDomain.deleteSelf` revokes the live sessions, then opens a `withTransaction` that calls `UserRepository.deleteSelfInTx` (soft-delete plus `status: inactive`), then stages `userDeleteSelf` through `ActivityLogDomain.stage`.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy` back to null, sets `updatedBy` from the actor, and merges caller `data`. An explicit `updatedBy` in `data` wins.
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
@@ -574,8 +573,8 @@ The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: t
 
 | Candidate source | Consumer | Retry unit |
 |---|---|---|
-| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) and `recordInTx` |
-| `ProjectDomain.drawSlugCandidates()` | `ProjectDomain.createProject` | the `withTransaction`: `ProjectRepository.createInTx` and `recordInTx` |
+| `WorkspaceDomain.drawSlugCandidates()` | `WorkspaceDomain.createWorkspace` | the `withTransaction`: `createInTx` (workspace plus owner membership) and the staged activity log |
+| `ProjectDomain.drawSlugCandidates()` | `ProjectDomain.createProject` | the `withTransaction`: `ProjectRepository.createInTx` and the staged activity log |
 | `UserOnboardingDomain.buildPersonalWorkspaceContexts()` | `WorkspaceDomain.commitOnboarding` | the whole onboarding `withTransaction` |
 
 Three rules hold across all of them:
@@ -627,7 +626,7 @@ Repositories talk to Prisma:
 
 ### Database provider
 
-This boilerplate ships **MongoDB only**. ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Prisma can target other engines in general, but switching provider here means rewriting the schema, `DatabaseUtil` ID helpers, and Mongo-specific query patterns. There is no `prisma migrate` script; do not treat a provider switch as a one-command migration.
+This boilerplate ships **MongoDB only**. ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Prisma can target other engines in general, but switching provider here means rewriting the schema, `DatabaseUtil` ID helpers, and Mongo-specific query patterns. There is no `prisma migrate` script, and a provider switch is not a one-command migration.
 
 For setup and seeding on MongoDB, see the sections above.
 
@@ -647,3 +646,4 @@ For setup and seeding on MongoDB, see the sections above.
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-activity-log]: activity-log.md

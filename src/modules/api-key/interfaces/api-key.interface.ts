@@ -1,4 +1,5 @@
-import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
 
 export interface IApiKeyGenerateCredential {
     key: string;

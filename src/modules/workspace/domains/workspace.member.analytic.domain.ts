@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticRoleCount,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';

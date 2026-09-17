@@ -5,10 +5,8 @@ import {
     DocRequest,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    TermPolicyResponseDto,
-    TermPolicyResponseSchema,
-} from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
+import type { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyListPublicDocQuery } from '@modules/term-policy/constants/term-policy.doc.constant';
 import { TermPolicyDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';

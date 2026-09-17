@@ -1,10 +1,10 @@
-import { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import {
+import type { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type {
     IDeviceOwnershipAnalyticCreatedRow,
     IDeviceOwnershipAnalyticInactiveRow,
     IDeviceOwnershipAnalyticUserCount,

@@ -1,10 +1,10 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { TwoFactor } from '@generated/prisma-client';
+import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
-import { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor.repository.interface';
+import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
+import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -29,38 +29,45 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         });
     }
 
+    /** Records a verified two-factor use; a backup-code result is written only while the stored codes still equal `currentBackupCodes`, and `false` means nothing was written. */
     async verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult
-    ): Promise<TwoFactor> {
-        return tx.twoFactor.update({
-            where: { userId },
+        { method, newBackupCodes }: IAuthTwoFactorVerifyResult,
+        currentBackupCodes: string[]
+    ): Promise<boolean> {
+        const isBackupCode = method === EnumAuthTwoFactorMethod.backupCodes;
+        const { count } = await tx.twoFactor.updateMany({
+            where: {
+                userId,
+                ...(isBackupCode && {
+                    backupCodes: { equals: currentBackupCodes },
+                }),
+            },
             data: {
                 lastUsedAt: this.helperDateService.create(),
-                ...(method === EnumAuthTwoFactorMethod.backupCodes && {
+                ...(isBackupCode && {
                     backupCodes: newBackupCodes,
                 }),
             },
         });
+
+        return count > 0;
     }
 
     async setupTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        secretEncrypted: string,
-        iv: string
+        pendingSecretEncrypted: string
     ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
         return tx.twoFactor.update({
             where: { userId },
             data: {
-                secret: secretEncrypted,
-                iv,
+                pendingSecret: pendingSecretEncrypted,
                 attempt: 0,
                 updatedAt: now,
-                updatedBy: userId,
             },
         });
     }
@@ -68,6 +75,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async enableTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        secretEncrypted: string,
         backupCodesHashed: string[]
     ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
@@ -81,6 +89,8 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         return tx.twoFactor.update({
             where: { userId },
             data: {
+                secret: secretEncrypted,
+                pendingSecret: null,
                 enabled: true,
                 requiredSetup: false,
                 confirmedAt: twoFactor?.confirmedAt ?? now,
@@ -106,8 +116,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 backupCodes: [],
                 lastUsedAt: now,
                 secret: null,
-                iv: null,
-                updatedBy: userId,
+                pendingSecret: null,
                 updatedAt: now,
             },
         });
@@ -124,7 +133,6 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             where: { userId },
             data: {
                 backupCodes: backupCodesHashed,
-                updatedBy: userId,
                 updatedAt: now,
             },
         });
@@ -132,8 +140,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
 
     async resetTwoFactorByAdminInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        updatedBy: string
+        userId: string
     ): Promise<TwoFactor> {
         const now = this.helperDateService.create();
 
@@ -144,8 +151,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 attempt: 0,
                 backupCodes: [],
                 secret: null,
-                iv: null,
-                updatedBy,
+                pendingSecret: null,
                 updatedAt: now,
             },
         });

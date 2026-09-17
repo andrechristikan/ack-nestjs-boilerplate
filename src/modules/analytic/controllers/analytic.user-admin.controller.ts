@@ -1,4 +1,4 @@
-import {
+import type {
     IAnalyticMetricCount,
     IAnalyticRoleCount,
     IAnalyticStatusCount,
@@ -6,11 +6,9 @@ import {
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import { AnalyticUserMetricDoc } from '@modules/analytic/docs/analytic.user.doc';
-import {
-    AnalyticDateRangeRequestDto,
-    AnalyticDateRangeRequestSchema,
-} from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
-import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
 import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
@@ -24,7 +22,8 @@ import {
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumWorkspaceMemberRole, Workspace } from '@generated/prisma-client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 
 @ApiTags('modules.user.analytic')
 @Controller({

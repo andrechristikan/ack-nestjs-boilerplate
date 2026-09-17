@@ -14,7 +14,7 @@ RUN set -x && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
-RUN pnpm db:generate
+RUN pnpm generate
 RUN pnpm build
 
 # Main Stage
@@ -23,7 +23,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy only necessary files from previous stages
-COPY --from=builder /app/generated/prisma-client ./generated/prisma-client
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 

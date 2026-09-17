@@ -2,16 +2,16 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import {
+import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -19,7 +19,7 @@ import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-p
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import {
+import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
@@ -32,8 +32,8 @@ import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
     Prisma,
-    TermPolicy,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyDomain {
@@ -88,10 +88,11 @@ export class TermPolicyDomain {
         return this.termPolicyRepository.findPublished(pagination, type);
     }
 
-    async createByAdmin(
-        { contents, type, version }: ITermPolicyCreate,
-        createdBy: string
-    ): Promise<TermPolicy> {
+    async createByAdmin({
+        contents,
+        type,
+        version,
+    }: ITermPolicyCreate): Promise<TermPolicy> {
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
@@ -123,8 +124,7 @@ export class TermPolicyDomain {
             );
             const created = await this.termPolicyRepository.create(
                 { contents, type, version },
-                mappedContents,
-                createdBy
+                mappedContents
             );
 
             this.stageActivityLog(
@@ -213,8 +213,7 @@ export class TermPolicyDomain {
                     const row = await this.termPolicyRepository.publishInTx(
                         tx,
                         termPolicyId,
-                        newContents,
-                        updatedBy
+                        newContents
                     );
                     await this.userDomain.resetTermPolicyForActiveUsersInTx(
                         tx,

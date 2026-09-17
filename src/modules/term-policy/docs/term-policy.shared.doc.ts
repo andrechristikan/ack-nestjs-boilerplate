@@ -9,10 +9,8 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { TermPolicyAcceptanceDefaultAvailableOrderBy } from '@modules/term-policy/constants/term-policy.list.constant';
-import {
-    TermPolicyUserAcceptanceResponseDto,
-    TermPolicyUserAcceptanceResponseSchema,
-} from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
+import type { TermPolicyUserAcceptanceResponseDto } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function TermPolicySharedListAcceptedDoc(): MethodDecorator {

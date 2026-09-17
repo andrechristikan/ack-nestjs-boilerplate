@@ -1,10 +1,10 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
+import type {
     IAnalyticAccountTakeoverRow,
     IAnalyticApiKeyBurstRow,
     IAnalyticBackupCodeNewDeviceRow,
@@ -27,7 +27,7 @@ import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.e
 import { UserPasswordAnalyticDomain } from '@modules/user/domains/user.password.analytic.domain';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -234,7 +234,6 @@ export class AnalyticFraudDomain {
         const revokes =
             await this.activityLogAnalyticDomain.findManyByActionsInRange(
                 [
-                    EnumActivityLogAction.adminSessionRevoke,
                     EnumActivityLogAction.userRevokeSessionByAdmin,
                     EnumActivityLogAction.userRevokeAllSessionsByAdmin,
                 ],

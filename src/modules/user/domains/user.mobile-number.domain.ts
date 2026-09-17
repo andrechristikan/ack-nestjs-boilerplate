@@ -1,13 +1,13 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
-import {
+import type {
     IUserMobileNumber,
     IUserMobileNumberInput,
 } from '@modules/user/interfaces/user.interface';
@@ -118,7 +118,6 @@ export class UserMobileNumberDomain {
             return await this.databaseService.withTransaction(async tx => {
                 const row = await this.userMobileNumberRepository.updateInTx(
                     tx,
-                    userId,
                     checkMobileNumberExist.id,
                     {
                         number,

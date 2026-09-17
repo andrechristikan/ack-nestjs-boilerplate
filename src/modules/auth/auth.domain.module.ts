@@ -10,7 +10,8 @@ import { AuthTwoFactorUtil } from '@modules/auth/utils/auth.two-factor.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
+import type { JwtModuleOptions } from '@nestjs/jwt';
 
 /**
  * Global auth module: registers the strategies, the auth domain, and the token

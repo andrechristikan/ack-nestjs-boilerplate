@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IUserForgotPasswordAnalyticRepository,
     IUserForgotPasswordAnalyticRow,
     IUserForgotPasswordAnalyticUserCount,

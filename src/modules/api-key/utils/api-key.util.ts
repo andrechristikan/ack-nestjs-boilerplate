@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
-import { IApiKeyCreated } from '@modules/api-key/interfaces/api-key.interface';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyCreated } from '@modules/api-key/interfaces/api-key.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyUtil {

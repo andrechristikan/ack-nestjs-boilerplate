@@ -7,7 +7,7 @@ import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
-import {
+import type {
     IPaginationCursorArgs,
     IPaginationCursorReturn,
     IPaginationCursorValue,
@@ -16,7 +16,6 @@ import {
     IPaginationOrderBy,
     IPaginationRepository,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IPaginationService } from '@common/pagination/interfaces/pagination.service.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { Injectable } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -27,7 +26,7 @@ import { PaginationFailedToEncodeCursorException } from '@common/pagination/exce
 import { PaginationFailedToDecodeCursorException } from '@common/pagination/exceptions/pagination.failed-to-decode-cursor.exception';
 
 @Injectable()
-export class PaginationService implements IPaginationService {
+export class PaginationService {
     constructor(private readonly helperHashService: HelperHashService) {}
 
     private canonicalize(value: unknown): unknown {

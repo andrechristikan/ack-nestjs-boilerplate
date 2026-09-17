@@ -1,20 +1,20 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationEmailSendPayload,
     INotificationSendPushPayload,
-    INotificationWorkspaceInvitePayload,
+    INotificationWorkspaceInviteEncryptedPayload,
     INotificationWorkspaceJoinAcceptedPayload,
     INotificationWorkspaceJoinRejectedPayload,
-    INotificationWorkspaceJoinRequestPayload,
+    INotificationWorkspaceJoinRequestEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { Injectable } from '@nestjs/common';
-import { IQueueResponse } from '@queues/interfaces/queue.interface';
+import type { IQueueResponse } from '@queues/interfaces/queue.interface';
 
 /** Writes and fans out the workspace invite and join-request notifications. */
 @Injectable()
@@ -31,7 +31,7 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceInvite(
         userId: string,
         proceedBy: string,
-        data: INotificationWorkspaceInvitePayload
+        data: INotificationWorkspaceInviteEncryptedPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userDomain.getOneActive(userId),
@@ -82,10 +82,14 @@ export class NotificationWorkspaceDomain {
             };
 
             promises.push(
-                this.notificationPushQueue.sendWorkspaceInvite(
-                    pushPayload,
-                    data
-                )
+                this.notificationPushQueue.sendWorkspaceInvite(pushPayload, {
+                    workspaceId: data.workspaceId,
+                    workspaceName: data.workspaceName,
+                    inviterName: data.inviterName,
+                    workspaceMemberRole: data.workspaceMemberRole,
+                    reference: data.reference,
+                    expiredAt: data.expiredAt,
+                })
             );
         }
 
@@ -97,7 +101,7 @@ export class NotificationWorkspaceDomain {
     async processWorkspaceJoinRequest(
         userId: string,
         proceedBy: string,
-        data: INotificationWorkspaceJoinRequestPayload
+        data: INotificationWorkspaceJoinRequestEncryptedPayload
     ): Promise<IQueueResponse> {
         const [user, devices] = await Promise.all([
             this.userDomain.getOneActive(userId),
@@ -153,7 +157,11 @@ export class NotificationWorkspaceDomain {
             promises.push(
                 this.notificationPushQueue.sendWorkspaceJoinRequest(
                     pushPayload,
-                    data
+                    {
+                        workspaceId: data.workspaceId,
+                        workspaceName: data.workspaceName,
+                        requesterName: data.requesterName,
+                    }
                 )
             );
         }

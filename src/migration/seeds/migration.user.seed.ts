@@ -6,7 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { faker } from '@faker-js/faker';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { migrationUserData } from '@migration/data/migration.user.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Logger } from '@nestjs/common';
@@ -22,10 +22,10 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestUtil } from '@common/request/utils/request.util';
 
 /**
@@ -151,13 +151,9 @@ export class MigrationUserSeed
                 this.users.map(user => {
                     const userId = this.databaseUtil.createId();
                     const { passwordCreated, passwordExpired, passwordHash } =
-                        this.authPasswordUtil.createPassword(
-                            userId,
-                            user.password
-                        );
+                        this.authPasswordUtil.createPassword(user.password);
                     const { reference, hashedToken, type } =
                         this.userVerificationDomain.verificationCreateVerification(
-                            userId,
                             EnumVerificationType.email
                         );
 

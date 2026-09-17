@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerStorage } from '@nestjs/throttler';
-import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface';
+import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
 import Keyv from 'keyv';
-import KeyvRedis, { RedisClientConnectionType } from '@keyv/redis';
+import KeyvRedis from '@keyv/redis';
+import type { RedisClientConnectionType } from '@keyv/redis';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 
 @Injectable()

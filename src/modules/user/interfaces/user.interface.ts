@@ -1,31 +1,31 @@
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
-    Country,
-    Device,
-    DeviceOwnership,
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumProjectMemberRole,
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
-    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumVerificationType,
     EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    Country,
     TwoFactor,
     User,
     UserMobileNumber,
     UserPhoto,
-} from '@generated/prisma-client';
-import {
+} from '@generated/prisma-client/client';
+import type {
     IAuthPassword,
     IAuthToken,
     IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
-import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 
 export interface IUser extends User {
@@ -57,22 +57,6 @@ export interface IUserProfile extends IUser {
     country: Country;
 }
 
-export interface IUserLogin {
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
-    expiredAt: Date;
-    jti: string;
-    sessionId: string;
-}
-
-export interface IUserLoginResult {
-    user: User;
-    device: Device;
-    deviceOwnership: DeviceOwnership;
-    isNewDevice: boolean;
-    sessionShouldBeInactive?: { id: string }[];
-}
-
 export interface IUserForgotPasswordCreate {
     expiredAt: Date;
     expiredInMinutes: number;
@@ -81,7 +65,6 @@ export interface IUserForgotPasswordCreate {
     token: string;
     hashedToken: string;
     link: string;
-    encryptedLink: string;
 }
 
 export interface IUserVerificationEmailCreate {
@@ -93,7 +76,6 @@ export interface IUserVerificationEmailCreate {
     token: string;
     hashedToken: string;
     link: string;
-    encryptedLink: string;
 }
 
 export interface IUserVerificationMobileNumberCreate {
@@ -120,6 +102,7 @@ export interface IUserSignUpWorkspaceInvite {
     type: EnumUserSignUpWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
+    invitedByUserId: string;
     workspaceMemberRole: EnumWorkspaceMemberRole;
     projectId: string | null;
     projectMemberRole: EnumProjectMemberRole | null;
@@ -130,7 +113,10 @@ export type IUserSignUpWorkspaceContext =
 
 export interface IUserOnboardingActivity {
     action: EnumActivityLogAction;
+    userId: string;
     workspaceId: string | null;
+    createdBy: string;
+    metadata: IActivityLogMetadata;
 }
 
 export interface IUserOnboardingVerificationRow {
@@ -147,7 +133,13 @@ export interface IUserCreateModeRule {
     createdAction: EnumActivityLogAction;
     logsVerificationEmailRequest: boolean;
     passwordHistoryType: EnumPasswordHistoryType | null;
+    personalWorkspaceAction: EnumActivityLogAction;
+    logsActingAdmin: boolean;
 }
+
+export type IUserOnboardingAdminAction =
+    | typeof EnumActivityLogAction.adminUserCreate
+    | typeof EnumActivityLogAction.adminUserImport;
 
 export interface IUserCreateWithWorkspaceInput {
     userId: string;
@@ -185,6 +177,11 @@ export interface IUserCreateByAdmin {
     countryId: string;
 }
 
+export interface IUserCreateByAdminPrepared {
+    input: IUserCreateWithWorkspaceInput;
+    passwordString: string;
+}
+
 export interface IUserImportRow {
     username: string;
     email: string;
@@ -194,6 +191,7 @@ export interface IUserImportRow {
 export interface IUserImportPrepared {
     inputs: IUserCreateWithWorkspaceInput[];
     passwordHasheds: IAuthPassword[];
+    passwordStrings: string[];
 }
 
 export interface IUserUpdateProfile {

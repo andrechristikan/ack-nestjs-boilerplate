@@ -1,6 +1,9 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { EnumPolicyAction, EnumPolicySubject } from '@generated/prisma-client';
-import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
 const policyData: {
     role: string;

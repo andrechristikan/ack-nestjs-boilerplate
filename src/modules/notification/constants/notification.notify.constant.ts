@@ -2,10 +2,14 @@ import {
     EnumNotificationChannel,
     EnumNotificationPriority,
     EnumNotificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { INotificationKindRule } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationKindRule } from '@modules/notification/interfaces/notification.interface';
 
+/**
+ * Per-kind notification rule: type, priority, i18n title and body, and the pending and delivered channels of the stored row.
+ * @public
+ */
 export const NotificationKindRules: Record<
     EnumNotificationKind,
     INotificationKindRule

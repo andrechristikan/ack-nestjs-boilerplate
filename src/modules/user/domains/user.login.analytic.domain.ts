@@ -1,11 +1,11 @@
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
-import {
+import type {
     IActivityLogAnalyticActionCount,
     IActivityLogAnalyticEventRow,
 } from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
-import { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticLockoutMetrics } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumActivityLogAction } from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 const LOGIN_ACTIONS = [
     EnumActivityLogAction.userLoginCredential,

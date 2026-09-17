@@ -12,13 +12,33 @@ injectable, no bare `@UseGuards` where a `@<Feature>Protected()` decorator is th
 
 ## Path aliases — a relative import is a defect
 
+The alias table is `tsconfig.json` `paths`, and it is the only one (Vitest and knip read it):
+
 ```
-@app/*  @common/*  @config  @configs/*  @modules/*  @queues/*
-@router/*  @migration/*  @test/*  @generated/*  @package
+@app/*  @common/*  @configs/*  @modules/*  @router/*  @migration/*  @queues/*
+@test/*  @generated/*  @instrument  @swagger  @main  @migration
 ```
 
-`@prisma/client` resolves to `generated/prisma-client`. A `../` in an import is a defect,
-**including inside the same module**.
+- A `./` or `../` in an import is a defect, **including inside the same module**. The client
+  under `src/generated/**` is generated code, not project code.
+- An alias specifier carries no file extension (`@common/helper/services/helper.hash.service`).
+- The Prisma client is imported from `@generated/prisma-client/client` (or `/enums`,
+  `/models`, `/browser`, `/commonInputTypes`). `@generated/prisma-client/internal…` is never
+  imported (ESLint-enforced).
+- The config barrel is `@configs/index`; package fields come from
+  `@generated/package/package`. `src/` has no JSON module import.
+
+## Imports — native ESM
+
+- `verbatimModuleSyntax` is on: an import used only as a type is `import type`. A class that
+  Nest injects is a VALUE import, because a type-only import erases the constructor metadata
+  and DI fails at boot while `tsc` stays green.
+- Node built-ins use the `node:` specifier (`node:crypto`); a bare `'crypto'` is an ESLint error.
+- lodash is used only through named imports from `lodash-es`; `lodash`, `lodash/*` and a
+  default `lodash-es` import are ESLint errors.
+- `crypto-js` and `Math.random` are ESLint errors. Randomness goes through `node:crypto`
+  (`randomInt` / `randomBytes`) behind `HelperStringService` / `HelperNumberService`
+  (`rules/security.md`).
 
 ## Private methods sit above public ones
 
@@ -68,8 +88,34 @@ history, no decision, no changelog. Deprecation is the one exception, and only w
 
 JSDoc is where a written explanation belongs. Optional one-line class JSDoc when the class
 name does not say what the provider is. Method JSDoc is the exception. No JSDoc on
-interfaces. Banned tags: `@example` `@param` `@returns` `@template` `@throws` `@private`
-`@export` `@class` `@implements` `@constraint` `@remarks`.
+interfaces, except the kit surface below. Banned tags: `@example` `@param` `@returns`
+`@template` `@throws` `@private` `@export` `@class` `@implements` `@constraint` `@remarks`.
+
+### Kit surface carries `@public` (HARD)
+
+`@public` and `@alias` are knip directives, not documentation. Every export of these files
+carries a JSDoc whose first line states what the symbol IS or DOES, followed by `@public`
+(and `@alias` for an intentional alias), in every tree under `src/`:
+
+- `*.dto.ts` — the schema const and its `Dto` type
+- `*.decorator.ts`
+- `*.enum.ts` — the tag sits on the enum
+- `*.exception.ts`
+- `*.constant.ts`
+- `src/common/doc/interfaces/doc.interface.ts`
+
+```ts
+/**
+ * Validated application environment variables, inferred from `AppEnvSchema`.
+ * @public
+ */
+export type AppEnvDto = z.infer<typeof AppEnvSchema>;
+```
+
+No other export carries `@public`: modules, controllers, domains, repositories and their
+interfaces, services, utils, caches, queues, guards, pipes, interceptors, middlewares,
+factories, and the module doc factories under `docs/`. The tag keeps an unused export out of
+the knip report; it does nothing for an unimported file (`rules/architecture.md`).
 
 Inline `//` is rare: something a reader cannot see from that statement and that causes real
 damage when missed. Zero per file is normal. No trailing comments.

@@ -1,13 +1,8 @@
-import {
-    ArgumentMetadata,
-    Injectable,
-    PipeTransform,
-    Type,
-    mixin,
-} from '@nestjs/common';
+import { Injectable, mixin } from '@nestjs/common';
+import type { ArgumentMetadata, PipeTransform, Type } from '@nestjs/common';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationDate,
     IPaginationEqual,
     IPaginationIn,

@@ -1,6 +1,9 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { Country, UserMobileNumber } from '@generated/prisma-client';
-import { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.mobile-number.request.dto';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
+    Country,
+    UserMobileNumber,
+} from '@generated/prisma-client/client';
+import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 
 export interface IUserMobileNumberRepository {
     findOneMobileNumber(
@@ -24,7 +27,6 @@ export interface IUserMobileNumberRepository {
     ): Promise<UserMobileNumber & { country: Country }>;
     updateInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean

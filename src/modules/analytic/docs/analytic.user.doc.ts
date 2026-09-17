@@ -4,12 +4,10 @@ import {
     DocGuard,
     DocResponse,
 } from '@common/doc/decorators/doc.decorator';
-import {
-    AnalyticJsonResponseDto,
-    AnalyticJsonResponseSchema,
-    AnalyticWorkspaceSummaryResponseDto,
-    AnalyticWorkspaceSummaryResponseSchema,
-} from '@modules/analytic/dtos/response/analytic.metric.response.dto';
+import { AnalyticJsonResponseSchema } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import { AnalyticWorkspaceSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-summary.response.dto';
+import type { AnalyticJsonResponseDto } from '@modules/analytic/dtos/response/analytic.json.response.dto';
+import type { AnalyticWorkspaceSummaryResponseDto } from '@modules/analytic/dtos/response/analytic.workspace-summary.response.dto';
 import { applyDecorators } from '@nestjs/common';
 
 export function AnalyticUserSummaryDoc(): MethodDecorator {

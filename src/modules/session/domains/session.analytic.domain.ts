@@ -1,14 +1,14 @@
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import {
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type {
     ISessionAnalyticListRow,
     ISessionAnalyticSessionRow,
     ISessionAnalyticUserCount,
 } from '@modules/session/interfaces/session.analytic.repository.interface';
 import { SessionAnalyticRepository } from '@modules/session/repositories/session.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class SessionAnalyticDomain {

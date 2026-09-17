@@ -9,26 +9,25 @@
 [![Typescript][typescript-shield]][ref-typescript]
 [![MongoDB][mongodb-shield]][ref-mongodb]
 [![JWT][jwt-shield]][ref-jwt]
-[![Jest][jest-shield]][ref-jest]
+[![Vitest][vitest-shield]][ref-vitest]
 [![PNPM][pnpm-shield]][ref-pnpm]
 [![Docker][docker-shield]][ref-docker]
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), OTP, TOTP/2FA, and RBAC. Powered by Prisma on **MongoDB** (replica set required). Repository Design Pattern and Modular. Production-ready.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required) and is modular, with a repository layer for data access.
 
-_You can [request feature][ref-ack-issues] or [report bug][ref-ack-issues] with following this link_
+_[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues] on the issue tracker._
 
 ### Ideal For
 
-This boilerplate is perfect for:
+The boilerplate targets:
 
-- 🏢 **Enterprise Applications** - Full-featured auth system with RBAC and audit logging
-- 🔐 **Authentication Services** - Ready-to-use JWT, OAuth, and 2FA implementation
-- 📱 **Mobile App Backends** - RESTful API with social login support
-- 🌐 **Multi-tenant SaaS** - Role-based access control and policy management
-- 🚀 **Microservices** - Stateful sessions with Redis and async job processing
-- 💼 **Startup MVPs** - Production-ready foundation to ship faster
+- 🏢 **Enterprise Applications** - Auth with roles, CASL policies, and an activity log
+- 🔐 **Authentication Services** - JWT, Google and Apple sign-in, and TOTP 2FA
+- 📱 **Mobile App Backends** - REST API with social login, device tracking, and push notifications
+- 🌐 **Multi-tenant SaaS** - Every user belongs to a workspace; projects are workspace-scoped, with invites and join requests
+- 💼 **Startup MVPs** - Auth, workspaces, notifications, and file upload already wired
 
 
 ## Table of Contents
@@ -64,64 +63,64 @@ This boilerplate is perfect for:
 ## Important
 
 - Stateful Authorization, using Redis-backed sessions and `JWT`.
-- Must run MongoDB as a `replication set` for `database transactions`.
-- If you change the environment value of `APP_ENV` to `production`, it will disable Documentation.
+- MongoDB runs as a `replica set`; Prisma `database transactions` need one.
+- Swagger documentation is off when `APP_ENV` is `production`.
 - In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
-- When using multiple protection decorators, they must be applied in the correct order. A route takes only the slots it needs; the relative order of the ones it takes never changes:
+- Protection decorators stack in a fixed order. A route takes only the slots it needs, and the relative order of the ones it takes stays the same. Activity logging takes no slot: domains stage events and a global interceptor writes them.
     ```typescript
     @ExampleDoc()
     @Response('example.get')
     @TermPolicyAcceptanceProtected(...)
     @PolicyProtected({...})
     @RoleProtected(...)
-    @ProjectMemberProtected(...)      // /user scope only
-    @ProjectProtected()               // /user scope only
-    @WorkspaceMemberProtected(...)    // /user scope only
-    @WorkspaceProtected()             // /user scope only
-    @ActivityLog(...)
+    @ProjectMemberProtected(...)      // never on /admin
+    @ProjectProtected()               // never on /admin
+    @WorkspaceMemberProtected(...)    // never on /admin
+    @WorkspaceProtected()             // never on /admin
     @UserProtected()
     @FeatureFlagProtected(...)
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)          // @Post only
     @Get('/some-endpoint')
     ```
-    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets must sit **above** it. `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user` - below it, the guard always takes its anonymous branch and any rollout below 100% is inert. See [Authorization Documentation][ref-doc-authorization].
-- `@HttpCode()` belongs only on `@Post` routes. Every other method already defaults to `200 OK`, so declaring it there is a no-op.
+    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets sits above it. `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard sees `request.user`; below it, the guard finds no user, skips the flag's `targetUserIds`, and buckets the rollout by the anonymous-ID header instead of the user ID. The constraint when changing this: `.claude/rules/http.md`. See [Authorization Documentation][ref-doc-authorization].
+- `@HttpCode()` appears only on `@Post` routes: Nest answers `POST` with `201 Created` by default and every other method with `200 OK`.
 - The project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
-- The project uses Prisma `6.19` to handle the database.
+- The project uses Prisma `6.19` with the `prisma-client` generator; `pnpm generate` writes the client into `src/generated/prisma-client`.
 - The project uses pnpm as the package manager.
-- **Strict null convention** — `undefined` is only allowed in Request DTO optional fields; all other layers use `T | null`.
+- Strict null convention: `undefined` appears only in optional request DTO fields; every other layer uses `T | null`.
+- The code is native ESM (`"type": "module"`, `nodenext`), and `src/` imports go through `tsconfig.json` path aliases.
 
 ## TODO
 
-- [x] Change enum name to use PascalCase
-- [x] 2FA with TOTP Authentication (eg: Google Authenticator)
+- [x] 2FA with TOTP Authentication (e.g. Google Authenticator)
 - [x] Recovery Codes Method
-- [x] Add TOTP Authentication Protected to reset password, change password, and regenerate backup codes endpoints
-- [x] Add import and export endpoint with presign upload
-- [x] Add migration script to migrate AWS S3 Policy for public and private, include config for presign expiration
+- [x] TOTP check on reset password, change password, and backup code regeneration
+- [x] User import and export endpoints with presigned upload
+- [x] `aws-s3-config` seed command that applies access, CORS, and lifecycle policies to the public and private S3 buckets; presign expiration is set in `aws.config.ts`
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
-- [x] Activity Log records successful user activities with `@ActivityLog`
+- [x] Activity Log records user activities staged by domains and written by a global interceptor
+- [x] Activity Log bidirectional and self-activity logging: an action on another user writes a row for the actor and a row for the affected user, and each user's feed lists every row they own ([docs/activity-log.md][ref-doc-activity-log])
 - [x] Optional HashiCorp Vault integration for secret management ([docs/vault.md][ref-doc-vault])
 - [x] Multi-workspace tenancy with workspace-scoped projects ([docs/workspace.md][ref-doc-workspace], [docs/project.md][ref-doc-project])
 - [x] Analytic admin dashboard, anomaly/fraud reports, and current-workspace metrics ([docs/analytic.md][ref-doc-analytic])
 
 ### Next Features
 
-- [ ] Activity Log bidirectional and self-activity logging
 - [ ] Login with biometrics (fingerprint or face detection)
 - [ ] Login with passkey
 - [ ] Login with Github SSO
-- [ ] Verification Mobile Number, whatsapp or/and sms
-- [ ] Versioning System (Force frontend to update, especially mobile)
+- [ ] Mobile number verification by WhatsApp and/or SMS
+- [ ] Versioning System (force the frontend to update, especially mobile)
 
 ### Drop Features
 
-- Sliding session (Example: 7d expires for a refresh token, can be extends until x day. if not action in 7d then need to re-login)
+- Sliding session (for example, a refresh token that expires after 7 days of inactivity but can be extended up to a fixed maximum lifetime)
 
 ### Test
-- [ ] Unit test suite: Jest is configured (`test/jest.json`, `pnpm test`) and `test/` holds **no spec files**, so `pnpm test` passes on `--passWithNoTests`
+- [ ] Unit test suite: Vitest is configured (`vitest.config.ts`, `pnpm test`) and `test/` holds no spec files, so `pnpm test` passes on `--passWithNoTests`
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -130,113 +129,101 @@ This boilerplate is perfect for:
 
 ## Prerequisites
 
-I assume that everyone who comes here is a **`programmer with intermediate knowledge`**. To get the most out of this project, here's what you should understand:
+The project assumes a programmer with intermediate knowledge of:
 
 1. **[NestJs Fundamentals][ref-nestjs]** - Main framework with decorators, modules, services, and dependency injection
 2. **[TypeScript][ref-typescript]** - Strong typing, interfaces, generics, and advanced TypeScript features
-3. **[Prisma ORM][ref-prisma]** - Modern database toolkit for schema design, migrations, and type-safe queries
+3. **[Prisma ORM][ref-prisma]** - Schema design, `prisma db push`, and type-safe queries
 4. **[MongoDB][ref-mongodb]** - NoSQL database concepts, especially **replication sets** for transactions
 5. **[Redis][ref-redis]** - Caching strategies, session storage, and queue management
 6. **Repository Design Pattern** - Data access layer abstraction for maintainable code
 7. **SOLID Principles** - Clean code architecture and dependency management
 8. **Queue Systems** - Background job processing with [BullMQ][ref-bullmq]
 9. **Optional. [Docker][ref-docker]** - Containerization for running the project
-10. **Optional. Microservice Architecture** - Understanding distributed systems concepts
 
 ## Build with
 
-The project is built using the following technologies and versions. We always strive to use the latest stable versions to ensure security, performance, and access to modern features:
+The project runs on these versions:
 
 | Name           | Version  |
 | -------------- | -------- |
 | NestJs         | v12.x    |
-| NodeJs         | v24.11.x |
+| NodeJs         | >= 24.15.0 |
 | PNPM           | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
 | MongoDB        | v8+ (compose: `mongo:latest`)   |
 | Redis          | v8+ (compose: `redis:latest`)   |
-| Docker         | v28.5.x  |
-| Docker Compose | v2.40.x  |
+| Docker         | v28.5.x+ |
+| Docker Compose | v2.40.x+ |
 
 For more information see [package.json][ref-package-json]
 
 ## Objective
 
-- Easy to maintain
-- NestJs Habit
 - Component based / modular folder structure
 - Stateful authentication and authorization
 - Repository Design Pattern
-- Follow Community Guidelines
 - Follow The Twelve-Factor App
 
 ## Features
 
 ### 🎯 Architecture Highlights
 
-- **Repository Pattern** - Clean data access abstraction
-- **SOLID Principles** - Maintainable and testable codebase  
-- **Modular Structure** - Component-based folder organization
-- **12-Factor App** - Cloud-native best practices
-- **Production Ready** - Enterprise-grade security and scalability
+- **Repository Pattern** - Feature modules layer Controller, HTTP service, domain, and repository; only repositories query Prisma
+- **Modular Structure** - One folder per feature under `src/modules/`
+- **12-Factor App** - Configuration comes from environment variables, read by `registerAs` config files
 - **Workspaces & Projects** - Every user lands in a workspace at creation, personal by default or the inviting workspace when they sign up through an invite; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
 
 ### 🔐 Authentication & Security
-Production-ready authentication system with multiple strategies and security layers.
 
-- **JWT Authentication** - ES256 for Access Token, ES512 for Refresh Token with automatic rotation
+- **JWT Authentication** - ES256 for Access Token, ES512 for Refresh Token; every refresh issues a new `jti` and the session rejects the old one
 - **Stateful Sessions** - Redis-backed sessions with token revocation support
 - **Social Login** - Google OAuth and Apple Sign In integration
-- **Two-Factor Authentication** - TOTP-based 2FA with backup recovery codes
-- **RBAC & Policies** - Fine-grained role and permission system
-- **API Key Protection** - Secure external API access control
+- **Two-Factor Authentication** - TOTP-based 2FA with backup recovery codes; secrets stored AES-256-GCM encrypted
+- **RBAC & Policies** - Roles plus CASL policy abilities
+- **API Key Protection** - `x-api-key` header guard through `@ApiKeyProtected()`
 - **Rate Limiting** - Redis-backed sliding window shared across instances: an always-on per-IP limit plus opt-in per-user and per-route tiers
 - **Security Headers** - Helmet non-documents profile: HSTS, X-Frame-Options, X-Content-Type-Options, Cross-Origin-Resource-Policy, X-Download-Options, X-Permitted-Cross-Domain-Policies
 
 ### 📊 Database & Storage
-Modern ORM with NoSQL database and file storage capabilities.
 
 - **Prisma ORM** - Type-safe database toolkit with schema-driven queries
 - **MongoDB** - NoSQL database with transaction support (replica set required)
-- **Redis Caching** - Multi-level caching strategies for performance
+- **Redis Caching** - `@nestjs/cache-manager` on a Keyv Redis store, with a default TTL from config
 - **AWS S3 Integration** - File storage with presigned URLs
-- **Repository Pattern** - Clean separation of data access layer
+- **Repository Pattern** - Repositories are the only layer that queries the database
 
 ### ⚡ Performance & Optimization
-Built for speed and scalability from day one.
 
 - **Background Jobs** - BullMQ queue system for async processing
-- **Response Compression** - Automatic gzip/deflate compression
-- **SWC Compiler** - 20x faster than TypeScript compiler
-- **Pagination** - Server-side pagination with cursor support
-- **Feature Flags** - Dynamic feature rollout with A/B testing
+- **Response Compression** - `compression` middleware on every route
+- **SWC Compiler** - `nest build` and `nest start` compile with SWC
+- **Pagination** - Offset and cursor pagination
+- **Feature Flags** - Per-flag on/off switch, target user list, and percentage rollout bucketed by user ID or anonymous ID
 
 ### 🛠 Development Experience
-Developer-friendly tooling and best practices.
 
-- **NestJS 12.x** - Latest framework version with full TypeScript support
-- **Swagger/OpenAPI 3** - Interactive API documentation
-- **API Versioning** - URL-based versioning (default v1)
+- **NestJS 12.x** - On TypeScript 6 in `strict` mode
+- **Swagger/OpenAPI 3** - Swagger UI and an OpenAPI 3.1.0 document built from the route schemas
+- **API Versioning** - URI versioning (`/v1`), switched on by `URL_VERSIONING_ENABLE`
 - **Request Validation** - Every request shape is a zod schema, validated by the global `RequestSchemaValidationPipe`
 - **Error Handling** - Standardized error responses with i18n
-- **Hot Reload** - Fast development with SWC
-- **Code Quality** - ESLint, Prettier, Husky pre-commit hooks
+- **Hot Reload** - `pnpm start:dev` runs `nest start --watch` with SWC next to a `tsc --watch` type check
+- **Code Quality** - ESLint (with `eslint-plugin-security`), Prettier, cspell, and knip; Husky runs them, the type check, and the test suite before each commit, and commitlint on each message
 - **Database Seeding** - Commander-based data population
 
 ### 📡 Integrations & Monitoring
-Enterprise-grade integrations for production readiness.
 
-- **Sentry** - Error tracking, performance monitoring, and Pino log forwarding to Sentry Logs (environment-scoped levels)
+- **Sentry** - Error tracking through `SentryService`, performance monitoring, and Pino log forwarding to Sentry Logs (environment-scoped levels); URLs, headers, cookies, and bodies are scrubbed before sending
 - **AWS SES** - Transactional email delivery
-- **Activity Logging** - Comprehensive audit trail
+- **Activity Logging** - Records user actions staged by domains and flushed after the handler settles
 - **Analytic** - Live admin dashboard metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
-- **Health Checks** - System monitoring endpoints
+- **Health Checks** - `/system/health` endpoints for AWS, database, third-party, and instance status
 - **Multi-language Support** - i18n with `x-custom-lang` header
 - **HashiCorp Vault** - Optional secret management, syncs `.env` ([docs][ref-doc-vault])
 
 ### 🔔 Notifications
-Multi-channel notification system for user engagement.
 
 - **Multi-Channel Delivery** - Email, push, in-app, and silent notifications
 - **User Preferences** - Per-type and per-channel opt-in/out settings
@@ -247,12 +234,11 @@ Multi-channel notification system for user engagement.
 📖 See [Notification Documentation][ref-doc-notification] for detailed setup and usage.
 
 ### 📝 Testing & Documentation
-Comprehensive testing framework and documentation.
 
-- **Jest Testing** - `test/jest.json` matches `test/**/*.spec.ts` and holds coverage at a global 100% threshold
-- **Swagger UI** - Auto-generated API documentation
+- **Vitest Testing** - `vitest.config.ts` matches `test/**/*.spec.ts`, compiles through SWC, and holds v8 coverage at a 100% threshold for branches, functions, lines, and statements
+- **Swagger UI** - Generated from the route decorators and schemas, and written to `generated/swagger.json`
 - **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
-- **Docker Support** - Complete containerization with docker-compose
+- **Docker Support** - `docker-compose.yml` runs MongoDB (replica set), Redis, BullBoard, and the JWKS server; the `apis` and `vault` profiles add the API and Vault
 
 ## Quick Start
 
@@ -266,9 +252,11 @@ pnpm install
 # Setup environment
 cp .env.example .env
 
-# Generate JWT keys and the Prisma client
-pnpm generate:keys
-pnpm db:generate
+# Generate JWT keys and encryption secrets into .env
+pnpm generate:secret --direct-insert
+
+# Generate the Prisma client and src/generated/package/package.ts
+pnpm generate
 
 # Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
 docker-compose up -d
@@ -289,7 +277,7 @@ To run the API inside Compose as well, start with the `apis` profile: `docker-co
 
 This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`). Schema sync uses `pnpm db:migrate` (`prisma db push`). There is no `prisma migrate` script.
 
-Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. Prefer forking that work deliberately rather than treating it as a one-command switch.
+Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. A provider switch is a fork of that work, not a one-command change.
 
 For MongoDB setup and seeding, see [Database Documentation][ref-doc-database].
 
@@ -303,7 +291,7 @@ This project is licensed under the [MIT License][ref-ack-license].
 
 ## Contribute
 
-Welcome contributions! Please read [CONTRIBUTING.md][ref-doc-contributing] for guidelines on how to get started.
+Contributions are welcome. [CONTRIBUTING.md][ref-doc-contributing] describes how to get started.
 
 ## Contact
 
@@ -348,7 +336,7 @@ If you find this project helpful and would like to support its development, plea
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
 [mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
-[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+[vitest-shield]: https://img.shields.io/badge/-vitest-%236E9F18?style=for-the-badge&logo=vitest&logoColor=white
 [pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
 [docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
@@ -384,7 +372,7 @@ If you find this project helpful and would like to support its development, plea
 [ref-pnpm]: https://pnpm.io
 [ref-package-json]: package.json
 [ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
+[ref-vitest]: https://vitest.dev/guide/
 
 <!-- DOCS LINKS -->
 

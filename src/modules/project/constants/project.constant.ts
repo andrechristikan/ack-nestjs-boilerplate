@@ -1,9 +1,27 @@
-import { EnumWorkspaceMemberRole, Prisma } from '@generated/prisma-client';
+import {
+    EnumWorkspaceMemberRole,
+    Prisma,
+} from '@generated/prisma-client/client';
 
+/**
+ * Request-store key holding the project the project guard resolved.
+ * @public
+ */
 export const ProjectStoreKey = 'ProjectStore';
+/**
+ * Request-store key holding the caller's project membership.
+ * @public
+ */
 export const ProjectMemberStoreKey = 'ProjectMemberStore';
-/** Whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row. */
+/**
+ * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
+ * @public
+ */
 export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
+/**
+ * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
+ * @public
+ */
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /**
@@ -12,10 +30,13 @@ export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
  * alone into a query that also requires the field to be present (an `isSet` guard), so it silently
  * excludes any document where `deletedAt` was never persisted at all — as opposed to persisted and
  * explicitly `null`. This OR restores "active" semantics for that data, top-level or nested.
+ * @public
  */
-export const ProjectActiveFilter: NonNullable<
-    Prisma.ProjectWhereInput['OR']
-> = [{ deletedAt: null }, { deletedAt: { isSet: false } }];
+export const ProjectActiveFilter: NonNullable<Prisma.ProjectWhereInput['OR']> =
+    [{ deletedAt: null }, { deletedAt: { isSet: false } }];
 
-/** The only workspace role that sees and manages every project without a `ProjectMember` row. */
+/**
+ * The only workspace role that sees and manages every project without a `ProjectMember` row.
+ * @public
+ */
 export const ProjectWorkspaceBypassRole = EnumWorkspaceMemberRole.owner;

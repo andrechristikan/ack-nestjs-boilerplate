@@ -1,8 +1,5 @@
-import {
-    ArgumentMetadata,
-    Injectable,
-    StandardSchemaValidationPipe,
-} from '@nestjs/common';
+import { Injectable, StandardSchemaValidationPipe } from '@nestjs/common';
+import type { ArgumentMetadata } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { RequestSchemaMissingException } from '@common/request/exceptions/request.schema-missing.exception';
 

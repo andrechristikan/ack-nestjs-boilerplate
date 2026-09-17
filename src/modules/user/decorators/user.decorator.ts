@@ -3,17 +3,20 @@ import {
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
-    ExecutionContext,
     SetMetadata,
     UseGuards,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 
-/** Applies the user guard; pass `false` to skip the email-verified requirement. */
+/**
+ * Applies the user guard; pass `false` to skip the email-verified requirement.
+ * @public
+ */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
@@ -21,7 +24,10 @@ export function UserProtected(isVerified: boolean = true): MethodDecorator {
     );
 }
 
-/** Extracts the current user that `UserGuard` stored in the request context. */
+/**
+ * Extracts the current user that `UserGuard` stored in the request context.
+ * @public
+ */
 export const UserCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): IUser | undefined => {
         return (

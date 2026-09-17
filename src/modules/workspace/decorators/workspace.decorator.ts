@@ -1,8 +1,8 @@
-import {
-    EnumWorkspaceMemberRole,
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type {
     Workspace,
     WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
@@ -12,20 +12,26 @@ import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
 import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 import {
-    ExecutionContext,
     SetMetadata,
     UseGuards,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 
-/** Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`. */
+/**
+ * Requires `x-workspace-id` to resolve to an existing, non-deleted workspace. Place directly above `@UserProtected()`.
+ * @public
+ */
 export function WorkspaceProtected(): MethodDecorator {
     return applyDecorators(UseGuards(WorkspaceGuard));
 }
 
-/** Extracts the current workspace that `WorkspaceGuard` stored in the request context. */
+/**
+ * Extracts the current workspace that `WorkspaceGuard` stored in the request context.
+ * @public
+ */
 export const WorkspaceCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): Workspace | undefined => {
         return (
@@ -40,6 +46,7 @@ export const WorkspaceCurrent = createParamDecorator(
  * Requires the caller to be a member of the workspace resolved by `@WorkspaceProtected()`. Stack
  * above it. Pass `roles` to additionally require the caller's workspace membership role to be one
  * of them; omit `roles` to only require membership.
+ * @public
  */
 export function WorkspaceMemberProtected(
     ...roles: EnumWorkspaceMemberRole[]
@@ -54,7 +61,10 @@ export function WorkspaceMemberProtected(
     );
 }
 
-/** Extracts the current workspace member row that `WorkspaceMemberGuard` stored in the request context. */
+/**
+ * Extracts the current workspace member row that `WorkspaceMemberGuard` stored in the request context.
+ * @public
+ */
 export const WorkspaceMemberCurrent = createParamDecorator(
     (_: unknown, _ctx: ExecutionContext): WorkspaceMember | undefined => {
         return (

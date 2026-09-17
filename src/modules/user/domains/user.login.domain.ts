@@ -1,22 +1,24 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { RequestLogStoreKey } from '@common/request/constants/request.constant';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     EnumActivityLogAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumVerificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
 import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 import { AuthTwoFactorInvalidException } from '@modules/auth/exceptions/auth.two-factor-invalid.exception';
 import { AuthTwoFactorMethodRequiredException } from '@modules/auth/exceptions/auth.two-factor-method-required.exception';
-import {
+import type {
     IAuthJwtRefreshTokenPayload,
     IAuthToken,
     IAuthTwoFactorVerify,
@@ -25,15 +27,16 @@ import {
 import { AuthCache } from '@modules/auth/caches/auth.cache';
 import { AuthTwoFactorDomain } from '@modules/auth/domains/auth.two-factor.domain';
 import { AuthJwtDomain } from '@modules/auth/domains/auth.jwt.domain';
-import { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceDomain } from '@modules/device/domains/device.domain';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionCache } from '@modules/session/caches/session.cache';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserEmailNotVerifiedException } from '@modules/user/exceptions/user.email-not-verified.exception';
-import {
+import type {
     IUser,
     IUserLoginOutcome,
     IUserVerificationEmailCreate,
@@ -65,8 +68,30 @@ export class UserLoginDomain {
         private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagDomain: FeatureFlagDomain,
         private readonly helperDateService: HelperDateService,
+        private readonly helperHashService: HelperHashService,
         private readonly requestStoreService: RequestStoreService
     ) {}
+
+    private async assertTwoFactorUnlocked(user: IUser): Promise<void> {
+        const retryAfterMs = await this.authCache.getLockTwoFactorAttempt(user);
+        if (retryAfterMs > 0) {
+            throw new AuthTwoFactorAttemptTemporaryLockException(
+                retryAfterMs / 1000
+            );
+        }
+    }
+
+    private async recordTwoFactorFailure(user: IUser): Promise<void> {
+        const attempted =
+            await this.userTwoFactorRepository.increaseTwoFactorAttempt(
+                user.id
+            );
+        user.twoFactor = attempted;
+
+        if (this.authTwoFactorDomain.checkAttempt(user)) {
+            await this.authCache.lockTwoFactorAttempt(user);
+        }
+    }
 
     async assertWorkspaceInvitationAllowed(): Promise<void> {
         await this.featureFlagDomain.validateFeatureFlagMetadata(
@@ -79,6 +104,7 @@ export class UserLoginDomain {
         this.activityLogDomain.stage({
             action: EnumActivityLogAction.userLoginFailed,
             userId,
+            createdBy: userId,
         });
     }
 
@@ -117,7 +143,7 @@ export class UserLoginDomain {
                     ),
                     now
                 );
-                let revoked: { id: string }[] = [];
+                let revoked: ISessionRef[] = [];
                 if (!upserted.isNewDevice) {
                     revoked =
                         await this.sessionDomain.revokeByDeviceOwnershipInTx(
@@ -150,6 +176,7 @@ export class UserLoginDomain {
                         loginWith
                     ),
                     userId: user.id,
+                    createdBy: user.id,
                 });
 
                 return {
@@ -164,7 +191,7 @@ export class UserLoginDomain {
 
         if (sessionShouldBeInactive && sessionShouldBeInactive.length > 0) {
             promises.push(
-                this.sessionCache.deleteAllLogins(
+                this.sessionDomain.purgeRevokedLogins(
                     user.id,
                     sessionShouldBeInactive
                 )
@@ -197,7 +224,6 @@ export class UserLoginDomain {
         if (!user.isVerified) {
             const emailVerification =
                 this.userVerificationDomain.verificationCreateVerification(
-                    user.id,
                     EnumVerificationType.email
                 ) as IUserVerificationEmailCreate;
 
@@ -212,7 +238,7 @@ export class UserLoginDomain {
                     emailVerification.expiredAt
                 ),
                 reference: emailVerification.reference,
-                link: emailVerification.encryptedLink,
+                link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
             });
 
@@ -244,18 +270,21 @@ export class UserLoginDomain {
                 loginWith,
             });
         if (user.twoFactor?.requiredSetup) {
-            const { encryptedSecret, otpauthUrl, secret, iv } =
-                await this.authTwoFactorDomain.setupTwoFactor(user.email);
+            const { encryptedSecret, otpauthUrl, secret } =
+                await this.authTwoFactorDomain.setupTwoFactor(
+                    user.id,
+                    user.email
+                );
             await this.databaseService.withTransaction(async tx => {
                 await this.userTwoFactorRepository.setupTwoFactorInTx(
                     tx,
                     user.id,
-                    encryptedSecret,
-                    iv
+                    encryptedSecret
                 );
                 this.activityLogDomain.stage({
                     action: EnumActivityLogAction.userSetupTwoFactor,
                     userId: user.id,
+                    createdBy: user.id,
                 });
             });
 
@@ -292,12 +321,8 @@ export class UserLoginDomain {
         user: IUser,
         { method, code, backupCode }: IAuthTwoFactorVerify
     ): Promise<IAuthTwoFactorVerifyResult> {
-        const retryAfterMs = await this.authCache.getLockTwoFactorAttempt(user);
-        if (retryAfterMs > 0) {
-            throw new AuthTwoFactorAttemptTemporaryLockException(
-                retryAfterMs / 1000
-            );
-        } else if (!method) {
+        await this.assertTwoFactorUnlocked(user);
+        if (!method) {
             throw new AuthTwoFactorMethodRequiredException();
         }
 
@@ -310,15 +335,7 @@ export class UserLoginDomain {
             }
         );
         if (!verified.isValid) {
-            const attempted =
-                await this.userTwoFactorRepository.increaseTwoFactorAttempt(
-                    user.id
-                );
-            user.twoFactor = attempted;
-
-            if (this.authTwoFactorDomain.checkAttempt(user)) {
-                await this.authCache.lockTwoFactorAttempt(user);
-            }
+            await this.recordTwoFactorFailure(user);
 
             throw new AuthTwoFactorInvalidException();
         }
@@ -326,6 +343,45 @@ export class UserLoginDomain {
         await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
 
         return verified;
+    }
+
+    /** Checks a code from a newly set-up authenticator against the pending secret, under the same attempt policy as every other 2FA check. */
+    async handleTwoFactorSetupValidation(
+        user: IUser,
+        encryptedPendingSecret: string,
+        code: string
+    ): Promise<void> {
+        await this.assertTwoFactorUnlocked(user);
+
+        const isValid = this.authTwoFactorDomain.verifySetupCode(
+            encryptedPendingSecret,
+            user.id,
+            code
+        );
+        if (!isValid) {
+            await this.recordTwoFactorFailure(user);
+
+            throw new AuthTwoFactorInvalidException();
+        }
+
+        await this.userTwoFactorRepository.resetTwoFactorAttempt(user.id);
+    }
+
+    /** Persists a successful 2FA check in the caller's transaction; a backup code is consumed only while the stored codes are still the ones it was verified against, otherwise the check is rejected. */
+    async recordTwoFactorVerificationInTx(
+        tx: IDatabaseTransactionClient,
+        user: IUser,
+        verified: IAuthTwoFactorVerifyResult
+    ): Promise<void> {
+        const recorded = await this.userTwoFactorRepository.verifyTwoFactorInTx(
+            tx,
+            user.id,
+            verified,
+            user.twoFactor?.backupCodes ?? []
+        );
+        if (!recorded) {
+            throw new AuthTwoFactorInvalidException();
+        }
     }
 
     async revokeAllSessions(userId: string): Promise<void> {
@@ -358,7 +414,14 @@ export class UserLoginDomain {
         );
 
         const session = await this.sessionCache.getLogin(userId, sessionId);
-        if (!session || session.jti !== oldJti) {
+        if (
+            !session ||
+            !oldJti ||
+            !this.helperHashService.sha256Compare(
+                this.helperHashService.sha256Hash(session.jti),
+                this.helperHashService.sha256Hash(oldJti)
+            )
+        ) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
@@ -426,7 +489,6 @@ export class UserLoginDomain {
             await this.deviceDomain.clearNotificationInTx(
                 tx,
                 deviceOwnershipId,
-                userId,
                 now
             );
             this.activityLogDomain.stage({

@@ -1,4 +1,4 @@
-import {
+import type {
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';

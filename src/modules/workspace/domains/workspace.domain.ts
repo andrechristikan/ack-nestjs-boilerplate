@@ -1,20 +1,17 @@
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    Prisma,
-    Workspace,
-} from '@generated/prisma-client';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationDomain } from '@modules/notification/domains/notification.domain';
@@ -25,9 +22,10 @@ import {
     EnumUserCreateMode,
     EnumUserSignUpWorkspaceContextType,
 } from '@modules/user/enums/user.enum';
-import {
+import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserOnboardingAdminAction,
 } from '@modules/user/interfaces/user.interface';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
 import { UserDomain } from '@modules/user/domains/user.domain';
@@ -38,7 +36,7 @@ import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/work
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
-import {
+import type {
     IWorkspaceCreate,
     IWorkspaceOwnedUser,
     IWorkspaceUpdate,
@@ -222,7 +220,7 @@ export class WorkspaceDomain {
         inputs: IUserCreateWithWorkspaceInput[],
         mode: EnumUserCreateMode,
         timeoutInMs: number,
-        adminPayloadAction?: EnumActivityLogAction
+        adminPayloadAction?: IUserOnboardingAdminAction
     ): Promise<IUser[]> {
         const slugAttemptCount = inputs.reduce((min, input) => {
             if (
@@ -317,6 +315,7 @@ export class WorkspaceDomain {
 
                 this.stageOnboardingActivities(
                     inputs,
+                    onboarded,
                     mode,
                     adminPayloadAction
                 );
@@ -336,42 +335,33 @@ export class WorkspaceDomain {
 
     private stageOnboardingActivities(
         inputs: IUserCreateWithWorkspaceInput[],
+        users: IUser[],
         mode: EnumUserCreateMode,
-        adminPayloadAction?: EnumActivityLogAction
+        adminPayloadAction?: IUserOnboardingAdminAction
     ): void {
         if (adminPayloadAction) {
             this.activityLogDomain.stage({
                 action: adminPayloadAction,
+                metadata: this.userOnboardingDomain.buildAdminPayloadMetadata(
+                    adminPayloadAction,
+                    users
+                ),
             });
         }
 
-        for (const input of inputs) {
+        for (const [index, input] of inputs.entries()) {
             for (const activity of this.userOnboardingDomain.buildOnboardingActivities(
                 mode,
-                input.workspaceContext
+                input,
+                users[index]
             )) {
-                const isSubjectUserAction =
-                    activity.action === EnumActivityLogAction.userSignedUp ||
-                    activity.action === EnumActivityLogAction.userCreated ||
-                    activity.action ===
-                        EnumActivityLogAction.userSendVerificationEmail;
-
-                if (activity.workspaceId) {
-                    this.activityLogDomain.stage({
-                        action: activity.action,
-                        userId: isSubjectUserAction
-                            ? input.userId
-                            : input.createdBy,
-                        workspaceId: activity.workspaceId,
-                    });
-                } else {
-                    this.activityLogDomain.stage({
-                        action: activity.action,
-                        userId: isSubjectUserAction
-                            ? input.userId
-                            : input.createdBy,
-                    });
-                }
+                this.activityLogDomain.stage({
+                    action: activity.action,
+                    userId: activity.userId,
+                    createdBy: activity.createdBy,
+                    workspaceId: activity.workspaceId,
+                    metadata: activity.metadata,
+                });
             }
         }
     }
@@ -403,6 +393,7 @@ export class WorkspaceDomain {
                     this.activityLogDomain.stage({
                         action: EnumActivityLogAction.workspaceCreated,
                         userId: userId,
+                        createdBy: userId,
                         workspaceId: workspace.id,
                     });
 
@@ -431,12 +422,12 @@ export class WorkspaceDomain {
             const row = await this.workspaceRepository.updateDetailsInTx(
                 tx,
                 workspaceId,
-                actorId,
                 update
             );
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
             });
 
@@ -453,12 +444,12 @@ export class WorkspaceDomain {
             const row = await this.workspaceRepository.updateIsPublicInTx(
                 tx,
                 workspaceId,
-                actorId,
                 isPublic
             );
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
             });
 
@@ -485,12 +476,12 @@ export class WorkspaceDomain {
             const row = await this.workspaceRepository.updateSlugInTx(
                 tx,
                 workspaceId,
-                actorId,
                 slug
             );
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
             });
 
@@ -510,6 +501,7 @@ export class WorkspaceDomain {
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.workspaceSwitched,
                 userId: userId,
+                createdBy: userId,
                 workspaceId: workspaceId,
             });
         });
@@ -525,28 +517,25 @@ export class WorkspaceDomain {
             await this.workspaceRepository.softDeleteInTx(
                 tx,
                 workspaceId,
-                actorId,
                 deletedAt
             );
             await this.projectDomain.softDeleteByWorkspaceInTx(
                 tx,
                 workspaceId,
-                actorId,
                 deletedAt
             );
             await this.workspaceInviteRepository.expirePendingByWorkspaceInTx(
                 tx,
-                workspaceId,
-                actorId
+                workspaceId
             );
             await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
                 tx,
-                workspaceId,
-                actorId
+                workspaceId
             );
             this.activityLogDomain.stage({
                 action: EnumActivityLogAction.workspaceDeleted,
                 userId: actorId,
+                createdBy: actorId,
                 workspaceId: workspaceId,
             });
         });

@@ -1,10 +1,10 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPasswordHistoryAnalyticRepository,
     IPasswordHistoryAnalyticRow,
 } from '@modules/password-history/interfaces/password-history.analytic.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumPasswordHistoryType } from '@generated/prisma-client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 
 @Injectable()
 export class PasswordHistoryAnalyticRepository implements IPasswordHistoryAnalyticRepository {

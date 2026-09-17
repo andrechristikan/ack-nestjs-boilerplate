@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
+import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
+/**
+ * Swagger path parameter `deviceOwnershipId`.
+ * @public
+ */
 export const DeviceOwnershipDocParamsId: ApiParamOptions[] = [
     {
         name: 'deviceOwnershipId',
@@ -11,6 +15,10 @@ export const DeviceOwnershipDocParamsId: ApiParamOptions[] = [
     },
 ];
 
+/**
+ * Swagger query parameters of the admin device list: `isRevoked`.
+ * @public
+ */
 export const DeviceOwnershipDocQueryList: ApiQueryOptions[] = [
     {
         name: 'isRevoked',

@@ -1,20 +1,24 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ISession } from '@modules/session/interfaces/session.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
+    ISession,
+    ISessionRef,
+} from '@modules/session/interfaces/session.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
+import type { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma, Session } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Session } from '@generated/prisma-client/client';
 
 @Injectable()
 export class SessionRepository implements ISessionRepository {
@@ -82,11 +86,7 @@ export class SessionRepository implements ISessionRepository {
         });
     }
 
-    async findActive(userId: string): Promise<
-        {
-            id: string;
-        }[]
-    > {
+    async findActive(userId: string): Promise<ISessionRef[]> {
         return this.databaseService.client.session.findMany({
             where: {
                 userId,
@@ -94,29 +94,6 @@ export class SessionRepository implements ISessionRepository {
                 expiredAt: {
                     gte: this.helperDateService.create(),
                 },
-            },
-            select: {
-                id: true,
-            },
-        });
-    }
-
-    async findActiveByDeviceOwnership(
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<
-        {
-            id: string;
-        }[]
-    > {
-        return this.databaseService.client.session.findMany({
-            where: {
-                userId,
-                isRevoked: false,
-                expiredAt: {
-                    gte: this.helperDateService.create(),
-                },
-                deviceOwnershipId,
             },
             select: {
                 id: true,
@@ -194,18 +171,35 @@ export class SessionRepository implements ISessionRepository {
                 isRevoked: true,
                 revokedAt,
                 revokedById: revokedBy,
-                updatedBy: userId,
             },
         });
     }
 
-    async revokeByAdminInTx(
-        tx: IDatabaseTransactionClient,
+    async revoke(
+        userId: string,
+        sessionId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<Session> {
+        return this.databaseService.client.session.update({
+            where: {
+                id: sessionId,
+                userId,
+            },
+            data: {
+                isRevoked: true,
+                revokedAt,
+                revokedById: revokedBy,
+            },
+        });
+    }
+
+    async revokeByAdmin(
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISession> {
-        return tx.session.update({
+        return this.databaseService.client.session.update({
             where: {
                 id: sessionId,
             },
@@ -213,7 +207,6 @@ export class SessionRepository implements ISessionRepository {
                 isRevoked: true,
                 revokedAt,
                 revokedById: revokedBy,
-                updatedBy: revokedBy,
             },
             include: {
                 user: {
@@ -226,12 +219,22 @@ export class SessionRepository implements ISessionRepository {
         });
     }
 
+    async revokeActiveByUser(
+        userId: string,
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionRef[]> {
+        return this.databaseService.withTransaction(async tx =>
+            this.revokeActiveByUserInTx(tx, userId, revokedBy, revokedAt)
+        );
+    }
+
     async revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<{ id: string }[]> {
+    ): Promise<ISessionRef[]> {
         const sessions = await tx.session.findMany({
             where: {
                 userId,
@@ -248,7 +251,7 @@ export class SessionRepository implements ISessionRepository {
                 isRevoked: true,
                 revokedAt,
                 revokedById: revokedBy,
-                updatedBy: userId,
+                updatedBy: revokedBy,
             },
         });
 
@@ -261,7 +264,7 @@ export class SessionRepository implements ISessionRepository {
         deviceOwnershipId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<{ id: string }[]> {
+    ): Promise<ISessionRef[]> {
         const sessions = await tx.session.findMany({
             where: {
                 userId,

@@ -1,7 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import type { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { RequestRequestIdMiddleware } from '@common/request/middlewares/request.request-id.middleware';
 import { RequestRequestLogMiddleware } from '@common/request/middlewares/request.request-log.middleware';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
@@ -16,7 +18,6 @@ import { RequestThrottlerStorageService } from '@common/request/services/request
 import { RequestThrottlerModule } from '@common/request/request.throttler.module';
 import { RequestThrottlerGuard } from '@common/request/guards/request.throttler.guard';
 import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
-import { SentryModule } from '@sentry/nestjs/setup';
 
 /**
  * Registers the Redis-backed throttler guards and applies the security/perf/monitoring middleware chain to all routes.
@@ -35,7 +36,6 @@ import { SentryModule } from '@sentry/nestjs/setup';
         },
     ],
     imports: [
-        SentryModule.forRoot(),
         ThrottlerModule.forRootAsync({
             imports: [ConfigModule, RequestThrottlerModule],
             inject: [ConfigService, RequestThrottlerStorageService],

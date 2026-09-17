@@ -1,18 +1,18 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { Prisma, WorkspaceInvite } from '@generated/prisma-client';
-import { IWorkspaceInviteCreateData } from '@modules/workspace/interfaces/workspace.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import type { WorkspaceInvite } from '@generated/prisma-client/client';
+import type { IWorkspaceInviteCreateData } from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceInviteRepository {
     expireStalePending(): Promise<number>;
     expirePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
-        actorId: string
+        workspaceId: string
     ): Promise<void>;
     findPendingByHashedToken(
         hashedToken: string
@@ -49,15 +49,13 @@ export interface IWorkspaceInviteRepository {
     ): Promise<WorkspaceInvite>;
     rotateForResend(
         workspaceInviteId: string,
-        actorId: string,
         hashedToken: string,
         reference: string,
         expiredAt: Date
     ): Promise<WorkspaceInvite>;
     revokeInTx(
         tx: IDatabaseTransactionClient,
-        workspaceInviteId: string,
-        actorId: string
+        workspaceInviteId: string
     ): Promise<void>;
     acceptInTx(
         tx: IDatabaseTransactionClient,

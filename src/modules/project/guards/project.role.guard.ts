@@ -1,9 +1,6 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import {
-    EnumProjectMemberRole,
-    Project,
-    WorkspaceMember,
-} from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectRoleMetaKey,
     ProjectStoreKey,
@@ -11,7 +8,8 @@ import {
 } from '@modules/project/constants/project.constant';
 import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 /**

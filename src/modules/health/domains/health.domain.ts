@@ -11,7 +11,8 @@ import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.in
 import { HealthRedisIndicator } from '@modules/health/indicators/health.redis.indicator';
 import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckResult, HealthCheckService } from '@nestjs/terminus';
+import { HealthCheckService } from '@nestjs/terminus';
+import type { HealthCheckResult } from '@nestjs/terminus';
 
 @Injectable()
 export class HealthDomain {

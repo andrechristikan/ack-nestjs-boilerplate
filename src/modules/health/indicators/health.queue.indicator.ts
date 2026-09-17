@@ -1,9 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { Queue } from 'bullmq';
 

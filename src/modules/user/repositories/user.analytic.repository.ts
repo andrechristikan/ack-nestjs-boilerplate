@@ -1,10 +1,10 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import {
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticNearLockoutRow } from '@modules/analytic/interfaces/analytic.anomaly.interface';
+import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
     IUserAnalyticRepository,
@@ -16,7 +16,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserAnalyticRepository implements IUserAnalyticRepository {

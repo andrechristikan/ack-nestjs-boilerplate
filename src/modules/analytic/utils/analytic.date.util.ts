@@ -1,5 +1,5 @@
 import { AnalyticInvalidDateRangeException } from '@modules/analytic/exceptions/analytic.invalid-date-range.exception';
-import {
+import type {
     IAnalyticDateRange,
     IAnalyticOptionalDateRange,
 } from '@modules/analytic/interfaces/analytic.interface';

@@ -1,4 +1,4 @@
-import { EnumPasswordHistoryType } from '@generated/prisma-client';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 
 export interface IPasswordHistoryAnalyticRow {
     id: string;

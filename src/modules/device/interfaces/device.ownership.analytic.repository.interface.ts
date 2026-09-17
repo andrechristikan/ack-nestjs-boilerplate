@@ -1,5 +1,5 @@
-import { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IDeviceOwnershipAnalyticUserCount {
     userId: string;

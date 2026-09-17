@@ -1,15 +1,15 @@
-import { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IPasswordHistory } from '@modules/password-history/interfaces/password-history.interface';
 import {
     EnumPasswordHistoryType,
-    PasswordHistory,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 
 export interface IPasswordHistoryRepository {
     findWithPaginationOffsetByAdmin(

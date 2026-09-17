@@ -5,7 +5,7 @@ import {
 } from '@common/response/constants/response.constant';
 import { ResponseInterceptor } from '@common/response/interceptors/response.interceptor';
 import { ResponsePagingInterceptor } from '@common/response/interceptors/response.paging.interceptor';
-import { IResponseOptions } from '@common/response/interfaces/response.interface';
+import type { IResponseOptions } from '@common/response/interfaces/response.interface';
 import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ResponseCacheInterceptor } from '@common/response/interceptors/response.cache.interceptor';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
@@ -14,6 +14,7 @@ import { ResponseFileInterceptor } from '@common/response/interceptors/response.
  * Standardizes a route's response via `ResponseInterceptor`; the handler must return
  * `IResponseReturn<T>`. `messagePath` is the i18n key; `options.schema` shapes the payload and its
  * absence declares the route returns no data; `options.cache` optionally enables caching.
+ * @public
  */
 export function Response(
     messagePath: string,
@@ -49,6 +50,7 @@ export function Response(
  * Standardizes a paginated route via `ResponsePagingInterceptor`; the handler must return
  * `IResponsePagingReturn<T>` (offset or cursor). `options.schema` shapes one item of the page;
  * `options.cache` optionally enables caching.
+ * @public
  */
 export function ResponsePaging(
     messagePath: string,
@@ -83,6 +85,7 @@ export function ResponsePaging(
 /**
  * Streams a file download via `ResponseFileInterceptor`; the handler must return
  * `IResponseFileReturn` (CSV or PDF).
+ * @public
  */
 export function ResponseFile(): MethodDecorator {
     return applyDecorators(UseInterceptors(ResponseFileInterceptor));

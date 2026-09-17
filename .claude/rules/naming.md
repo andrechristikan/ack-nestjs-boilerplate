@@ -6,7 +6,7 @@
 <module>.<noun-or-action>[.<sub>].<role>.ts
 ```
 
-- Every file starts with the `<module>.` prefix. No exception — `user.not-found.exception.ts`, never `not-found.exception.ts`.
+- Every file under `src/` starts with the `<module>.` prefix — `user.not-found.exception.ts`, never `not-found.exception.ts`. The root bootstrap files are the one exception: `src/main.ts`, `src/migration.ts`, `src/instrument.ts` and `src/swagger.ts` carry no prefix and no role suffix, and each has an exact alias (`@main`, `@migration`, `@instrument`, `@swagger`). Generated code under `src/generated/**` is named by its generator. A file under `scripts/` is kebab-case for what it does (`generate-secret.ts`).
 - A dot separates segments. A dash appears ONLY inside one segment, for a compound noun: `user.mobile-number.dto.ts`, `notification.email.processor.ts`, `user.forgot-password-reset.request.dto.ts`.
 - Folders are lowercase kebab-case. A folder that holds a kind of file is plural: `domains/`, `services/`, `caches/`, `queues/`, `factories/`, `utils/`, `repositories/`. Feature folders and kit modules keep the module name (`user/`, `src/common/cache/`).
 
@@ -111,18 +111,11 @@ provide exist:
   `ResponseDto` does not belong there** — it belongs in the folder its
   direction names.
 
-- **One file MAY hold sibling DTOs of ONE concern, and it is named for the concern, not for any
-  one class.** `user.check.request.dto.ts` holds `UserCheckUsernameRequestDto` and
-  `UserCheckEmailRequestDto`; `user.mobile-number.request.dto.ts` holds
-  `UserAddMobileNumberRequestDto` and `UserUpdateMobileNumberRequestDto`;
-  `user.profile.request.dto.ts` holds `UserUpdateProfileRequestDto` and
-  `UserUpdateProfilePhotoRequestDto`. The siblings are normally variants of each other, built
-  with the zod combinators — `.extend()`, `.pick()`, `.omit()`, `.partial()`.
-
-  So a file name that does not match an export name is NOT a violation on its own. **Open the
-  file before calling one:** the question is whether every class in it belongs to the concern
-  the file names, not whether the first class happens to spell it out. Two unrelated concerns
-  in one file is the defect.
+- **One DTO file holds ONE schema and its `Dto` type, and the file is named for that schema.**
+  `user.check-email.request.dto.ts` holds `UserCheckEmailRequestSchema` +
+  `UserCheckEmailRequestDto`; its sibling `user.check-username.request.dto.ts` is its own file
+  and may build on it with the zod combinators — `.extend()`, `.pick()`, `.omit()`,
+  `.partial()` (`rules/dto.md`). A file holding a second schema is the defect.
 - **One exception per file.** `<module>.<kebab-error>.exception.ts` — `user.password-not-match.exception.ts`. Never a barrel of exception classes.
 - **Swagger doc files** are `<module>.<scope>.doc.ts` under `docs/` (`user.admin.doc.ts`), exporting one decorator factory per endpoint.
 

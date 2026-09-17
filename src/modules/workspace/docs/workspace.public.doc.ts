@@ -9,14 +9,10 @@ import {
     WorkspaceDocParamsSlug,
     WorkspaceInviteTokenDocParamsId,
 } from '@modules/workspace/constants/workspace.doc.constant';
-import {
-    WorkspaceInvitePreviewResponseDto,
-    WorkspaceInvitePreviewResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
-import {
-    WorkspacePreviewResponseDto,
-    WorkspacePreviewResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.preview.response.dto';
+import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
+import type { WorkspacePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 

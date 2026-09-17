@@ -1,6 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 import { HelloUtil } from '@modules/hello/utils/hello.util';
 import { Injectable } from '@nestjs/common';
 

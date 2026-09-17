@@ -1,4 +1,4 @@
-import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface IWorkspaceAnalyticRepository {
     countCreated(startDate: Date, endDate: Date): Promise<number>;

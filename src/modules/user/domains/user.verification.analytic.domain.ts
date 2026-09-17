@@ -1,7 +1,7 @@
-import { IAnalyticVerificationFunnel } from '@modules/analytic/interfaces/analytic.interface';
+import type { IAnalyticVerificationFunnel } from '@modules/analytic/interfaces/analytic.interface';
 import { UserVerificationAnalyticRepository } from '@modules/user/repositories/user.verification.analytic.repository';
 import { Injectable } from '@nestjs/common';
-import { EnumVerificationType } from '@generated/prisma-client';
+import { EnumVerificationType } from '@generated/prisma-client/client';
 
 @Injectable()
 export class UserVerificationAnalyticDomain {
