@@ -41,26 +41,12 @@ model Role {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  policies  Policy[]      @relation("RolePolicy")
-  abilities RoleAbility[]
-  users     User[]        @relation("UserRole")
+  policies Policy[] @relation("RolePolicy")
+  users    User[]   @relation("UserRole")
 
   @@unique(fields: [name])
   @@index(fields: [type, createdAt(sort: Desc)])
   @@map("roles")
-}
-
-model RoleAbility {
-  id      String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  roleId  String @db.Uuid
-  subject String
-  action  String
-
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique(fields: [roleId, subject, action])
-  @@index(fields: [subject, action])
-  @@map("role_abilities")
 }
 
 model Policy {

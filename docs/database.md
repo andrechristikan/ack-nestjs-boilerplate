@@ -430,28 +430,33 @@ model UserPhoto {
 **Used in:**
 - `User.photo`
 
-### RoleAbility
+### Policy
 
-Represents a single CASL ability entry related to a `Role`. Each entry defines one allowed action on a given policy subject.
+Represents the CASL ability grant for a `Role` on one policy subject. One row covers every allowed action for that subject.
 
 ```prisma
-model RoleAbility {
-  id      String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  roleId  String @db.Uuid
-  subject String
-  action  String
+model Policy {
+  id      String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  roleId  String             @db.Uuid
+  subject EnumPolicySubject
+  action  EnumPolicyAction[]
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `action` | `String` | Allowed action (e.g. `"read"` or `"create"`) |
-| `subject` | `String` | Policy subject (e.g. `"user"`, `"apiKey"`) |
+| `roleId` | `String` | Owning role |
+| `subject` | `EnumPolicySubject` | Policy subject (e.g. `user`, `apiKey`, `workspace`) |
+| `action` | `EnumPolicyAction[]` | Allowed actions on the subject (`manage`, `read`, `create`, `update`, `delete`) |
+
+The `[roleId, subject]` pair is unique, so a role holds at most one policy row per subject.
 
 **Used in:**
-- `Role.abilities`
+- `Role.policies` (relation `RolePolicy`)
 
-See [Authorization Documentation][ref-doc-authorization] for how abilities are evaluated at runtime.
+`migration.policy.seed.ts` seeds one `Policy` row per `EnumPolicySubject` value for the `admin` role, granting every `EnumPolicyAction`. `superadmin` and `user` seed with no policy rows.
+
+See [Authorization Documentation][ref-doc-authorization] for how policies are evaluated at runtime.
 
 ---
 
