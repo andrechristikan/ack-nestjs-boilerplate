@@ -8,6 +8,7 @@ import {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { Injectable } from '@nestjs/common';
 import { Prisma, TermPolicy } from '@generated/prisma-client';
@@ -20,7 +21,7 @@ export class TermPolicyHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         const { data, ...others } = await this.termPolicyDomain.getListByAdmin(
             pagination,
             type,
@@ -35,7 +36,7 @@ export class TermPolicyHttpService {
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePagingReturn<ITermPolicy>> {
         const { data, ...others } =
             await this.termPolicyDomain.getListPublished(pagination, type);
         return {
@@ -47,7 +48,7 @@ export class TermPolicyHttpService {
     async createByAdmin(
         body: TermPolicyCreateRequestDto,
         createdBy: string
-    ): Promise<IResponseReturn<TermPolicy>> {
+    ): Promise<IResponseReturn<ITermPolicy>> {
         const created = await this.termPolicyDomain.createByAdmin(
             body,
             createdBy

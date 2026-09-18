@@ -1,39 +1,31 @@
-# Testing — spec style
+# Testing - spec style
 
-How a `*.spec.ts` is written, once you know it belongs here. Where specs live, how jest is
-configured, and what is never done to reach green are in `.claude/rules/testing.md`; read that
-one first, then this.
+How a `*.spec.ts` is written once `rules/testing.md` says the subject belongs in the unit suite.
+Whoever writes or repairs a spec reads both files completely.
 
-Whoever WRITES or REPAIRS a spec follows this file. Whoever only runs the suite does not need
-it.
+## Default spec shape (HARD)
 
-## The spec skeleton (HARD)
-
-Every spec file has the same four blocks, in this order, and nothing between them.
+Import every Vitest API explicitly. The unit configuration does not provide globals.
 
 ```ts
-// 1. imports — nothing above them
-import { createMock, DeepMocked } from '@golevelup/ts-jest';
+import { createMock } from '@golevelup/ts-vitest';
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 
-// 2. jest.mock — AFTER the last import, BEFORE the first describe. Nowhere else.
-jest.mock('<third-party-package>');
-
 describe('SessionDomain', () => {
-    // 3. first door — const at the root describe, shape only
-    const sessionRepository: DeepMocked<SessionRepository> =
-        createMock<SessionRepository>();
-    const sessionUtil: DeepMocked<SessionUtil> = createMock<SessionUtil>();
+    const sessionRepository = createMock<SessionRepository>();
+    const sessionUtil = createMock<SessionUtil>();
+
     let domain: SessionDomain;
 
     beforeEach(async () => {
-        // 4. second door — reset, then the behavior every test starts from
-        jest.resetAllMocks();
+        vi.resetAllMocks();
 
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionDomain,
                 { provide: SessionRepository, useValue: sessionRepository },
@@ -41,179 +33,185 @@ describe('SessionDomain', () => {
             ],
         }).compile();
 
-        domain = module.get(SessionDomain);
+        domain = moduleRef.get(SessionDomain);
     });
 
-    describe('getListCursor', () => {
-        it('…', async () => {});
+    describe('getOne', () => {
+        it('returns the mapped session when the id exists', async () => {});
     });
 });
 ```
 
-The rules the skeleton encodes:
+The shape encodes these rules:
 
-- **A mock the file SHARES is `const`, declared at the root `describe`.** Every DI double more
-  than one test uses is declared once, at the top of the root `describe`, never inside
-  `beforeEach` and never at module scope above the `describe`. The declaration states the
-  SHAPE and nothing else.
-- **A mock only ONE test needs is declared inside that test.** Do not hoist a single-use
-  double to the root just to keep the declarations together.
-- **`beforeEach` is the second door — where the mock actually becomes a mock.**
-  `jest.resetAllMocks()` on a `createMock` declared at the root `describe` does NOT leak an
-  implementation from one test into the next. `jest.clearAllMocks()` clears call records but
-  keeps implementations — it is not a reset, do not use it as one.
-- **The subject is `let`, rebuilt in `beforeEach`.** A subject shared across tests carries
-  state between them.
-- **Every DI dependency is mocked. No exception.** Every constructor param, every `@Inject`
-  token, every domain, HTTP service, processor service, repository, util, cache, queue,
-  `ConfigService`, and `RequestStoreService` gets a
-  double registered by its class (or token). A real collaborator sitting in the provider list
-  makes the spec depend on code it does not cover, and its failure lands on the wrong file.
-  The one thing you do NOT double is the subject.
-- **Never assert on a logger or a `console` call, and never re-mock them.** A spec that
-  asserts on a log line is asserting on the one thing that is allowed to change freely
-  (`rules/logging.md`).
-- **Mock variable names mirror the DI param they replace — `camelCase`.** Fixture and data
-  locals are `camelCase` too (`rules/naming.md`). There is no snake_case surface in
-  this project, including in specs.
-- **Injection is by class.** Repositories and domains are provided as `{ provide: SessionRepository,
-  useValue: sessionRepository }`, never behind a port token (`rules/architecture.md`).
+- Keep imports first, followed by top-level module mocks when needed, then the root `describe`.
+- Declare shared doubles as `const` inside the root `describe`. Declare a one-case double in that case.
+- Build injected collaborators with `createMock<Dependency>()` from `@golevelup/ts-vitest`. Its methods remain typed Vitest mocks, including nested members. Use a narrow `Pick` plus `satisfies` only when a tiny explicit double is clearer than a deep mock.
+- Rebuild the subject in `beforeEach`. Reset shared mock calls and implementations before establishing that case's baseline.
+- Register the real subject and explicit collaborator doubles. Do not mock the subject.
+- Name doubles after the constructor parameter or injection token they replace, using `camelCase`.
+- Inject repositories, domains, and services by their real class token, following `rules/architecture.md`.
+- Do not assert on logs or `console`, and do not replace them merely to silence output. Logging is not a unit contract (`rules/logging.md`).
 
-## `DeepMocked` is one level deep (HARD)
+## Choose the smallest harness
 
-`DeepMocked<T>` from `@golevelup/ts-jest` maps only the TOP level of `T`: a property that is
-not a function keeps its original type. `createMock` still mocks the nested object correctly
-at RUNTIME, so the spec passes — only the static type is wrong.
+Direct construction is preferred when Nest behavior is irrelevant and every constructor
+argument can be represented by its complete declared type without a cast.
 
-**`DeepMocked` / `createMock` is the default for every service, util, repository, and
-guard collaborator.** The bite is `DatabaseService.client`: `DatabaseService` does not extend
-`PrismaClient`, it exposes one nested `client` member (`rules/database.md`), so
-`databaseService.client.user.findUnique` does not type-check on a `DeepMocked<DatabaseService>`.
-Repositories (the only layer that injects `DatabaseService` for feature data) are outside
-`collectCoverageFrom` and do not get specs. If a health indicator forces a `DatabaseService`
-double, stub `client` as a nested object of `jest.fn()` delegates — do not cast the whole
-service.
+Use `Test.createTestingModule(...).compile()` when the subject depends on injection tokens,
+provider resolution, scoped providers, or lifecycle behavior. Do not import the production
+feature module for a unit spec; doing so expands the subject and can activate real I/O.
 
-**A `DeepMocked` member is NOT a `jest.Mock` (HARD).** Since `@golevelup/ts-jest` 3 each
-mocked method is a `MockInstance` from `jest-mock`, so `(service.method as jest.Mock)` no
-longer compiles. Call the mock helper straight off the member
-(`userRepository.findOneById.mockResolvedValue(…)`) and let the argument be type-checked.
-Only where the argument is a THIRD-PARTY shape does a cast survive, and it takes the extra
-hop: `(service.method as unknown as jest.Mock)`.
+Use `moduleRef.get(Subject)` for singleton providers. Use `await moduleRef.resolve(Subject)` for
+request-scoped or transient providers. When several resolved providers must share one DI
+sub-tree, create and pass one Nest context id to every `resolve()` call.
 
-## Casts in a spec — first-party vs third-party (HARD)
+Nest's `.useMocker()` is allowed only for a small reusable factory whose returned doubles are
+explicit and typed. Do not use auto-mocking as a substitute for listing the behavior a branch
+reads. `REQUEST` and `INQUIRER` require explicit providers or `.overrideProvider()`.
 
-The line is WHOSE contract the fixture is standing in for, not how ugly the cast looks.
+## Module mocks (HARD)
 
-**A FIRST-PARTY shape is never cast — it is BUILT.** Our own interface, DTO, Prisma-generated
-row, or exception is small, stable, and ours to keep true. A `{ id: 'user-1' } as IUser` is a
-lie the compiler was asked to stop reporting. Complete the fixture.
-
-**A THIRD-PARTY shape is cast ONCE, at the boundary that produces it.** An AWS S3 `Body`, a
-BullMQ `Job`, a Firebase message: dozens of members we do not own, of which the subject reads
-two. One cast, at the factory or the mock call site — never scattered through the assertions.
-
-**`@ts-ignore` and `@ts-expect-error` are FORBIDDEN outright.** Unlike a cast they name no
-type at all, so nothing downstream ever re-checks them.
-
-**A cast is never the answer to a type error you did not read.** Read what the compiler
-actually says first: a missing type argument (`createMock<IRequestApp>()` resolving to
-`IRequestApp<unknown>`), a renamed enum member, or a moved import — none of which a cast
-fixes, all of which it hides.
-
-**Each of the four hooks has exactly one job. Reach for whichever ones the file needs — and
-write no hook that has no work; an empty hook is noise.**
-
-| Hook | What belongs in it |
-|---|---|
-| `beforeAll` | Immutable setup shared by every test in the block — fixed `Date` constants, frozen fixture payloads, `jest.useFakeTimers()`. Never something a test can mutate. |
-| `beforeEach` | `jest.resetAllMocks()` first, then the baseline behavior every test starts from, then rebuild the subject. |
-| `afterEach` | Undo what a TEST did to something real — `jest.restoreAllMocks()` whenever the file used `jest.spyOn` on a real object. `resetAllMocks` does NOT restore a spied original; only `restoreAllMocks` does. |
-| `afterAll` | Undo what `beforeAll` set up — `jest.useRealTimers()` when timers were faked there, and the teardown of anything it opened. |
-
-## A repeated `jest.mock()` belongs in the setup file (HARD)
-
-**Every time you write or read a `jest.mock('<pkg>')` at the top of a spec, ask whether that
-package is already mocked in other spec files.** A module fake that is repeated across many
-files is setup, not spec content.
-
-**Promote it to `test/jest.setup.ts` (and register that file in `test/jest.json`
-`setupFilesAfterEnv`) when ALL of these hold:**
-
-- Several spec files mock the same package (three or more is already a pattern).
-- The factory is IDENTICAL everywhere, or there is no factory at all — a bare
-  `jest.mock('<pkg>')`.
-- **No spec anywhere needs the REAL module.**
-
-**Leave it per-file when any of these hold:**
-
-- The factory differs between specs.
-- Some spec legitimately exercises the real module. Promoting then breaks that spec silently
-  and at a distance.
-
-When you do promote it: add the mock to `test/jest.setup.ts`, register the file in
-`test/jest.json` if it is not already, delete the per-file `jest.mock` from EVERY spec that
-carried it, and never re-mock it locally again — a local factory replaces the global one and
-drops whatever exports the global provided.
-
-**Promoting changes a file every spec in the repo loads.** It is never a silent edit: say how
-many files lost the duplicate mock, and say which suites were re-ran after the promotion. Do
-not add `test/jest.setup.ts` as a side effect of writing one spec — name it as a hand-back.
-
-## Assertion style (HARD)
-
-**Reaching into `fn.mock.*` is FORBIDDEN.** Not `fn.mock.calls[0]`, not `fn.mock.calls[0][0]`,
-not `fn.mock.calls.length`, not `fn.mock.lastCall`, not `fn.mock.results`. Index-into-a-2D-array
-assertions do not say what they check, and they break silently the day an argument is added.
-
-Use the matcher that names the thing:
-
-| Instead of | Write |
-|---|---|
-| `fn.mock.calls.length` | `expect(fn).toHaveBeenCalledTimes(n)` / `expect(fn).not.toHaveBeenCalled()` |
-| `fn.mock.calls[0][0]` | `expect(fn).toHaveBeenCalledWith(arg)` |
-| `fn.mock.calls[1][0]` | `expect(fn).toHaveBeenNthCalledWith(2, arg)` |
-| a partial argument check | `expect.objectContaining({ … })`, `expect.arrayContaining([…])` |
-| an argument's class | `expect.any(UserNotFoundException)` |
-| `fn.mock.results[0]` | assert the subject's return value instead |
-
-When you must inspect a constructed argument more deeply than a matcher allows, capture it
-through the mock's own implementation:
+Prefer dependency injection. Use `vi.mock()` only for a third-party or module-level boundary
+that cannot be supplied through the constructor.
 
 ```ts
-let created: IUser | undefined;
-userRepository.create.mockImplementation(async entity => {
-    created = entity;
-    return persisted;
+import { generateSecret } from 'otplib';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock(import('otplib'), () => ({
+    generateSecret: vi.fn(),
+}));
+
+const generateSecretMock = vi.mocked(generateSecret);
+```
+
+- `vi.mock()` and `vi.hoisted()` stay at file scope. They are hoisted ahead of static imports,
+  regardless of their visual position.
+- Prefer `vi.mock(import('<module>'), factory)` so TypeScript checks the factory exports and
+  tools can update the path during a rename.
+- A factory returns an object containing every mocked export. A mocked default export uses a
+  `default` key.
+- Build factory-local values inside the factory. When tests need to access the same value, use
+  `vi.hoisted()` before the mock declaration.
+- Use `vi.mocked(exportedValue)` to access mock methods. Do not cast an export to `Mock`.
+- Use `vi.doMock()` only when a test intentionally needs a non-hoisted mock before a later
+  dynamic import. It does not affect modules already imported.
+- A bare `vi.mock()` can load a manual `__mocks__` file, but the file is never active without
+  the call.
+
+Promote a repeated module mock to `test/vitest.setup.ts` only when at least three specs need an
+identical factory and no spec needs the real module. Register the setup file in
+`vitest.config.mts`, remove every duplicate local declaration, and run the full unit suite
+because the setup file affects every spec. A one-off mock stays local.
+
+## Deep mocks and framework-boundary mocks (HARD)
+
+`createMock<T>()` from `@golevelup/ts-vitest` is the default typed mock for an injected
+collaborator and for a Nest/Express transport type received as an argument. It replaces
+hand-written casts and exposes Vitest mock methods on nested members.
+
+```ts
+import { createMock } from '@golevelup/ts-vitest';
+import type { ExecutionContext } from '@nestjs/common';
+
+const handler = vi.fn();
+const context = createMock<ExecutionContext>({
+    getHandler: () => handler,
+    getClass: () => TestController,
 });
 ```
 
-For ordering across DIFFERENT mocks, record it explicitly:
+- Configure every collaborator behavior that decides the branch under test. Do not rely on an
+  auto-stubbed return value to make a branch pass accidentally.
+- Use `createMock<T>({}, { strict: true })` when an unexpected method call must fail immediately.
+  Strict mode is especially useful for guards, filters, and orchestration cases with a small
+  known call surface; configure the expected methods in the case or its baseline.
+- `createMock` is distinct from `.useMocker()` (container-wide auto-mocking) and `vi.mock()`
+  (module mocking). Use it for explicit collaborators registered with `useValue` and for plain
+  framework/third-party arguments.
+- When the same HTTP `ExecutionContext` shape (`getHandler`/`getClass`/`switchToHttp` with a
+  request/response) recurs across specs, call the shared `createHttpExecutionContext()` factory
+  from `test/support/execution-context.mock.ts` (import via `@test/support/...`) instead of
+  repeating the nested construction. `createMock`'s partial-override typing does not compose
+  cleanly once a class reference and several optional members are mixed, so this one factory
+  performs a single explicit cast internally — the same "cast once at the boundary" the
+  `createMock` case above already allows — so the 13+ call sites that need this shape stay fully
+  typed. A genuinely different `ExecutionContext` (a non-HTTP `getType()`, or a shape only one
+  spec needs) stays a direct, local `createMock<ExecutionContext>()` call; do not add a second
+  shared factory until a shape repeats the same way.
+
+## Mock lifecycle (HARD)
+
+The operations are different:
+
+| API                    | Effect                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `vi.clearAllMocks()`   | Clears call history while retaining implementations.                                           |
+| `vi.resetAllMocks()`   | Clears call history and resets implementations.                                                |
+| `vi.restoreAllMocks()` | Restores original properties patched by `vi.spyOn()`; it is not a reset for module auto-mocks. |
+
+Use `vi.resetAllMocks()` before each case when mock objects live across cases, then apply that
+case's baseline implementations. Use `afterEach(() => vi.restoreAllMocks())` in any file that
+spies on real objects. Prefer local lifecycle hooks over relying on hidden global cleanup.
+
+For time-dependent behavior, call `vi.useFakeTimers()` before creating timers, set a fixed time
+with `vi.setSystemTime()`, advance time without sleeping, and call `vi.useRealTimers()` in
+teardown. Do not fake `process.nextTick` when the configured worker pool is `forks`.
+
+## Fixtures and casts (HARD)
+
+- Build first-party interfaces, DTOs, generated database rows, and exception inputs completely.
+  Use `satisfies` when the inferred literal type is useful. Do not silence missing fields with
+  `as SomeType`.
+- A large third-party shape may be represented by the members the subject reads and cast once
+  at the boundary that produces it, such as a BullMQ `Job` or AWS body.
+- `@ts-ignore` and `@ts-expect-error` are forbidden in specs.
+- Recreate mutable fixtures per case or in `beforeEach`. Shared immutable constants may live in
+  the root `describe`.
+- Use real `Date` instances for date columns. A timestamp string does not represent the shape
+  emitted by the database client (`rules/dates.md`).
+
+## Arrange, act, assert
+
+Each case protects one observable behavior. Arrange only the state that behavior needs, execute
+the subject once, then assert the result, externally visible side effect, or typed error.
+Comments that merely label those three phases are unnecessary.
+
+Prefer matchers that state the contract:
+
+| Contract          | Matcher                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- |
+| call count        | `toHaveBeenCalledTimes()` / `not.toHaveBeenCalled()`                              |
+| call arguments    | `toHaveBeenCalledWith()` / `toHaveBeenNthCalledWith()`                            |
+| partial structure | `expect.objectContaining()` / `toMatchObject()`                                   |
+| returned value    | assert the subject result                                                         |
+| rejected value    | `.rejects` when one assertion is sufficient; otherwise capture the rejection once |
+
+Do not inspect `mock.calls`, `mock.results`, or `lastCall` when a named matcher expresses the
+same contract. Recorded arguments are references, so capture an argument in a mock
+implementation when the subject mutates it after the call.
+
+Assert call order only when ordering is part of correctness, such as persisting a credential
+before invalidating sessions. Record cross-collaborator order explicitly rather than relying
+on runner-specific invocation counters.
+
+## Exception assertions (HARD)
+
+Assert an `AppBaseException` subclass and the fields consumed by the filter chain. Execute the
+subject once:
 
 ```ts
-const callOrder: string[] = [];
-userRepository.update.mockImplementation(async () => {
-    callOrder.push('update');
-    return updated;
-});
-sessionRepository.deleteMany.mockImplementation(async () => {
-    callOrder.push('invalidate');
-    return { count: 1 };
-});
-expect(callOrder).toEqual(['update', 'invalidate']);
-```
+let thrown: unknown;
 
-Assert on real identifiers — the exception class, the enum member, the mapped field name. An
-assertion on a bare `true` or a loose string literal drifts silently.
+try {
+    await service.findOneById(id);
+} catch (error) {
+    thrown = error;
+}
 
-## `AppBaseException` body fields (HARD)
-
-Feature code throws typed `AppBaseException` subclasses, never a Nest `HttpException`
-(`rules/exceptions.md`). Specs MUST assert the class and the members the filter chain reads:
-
-```ts
-await expect(service.findOneById(id)).rejects.toThrow(UserNotFoundException);
-await expect(service.findOneById(id)).rejects.toMatchObject({
+expect(thrown).toBeInstanceOf(UserNotFoundException);
+expect(thrown).toMatchObject({
     module: 'user',
     statusCode: EnumUserStatusCodeError.notFound,
     statusCodeKey: EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
@@ -221,121 +219,49 @@ await expect(service.findOneById(id)).rejects.toMatchObject({
 });
 ```
 
-`expect(…).rejects.toThrow(new UserNotFoundException())` is NOT enough: Jest's instance
-matcher compares `.message` only, so `statusCode` / `statusCodeKey` never get checked.
+Never assert a localized message string. Wire keys use `camelCase`, including `statusCode` and
+`messagePath` (`rules/case-convention.md`).
 
-Response body keys on the WIRE are camelCase (`statusCode`, `messagePath`) — including in
-specs (`rules/naming.md`). A `status_code` fixture is a defect on sight.
+## Public contract only (HARD)
 
-For a sync throw, prefer catching and reading the instance:
+Test a subject through its public methods and observable output. Do not call a private method
+with index access, cast the subject to `any`, or spy on a private method. A refactor that keeps
+the public contract unchanged must keep the spec green.
 
-```ts
-try {
-    service['assertSomething'](…);
-    throw new Error('expected throw');
-} catch (error) {
-    expect(error).toBeInstanceOf(UserPasswordNotMatchException);
-    expect(error).toMatchObject({
-        statusCode: EnumUserStatusCodeError.passwordNotMatch,
-        messagePath: 'user.error.passwordNotMatch',
-    });
-}
-```
+A small host class may be declared in a spec only when Nest metadata or decorator composition
+requires a real class target and that metadata is the contract under test. Do not declare fake
+repositories, services, or exception subclasses; collaborator doubles are typed objects.
 
-## No class declarations in a spec (HARD)
+## Layer-specific focus
 
-**A spec file declares no `class`.** Not a fake repository, not a stub service, not a host
-class for a decorator, not a subclass of an exception. A class in a spec is a second
-implementation nobody maintains.
+- **Service:** assert business decisions, argument mapping, meaningful orchestration, and typed
+  failures. Assert order only when it changes correctness.
+- **Guard / strategy:** assert metadata reads, service delegation, request-context assignment,
+  and the returned or rejected transport result. Authorization decisions remain in services.
+- **Pipe / validator:** pass real input shapes; assert normalized output and representative
+  typed validation failures.
+- **Interceptor / filter:** assert emitted response/error shapes, status, and headers. Mock the
+  transport boundary, not RxJS itself.
+- **DTO:** use the real validation or `ResponseUtil.serialize()` path. Protect sensitive-field
+  exclusion, nested serialization, transforms, and important validation contracts.
+- **Exception:** table-test shared mapping invariants and test a standalone subclass only when
+  it owns custom behavior.
+- **Decorator:** apply it to the smallest valid target and read the metadata it writes.
+- **Factory / indicator / processor:** construct through the real path; mock external I/O and
+  assert branching, dispatch, payload forwarding, return shape, and owned failure mapping.
+- **Utility:** test inputs and outputs directly, covering only behavior-changing boundaries.
 
-The verified substitutes:
+Do not unit test controllers, repositories, framework wiring, `@Module()` declarations,
+Prisma's query builder, constants, enums, interfaces, or generated code (`rules/testing.md`).
 
-- **A param decorator** — apply the decorator to a plain object and read the factory back off
-  the metadata.
-- **A class ref for `Reflector` / `context.getClass()`** — an object literal carries metadata
-  fine: `const classRef = {} as Type<unknown>` plus `Reflect.defineMetadata(key, value, classRef)`.
-- **A subclass of an abstract exception or base** — instantiate a REAL concrete subclass from
-  `src/`. If the base has no concrete subclass anywhere in `src/`, it is unused code — report
-  that instead of inventing one.
-- **A collaborator** — `createMock<T>()`, always.
+## Final quality check
 
-If a subject genuinely cannot be specced without declaring a class, that is a design defect
-in the subject: report it and do not invent the class.
-
-## Private methods (HARD)
-
-**Every private method gets its own `describe`**, named for the method, reached by index
-access on the subject: `service['hashPassword'](…)`. This exists for LINE COVERAGE: a private
-helper's guard clauses are routinely unreachable from any public input, and without a describe
-of its own the coverage number reports them as tested while nothing ever ran them.
-
-**The caller must really call the private. Stubbing it is FORBIDDEN.**
-`jest.spyOn(service as any, 'hashPassword').mockReturnValue(…)` inside a public-method
-describe is banned outright. The public describes are the only place the real call path is
-recorded; stub the private there and the public spec asserts against a fiction while the
-private describe exercises it in isolation — the two together then cover nothing that actually
-ships.
-
-Inside the private's own describe, double what the private DEPENDS ON — the injected
-collaborators it reaches for are already mocked at the root `describe`, and that is enough.
-What you may never double is the private itself.
-
-**The one exception is a foreign boundary.** A third-party package sitting inside the private
-may be doubled — through `jest.mock('<package>')` at the top of the file, or through the
-injected collaborator that wraps it. Never by stubbing the private method that calls it.
-
-Order inside the file: one `describe` per public method first, in declaration order, then one
-`describe` per private method. The public describes still exercise the real path end to end —
-the private describes are additional, never a replacement.
-
-## How to spec each layer
-
-The layer decides what is real and what is doubled. Getting this wrong is what produces slow,
-brittle specs that test the mock instead of the code.
-
-- **Domain** — mock the repository and every injected domain / util / queue / cache; assert the
-  orchestration (which method was called, with what, in what order) and the thrown exception
-  TYPE plus `statusCode` / `statusCodeKey` / `messagePath` for each failure branch. Assert on
-  the exception class and the enum member, never on a message string (`rules/exceptions.md`).
-- **HTTP service / processor service** — mock the domain and every injected util; assert
-  transport shaping and the hand-off into the domain (or the processor channel work), not the
-  domain's business rules.
-- **Guard / strategy** — assert transport behavior only: metadata read, delegation to the
-  domain, the value assigned onto `request.<field>`, the boolean returned. The authorization
-  decision itself belongs to the domain's spec. **Controllers need direct instantiation** —
-  `Test.createTestingModule` eagerly resolves guards and fails; controllers are also not in
-  `collectCoverageFrom`.
-- **Pipe** — feed the real input shapes, assert the transformed output and the thrown
-  validation error.
-- **Interceptor / filter** — assert the emitted shape (`IResponseReturn`, `ResponseErrorDto`)
-  and the headers set. These are the highest-value cheap specs in the repo.
-- **DTO** — parse a payload through the schema and assert that the result carries exactly the
-  declared fields, that an undeclared key is stripped by a response schema and rejected by a
-  request schema, and that nothing sensitive rides along. This spec is the executable form of
-  the opt-in rule (`rules/dto.md`).
-- **Exception** — assert `module`, `statusCode`, `statusCodeKey`, `httpStatus`, and
-  `messagePath`. Cheap, and it catches the `statusCodeKey` / `statusCode` mismatch that
-  compiles fine (`rules/exceptions.md`).
-- **Decorator** — apply it, read the metadata it wrote. No host class (`No class declarations`
-  above).
-- **Factory / indicator** — construct through the real path; mock only the I/O boundary.
-  A health indicator that pings `DatabaseService` is the sanctioned exception that injects it
-  (`rules/database.md`) — mock `client` there, not a repository.
-
-Do not spec framework wiring, Prisma itself, a `@Module` decorator, a controller, or a
-repository. There is no behavior of ours in the first three, and the last two are outside
-`collectCoverageFrom` (`rules/testing.md`).
-
-## Writing the spec
-
-- `it` names state the behavior AND its condition — "throws UserNotFoundException when the
-  id is unknown" beats "should fail".
-- Cover the branches, not just the happy path. 100% coverage with only happy paths means
-  every guard clause in the file is untested and the threshold is lying to you.
-- Build fixtures in the spec that needs them. A shared fixture that many specs mutate is how
-  one failure cascades into twenty confusing ones.
-- Keep each spec independent — no ordering dependency, no shared mutable module state between
-  files.
-- A spec that would still pass with its subject gutted is worse than no spec: it converts an
-  untested file into a file everyone believes is tested. Before finishing one, change the
-  behavior it covers in your head and confirm the spec would go red.
+- Name the behavior and condition: `throws UserNotFoundException when the id is unknown`, not
+  `should fail`.
+- Keep `describe` nesting shallow: root subject, then public method or contract family.
+- Use table-driven cases only when inputs vary under the same rule and assertion shape.
+- Await every promise and asynchronous matcher. A test must not finish before its assertion.
+- Never use snapshots for business decisions or errors whose explicit fields are the contract.
+- Mentally break the behavior under test. If the case remains green, strengthen or remove it.
+- Coverage identifies unexercised code; it does not justify duplicate cases, private-method
+  calls, or assertions on framework internals.

@@ -33,9 +33,9 @@ its definition (`rules/nest-wiring.md`).
   `interfaces/<module>[.<concern>].repository.interface.ts`. The interface file and the
   class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
   Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
-  ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a
-  domain signature. Public repository methods return named `I*` shapes, Prisma models, or
-  primitives — not `unknown` or `Record<string, unknown>` (`rules/null-safety.md`).
+  UUID and Prisma `where` shapes stay in this class, not in a domain signature. Public
+  repository methods return named `I*` shapes, Prisma models, or primitives — not `unknown`
+  or `Record<string, unknown>` (`rules/null-safety.md`).
 
 ## Domain — `<module>[.<concern>].domain.ts`
 
@@ -184,7 +184,7 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 
 **A repository MUST have a header interface** — `I<Feature>[<Concern>]Repository` at
 `interfaces/<module>[.<concern>].repository.interface.ts` — and the class `implements` it.
-This is the persistence port: ID dialect (ObjectId versus UUID) and Prisma `where` shapes stay
+This is the persistence port: UUID handling and Prisma `where` shapes stay
 behind it. Callers inject the **class** (`userRepository: UserRepository`).
 
 **A domain, HTTP service, and processor service MUST NOT get a header interface.** Inject the

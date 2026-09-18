@@ -78,7 +78,7 @@ export const AppEnvSchema = z
 
         AWS_S3_IAM_CREDENTIAL_KEY: z.string().optional(),
         AWS_S3_IAM_CREDENTIAL_SECRET: z.string().optional(),
-        AWS_S3_IAM_ARN: z.string().min(1).optional(),
+        AWS_S3_IAM_ARN: z.string().optional(),
         AWS_S3_REGION: z.string().optional(),
         AWS_S3_PUBLIC_BUCKET: z.string().optional(),
         AWS_S3_PUBLIC_CDN: z.string().optional(),
@@ -87,7 +87,7 @@ export const AppEnvSchema = z
 
         AWS_SES_IAM_CREDENTIAL_KEY: z.string().optional(),
         AWS_SES_IAM_CREDENTIAL_SECRET: z.string().optional(),
-        AWS_SES_IAM_ARN: z.string().min(1).optional(),
+        AWS_SES_IAM_ARN: z.string().optional(),
         AWS_SES_REGION: z.string().optional(),
 
         CACHE_REDIS_URL: z.string().min(1),

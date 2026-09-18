@@ -28,7 +28,7 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         .regex(/^[0-9a-fA-F]{24}$/)
         .meta({
             description: 'Identifier of the role to assign',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
     name: z.string().min(1).max(100).optional().meta({
         description: 'Display name of the user to create',
@@ -39,7 +39,7 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         .regex(/^[0-9a-fA-F]{24}$/)
         .meta({
             description: 'Identifier of the user country',
-            example: faker.database.mongodbObjectId(),
+            example: faker.string.uuid(),
         }),
 });
 

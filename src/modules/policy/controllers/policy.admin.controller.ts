@@ -1,5 +1,5 @@
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -66,7 +66,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);
@@ -86,7 +86,7 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
@@ -108,9 +108,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:policyId')
     async update(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto
@@ -132,9 +132,9 @@ export class PolicyAdminController {
     @RequestThrottle({ user: true })
     @Delete('/delete/:policyId')
     async delete(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyHttpService.deleteByAdmin(roleId, policyId);

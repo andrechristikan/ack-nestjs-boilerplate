@@ -74,9 +74,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }

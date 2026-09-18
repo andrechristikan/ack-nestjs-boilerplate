@@ -92,4 +92,4 @@ from the named schema instead (`rules/code-style.md`).
 
 A DTO spec asserts that parsing returns exactly the declared fields, that an undeclared field
 is stripped, and that nothing sensitive rides along. That spec is the executable form of the
-opt-in rule, and DTOs are inside `collectCoverageFrom` (`rules/testing.md`).
+opt-in rule, and material DTO contracts are part of unit coverage (`rules/testing.md`).

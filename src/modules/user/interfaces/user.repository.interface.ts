@@ -13,6 +13,7 @@ import {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import {
@@ -51,7 +52,7 @@ export interface IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number
-    ): Promise<IUser[]>;
+    ): Promise<IUserExport[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;
     createInTx(

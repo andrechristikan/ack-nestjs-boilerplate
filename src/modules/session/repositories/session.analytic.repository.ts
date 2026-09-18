@@ -2,6 +2,10 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
+import {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import {
@@ -24,10 +28,10 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         startDate?: Date,
         endDate?: Date
     ): Promise<ISessionAnalyticSessionRow[]> {
-        return this.databaseService.client.session.findMany({
+        const sessions = await this.databaseService.client.session.findMany({
             where: {
                 isRevoked: false,
-                geoLocation: { isSet: true },
+                geoLocation: { not: Prisma.JsonNullValueFilter.AnyNull },
                 ...(startDate && endDate
                     ? { createdAt: { gte: startDate, lt: endDate } }
                     : {}),
@@ -45,6 +49,12 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
                 { createdAt: EnumPaginationOrderDirectionType.asc },
             ],
         });
+
+        return sessions.map(session => ({
+            ...session,
+            geoLocation: session.geoLocation as IRequestGeoLocation | null,
+            userAgent: session.userAgent as IRequestUserAgent,
+        }));
     }
 
     async countActiveByUser(): Promise<ISessionAnalyticUserCount[]> {

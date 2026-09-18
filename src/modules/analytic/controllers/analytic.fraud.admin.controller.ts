@@ -15,7 +15,7 @@ import {
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -608,7 +608,7 @@ export class AnalyticFraudAdminController {
     @RequestThrottle({ user: true })
     @Get('/risk-score/:userId')
     async riskScore(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IAnalyticFraudRiskScore> {
         return this.analyticFraudHttpService.riskScore(userId);

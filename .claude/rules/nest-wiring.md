@@ -152,7 +152,7 @@ header interface (`rules/architecture.md`).
 
 ## Wiring defects surface only at boot
 
-`tsc` and jest both pass with a broken `imports:` array in place. Two failures live there and
+Typecheck and Vitest both pass with a broken `imports:` array in place. Two failures live there and
 neither has a compile-time symptom:
 
 - a **cycle** — a runtime `ReferenceError` or `Cannot access '…' before initialization` during

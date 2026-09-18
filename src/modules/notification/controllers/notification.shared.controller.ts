@@ -1,7 +1,7 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -105,7 +105,7 @@ export class NotificationSharedController {
     @Patch('/update/:notificationId/read')
     async markAsRead(
         @AuthJwtPayload('userId') userId: string,
-        @Param('notificationId', { schema: RequestMongoIdSchema })
+        @Param('notificationId', { schema: RequestUuidSchema })
         notificationId: string
     ): Promise<IResponseReturn<void>> {
         return this.notificationHttpService.markAsRead(userId, notificationId);

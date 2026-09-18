@@ -337,11 +337,11 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     deviceId: z.string().meta({
         description: 'Device ownership ID',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'User ID who owns the device',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 
@@ -360,9 +360,9 @@ The `.meta({ description, example })` on each field is what the OpenAPI document
 @Response('role.delete')
 @Delete('/delete/:role')
 async delete(
-  @Param('roleId', { schema: RequestMongoIdSchema }) roleId: string
+  @Param('role', { schema: RequestUuidSchema }) role: string
 ): Promise<void> {
-  await this.roleHttpService.delete(roleId);
+  await this.roleHttpService.delete(role);
 }
 ```
 

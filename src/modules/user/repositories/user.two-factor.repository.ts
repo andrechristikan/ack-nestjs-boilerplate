@@ -32,15 +32,23 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     async verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult
+        { method, usedBackupCodeHash }: IAuthTwoFactorVerifyResult
     ): Promise<TwoFactor> {
         return tx.twoFactor.update({
             where: { userId },
             data: {
                 lastUsedAt: this.helperDateService.create(),
-                ...(method === EnumAuthTwoFactorMethod.backupCodes && {
-                    backupCodes: newBackupCodes,
-                }),
+                ...(method === EnumAuthTwoFactorMethod.backupCodes &&
+                    usedBackupCodeHash && {
+                        backupCodes: {
+                            updateMany: {
+                                where: { codeHash: usedBackupCodeHash },
+                                data: {
+                                    usedAt: this.helperDateService.create(),
+                                },
+                            },
+                        },
+                    }),
             },
         });
     }
@@ -84,7 +92,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 enabled: true,
                 requiredSetup: false,
                 confirmedAt: twoFactor?.confirmedAt ?? now,
-                backupCodes: backupCodesHashed,
+                backupCodes: {
+                    deleteMany: {},
+                    createMany: {
+                        data: backupCodesHashed.map(codeHash => ({
+                            codeHash,
+                        })),
+                    },
+                },
                 lastUsedAt: now,
                 updatedAt: now,
                 updatedBy: userId,
@@ -103,7 +118,9 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             data: {
                 enabled: false,
                 requiredSetup: false,
-                backupCodes: [],
+                backupCodes: {
+                    deleteMany: {},
+                },
                 lastUsedAt: now,
                 secret: null,
                 iv: null,
@@ -123,7 +140,14 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         return tx.twoFactor.update({
             where: { userId },
             data: {
-                backupCodes: backupCodesHashed,
+                backupCodes: {
+                    deleteMany: {},
+                    createMany: {
+                        data: backupCodesHashed.map(codeHash => ({
+                            codeHash,
+                        })),
+                    },
+                },
                 updatedBy: userId,
                 updatedAt: now,
             },
@@ -142,7 +166,9 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
             data: {
                 requiredSetup: true,
                 attempt: 0,
-                backupCodes: [],
+                backupCodes: {
+                    deleteMany: {},
+                },
                 secret: null,
                 iv: null,
                 updatedBy,

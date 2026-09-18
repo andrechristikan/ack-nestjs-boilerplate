@@ -12,7 +12,7 @@ export const WorkspaceDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 
@@ -32,7 +32,7 @@ export const WorkspaceMemberDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 
@@ -42,7 +42,7 @@ export const WorkspaceInviteDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 
@@ -62,7 +62,7 @@ export const WorkspaceJoinRequestDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 

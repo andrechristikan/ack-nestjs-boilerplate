@@ -183,12 +183,10 @@ export class MigrationUserSeed
                             signUpWith: EnumUserSignUpWith.credential,
                             signUpFrom: EnumUserSignUpFrom.system,
                             status: EnumUserStatus.active,
-                            termPolicy: {
-                                [EnumTermPolicyType.cookies]: false,
-                                [EnumTermPolicyType.marketing]: false,
-                                [EnumTermPolicyType.privacy]: true,
-                                [EnumTermPolicyType.termsOfService]: true,
-                            },
+                            cookiesAccepted: false,
+                            marketingAccepted: false,
+                            privacyAccepted: true,
+                            termsOfServiceAccepted: true,
                             username: user.username,
                             deletedAt: null,
                             passwordHistories: {
@@ -290,22 +288,7 @@ export class MigrationUserSeed
         this.logger.log('Removing back Users...');
 
         try {
-            await this.databaseService.client.$transaction([
-                this.databaseService.client.twoFactor.deleteMany({}),
-                this.databaseService.client.session.deleteMany({}),
-                this.databaseService.client.userMobileNumber.deleteMany({}),
-                this.databaseService.client.verification.deleteMany({}),
-                this.databaseService.client.passwordHistory.deleteMany({}),
-                this.databaseService.client.forgotPassword.deleteMany({}),
-                this.databaseService.client.activityLog.deleteMany({}),
-                this.databaseService.client.termPolicyUserAcceptance.deleteMany(
-                    {}
-                ),
-                this.databaseService.client.notificationUserSetting.deleteMany(
-                    {}
-                ),
-                this.databaseService.client.user.deleteMany({}),
-            ]);
+            await this.databaseService.client.user.deleteMany({});
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing users');
             throw error;

@@ -7,7 +7,7 @@ export const ProjectDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 
@@ -17,14 +17,14 @@ export const ProjectMemberDocParamsId: ApiParamOptions[] = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
     {
         name: 'projectMemberId',
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];
 
@@ -33,6 +33,6 @@ export const ProjectAdminListDocQueries: ApiQueryOptions[] = [
         name: 'workspaceId',
         required: false,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     },
 ];

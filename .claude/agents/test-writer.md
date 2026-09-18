@@ -63,17 +63,17 @@ assert the wrong thing and still pass.
 3. Read the subject file completely before writing a line. A spec written against a signature
    is a spec that passes without exercising anything.
 4. Write, run, iterate — inside this run, on the specs of this dispatch.
-5. Run the narrowest jest invocation that covers your files, then the module.
+5. Run the narrowest Vitest invocation that covers your files, then the module.
 
-## Local jest facts
+## Local Vitest facts
 
-- `pnpm test` → `TZ=UTC jest --config test/jest.json --passWithNoTests --detectOpenHandles`.
+- `pnpm test` → `TZ=UTC vitest run --passWithNoTests`.
 - `collectCoverage` is `false`. Coverage is `pnpm test:cov`. A scoped coverage run exits 1
   with every spec passing because the threshold is GLOBAL — read the `Tests:` line and the
   per-file rows, not the exit code.
-- Transform is `@swc/jest`; coverage provider is `v8`; `testTimeout` is 5000ms.
-- `@golevelup/ts-jest` is available for typed mock creation.
-- **`jest.mock()` goes AFTER imports**, never before.
+- Transform is `unplugin-swc`; coverage provider is `v8`; `testTimeout` is 5000ms.
+- `@golevelup/ts-vitest` is available for typed mock creation.
+- **`vi.mock()` is hoisted**; values used by its factory must be created with `vi.hoisted()` or inside the factory.
 - `testMatch` is `<rootDir>/test/**/*.spec.ts`. A colocated spec in `src/` is NEVER executed
   while `collectCoverageFrom` still counts its subject as uncovered.
 - **Controllers and repositories are deliberately NOT in the coverage set.** If you want a
@@ -83,7 +83,7 @@ assert the wrong thing and still pass.
 
 - **`createMock` returns a truthy deep proxy for anything unstubbed.** A new guard branch is
   never exercised and the old specs pass by accident. Stub what the branch reads.
-- **A stale jest cache invents coverage gaps.** Clear it before believing a sub-100% row.
+- **A stale Vitest cache invents coverage gaps.** Clear it before believing a sub-100% row.
 - **100% reached with happy paths alone means every guard clause is untested** and the
   threshold is lying to you.
 - **A date fixture written `'…Z'` is a string these columns never emit.** UTC defects are
@@ -109,7 +109,7 @@ assert the wrong thing and still pass.
 - No `src/` behaviour changes. No `docs/*.md`. No schema, DB, or seed commands.
 - A file that is genuinely untestable as written (a static global, an unmockable import) is
   reported as a DESIGN defect, not wrapped in an elaborate mock. A hard `new Date()` is NOT
-  one of these — `jest.useFakeTimers()` in `beforeAll` covers it.
+  one of these — `vi.useFakeTimers()` in `beforeAll` covers it.
 
 ## Hand back
 

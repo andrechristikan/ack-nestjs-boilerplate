@@ -19,7 +19,7 @@
         "esModuleInterop": true,
         "moduleResolution": "nodenext",
         "resolveJsonModule": true,
-        "types": ["node", "jest", "multer"],
+        "types": ["node", "multer"],
         "strict": true,
         "strictPropertyInitialization": false,
         "noUnusedLocals": true,

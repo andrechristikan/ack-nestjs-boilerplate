@@ -248,7 +248,7 @@ xApiKey: {
 **File**: `src/configs/database.config.ts`
 **Interface**: `IConfigDatabase`
 
-This configuration manages database connection settings for MongoDB.
+This configuration manages database connection settings for PostgreSQL.
 
 > **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
@@ -256,7 +256,7 @@ This configuration manages database connection settings for MongoDB.
 
 **`url`** - Database connection string
 ```typescript
-url: string                     // MongoDB connection URL
+url: string                     // PostgreSQL connection URL
 ```
 
 **`debug`** - Database debug mode

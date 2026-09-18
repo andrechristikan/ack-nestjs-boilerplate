@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { IFeatureFlagMetadata } from '@modules/feature-flag/interfaces/feature-flag.interface';
 
@@ -17,10 +16,6 @@ export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
     isEnable: z.boolean().meta({
         description: 'Feature flag status',
         example: true,
-    }),
-    targetUserIds: z.array(z.string()).meta({
-        description: 'Target user ids allow-list that bypasses rollout',
-        example: [faker.database.mongodbObjectId()],
     }),
     metadata: z
         .custom<IFeatureFlagMetadata>()

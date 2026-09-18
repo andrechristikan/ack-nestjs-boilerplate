@@ -65,7 +65,7 @@ yours to change.
 
 ## The findings that cost the most here
 
-These fail in production with `tsc`, lint, and jest all green. Check them explicitly on any scope
+These fail in production with `tsc`, lint, and Vitest all green. Check them explicitly on any scope
 that touches them:
 
 - **A guard decorator in the wrong position.** The stack in `rules/http.md` is exact and runs
@@ -129,11 +129,11 @@ signals. Their exit code means nothing: READ the output and report what it says.
 output at all. Capture the exit code and the raw output. `tsc` ABORTS on a `tsconfig.json`
 error and reports zero source errors because it type-checked nothing.
 
-**Never run `pnpm test`, `pnpm test:cov`, or any jest invocation.** Specs are `test-writer`.
+**Never run `pnpm test`, `pnpm test:cov`, or any Vitest invocation.** Specs are `test-writer`.
 
 ## The boot check (HARD)
 
-An `imports:` change is verified by BOOTING the app. Cycles never surface at `tsc` or jest.
+An `imports:` change is verified by BOOTING the app. Cycles never surface at `tsc` or Vitest.
 You boot on every dispatch, not only when `imports:` changed.
 
 ```bash
@@ -162,8 +162,7 @@ fi
 ```
 
 **If infrastructure is down, start NOTHING** — no `docker-compose up -d`, no container, no
-database. Record the boot as NOT RUN, name which service is down, and hand back. MongoDB must
-be a replica set; a standalone boots the app and then fails every transaction.
+database. Record the boot as NOT RUN, name which service is down, and hand back.
 
 **Cap the whole check at ~30 seconds.** The marker is the `NestApplication` bootstrap block
 that `src/main.ts` logs after `app.listen` — `App Environment:`, `App Name:`, `App Global
@@ -187,7 +186,7 @@ needs the `x-workspace-id` header (`rules/http.md`).
 
 ## Boundaries
 
-- No fixes, no edits, no spec, no jest.
+- No fixes, no edits, no spec, no Vitest.
 - Git stays read-only. No `lint-staged`, no format write, no staging.
 - No `docs/*.md`.
 - **Never run a seed or anything that writes a real database** — `migration:seed`,

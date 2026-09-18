@@ -5,10 +5,7 @@ import {
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
 import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumTermPolicyType,
-} from '@generated/prisma-client';
+import { EnumActivityLogAction } from '@generated/prisma-client';
 import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -80,11 +77,10 @@ export class UserImportHttpService {
             status: user.status,
             countryId: user.countryId,
             photo: user.photo?.completedUrl ?? null,
-            termPolicyTermsOfService:
-                user.termPolicy[EnumTermPolicyType.termsOfService],
-            termPolicyPrivacy: user.termPolicy[EnumTermPolicyType.privacy],
-            termPolicyCookies: user.termPolicy[EnumTermPolicyType.cookies],
-            termPolicyMarketing: user.termPolicy[EnumTermPolicyType.marketing],
+            termPolicyTermsOfService: user.termsOfServiceAccepted,
+            termPolicyPrivacy: user.privacyAccepted,
+            termPolicyCookies: user.cookiesAccepted,
+            termPolicyMarketing: user.marketingAccepted,
             role: user.role.name,
         }));
 

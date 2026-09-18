@@ -15,7 +15,7 @@ export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
 }).extend({
     userId: z.string().meta({
         description: 'User ID',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     type: z.enum(EnumNotificationType).meta({
         description: 'Notification type',

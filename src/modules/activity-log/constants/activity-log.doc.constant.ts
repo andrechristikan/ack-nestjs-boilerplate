@@ -7,7 +7,7 @@ export const ActivityLogDocQueryListByWorkspace: ApiQueryOptions[] = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
         description: 'Filter by userId',
     },
 ];

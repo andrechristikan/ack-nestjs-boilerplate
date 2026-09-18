@@ -13,8 +13,8 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
 - NestJS 12 · TypeScript strict · Node >= 24.11 · PNPM >= 10.25, pinned to `pnpm@11.25.0` ·
   **PNPM only** — `npm` and `yarn` are blocked by `engines` and by a `npx only-allow pnpm`
   preinstall guard
-- Prisma 6 + **MongoDB 8 replica set** — a replica set is required, transactions do not work
-  without one. There are NO migration files: schema shape is applied by `prisma db push`
+- Prisma 6 + **PostgreSQL 18** — schema changes use versioned Prisma Migrate files under
+  `prisma/migrations/`
 - Redis: cache on `db:0` through `CACHE_REDIS_URL`, BullMQ on `db:1` through
   `QUEUE_REDIS_URL`. BullMQ registers two connections of its own under separate config keys,
   a producer and a processor
@@ -22,7 +22,7 @@ multi-workspace, invites, join requests, workspace-scoped projects), and platfor
   (`zod` 4 + `zod-openapi`), validated through the global `RequestSchemaValidationPipe` on the way
   in and `ResponseInterceptor` on the way out; i18n through `nestjs-i18n` reading `src/languages/`
 - Pino logging, Sentry instrumentation, nest-commander seeding CLI, Vault for secrets
-- Ports: API 3000 · MongoDB 27017 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
+- Ports: API 3000 · PostgreSQL 5432 · Redis 6379 · BullBoard 3010 · JWKS 3011 · Vault 8200
 
 ## Layout
 
@@ -51,13 +51,13 @@ src/
 └── router/             # http/ mounts controllers under /public /system /admin /user /shared;
                         #   processor/ aggregates every <feature>.processor.module.ts
 
-prisma/schema.prisma    # editable; applying it to MongoDB is the owner's — see "How work happens here"
+prisma/schema.prisma    # editable; applying it to PostgreSQL is the owner's — see "How work happens here"
 generated/              # prisma client, swagger, vault init, agent reports (gitignored)
 docs/                   # durable project documentation
-test/                   # jest.json + specs mirroring src/
+test/                   # Vitest specs mirroring src/ + optional shared setup
 scripts/ · ci/ · keys/
 
-tsconfig.json           # typecheck, jest, ts-prune, editor — src + test + scripts
+tsconfig.json           # typecheck, Vitest, ts-prune, editor — src + test + scripts
 tsconfig.build.json     # nest build / nest start — src only; named by nest-cli.json
 ```
 
@@ -69,10 +69,10 @@ the most specific catch runs first.
 
 - `pnpm install` · `pnpm start:dev` · `pnpm build` · `pnpm start:prod`
 - `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
-- `pnpm test` — `TZ=UTC jest --config test/jest.json`; `pnpm test:cov` adds coverage
+- `pnpm test` — `TZ=UTC vitest run --passWithNoTests`; `pnpm test:cov` adds coverage
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
-- `pnpm db:studio` · `pnpm vault:pull`
-- `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
+- `pnpm db:generate` · `pnpm db:migrate` · `pnpm db:studio` · `pnpm vault:pull`
+- `docker-compose up -d` — PostgreSQL, Redis, BullBoard, JWKS server, Vault
 - `pre-commit` runs lint-staged → typecheck → deadcode → spell → the test suite.
   `commit-msg` runs commitlint. Both are BLOCKING.
 
@@ -91,6 +91,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 |---|---|
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
+| `ack-e2e` | write and repair E2E HTTP specs under `test/e2e/**` against the real app via Supertest, scoped to the endpoint matrix; touches no `src/` |
 | `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
 | `ack-claude-config` | rework `.claude/**`, with agents and skills disabled |
 
@@ -106,6 +107,7 @@ flowchart LR
   code --> spec["/ack-spec"]
   spec --> code
   docs --> code
+  e2e["/ack-e2e"]
   config["/ack-claude-config"]
 ```
 
@@ -129,7 +131,7 @@ review of their own. A docs-only pass is `/ack-docs`; a docs update after a code
 **A test run is always scoped to the module the work actually CHANGED** —
 `pnpm test --testPathPatterns '<module>'`. No skill except `/ack-spec` runs the full
 suite; the `pre-commit` hook runs `pnpm test` (no coverage) on every commit.
-`collectCoverage` is `false` in `test/jest.json`, so a scoped `pnpm test` does not apply the
+Vitest coverage is opt-in, so a scoped `pnpm test` does not apply the
 100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits 1 with every
 spec passing because the threshold is global — read the `Tests:` line and the per-file rows,
 not the exit code and not the global summary.
@@ -144,7 +146,7 @@ coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `explorer`, `planner`, `coder`, `seed-writer`, `reviewer`, `reviewer-e2e`, `doc-writer`,
-`test-writer`.
+`test-writer`, `e2e-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
 project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
@@ -155,7 +157,9 @@ skill's flow.** A project skill dispatches the agents in `.claude/agents/` and n
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
 work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched
-only by `/ack-spec`.
+only by `/ack-spec`. `e2e-writer` is dispatched only by `/ack-e2e`, owns
+`test/e2e/**/*.e2e-spec.ts` and `test/e2e/support/**`, and never touches `src/` or
+`test/**/*.spec.ts`.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
@@ -186,20 +190,20 @@ installs them once:
 
 ## How work happens here
 
-- **`prisma/schema.prisma` is editable; APPLYING it to MongoDB is not.** The split is what
+- **`prisma/schema.prisma` is editable; APPLYING it to PostgreSQL is not.** The split is what
   the command touches. Files only — `db:generate` (`prisma generate`), `db:format`
   (`prisma format`), `prisma validate` — are yours. Anything that opens a connection is the
   owner's and sits in the `deny` list of `.claude/settings.json`: `db:migrate`
-  (`prisma db push`), `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`,
+  (`prisma migrate dev`), `prisma db execute`, `prisma db seed`, `prisma migrate`, `migration`,
   `migration:seed`, `migration:remove`, `migration:fresh`, `node dist/migration.js`,
-  `db:studio` (`prisma studio`), and the `mongosh` / `redis-cli` shells. Edit the schema, then
+  `db:studio` (`prisma studio`), and the `redis-cli` shell. Edit the schema, then
   hand back the two commands the owner must run.
 - **The deny list matches the command as it is written.** A permission pattern is a prefix
   glob, so it sees `pnpm db:migrate` and not `PORT=1 pnpm db:migrate`, `env PORT=1 pnpm
   db:migrate` or `pnpm -s run db:migrate`. The list is the statement of what belongs to the
   owner, not a fence that holds on its own — never reach for a spelling it misses.
 - **This project starts in `bypassPermissions`.** The daily `allow` map and the `deny` /
-  `ask` lists live in `.claude/settings.json`. `deny` wins for migrate / studio / `mongosh`
+  `ask` lists live in `.claude/settings.json`. `deny` wins for migrate / studio
   / `redis-cli`. An `ask` rule prompts even under `bypassPermissions`. The VS Code and
   Cursor extensions ignore a project's `defaultMode`.
 - Coding rules live in `.claude/rules/` and are not loaded into this session.

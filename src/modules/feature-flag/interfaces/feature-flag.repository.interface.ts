@@ -18,11 +18,7 @@ export interface IFeatureFlagRepository {
     findOneById(id: string): Promise<FeatureFlag | null>;
     updateStatus(
         id: string,
-        {
-            isEnable,
-            rolloutPercent,
-            targetUserIds,
-        }: FeatureFlagUpdateStatusRequestDto
+        body: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag>;
     updateMetadata(
         id: string,

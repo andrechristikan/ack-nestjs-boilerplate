@@ -1,4 +1,4 @@
-# Database — Prisma + MongoDB
+# Database — Prisma + PostgreSQL
 
 This file is the code rule set. Flow narrative: `docs/database.md` — explorer or planner.
 
@@ -13,8 +13,8 @@ This file is the code rule set. Flow narrative: `docs/database.md` — explorer 
 - **Soft delete and restore are `client.<model>.softDelete({ where, data? })` / `restore({ where, data? })`.** They stamp `deletedAt`, `deletedBy`, and `updatedBy`; `data` carries any co-mutated business fields and nested writes, and `data.deletedAt` overrides the timestamp when a caller needs several rows to share one. `deletedBy` comes from the CLS actor, and an explicit override must originate server-side, never from a request DTO. Hard delete (`delete` / `deleteMany`) writes no audit. `restore` is the peer API when a row must come back — prefer it over hand-clearing `deletedAt`. A delete that must be atomic with other writes is `tx.<model>.softDelete(...)` inside `withTransaction`.
 - **Many rows at once cannot use `softDelete`.** There is no `softDeleteMany`. `ProjectRepository.softDeleteByWorkspace` is the reference: one `updateMany` on the model this repository owns, filtered to rows that are still live, `updatedBy` stamped by hand. Filter to live rows (`OR: <Model>ActiveFilter`) — an unfiltered `updateMany` rewrites `deletedAt` on rows deleted earlier and destroys their real deletion time. Stamp `updatedBy` by hand, since nothing else will.
 - `DatabaseModule` is global through `CommonModule` (imported once at the app root; `DatabaseModule.forRoot()` is composed inside it). A feature module does not import it.
-- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the Mongo `ObjectId` helpers. Use it rather than hand-rolling id validation.
-- **ID dialect is the repository's job.** Domain and HTTP pass `string` IDs. Mapping ObjectId versus UUID — and any Prisma engine type that comes with it — happens inside the repository class that `implements I*Repository`, never by leaking that type into a domain signature (`rules/architecture.md`).
+- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) validates and creates UUIDs and converts values to Prisma JSON input shapes. Use it rather than hand-rolling those operations.
+- **ID dialect is the repository's job.** Domain and HTTP pass `string` IDs. UUID validation and any Prisma engine type mapping stay inside the repository class that `implements I*Repository`, never in a domain signature (`rules/architecture.md`).
 
 ## Queries
 
@@ -39,7 +39,7 @@ This is the one exception to "a repository never throws a typed exception". It i
 
 ## Transactions
 
-MongoDB transactions require the replica set — that is why `docker-compose` runs one.
+PostgreSQL transactions use two forms:
 
 **Every transaction opens through `DatabaseService.withTransaction`.** That method is Prisma's interactive (callback) `$transaction`. A repository, a domain, or a seed never calls `client.$transaction` itself. Array-form `$transaction` is not used.
 
@@ -57,7 +57,7 @@ A method that runs inside that caller-owned transaction is named `*InTx` and tak
 ## Schema edits, and the push that is not yours
 
 `prisma/schema.prisma` is editable and `db:generate` is yours to run; every command that opens
-a connection to MongoDB belongs to the owner. What the hand-back must state, and the
+a connection to PostgreSQL belongs to the owner. What the hand-back must state, and the
 conventions the schema already follows, are `rules/prisma-schema.md`.
 
 Prisma-owned enums are imported from `@generated/prisma-client`, never re-declared in a module
