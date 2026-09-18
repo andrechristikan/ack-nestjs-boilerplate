@@ -1,6 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
+import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { useE2eApp } from '@test/e2e/support/app';
 import { e2ePatch, e2ePost } from '@test/e2e/support/request';
 import { withDefaultApiKey } from '@test/e2e/support/api-key';
@@ -76,7 +80,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'user',
-                statusCodeKey: 'passwordNotMatch',
+                statusCode: EnumUserStatusCodeError.passwordNotMatch,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.passwordNotMatch
+                    ],
             });
         });
 
@@ -94,7 +102,9 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'user',
-                statusCodeKey: 'notFound',
+                statusCode: EnumUserStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
             });
         });
 
@@ -113,7 +123,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });
@@ -171,7 +185,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'user',
-                statusCodeKey: 'tokenInvalid',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+                statusCodeKey:
+                    EnumUserStatusCodeError[
+                        EnumUserStatusCodeError.tokenInvalid
+                    ],
             });
         });
 
@@ -184,7 +202,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'request',
-                statusCodeKey: 'validation',
+                statusCode: EnumRequestStatusCodeError.validation,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.validation
+                    ],
             });
         });
 
@@ -198,7 +220,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });
@@ -262,7 +288,9 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'user',
-                statusCodeKey: 'notFound',
+                statusCode: EnumUserStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
             });
         });
 
@@ -275,7 +303,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'request',
-                statusCodeKey: 'validation',
+                statusCode: EnumRequestStatusCodeError.validation,
+                statusCodeKey:
+                    EnumRequestStatusCodeError[
+                        EnumRequestStatusCodeError.validation
+                    ],
             });
         });
 
@@ -289,7 +321,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });
@@ -357,7 +393,11 @@ describe('User public auth routes', () => {
             expect(replay.status).toBe(401);
             expect(replay.body).toMatchObject({
                 module: 'auth',
-                statusCodeKey: 'twoFactorChallengeInvalid',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorChallengeInvalid
+                    ],
             });
         });
 
@@ -374,7 +414,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'auth',
-                statusCodeKey: 'twoFactorChallengeInvalid',
+                statusCode: EnumAuthStatusCodeError.twoFactorChallengeInvalid,
+                statusCodeKey:
+                    EnumAuthStatusCodeError[
+                        EnumAuthStatusCodeError.twoFactorChallengeInvalid
+                    ],
             });
         });
 
@@ -392,7 +436,11 @@ describe('User public auth routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });

@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { useE2eApp } from '@test/e2e/support/app';
 import { e2eGet } from '@test/e2e/support/request';
 import { withDefaultApiKey } from '@test/e2e/support/api-key';
@@ -44,7 +45,11 @@ describe('GET /api/v1/public/term-policy/list', () => {
 
         expect(response.body).toMatchObject({
             module: 'apiKey',
-            statusCodeKey: 'xApiKeyRequired',
+            statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+            statusCodeKey:
+                EnumApiKeyStatusCodeError[
+                    EnumApiKeyStatusCodeError.xApiKeyRequired
+                ],
         });
     });
 
@@ -55,7 +60,11 @@ describe('GET /api/v1/public/term-policy/list', () => {
 
         expect(response.body).toMatchObject({
             module: 'apiKey',
-            statusCodeKey: 'xApiKeyInvalid',
+            statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+            statusCodeKey:
+                EnumApiKeyStatusCodeError[
+                    EnumApiKeyStatusCodeError.xApiKeyInvalid
+                ],
         });
     });
 });

@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { useE2eApp } from '@test/e2e/support/app';
 import { e2eGet } from '@test/e2e/support/request';
 import { withDefaultApiKey } from '@test/e2e/support/api-key';
@@ -64,7 +66,11 @@ describe('Workspace public preview routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'workspace',
-                statusCodeKey: 'notFound',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.notFound
+                    ],
             });
         });
 
@@ -76,7 +82,11 @@ describe('Workspace public preview routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });
@@ -114,7 +124,11 @@ describe('Workspace public preview routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'workspace',
-                statusCodeKey: 'inviteInvalid',
+                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
+                statusCodeKey:
+                    EnumWorkspaceStatusCodeError[
+                        EnumWorkspaceStatusCodeError.inviteInvalid
+                    ],
             });
         });
 
@@ -126,7 +140,11 @@ describe('Workspace public preview routes', () => {
 
             expect(response.body).toMatchObject({
                 module: 'apiKey',
-                statusCodeKey: 'xApiKeyRequired',
+                statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+                statusCodeKey:
+                    EnumApiKeyStatusCodeError[
+                        EnumApiKeyStatusCodeError.xApiKeyRequired
+                    ],
             });
         });
     });
