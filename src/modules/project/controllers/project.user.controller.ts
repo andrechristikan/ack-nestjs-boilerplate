@@ -1,7 +1,7 @@
 import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -338,7 +338,7 @@ export class ProjectUserController {
     async memberUpdateRole(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -367,7 +367,7 @@ export class ProjectUserController {
     async memberRemove(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(

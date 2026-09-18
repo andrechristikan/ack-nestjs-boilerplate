@@ -14,22 +14,22 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the member belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description: 'Identifier of the member user',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description: 'Embedded user of this workspace member',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {

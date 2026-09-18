@@ -34,7 +34,7 @@ export class UserMobileNumberDomain {
         const country = await this.countryDomain.getOne(countryId);
 
         const [checkValidMobileNumber, checkExist] = await Promise.all([
-            this.userUtil.checkMobileNumber(country.phoneCode, phoneCode),
+            this.userUtil.checkMobileNumber(country.phoneCodes, phoneCode),
             this.userMobileNumberRepository.existsMobileNumber(userId, {
                 number,
                 countryId: country.id,
@@ -101,7 +101,7 @@ export class UserMobileNumberDomain {
         }
 
         const checkValidMobileNumber = this.userUtil.checkMobileNumber(
-            country.phoneCode,
+            country.phoneCodes,
             phoneCode
         );
         if (!checkValidMobileNumber) {

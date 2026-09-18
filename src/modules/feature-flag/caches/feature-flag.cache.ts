@@ -1,8 +1,8 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FeatureFlag } from '@generated/prisma-client';
 import { Cache } from 'cache-manager';
 
 /** Read-through cache over the feature flag record. */
@@ -25,11 +25,15 @@ export class FeatureFlagCache {
         )!;
     }
 
-    async getCacheByKey(key: string): Promise<FeatureFlag | null> {
+    async getCacheByKey(
+        key: string
+    ): Promise<IFeatureFlagWithTargetUsers | null> {
         const cacheKey = this.keyPattern.replace('{key}', key);
         try {
             const cachedFeatureFlag =
-                await this.cacheManager.get<FeatureFlag>(cacheKey);
+                await this.cacheManager.get<IFeatureFlagWithTargetUsers>(
+                    cacheKey
+                );
             return cachedFeatureFlag ?? null;
         } catch (error: unknown) {
             this.logger.error(error, 'Feature flag cache read failed');
@@ -37,7 +41,10 @@ export class FeatureFlagCache {
         }
     }
 
-    async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
+    async setCacheByKey(
+        key: string,
+        featureFlag: IFeatureFlagWithTargetUsers
+    ): Promise<void> {
         const cacheKey = this.keyPattern.replace('{key}', key);
         try {
             await this.cacheManager.set(
@@ -60,7 +67,9 @@ export class FeatureFlagCache {
     }
 
     /** Read-through cache: returns the cached flag or loads from the repository and caches it. */
-    async getByKeyAndCache(key: string): Promise<FeatureFlag | null> {
+    async getByKeyAndCache(
+        key: string
+    ): Promise<IFeatureFlagWithTargetUsers | null> {
         const cached = await this.getCacheByKey(key);
         if (cached) {
             return cached;

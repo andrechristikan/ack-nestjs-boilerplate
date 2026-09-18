@@ -314,7 +314,10 @@ export class UserLoginDomain {
                 await this.userTwoFactorRepository.increaseTwoFactorAttempt(
                     user.id
                 );
-            user.twoFactor = attempted;
+            user.twoFactor = {
+                ...attempted,
+                backupCodes: user.twoFactor!.backupCodes,
+            };
 
             if (this.authTwoFactorDomain.checkAttempt(user)) {
                 await this.authCache.lockTwoFactorAttempt(user);

@@ -1,7 +1,7 @@
 import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePaging,
@@ -96,7 +96,7 @@ export class FeatureFlagAdminController {
     @RequestThrottle({ user: true })
     @Patch('/update/:featureFlagId/status')
     async updateStatus(
-        @Param('featureFlagId', { schema: RequestMongoIdSchema })
+        @Param('featureFlagId', { schema: RequestUuidSchema })
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateStatusRequestSchema })
         body: FeatureFlagUpdateStatusRequestDto
@@ -123,7 +123,7 @@ export class FeatureFlagAdminController {
     @RequestThrottle({ user: true })
     @Put('/update/:featureFlagId/metadata')
     async update(
-        @Param('featureFlagId', { schema: RequestMongoIdSchema })
+        @Param('featureFlagId', { schema: RequestUuidSchema })
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateMetadataRequestSchema })
         body: FeatureFlagUpdateMetadataRequestDto

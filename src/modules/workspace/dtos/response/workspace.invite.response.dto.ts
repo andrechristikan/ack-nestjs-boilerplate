@@ -16,7 +16,7 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the invite belongs to',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     email: z.string().meta({
         description: 'Email address the invite is sent to',
@@ -28,7 +28,7 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
     }),
     projectId: z.string().nullable().meta({
         description: 'Identifier of the project the invite also grants, if any',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     projectRole: z.enum(EnumProjectMemberRole).nullable().meta({
         description: 'Project role granted when the invite is accepted, if any',
@@ -46,9 +46,10 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
         description: 'Current status of the invite',
         example: EnumWorkspaceInviteStatus.pending,
     }),
-    invitedByUserId: z.string().meta({
-        description: 'Identifier of the user who sent the invite',
-        example: faker.database.mongodbObjectId(),
+    invitedByUserId: z.string().nullable().meta({
+        description:
+            'Identifier of the user who sent the invite; null once that user is deleted',
+        example: faker.string.uuid(),
     }),
     acceptedAt: z.date().nullable().meta({
         description: 'When the invite was accepted',
@@ -56,7 +57,7 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
     }),
     acceptedByUserId: z.string().nullable().meta({
         description: 'Identifier of the user who accepted the invite',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

@@ -17,7 +17,7 @@ This project aligns with the [Twelve-Factor App][ref-12factor] methodology.
 | Codebase | Single repo, one codebase tracked in Git, multiple deploys via env |
 | Dependencies | All dependencies declared in `package.json`, enforced with PNPM lockfile |
 | Config | All configuration via environment variables, validated at startup via `AppEnvSchema` |
-| Backing Services | MongoDB, Redis, AWS S3/SES, Firebase; treated as attached resources via env config |
+| Backing Services | PostgreSQL, Redis, AWS S3/SES, Firebase — treated as attached resources via env config |
 | Build, Release, Run | Build (`pnpm build`) is strictly separated from runtime |
 | Processes | Stateless app processes; session and cache state stored in Redis, not in-memory |
 | Port Binding | App self-contained via NestJS HTTP server, port exposed via `HTTP_PORT` env |
@@ -57,19 +57,19 @@ Install and configure the project.
 
 ### Core
 
-5. [Database][ref-doc-database]; Prisma + MongoDB replica set, transactions, and the Database Module
-6. [Authentication][ref-doc-authentication]; JWT (ES256/ES512), session lifecycle, API key auth
-7. [Authorization][ref-doc-authorization]; `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
-8. [Device][ref-doc-device]; Device fingerprinting, `DeviceOwnership`, max 1 session per device
-9. [Response][ref-doc-response]; Standardized response decorators, pagination response, file download
-10. [Request Validation][ref-doc-request-validation]; `RequestSchemaValidationPipe`, zod request schemas, body and path validation
-11. [Handling Error][ref-doc-handling-error]; Exception filters, standardized HTTP error responses, i18n errors
-12. [Status Codes][ref-doc-status-codes]; Full catalog of application statusCode values by module
-13. [Message][ref-doc-message]; i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
-14. [Cache][ref-doc-cache]; Redis caching with shared `RedisCacheModule`, TTL strategy
-15. [Queue][ref-doc-queue]; BullMQ background jobs, `QueueProcessorBase`, retry/backoff
-16. [Logger][ref-doc-logger]; Pino logging, file rotation, sensitive data redaction, Sentry integration
-17. [Security and Middleware][ref-doc-security-and-middleware]; HTTP middleware layer, headers, rate limiting
+5. [Database][ref-doc-database] — Prisma + PostgreSQL, migrations, transactions, and the Database Module
+6. [Authentication][ref-doc-authentication] — JWT (ES256/ES512), session lifecycle, API key auth
+7. [Authorization][ref-doc-authorization] — `UserProtected`, `RoleProtected`, `PolicyProtected`, `TermPolicyAcceptanceProtected`, `WorkspaceProtected`, `ProjectProtected`
+8. [Device][ref-doc-device] — Device fingerprinting, `DeviceOwnership`, max 1 session per device
+9. [Response][ref-doc-response] — Standardized response decorators, pagination response, file download
+10. [Request Validation][ref-doc-request-validation] — `RequestSchemaValidationPipe`, zod request schemas, body and path validation
+11. [Handling Error][ref-doc-handling-error] — Exception filters, standardized HTTP error responses, i18n errors
+12. [Status Codes][ref-doc-status-codes] — Full catalog of application statusCode values by module
+13. [Message][ref-doc-message] — i18n with `nestjs-i18n`, nested JSON message files in `src/languages/`
+14. [Cache][ref-doc-cache] — Redis caching with shared `RedisCacheModule`, TTL strategy
+15. [Queue][ref-doc-queue] — BullMQ background jobs, `QueueProcessorBase`, retry/backoff
+16. [Logger][ref-doc-logger] — Pino logging, file rotation, sensitive data redaction, Sentry integration
+17. [Security and Middleware][ref-doc-security-and-middleware] — HTTP middleware layer, headers, rate limiting
 
 ### Advanced
 

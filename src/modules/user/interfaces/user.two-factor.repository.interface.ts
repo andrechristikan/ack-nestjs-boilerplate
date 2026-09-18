@@ -11,7 +11,7 @@ export interface IUserTwoFactorRepository {
     verifyTwoFactorInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        { method, newBackupCodes }: IAuthTwoFactorVerifyResult
+        { method, usedBackupCodeHash }: IAuthTwoFactorVerifyResult
     ): Promise<TwoFactor>;
     setupTwoFactorInTx(
         tx: IDatabaseTransactionClient,

@@ -49,7 +49,7 @@ The module covers four things: the workspace itself and its membership roles, in
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | `String` | ObjectId |
+| `id` | `String` | UUIDv7, `@db.Uuid`, database-generated |
 | `name` | `String` | |
 | `slug` | `String` | Globally unique |
 | `description` | `String?` | |
@@ -62,11 +62,11 @@ The module covers four things: the workspace itself and its membership roles, in
 
 ### `WorkspaceMember` (`WorkspaceMembers`)
 
-`workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`, plus the audit columns. `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete.
+`workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`, plus the audit columns. `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete. The row is also deleted with its workspace or its user (see the delete-behaviour table in `database.md`).
 
 ### `WorkspaceInvite` (`WorkspaceInvites`)
 
-`workspaceId`, `email`, `workspaceRole`, optional `projectId` + `projectRole`, `token`, `reference`, `expiredAt`, `status`, `invitedByUserId`, `acceptedAt`, `acceptedByUserId`. `@@unique([token])` and `@@unique([reference])`.
+`workspaceId`, `email`, `workspaceRole`, optional `projectId` + `projectRole`, `token`, `reference`, `expiredAt`, `status`, `invitedByUserId`, `acceptedAt`, `acceptedByUserId`. `@@unique([token])` and `@@unique([reference])`. `invitedByUserId` is nullable, and both it and `acceptedByUserId` are set to null when the referenced user is physically deleted. A preview of an invite with no inviter shows the workspace name as `inviterName`.
 
 **`token` stores the SHA-256 hash, never the plain token.** The plain token exists only in the invite link that is emailed; a lookup hashes the incoming token and matches on that.
 
@@ -84,7 +84,7 @@ The module covers four things: the workspace itself and its membership roles, in
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
 | `EnumWorkspaceInviteExpiry` | `threeDays` (3), `sevenDays` (7), `twoWeeks` (14), `oneMonth` (30) |
 
-**Active filter.** `WorkspaceActiveFilter` is `[{ deletedAt: null }, { deletedAt: { isSet: false } }]`. Prisma's MongoDB connector compiles a bare `{ deletedAt: null }` into a query that also requires the field to be present, silently excluding rows written before the field existed. Every active-only read uses the `OR` form.
+**Active filter.** `WorkspaceActiveFilter` is `{ deletedAt: null }`. Every active-only read spreads it into its `where`.
 
 ## Selecting the Active Workspace
 

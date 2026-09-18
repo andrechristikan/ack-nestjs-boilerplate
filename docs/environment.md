@@ -95,7 +95,7 @@ URL_VERSIONING_ENABLE=true
 URL_VERSION=1
 
 # Database
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 DATABASE_DEBUG=true
 
 # JWT Authentication
@@ -347,13 +347,13 @@ URL_VERSION=1
 ### Database Settings
 
 **`DATABASE_URL`** *(required)*  
-MongoDB connection string. Must include replica set for transactions.
+PostgreSQL connection string.
 ```bash
-# Local MongoDB with replica set
-DATABASE_URL=mongodb://localhost:27017/ACKNestJs?retryWrites=true&w=majority&replicaSet=rs0
+# Local PostgreSQL
+DATABASE_URL=postgresql://ack:ack_password@localhost:5432/ACKNestJs?schema=public
 
-# MongoDB Atlas example
-# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ACKNestJs
+# Remote PostgreSQL example
+# DATABASE_URL=postgresql://username:password@db.example.com:5432/ACKNestJs?schema=public
 ```
 
 **`DATABASE_DEBUG`** *(required)*  

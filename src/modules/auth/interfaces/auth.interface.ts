@@ -99,7 +99,7 @@ export interface IAuthTwoFactorVerify {
 export interface IAuthTwoFactorVerifyResult {
     isValid: boolean;
     method: EnumAuthTwoFactorMethod;
-    newBackupCodes?: string[];
+    usedBackupCodeHash?: string;
 }
 
 export interface IAuthTwoFactorSetup {

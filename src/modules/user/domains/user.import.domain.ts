@@ -25,6 +25,7 @@ import { UserUsernameContainBadWordException } from '@modules/user/exceptions/us
 import {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserExport,
     IUserImportPrepared,
     IUserImportRow,
 } from '@modules/user/interfaces/user.interface';
@@ -183,7 +184,7 @@ export class UserImportDomain {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IUser[]> {
+    ): Promise<IUserExport[]> {
         const users = await this.userRepository.findExport(
             status ?? null,
             roleId ?? null,

@@ -49,7 +49,7 @@ Admin reads and writes ACROSS every workspace — that is what the scope means. 
 Worse, it opens an IDOR the guard cannot see: when an admin route ALSO takes a `:workspaceId` (or `:projectId`) path param, the guard validates the header value while the query reads the path value. Two sources of truth for one request — the caller passes a workspace they belong to in the header and any other workspace's id in the path.
 
 - Admin scoping is `@RoleProtected(...)` plus `@PolicyProtected({...})`, and nothing else.
-- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `{ schema: RequestMongoIdSchema }` — never from the header.
+- An admin route that must be narrowed to one workspace or project takes it as an EXPLICIT `:workspaceId` / `:projectId` **path param**, validated with `RequestUuidSchema` — never from the header.
 - The header (`x-workspace-id`) belongs to the `user` and `shared` scopes only, where `@WorkspaceProtected()` + `@WorkspaceMemberProtected()` are the correct gate and the only source of truth for the request.
 
 ### `@RoleProtected` never lists `superAdmin` (HARD)
@@ -87,28 +87,26 @@ Write the roles that are actually checked — for a platform admin route that is
 - Route params are camelCase and EXPLICIT: `@Get('/get/:userId')` with `@Param('userId')`. Never a bare `:id` — it goes ambiguous the moment a route nests two of them, and the ambiguity is invisible until someone reads the wrong one.
 - **Three places must agree or it fails at RUNTIME with `tsc` green:** the route template, the `@Param('…')` key, and the `name` in the Swagger param constant. A mismatch between the first two makes the param silently `undefined`.
 - A body field MUST NOT duplicate a path param. The path is authoritative.
-### Path and query params bind a zod schema (HARD)
+### UUID params use request schemas (HARD)
 
-A path or query value is validated by the same `RequestSchemaValidationPipe` as a body. Bind the
-schema on the decorator; do not add a custom pipe for ObjectId or presence checks.
+A route or query parameter carrying a persisted row id uses `RequestUuidSchema` in the binding:
 
 ```typescript
-@Param('workspaceId', { schema: RequestMongoIdSchema })
+@Param('workspaceId', { schema: RequestUuidSchema })
 workspaceId: string
+```
 
-@Query('workspaceId', { schema: RequestMongoIdSchema.optional() })
+Optional UUID filters use `.optional()` on the same schema:
+
+```typescript
+@Query('workspaceId', { schema: RequestUuidSchema.optional() })
 workspaceId?: string
 
 @Param('inviteToken', { schema: RequestRequiredStringSchema })
 inviteToken: string
 ```
 
-- **Required ObjectId** — `RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`).
-- **Optional ObjectId query** — `RequestMongoIdSchema.optional()`. An optional ObjectId with no
-  schema is a defect: the raw string reaches Prisma and a malformed value returns 500 instead of
-  400.
-- **Required non-ObjectId string** (token, slug) — `RequestRequiredStringSchema`.
-- **Language code** — `RequestMessageLanguageSchema` where that is the contract.
+A param that is not a UUID, such as a token or language code, uses the schema for its own shape.
 - Shared schemas live under `src/common/request/validations/`. Module-specific ones live under
   `<module>/validations/` (`rules/validation.md`).
 - File upload presence stays on `FileRequiredPipe()` and the other file pipes (`rules/file.md`).

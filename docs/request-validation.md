@@ -116,22 +116,31 @@ A path param is validated by a zod schema bound on `@Param`, the same way a body
 ```typescript
 @Get('/get/:user')
 findOne(
-  @Param('user', { schema: RequestMongoIdSchema }) user: string
+  @Param('user', { schema: RequestUuidSchema }) user: string
 ) {
   return this.userHttpService.get(user);
 }
 ```
 
-`RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
-
-```typescript
-@Query('userId', { schema: RequestMongoIdSchema.optional() })
-userId?: string
-```
-
 ### Query Parameters
 
-Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
+Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema:
+
+```typescript
+@Get('/list')
+async list(
+  @PaginationOffsetQuery({
+    availableSearch: ProjectDefaultAvailableSearch,
+    availableOrderBy: ProjectDefaultAvailableOrderBy,
+  })
+  pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
+  @Query('workspaceId', { schema: RequestUuidSchema.optional() })
+  workspaceId?: string
+) {
+  return this.projectHttpService.getListForAdmin(pagination, workspaceId);
+}
+```
+
 ## Schema Shape
 
 - **A root request schema is `z.strictObject`**, so an unknown key is a validation error rather than a silently dropped one.
@@ -217,8 +226,15 @@ A module-specific check goes in that module's `validations/` folder instead.
 
 Shared param schemas:
 
-- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
+- `RequestUuidSchema` — UUID path and query parameters
 - `RequestRequiredStringSchema` — non-empty string
+
+```typescript
+@Get(':userId')
+findOne(@Param('userId', { schema: RequestUuidSchema }) userId: string) {
+  return this.userService.findById(userId);
+}
+```
 
 ## File Validation Pipes
 

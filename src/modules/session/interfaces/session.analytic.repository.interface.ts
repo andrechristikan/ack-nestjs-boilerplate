@@ -1,6 +1,10 @@
 import { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { GeoLocation, Prisma, UserAgent } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client';
 import { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 
 export interface ISessionAnalyticSessionRow {
@@ -8,8 +12,8 @@ export interface ISessionAnalyticSessionRow {
     userId: string;
     ipAddress: string | null;
     createdAt: Date;
-    geoLocation: GeoLocation | null;
-    userAgent: UserAgent;
+    geoLocation: IRequestGeoLocation | null;
+    userAgent: IRequestUserAgent;
 }
 
 export interface ISessionAnalyticUserCount {

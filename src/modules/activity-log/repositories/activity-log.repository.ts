@@ -19,9 +19,9 @@ import { IDatabaseTransactionClient } from '@common/database/interfaces/database
 
 @Injectable()
 export class ActivityLogRepository implements IActivityLogRepository {
-    private readonly userScopedFilter: NonNullable<
-        Prisma.ActivityLogWhereInput['OR']
-    > = [{ workspaceId: null }, { workspaceId: { isSet: false } }];
+    private readonly userScopedFilter: Prisma.ActivityLogWhereInput = {
+        workspaceId: null,
+    };
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -34,11 +34,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         where?: Prisma.ActivityLogWhereInput
     ): Prisma.ActivityLogWhereInput {
         return {
-            AND: [
-                ...(where ? [where] : []),
-                { userId },
-                { OR: this.userScopedFilter },
-            ],
+            AND: [...(where ? [where] : []), { userId }, this.userScopedFilter],
         };
     }
 
@@ -161,10 +157,11 @@ export class ActivityLogRepository implements IActivityLogRepository {
                 userAgent: this.databaseUtil.toPlainObject(userAgent),
                 geoLocation: this.databaseUtil.toPlainObject(geoLocation),
                 description,
-                metadata:
-                    Object.keys(metadata).length > 0
-                        ? (metadata as Prisma.InputJsonValue)
-                        : null,
+                metadata: this.databaseUtil.toPlainObject(
+                    metadata && Object.keys(metadata).length > 0
+                        ? metadata
+                        : null
+                ),
                 createdBy: userId,
             })
         );

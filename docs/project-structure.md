@@ -85,7 +85,7 @@ i18n JSON, one folder per locale. It contains:
 
 **Location:** `src/migration/`
 
-The migration folder seeds initial data. MongoDB has no migration files; the schema shape is applied by `pnpm db:migrate` (`prisma db push`). It includes:
+The migration folder seeds initial data. PostgreSQL schema migrations live under `prisma/migrations/*`; `src/migration/` contains the application seed commands. It includes:
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
 - Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
@@ -281,12 +281,12 @@ Below are explanations for the root folders and files outside `src/`:
 - **.github/**: GitHub-specific configuration including Actions workflows, issue and pull request templates, and Dependabot settings.
 - **.husky/**: Git hooks for enforcing code quality checks (e.g., commit message linting) before commits.
 - **.vscode/**: Shared editor settings, tasks, launch configurations, and recommended extensions.
-- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, the MongoDB replica-set entrypoint, and the Vault bootstrap scripts and policies.
+- **ci/**: Dockerfiles (`dockerfile`, `dockerfile.local`), the JWKS server nginx config, and the Vault bootstrap scripts and policies.
 - **docs/**: Project documentation, including architecture, features, and usage guides.
 - **generated/**: Auto-generated output: the Prisma client (`prisma-client/`), the Swagger JSON (`swagger.json`), the Vault init material (`vault/`), and agent reports (`docs/`). Not tracked by git.
 - **keys/**: Stores public/private keys and JWKS files for authentication and security. Not tracked by git.
 - **logs/**: Directory for application logs. Not tracked by git.
-- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
+- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema, plus PostgreSQL migration files under `prisma/migrations/*`.
 - **scripts/**: Utility scripts for tasks like key generation.
 - **test/**: Jest configuration (`jest.json`). The spec suite is meant to mirror `src/`, but no spec files are committed, so `pnpm test` passes through `--passWithNoTests`.
 
@@ -314,7 +314,6 @@ Below are explanations for the root folders and files outside `src/`:
 - **CODE_OF_CONDUCT.md**: Community code of conduct.
 - **SECURITY.md**: Supported versions and vulnerability reporting process.
 - **LICENSE.md**: Project license.
-
 
 
 
