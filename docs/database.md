@@ -39,6 +39,7 @@ Prisma + PostgreSQL, transactions, seeds, and the Database Module.
 	- [Client Access Surface](#client-access-surface)
 	- [Automatic Actor Stamping](#automatic-actor-stamping)
 	- [Soft Delete and Restore](#soft-delete-and-restore)
+	- [Delete Behaviour of Foreign Keys](#delete-behaviour-of-foreign-keys)
 - [Generated Unique Values](#generated-unique-values)
 - [Docker](#docker)
 - [Database Tools](#database-tools)
@@ -547,6 +548,18 @@ The extension adds two methods to every model. They are meaningful only on model
 - A hard delete (`delete` / `deleteMany`) writes no audit fields.
 
 **Reads are not filtered.** The extension only writes audit fields; it never rewrites a `where`. Excluding soft-deleted rows stays explicit, so a read against a soft-deletable model carries `deletedAt: null` itself. An automatic read filter is deliberately not applied: `PaginationService` counts through `repository.count()`, which such a filter would leave unfiltered, making a page and its total disagree.
+
+### Delete Behaviour of Foreign Keys
+
+A physical delete follows the `onDelete` action declared on each relation in `prisma/schema.prisma`. Soft delete (`deletedAt`) fires no foreign-key action.
+
+| Action | Relations |
+|---|---|
+| `Cascade` | Every required foreign key under `User` (`UserMobileNumber`, `Verification`, `PasswordHistory`, `ActivityLog`, `Session`, `DeviceOwnership`, `TwoFactor`, `TermPolicyUserAcceptance`, `ForgotPassword`, `Notification`, `NotificationUserSetting`, `WorkspaceMember`, `WorkspaceJoinRequest`, `ProjectMember`); `Session.deviceOwnership`; `DeviceOwnership.device`; `NotificationDelivery.notification`; `Verification.mobileNumber`; `ActivityLog.workspace`; `WorkspaceMember`, `WorkspaceJoinRequest`, `WorkspaceInvite` and `Project` to `Workspace`; `WorkspaceInvite.project`; `ProjectMember` to `Project` |
+| `SetNull` | `Session.revokedBy`, `DeviceOwnership.revokedBy`, `WorkspaceInvite.invitedBy` (nullable), `WorkspaceInvite.acceptedBy`, `WorkspaceJoinRequest.reviewedBy`, `User.lastWorkspace` |
+| `Restrict` | `User.role`, `User.country`, `UserMobileNumber.country`, `TermPolicyUserAcceptance.termPolicy` |
+
+Deleting a `User` row therefore removes its sessions, device ownerships, two-factor rows, verifications, password history, notifications, term policy acceptances, workspace and project memberships, and activity log rows, and nulls the actor references other rows hold to it. Deleting a `Workspace` row removes its members, join requests, invites, projects (and their members), and workspace-scoped activity log rows. `migration:remove` for `user` and `workspace` is one `deleteMany` each and relies on this.
 
 ## Generated Unique Values
 

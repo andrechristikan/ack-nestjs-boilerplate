@@ -491,7 +491,9 @@ export class WorkspaceInviteDomain {
 
         const [workspace, inviter] = await Promise.all([
             this.workspaceRepository.findActiveById(invite.workspaceId),
-            this.userDomain.getNameById(invite.invitedByUserId),
+            invite.invitedByUserId
+                ? this.userDomain.getNameById(invite.invitedByUserId)
+                : null,
         ]);
         if (!workspace) {
             throw new WorkspaceInviteInvalidException();
