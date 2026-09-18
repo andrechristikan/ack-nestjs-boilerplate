@@ -8,8 +8,8 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
+import { DeviceOwnershipDocParamsId } from '@modules/device/constants/device.doc.constant';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
 import { applyDecorators } from '@nestjs/common';

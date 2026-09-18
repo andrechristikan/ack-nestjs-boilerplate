@@ -41,7 +41,8 @@ export class ApiKeyCredentialUtil {
      * Generates a fresh key/secret pair plus the hash to persist.
      */
     generateCredential(key?: string): IApiKeyGenerateCredential {
-        key = key ?? this.createKey();
+        const generatedKey = this.createKey();
+        key = key ?? generatedKey;
         const secret = this.createSecret();
         const hash: string = this.createHash(key, secret);
 

@@ -1,6 +1,6 @@
 # Device Documentation
 
-This documentation explains the features and usage of **Device Module**: Located at `src/modules/device`
+Device lives in `src/modules/device`.
 
 ## Overview
 

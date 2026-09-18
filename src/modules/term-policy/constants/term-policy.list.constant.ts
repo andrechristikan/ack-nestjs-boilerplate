@@ -8,11 +8,13 @@ import {
  * @public
  */
 export const TermPolicyDefaultStatus = Object.values(EnumTermPolicyStatus);
+
 /**
  * Term-policy types the term-policy list filters accept.
  * @public
  */
 export const TermPolicyDefaultType = Object.values(EnumTermPolicyType);
+
 /**
  * Sort fields the admin offset and public cursor term-policy lists accept. `version` is written
  * at create and never updated; `publishedAt` is written only when a draft is published, and the
@@ -20,6 +22,7 @@ export const TermPolicyDefaultType = Object.values(EnumTermPolicyType);
  * @public
  */
 export const TermPolicyDefaultAvailableOrderBy = ['publishedAt', 'version'];
+
 /**
  * Sort fields the term-policy acceptance list accepts.
  * @public

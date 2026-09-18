@@ -112,12 +112,13 @@ export class TermPolicyAcceptanceDomain {
                 }),
             ];
             await this.databaseService.withTransaction(async tx => {
+                const acceptedAt = this.helperDateService.create();
                 await this.termPolicyRepository.acceptInTx(
                     tx,
                     user.id,
                     policy.id,
                     user.id,
-                    this.helperDateService.create()
+                    acceptedAt
                 );
                 await this.userDomain.acceptTermPolicyInTx(tx, user.id, type);
             });

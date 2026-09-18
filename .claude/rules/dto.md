@@ -48,7 +48,11 @@ export type UserUpdateProfileRequestDto = z.infer<
   what a signature is annotated with.
 - **A request schema is `z.strictObject`; a response schema is `z.object`.** An unknown key
   entering is a caller error and is rejected; an undeclared key leaving is stripped, which is
-  what makes the response fail closed.
+  what makes the response fail closed. Neither is ever a top-level `z.array` or `z.record`: an
+  array declares nothing to strip at its root, and a record declares nothing at all. A payload
+  that is a LIST is a paginated route (`@ResponsePaging`, `rules/pagination.md`), whose schema
+  is the row — the one shape that is a whole collection in a single response is the one nothing
+  grows: a fixed enum's members, and even that carries its rows inside a declared object.
 - Compose with the zod combinators rather than restating fields: `.extend()`, `.omit()`,
   `.pick()`, `.partial()`, `.nullable()`. A base shape such as `DatabaseResponseSchema` or a
   module's own base request schema is extended, not copied.

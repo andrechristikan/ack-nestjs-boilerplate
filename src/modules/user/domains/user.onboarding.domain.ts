@@ -3,7 +3,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import {
     EnumUserCreateMode,
     EnumUserSignUpWorkspaceContextType,
@@ -75,15 +75,21 @@ export class UserOnboardingDomain {
     buildPersonalWorkspaceContexts(
         usernames: string[]
     ): IUserSignUpWorkspacePersonal[] {
-        return usernames.map(username => ({
-            type: EnumUserSignUpWorkspaceContextType.personal,
-            workspaceId: this.databaseUtil.createId(),
-            slugCandidates: this.drawWorkspaceSlugCandidates(),
-            name: this.personalWorkspaceNamePattern.replace(
+        return usernames.map(username => {
+            const workspaceId = this.databaseUtil.createId();
+            const slugCandidates = this.drawWorkspaceSlugCandidates();
+            const name = this.personalWorkspaceNamePattern.replace(
                 '{username}',
-                username
-            ),
-        }));
+                () => username
+            );
+
+            return {
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId,
+                slugCandidates,
+                name,
+            };
+        });
     }
 
     buildOnboardingActivities(
@@ -96,7 +102,7 @@ export class UserOnboardingDomain {
             logsVerificationEmailRequest,
             personalWorkspaceAction,
             logsActingAdmin,
-        } = UserCreateModeRules[mode];
+        } = UserCreateContract[mode];
         const { userId, createdBy, workspaceContext } = input;
         const activities: IUserOnboardingActivity[] = [
             {

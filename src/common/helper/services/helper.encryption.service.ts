@@ -63,9 +63,10 @@ export class HelperEncryptionService {
 
         const salt = randomBytes(HelperEncryptionSaltLengthInBytes);
         const iv = randomBytes(HelperEncryptionIvLengthInBytes);
+        const derivedKey = this.deriveKey(secretKey, salt, purpose);
         const cipher = createCipheriv(
             HelperEncryptionAlgorithm,
-            this.deriveKey(secretKey, salt, purpose),
+            derivedKey,
             iv,
             { authTagLength: HelperEncryptionAuthTagLengthInBytes }
         );
@@ -115,9 +116,10 @@ export class HelperEncryptionService {
         }
 
         try {
+            const derivedKey = this.deriveKey(secretKey, salt, purpose);
             const decipher = createDecipheriv(
                 HelperEncryptionAlgorithm,
-                this.deriveKey(secretKey, salt, purpose),
+                derivedKey,
                 iv,
                 { authTagLength: HelperEncryptionAuthTagLengthInBytes }
             );

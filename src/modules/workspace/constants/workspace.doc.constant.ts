@@ -1,9 +1,9 @@
-import { faker } from '@faker-js/faker';
 import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceJoinRequestStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
+import { faker } from '@faker-js/faker';
 import type { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 /**

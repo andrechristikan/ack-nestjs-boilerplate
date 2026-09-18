@@ -16,7 +16,7 @@ import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member.repository.interface';
+import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -108,12 +108,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.offset<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,
@@ -130,12 +136,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.cursor<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,

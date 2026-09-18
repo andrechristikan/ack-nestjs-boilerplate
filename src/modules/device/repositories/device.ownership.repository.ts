@@ -16,7 +16,7 @@ import type {
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { IDeviceOwnershipRepository } from '@modules/device/interfaces/device.ownership.repository.interface';
+import type { IDeviceOwnershipRepository } from '@modules/device/interfaces/device.ownership-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -121,6 +121,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         removedBy: string,
         now: Date
     ): Promise<IDeviceOwnership> {
+        const ownershipInclude = this.ownershipInclude(now);
+
         return tx.deviceOwnership.update({
             where: {
                 id: deviceOwnershipId,
@@ -135,7 +137,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                     },
                 },
             },
-            include: this.ownershipInclude(now),
+            include: ownershipInclude,
         });
     }
 
@@ -264,6 +266,9 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                         id: sessionId,
                     },
                     take: 1,
+                    select: {
+                        id: true,
+                    },
                 },
             },
         });

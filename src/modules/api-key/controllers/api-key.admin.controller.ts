@@ -14,7 +14,7 @@ import {
     PaginationQueryFilterEqualBoolean,
     PaginationQueryFilterInEnum,
 } from '@common/pagination/decorators/pagination.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -63,6 +63,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
@@ -103,7 +104,7 @@ export class ApiKeyAdminController {
         isActive?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterInEnum<EnumApiKeyType>('type', ApiKeyDefaultType)
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKey>> {
+    ): Promise<IResponsePagingReturn<IApiKeyList>> {
         return this.apiKeyHttpService.getListByAdmin(
             pagination,
             isActive,

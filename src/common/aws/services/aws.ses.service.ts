@@ -76,7 +76,8 @@ export class AwsSESService implements OnModuleInit {
     }
 
     async checkConnection(): Promise<boolean> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -99,7 +100,8 @@ export class AwsSESService implements OnModuleInit {
     async listTemplates(
         nextToken?: string
     ): Promise<ListTemplatesCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -126,7 +128,8 @@ export class AwsSESService implements OnModuleInit {
     async getTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<GetTemplateCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -155,7 +158,8 @@ export class AwsSESService implements OnModuleInit {
         htmlBody,
         plainTextBody,
     }: IAwsSESTemplate): Promise<CreateTemplateCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -190,7 +194,8 @@ export class AwsSESService implements OnModuleInit {
         htmlBody,
         plainTextBody,
     }: IAwsSESTemplate): Promise<UpdateTemplateCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -222,7 +227,8 @@ export class AwsSESService implements OnModuleInit {
     async deleteTemplate({
         name,
     }: IAwsSESGetTemplate): Promise<DeleteTemplateCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -251,7 +257,8 @@ export class AwsSESService implements OnModuleInit {
         templateName,
         templateData,
     }: IAwsSESSend): Promise<SendTemplatedEmailCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -293,7 +300,8 @@ export class AwsSESService implements OnModuleInit {
         templateName,
         defaultTemplateData,
     }: IAwsSESSendBulk): Promise<SendBulkTemplatedEmailCommandOutput> {
-        if (!this.isInitialized()) {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );

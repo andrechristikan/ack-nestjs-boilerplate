@@ -12,9 +12,15 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite.repository.interface';
-import type { IWorkspaceInviteCreateData } from '@modules/workspace/interfaces/workspace.interface';
+import {
+    WorkspaceActiveFilter,
+    WorkspaceInviteUserListSelect,
+} from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
+import type {
+    IWorkspaceInviteCreateData,
+    IWorkspaceInviteList,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -113,9 +119,9 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IPaginationCursorReturn<WorkspaceInvite>> {
+    ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor<
-            WorkspaceInvite,
+            IWorkspaceInviteList,
             Prisma.WorkspaceInviteWhereInput
         >(this.databaseService.client.workspaceInvite, {
             ...others,
@@ -124,6 +130,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 ...(status ?? {}),
                 workspaceId,
             },
+            select: WorkspaceInviteUserListSelect,
         });
     }
 

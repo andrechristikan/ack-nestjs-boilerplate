@@ -37,21 +37,28 @@ export class ResponseMetadataService {
     create(): ResponseMetadataDto {
         const today = this.helperDateService.create();
 
+        const storedLanguage = this.requestStoreService.get<string>(
+            RequestLanguageStoreKey
+        ) as EnumMessageLanguage;
+        const timestamp = this.helperDateService.getTimestamp(today);
+        const timezone = this.helperDateService.getZone(today);
+        const storedVersion = this.requestStoreService.get<string>(
+            RequestVersionStoreKey
+        );
+        const requestId =
+            this.requestStoreService.get<string>(RequestIdStoreKey)!;
+        const correlationId = this.requestStoreService.get<string>(
+            RequestCorrelationIdStoreKey
+        )!;
+
         return {
-            language:
-                (this.requestStoreService.get<string>(
-                    RequestLanguageStoreKey
-                ) as EnumMessageLanguage) ?? this.defaultLanguage,
-            timestamp: this.helperDateService.getTimestamp(today),
-            timezone: this.helperDateService.getZone(today),
-            version:
-                this.requestStoreService.get<string>(RequestVersionStoreKey) ??
-                this.urlVersion,
+            language: storedLanguage ?? this.defaultLanguage,
+            timestamp,
+            timezone,
+            version: storedVersion ?? this.urlVersion,
             repoVersion: this.repoVersion,
-            requestId: this.requestStoreService.get<string>(RequestIdStoreKey)!,
-            correlationId: this.requestStoreService.get<string>(
-                RequestCorrelationIdStoreKey
-            )!,
+            requestId,
+            correlationId,
         };
     }
 

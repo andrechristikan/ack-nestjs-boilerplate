@@ -8,8 +8,8 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc';
 import { NotificationDefaultAvailableOrderBy } from '@modules/notification/constants/notification.list.constant';
+import { NotificationDocParamsId } from '@modules/notification/constants/notification.doc.constant';
 import { NotificationResponseSchema } from '@modules/notification/dtos/response/notification.response.dto';
 import type { NotificationResponseDto } from '@modules/notification/dtos/response/notification.response.dto';
 import { NotificationUserSettingResponseSchema } from '@modules/notification/dtos/response/notification.user-setting.response.dto';

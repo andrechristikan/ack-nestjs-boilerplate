@@ -21,9 +21,15 @@ export class AuthSocialDomain {
             'auth.apple.signInClientId'
         )!;
 
+        const googleClientId = this.configService.get<string>(
+            'auth.google.clientId'
+        )!;
+        const googleClientSecret = this.configService.get<string>(
+            'auth.google.clientSecret'
+        )!;
         this.googleClient = new OAuth2Client(
-            this.configService.get<string>('auth.google.clientId')!,
-            this.configService.get<string>('auth.google.clientSecret')!
+            googleClientId,
+            googleClientSecret
         );
     }
 

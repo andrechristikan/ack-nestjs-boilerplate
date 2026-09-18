@@ -56,6 +56,10 @@ export class NotificationSecurityDomain {
             notificationId,
         };
 
+        const passwordExpiredAt = this.helperDateService.createFromIso(
+            data.passwordExpiredAt
+        );
+
         const promises = [
             this.notificationRepository.create(
                 EnumNotificationKind.temporaryPasswordByAdmin,
@@ -64,9 +68,7 @@ export class NotificationSecurityDomain {
                     userId: user.id,
                     metadata: {
                         username: user.username,
-                        passwordExpiredAt: this.helperDateService.createFromIso(
-                            data.passwordExpiredAt
-                        ),
+                        passwordExpiredAt,
                     },
                     createdBy: proceedBy,
                 }
@@ -87,15 +89,15 @@ export class NotificationSecurityDomain {
                 username: user.username,
             };
 
-            promises.push(
+            const pushSent =
                 this.notificationPushQueue.sendTemporaryPasswordByAdmin(
                     pushPayload,
                     {
                         passwordCreatedAt: data.passwordCreatedAt,
                         passwordExpiredAt: data.passwordExpiredAt,
                     }
-                )
-            );
+                );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -220,9 +222,9 @@ export class NotificationSecurityDomain {
                 username: user.username,
             };
 
-            promises.push(
-                this.notificationPushQueue.sendResetPassword(pushPayload)
-            );
+            const pushSent =
+                this.notificationPushQueue.sendResetPassword(pushPayload);
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -277,11 +279,11 @@ export class NotificationSecurityDomain {
                 username: user.username,
             };
 
-            promises.push(
+            const pushSent =
                 this.notificationPushQueue.sendResetTwoFactorByAdmin(
                     pushPayload
-                )
-            );
+                );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -322,6 +324,8 @@ export class NotificationSecurityDomain {
             data.requestLog.geoLocation
         );
 
+        const loginAt = this.helperDateService.createFromIso(data.loginAt);
+
         const promises = [
             this.notificationRepository.create(
                 EnumNotificationKind.newDeviceLogin,
@@ -334,9 +338,7 @@ export class NotificationSecurityDomain {
                         loginWith: data.loginWith,
                         device,
                         city,
-                        loginAt: this.helperDateService.createFromIso(
-                            data.loginAt
-                        ),
+                        loginAt,
                     },
                     createdBy: user.id,
                 }
@@ -354,9 +356,11 @@ export class NotificationSecurityDomain {
                 username: user.username,
             };
 
-            promises.push(
-                this.notificationPushQueue.sendNewDeviceLogin(pushPayload, data)
+            const pushSent = this.notificationPushQueue.sendNewDeviceLogin(
+                pushPayload,
+                data
             );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);

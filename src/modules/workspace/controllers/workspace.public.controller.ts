@@ -1,4 +1,4 @@
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { Response } from '@common/response/decorators/response.decorator';

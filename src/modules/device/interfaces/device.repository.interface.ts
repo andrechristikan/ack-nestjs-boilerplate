@@ -1,9 +1,9 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
+import type {
+    Device,
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Device } from '@generated/prisma-client/client';
 import type {
     IDeviceIdentity,
     IDeviceRefresh,

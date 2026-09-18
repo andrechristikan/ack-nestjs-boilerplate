@@ -46,7 +46,10 @@ export class AuthCache {
         cachePayload: IAuthTwoFactorChallengeCache
     ): Promise<IAuthTwoFactorChallenge> {
         const challengeToken = this.helperStringService.random(48);
-        const key = this.challengeKeyPattern.replace('{token}', challengeToken);
+        const key = this.challengeKeyPattern.replace(
+            '{token}',
+            () => challengeToken
+        );
         await this.cacheManager.set<IAuthTwoFactorChallengeCache>(
             key,
             cachePayload,
@@ -59,7 +62,7 @@ export class AuthCache {
     async getChallenge(
         token: string
     ): Promise<IAuthTwoFactorChallengeCache | null> {
-        const key = this.challengeKeyPattern.replace('{token}', token);
+        const key = this.challengeKeyPattern.replace('{token}', () => token);
         const cached =
             await this.cacheManager.get<IAuthTwoFactorChallengeCache>(key);
 
@@ -67,7 +70,7 @@ export class AuthCache {
     }
 
     async clearChallenge(token: string): Promise<void> {
-        const key = this.challengeKeyPattern.replace('{token}', token);
+        const key = this.challengeKeyPattern.replace('{token}', () => token);
         try {
             await this.cacheManager.del(key);
         } catch (error: unknown) {
@@ -80,7 +83,7 @@ export class AuthCache {
 
     /** Locks 2FA in cache with exponential backoff TTL `2^(attempt/maxAttempt) * lockAttemptDurationInMs` to throttle brute force. */
     async lockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
         const ttlExponentialInMs =
             Math.pow(2, (user.twoFactor?.attempt ?? 0) / this.maxAttempt) *
             this.lockAttemptDurationInMs;
@@ -93,7 +96,7 @@ export class AuthCache {
 
     /** Returns the remaining 2FA lock duration in ms, or 0 when not locked. */
     async getLockTwoFactorAttempt(user: IUser): Promise<number> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
         const [isLocked, retryAfterMs] = await Promise.all([
             this.cacheManager.get<boolean>(key),
             this.cacheManager.ttl(key),
@@ -103,7 +106,7 @@ export class AuthCache {
     }
 
     async clearLockTwoFactorAttempt(user: IUser): Promise<void> {
-        const key = this.lockKeyPattern.replace('{userId}', user.id);
+        const key = this.lockKeyPattern.replace('{userId}', () => user.id);
         try {
             await this.cacheManager.del(key);
         } catch (error: unknown) {

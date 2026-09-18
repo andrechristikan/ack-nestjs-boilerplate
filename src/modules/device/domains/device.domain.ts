@@ -264,15 +264,16 @@ export class DeviceDomain {
                         userId,
                         now
                     );
+                    const metadata = this.deviceUtil.mapActivityLogMetadata(
+                        row,
+                        sessions.length
+                    );
                     const prepared = [
                         this.activityLogDomain.prepare({
                             action: EnumActivityLogAction.userRemoveDevice,
                             userId,
                             createdBy: userId,
-                            metadata: this.deviceUtil.mapActivityLogMetadata(
-                                row,
-                                sessions.length
-                            ),
+                            metadata,
                         }),
                     ];
 
@@ -335,30 +336,32 @@ export class DeviceDomain {
                         removedBy,
                         now
                     );
+                    const actorMetadata =
+                        this.deviceUtil.mapActivityLogActorMetadata(
+                            row,
+                            sessions.length
+                        );
                     const prepared = [
                         this.activityLogDomain.prepare({
                             action: EnumActivityLogAction.adminDeviceRemove,
-                            metadata:
-                                this.deviceUtil.mapActivityLogActorMetadata(
-                                    row,
-                                    sessions.length
-                                ),
+                            metadata: actorMetadata,
                         }),
                     ];
                     if (userId !== removedBy) {
-                        prepared.push(
+                        const targetMetadata =
+                            this.deviceUtil.mapActivityLogTargetMetadata(
+                                row,
+                                removedBy,
+                                sessions.length
+                            );
+                        const removedByAdminEvent =
                             this.activityLogDomain.prepare({
                                 action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                                 userId,
                                 createdBy: removedBy,
-                                metadata:
-                                    this.deviceUtil.mapActivityLogTargetMetadata(
-                                        row,
-                                        removedBy,
-                                        sessions.length
-                                    ),
-                            })
-                        );
+                                metadata: targetMetadata,
+                            });
+                        prepared.push(removedByAdminEvent);
                     }
 
                     return { revokedSessions: sessions, events: prepared };

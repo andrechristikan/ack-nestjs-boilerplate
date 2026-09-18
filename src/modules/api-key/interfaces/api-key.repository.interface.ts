@@ -9,6 +9,7 @@ import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/a
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 
 export interface IApiKeyRepository {
     findWithPagination(
@@ -18,7 +19,7 @@ export interface IApiKeyRepository {
         }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKey>>;
+    ): Promise<IResponsePagingReturn<IApiKeyList>>;
     create(
         apiKeyId: string,
         { name, type, startAt, endAt }: ApiKeyCreateRequestDto,

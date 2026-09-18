@@ -50,10 +50,14 @@ export class MigrationApiKeySeed
 
         const rows = this.apiKeys.map(apiKey => {
             const key = this.apiKeyCredentialUtil.createKey(apiKey.key);
+            const hash = this.apiKeyCredentialUtil.createHash(
+                key,
+                apiKey.secret
+            );
 
             return {
                 key,
-                hash: this.apiKeyCredentialUtil.createHash(key, apiKey.secret),
+                hash,
                 type: apiKey.type,
                 name: apiKey.name,
             };
@@ -99,13 +103,15 @@ export class MigrationApiKeySeed
 
         try {
             await this.databaseService.client.apiKey.deleteMany({});
-            await Promise.all(
-                this.apiKeys.map(apiKey =>
-                    this.apiKeyCache.deleteCacheByKey(
-                        this.apiKeyCredentialUtil.createKey(apiKey.key)
-                    )
-                )
-            );
+
+            const deletions = this.apiKeys.map(apiKey => {
+                const cacheKey = this.apiKeyCredentialUtil.createKey(
+                    apiKey.key
+                );
+
+                return this.apiKeyCache.deleteCacheByKey(cacheKey);
+            });
+            await Promise.all(deletions);
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing Api Keys');
             throw error;

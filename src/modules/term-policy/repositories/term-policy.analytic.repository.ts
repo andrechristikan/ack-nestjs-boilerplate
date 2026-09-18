@@ -1,5 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import type { ITermPolicyAnalyticRepository } from '@modules/term-policy/interfaces/term-policy.analytic.repository.interface';
+import type { ITermPolicyAnalyticRepository } from '@modules/term-policy/interfaces/term-policy.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
 

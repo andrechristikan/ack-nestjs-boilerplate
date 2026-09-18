@@ -1,23 +1,28 @@
 import {
     SetMetadata,
     UseGuards,
+    UseInterceptors,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
 import {
     RequestCustomTimeoutMetaKey,
     RequestCustomTimeoutValueMetaKey,
     RequestEnvMetaKey,
     RequestLogStoreKey,
+    RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
+import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { RequestStorePipe } from '@common/request/pipes/request.store.pipe';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
     IRequestLog,
-    IRequestStoreParam,
+    IRequestThrottleOptions,
 } from '@common/request/interfaces/request.interface';
+import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
 
 /**
  * Overrides the global request timeout for a route.
@@ -43,68 +48,81 @@ export function RequestEnvProtected(
     );
 }
 
-const RequestStoreParam = createParamDecorator<
-    IRequestStoreParam,
-    IRequestStoreParam
->((param: IRequestStoreParam): IRequestStoreParam => param);
-
 /**
- * Reads a request-store value, or one of its fields, and fails fast when the store holds nothing.
+ * Switches on the `route` and `user` throttle limiters for one endpoint.
  * @public
  */
-export function RequestStore(
-    storeKey: string,
-    field?: string
-): ParameterDecorator {
-    return RequestStoreParam(
-        { storeKey, field: field ?? null, nullable: false },
-        RequestStorePipe
+export function RequestThrottle(
+    options: IRequestThrottleOptions
+): MethodDecorator {
+    return applyDecorators(
+        SetMetadata(RequestThrottleOptionsMetaKey, options),
+        UseInterceptors(RequestThrottleUserInterceptor)
     );
 }
 
 /**
- * Reads a request-store value, or one of its fields, and yields null when the store holds nothing.
+ * Reads the client IP resolved once per request into the request-log store; throws when it is unresolved.
  * @public
  */
-export function RequestStoreNullable(
-    storeKey: string,
-    field?: string
-): ParameterDecorator {
-    return RequestStoreParam(
-        { storeKey, field: field ?? null, nullable: true },
-        RequestStorePipe
-    );
-}
+export const RequestIPAddress = createParamDecorator((): string => {
+    const requestLog = ClsServiceManager.getClsService().get<
+        IRequestLog | undefined
+    >(RequestLogStoreKey);
+    if (requestLog === undefined || requestLog === null) {
+        throw new RequestContextMissingException(RequestLogStoreKey);
+    }
+
+    const { ipAddress } = requestLog;
+    if (ipAddress === undefined || ipAddress === null) {
+        throw new RequestContextMissingException(
+            `${RequestLogStoreKey}.ipAddress`
+        );
+    }
+
+    return ipAddress;
+});
 
 /**
- * Reads the client IP, or null, from the request-log store.
+ * Reads the user agent parsed once per request into the request-log store; throws when it is absent.
  * @public
  */
-export function RequestIPAddress(): ParameterDecorator {
-    return RequestStore(
-        RequestLogStoreKey,
-        'ipAddress' satisfies Extract<keyof IRequestLog, string>
-    );
-}
+export const RequestUserAgent = createParamDecorator((): UserAgent => {
+    const requestLog = ClsServiceManager.getClsService().get<
+        IRequestLog | undefined
+    >(RequestLogStoreKey);
+    if (requestLog === undefined || requestLog === null) {
+        throw new RequestContextMissingException(RequestLogStoreKey);
+    }
+
+    const { userAgent } = requestLog;
+    if (userAgent === undefined || userAgent === null) {
+        throw new RequestContextMissingException(
+            `${RequestLogStoreKey}.userAgent`
+        );
+    }
+
+    return userAgent;
+});
 
 /**
- * Reads the parsed user agent from the request-log store.
+ * Reads the IP-derived geolocation resolved once per request into the request-log store; throws when it is unresolved.
  * @public
  */
-export function RequestUserAgent(): ParameterDecorator {
-    return RequestStore(
-        RequestLogStoreKey,
-        'userAgent' satisfies Extract<keyof IRequestLog, string>
-    );
-}
+export const RequestGeoLocation = createParamDecorator((): GeoLocation => {
+    const requestLog = ClsServiceManager.getClsService().get<
+        IRequestLog | undefined
+    >(RequestLogStoreKey);
+    if (requestLog === undefined || requestLog === null) {
+        throw new RequestContextMissingException(RequestLogStoreKey);
+    }
 
-/**
- * Reads the IP-derived geolocation, or null, from the request-log store.
- * @public
- */
-export function RequestGeoLocation(): ParameterDecorator {
-    return RequestStore(
-        RequestLogStoreKey,
-        'geoLocation' satisfies Extract<keyof IRequestLog, string>
-    );
-}
+    const { geoLocation } = requestLog;
+    if (geoLocation === undefined || geoLocation === null) {
+        throw new RequestContextMissingException(
+            `${RequestLogStoreKey}.geoLocation`
+        );
+    }
+
+    return geoLocation;
+});

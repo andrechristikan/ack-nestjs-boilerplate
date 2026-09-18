@@ -12,6 +12,7 @@ import {
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserVerificationDomain } from '@modules/user/domains/user.verification.domain';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,13 +22,12 @@ import {
     EnumNotificationType,
     EnumPasswordHistoryType,
     EnumTermPolicyStatus,
-    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-    Prisma,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
@@ -75,80 +75,52 @@ export class MigrationUserSeed
         this.logger.log('Seeding Users...');
         this.logger.log(`Found ${this.users.length} Users to seed.`);
 
-        const uniqueRoles = this.helperArrayService.unique(
-            this.users.map(user => user.role)
-        );
-        const roles = await this.databaseService.client.role.findMany({
-            where: {
-                name: {
-                    in: uniqueRoles,
-                },
-            },
-            select: {
-                id: true,
-                name: true,
-            },
-        });
+        const roleNames = this.users.map(user => user.role);
+        const uniqueRoles = this.helperArrayService.unique(roleNames);
+        const countryCodes = this.users.map(user => user.country);
+        const uniqueCountries = this.helperArrayService.unique(countryCodes);
+        const emails = this.users.map(user => user.email.toLowerCase());
+
+        const [roles, countries, termPolicies, existingUsers] =
+            await Promise.all([
+                this.databaseService.client.role.findMany({
+                    where: { name: { in: uniqueRoles } },
+                    select: { id: true, name: true },
+                }),
+                this.databaseService.client.country.findMany({
+                    where: { alpha2Code: { in: uniqueCountries } },
+                    select: { id: true, alpha2Code: true },
+                }),
+                this.databaseService.client.termPolicy.findMany({
+                    where: {
+                        type: { in: [...UserTermPolicyContract.requiredTypes] },
+                        status: EnumTermPolicyStatus.published,
+                    },
+                    select: { id: true, type: true },
+                }),
+                this.databaseService.client.user.findMany({
+                    where: { email: { in: emails } },
+                    select: { id: true, email: true },
+                }),
+            ]);
 
         if (roles.length !== uniqueRoles.length) {
             this.logger.warn('Roles not found for users, cannot seed.');
             return;
         }
 
-        const uniqueCountries = this.helperArrayService.unique(
-            this.users.map(user => user.country)
-        );
-        const countries = await this.databaseService.client.country.findMany({
-            where: {
-                alpha2Code: {
-                    in: uniqueCountries,
-                },
-            },
-            select: {
-                id: true,
-                alpha2Code: true,
-            },
-        });
-
         if (countries.length !== uniqueCountries.length) {
             this.logger.error('Countries not found for users, cannot seed.');
             return;
         }
 
-        const termPolicies =
-            await this.databaseService.client.termPolicy.findMany({
-                where: {
-                    type: {
-                        in: [
-                            EnumTermPolicyType.termsOfService,
-                            EnumTermPolicyType.privacy,
-                        ],
-                    },
-                    status: EnumTermPolicyStatus.published,
-                },
-                select: {
-                    id: true,
-                    type: true,
-                },
-            });
-
-        if (termPolicies.length !== 2) {
+        const requiredTermPolicyCount =
+            UserTermPolicyContract.requiredTypes.length;
+        if (termPolicies.length !== requiredTermPolicyCount) {
             this.logger.error('TermPolicies not found for users, cannot seed.');
             return;
         }
 
-        const emails = this.users.map(user => user.email.toLowerCase());
-        const existingUsers = await this.databaseService.client.user.findMany({
-            where: {
-                email: {
-                    in: emails,
-                },
-            },
-            select: {
-                id: true,
-                email: true,
-            },
-        });
         const superAdminEmails = this.users
             .filter(user => user.id === MigrationUserSuperAdminId)
             .map(user => user.email.toLowerCase());
@@ -181,26 +153,40 @@ export class MigrationUserSeed
 
             const rows = this.users.map(user => {
                 const email = user.email.toLowerCase();
-                const userId = user.id ?? this.databaseUtil.createId();
-                const createdActivity =
-                    userId === MigrationUserSuperAdminId
-                        ? this.activityLogUtil.buildCreateManyUserData(
-                              MigrationUserSuperAdminId,
-                              null,
-                              EnumActivityLogAction.userCreated,
-                              requestLog,
-                              {}
-                          )
-                        : this.activityLogUtil.buildCreateManyUserData(
-                              MigrationUserSuperAdminId,
-                              null,
-                              EnumActivityLogAction.userCreatedByAdmin,
-                              requestLog,
-                              {
-                                  actorUserId: MigrationUserSuperAdminId,
-                                  timestamp: today,
-                              }
-                          );
+                const generatedUserId = this.databaseUtil.createId();
+                const userId = user.id ?? generatedUserId;
+
+                let createdActivity: Prisma.ActivityLogCreateManyUserInput;
+                if (userId === MigrationUserSuperAdminId) {
+                    createdActivity =
+                        this.activityLogUtil.buildCreateManyUserData(
+                            MigrationUserSuperAdminId,
+                            null,
+                            EnumActivityLogAction.userCreated,
+                            requestLog,
+                            {}
+                        );
+                } else {
+                    createdActivity =
+                        this.activityLogUtil.buildCreateManyUserData(
+                            MigrationUserSuperAdminId,
+                            null,
+                            EnumActivityLogAction.userCreatedByAdmin,
+                            requestLog,
+                            {
+                                actorUserId: MigrationUserSuperAdminId,
+                                timestamp: today,
+                            }
+                        );
+                }
+
+                const password = this.authPasswordUtil.createPassword(
+                    user.password
+                );
+                const verification =
+                    this.userVerificationDomain.verificationCreateVerification(
+                        EnumVerificationType.email
+                    );
 
                 return {
                     user,
@@ -210,13 +196,8 @@ export class MigrationUserSeed
                         country => country.alpha2Code === user.country
                     )!.id,
                     roleId: roles.find(role => role.name === user.role)!.id,
-                    password: this.authPasswordUtil.createPassword(
-                        user.password
-                    ),
-                    verification:
-                        this.userVerificationDomain.verificationCreateVerification(
-                            EnumVerificationType.email
-                        ),
+                    password,
+                    verification,
                     activityLogs: [
                         createdActivity,
                         this.activityLogUtil.buildCreateManyUserData(
@@ -243,20 +224,25 @@ export class MigrationUserSeed
                 .filter(
                     row => row.isNew && row.userId !== MigrationUserSuperAdminId
                 )
-                .map(row => ({
-                    userId: MigrationUserSuperAdminId,
-                    ...this.activityLogUtil.buildCreateManyUserData(
-                        MigrationUserSuperAdminId,
-                        null,
-                        EnumActivityLogAction.adminUserCreate,
-                        requestLog,
-                        {
-                            targetUserId: row.userId,
-                            targetUsername: row.user.username,
-                            timestamp: today,
-                        }
-                    ),
-                }));
+                .map(row => {
+                    const adminCreateData =
+                        this.activityLogUtil.buildCreateManyUserData(
+                            MigrationUserSuperAdminId,
+                            null,
+                            EnumActivityLogAction.adminUserCreate,
+                            requestLog,
+                            {
+                                targetUserId: row.userId,
+                                targetUsername: row.user.username,
+                                timestamp: today,
+                            }
+                        );
+
+                    return {
+                        userId: MigrationUserSuperAdminId,
+                        ...adminCreateData,
+                    };
+                });
 
             await this.databaseService.withTransaction(
                 async tx => {
@@ -289,10 +275,7 @@ export class MigrationUserSeed
                                 signUpFrom: EnumUserSignUpFrom.system,
                                 status: EnumUserStatus.active,
                                 termPolicy: {
-                                    [EnumTermPolicyType.cookies]: false,
-                                    [EnumTermPolicyType.marketing]: false,
-                                    [EnumTermPolicyType.privacy]: true,
-                                    [EnumTermPolicyType.termsOfService]: true,
+                                    ...UserTermPolicyContract.defaults,
                                 },
                                 username: row.user.username,
                                 deletedAt: null,

@@ -3,11 +3,13 @@
  * @public
  */
 export const AuthJwtAccessGuardKey = 'JwtAccess';
+
 /**
  * Passport strategy name of the JWT refresh-token guard.
  * @public
  */
 export const AuthJwtRefreshGuardKey = 'JwtRefresh';
+
 /**
  * Request-store key holding the verified JWT payload.
  * @public

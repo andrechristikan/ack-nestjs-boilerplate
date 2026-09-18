@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { INotificationUserSettingUpdate } from '@modules/notification/interfaces/notification.interface';
-import type { INotificationUserSettingRepository } from '@modules/notification/interfaces/notification.user-setting.repository.interface';
+import type { INotificationUserSettingRepository } from '@modules/notification/interfaces/notification.user-setting-repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,

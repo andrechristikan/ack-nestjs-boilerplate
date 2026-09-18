@@ -13,7 +13,7 @@ import type {
     NotificationUserSetting,
 } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
-import { NotificationSettingUpdateAllowedCombinations } from '@modules/notification/constants/notification.constant';
+import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
@@ -114,7 +114,7 @@ export class NotificationDomain {
         type: EnumNotificationType,
         channel: EnumNotificationChannel
     ): void {
-        const validType = NotificationSettingUpdateAllowedCombinations.find(
+        const validType = NotificationSettingContract.find(
             e => e.type === type
         );
 

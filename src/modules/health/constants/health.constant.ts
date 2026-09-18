@@ -3,6 +3,7 @@
  * @public
  */
 export const HealthCacheControlHeaderName = 'Cache-Control';
+
 /**
  * Value of the health endpoints' no-cache header.
  * @public

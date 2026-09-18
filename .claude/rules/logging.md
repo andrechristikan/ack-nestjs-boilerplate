@@ -93,4 +93,5 @@ produces two records of one failure with different context.
 
 A spec asserting on a log call or a `console` call is asserting on the one thing that is
 allowed to change freely. Never mock the logger to spy it; never assert `toHaveBeenCalled`
-on it (`rules/testing-spec-style.md`).
+on it (`rules/testing-spec-style.md`). The suite mutes Nest `Logger` in `test/setup.ts` by
+assigning no-ops onto the class (instance and static) and onto `ConsoleLogger.prototype`.

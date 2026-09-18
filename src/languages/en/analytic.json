@@ -30,7 +30,7 @@
     "authTwoFactorAdoption": "Two-factor adoption metrics retrieved successfully.",
     "authTwoFactorAdminReset": "Two-factor admin reset metrics retrieved successfully.",
     "authTwoFactorVerifySuccess": "Two-factor verify success metrics retrieved successfully.",
-    "authBackupCodeRegen": "Backup-code regeneration metrics retrieved successfully.",
+    "authBackupCodeRegeneration": "Backup-code regeneration metrics retrieved successfully.",
     "authTwoFactorAttempt": "Two-factor attempt snapshot retrieved successfully.",
     "devicesRegistration": "Device registration metrics retrieved successfully.",
     "devicesPlatform": "Device platform distribution retrieved successfully.",

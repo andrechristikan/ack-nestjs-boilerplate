@@ -7,7 +7,7 @@ import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member.repository.interface';
+import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

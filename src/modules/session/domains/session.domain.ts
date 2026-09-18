@@ -15,6 +15,7 @@ import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/au
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
     ISession,
+    ISessionList,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
@@ -39,7 +40,7 @@ export class SessionDomain {
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
@@ -50,7 +51,7 @@ export class SessionDomain {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.sessionRepository.findActiveWithPaginationCursor(
             userId,
             pagination
@@ -185,28 +186,30 @@ export class SessionDomain {
         const session = await this.validateActive(userId, sessionId);
 
         const revokedAt = this.helperDateService.create();
+        const actorMetadata = this.sessionUtil.mapActivityLogActorMetadata(
+            session,
+            revokedAt
+        );
         const events = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.adminSessionRevoke,
-                metadata: this.sessionUtil.mapActivityLogActorMetadata(
-                    session,
-                    revokedAt
-                ),
+                metadata: actorMetadata,
             }),
         ];
         if (userId !== revokedBy) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                    userId,
-                    createdBy: revokedBy,
-                    metadata: this.sessionUtil.mapActivityLogTargetMetadata(
-                        session,
-                        revokedBy,
-                        revokedAt
-                    ),
-                })
-            );
+            const targetMetadata =
+                this.sessionUtil.mapActivityLogTargetMetadata(
+                    session,
+                    revokedBy,
+                    revokedAt
+                );
+            const revokedByAdminEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                userId,
+                createdBy: revokedBy,
+                metadata: targetMetadata,
+            });
+            events.push(revokedByAdminEvent);
         }
 
         const isRevoked = await this.sessionRepository.revokeByAdmin(
@@ -270,17 +273,16 @@ export class SessionDomain {
             }),
         ];
         if (userId !== revokedBy) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                    userId,
-                    createdBy: revokedBy,
-                    metadata: {
-                        actorUserId: revokedBy,
-                        sessionCount,
-                    },
-                })
-            );
+            const revokedAllByAdminEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                userId,
+                createdBy: revokedBy,
+                metadata: {
+                    actorUserId: revokedBy,
+                    sessionCount,
+                },
+            });
+            events.push(revokedAllByAdminEvent);
         }
 
         return events;

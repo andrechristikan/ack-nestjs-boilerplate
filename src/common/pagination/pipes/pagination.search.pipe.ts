@@ -57,10 +57,10 @@ export function PaginationSearchPipe(
                 return this.carryForward(value);
             }
 
-            return {
-                ...this.carryForward(value),
-                where: this.buildSearchObject(search, availableSearch),
-            };
+            const carriedQuery = this.carryForward(value);
+            const where = this.buildSearchObject(search, availableSearch);
+
+            return { ...carriedQuery, where };
         }
     }
 

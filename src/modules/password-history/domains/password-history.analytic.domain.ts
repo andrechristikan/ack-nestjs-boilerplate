@@ -1,4 +1,4 @@
-import type { IPasswordHistoryAnalyticRow } from '@modules/password-history/interfaces/password-history.analytic.repository.interface';
+import type { IPasswordHistoryAnalytic } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryAnalyticRepository } from '@modules/password-history/repositories/password-history.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
@@ -25,7 +25,7 @@ export class PasswordHistoryAnalyticDomain {
         type: EnumPasswordHistoryType,
         startDate: Date,
         endDate: Date
-    ): Promise<IPasswordHistoryAnalyticRow[]> {
+    ): Promise<IPasswordHistoryAnalytic[]> {
         return this.passwordHistoryAnalyticRepository.findByTypeInRange(
             type,
             startDate,

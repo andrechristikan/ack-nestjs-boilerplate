@@ -1,10 +1,10 @@
 # Analytic Documentation
 
-This documentation covers the **Analytic Module** at `src/modules/analytic`.
+Analytic lives at `src/modules/analytic`.
 
 ## Overview
 
-Analytic serves dashboard numbers for platform admins and metrics for the caller's current workspace. Aggregation is live (A1): each request computes from owner data, then Redis `AnalyticCache` stores the result under keys and TTLs from `src/configs/analytic.config.ts`.
+Analytic serves dashboard numbers for platform admins and metrics for the caller's current workspace. Aggregation is live: each request computes from owner data, then Redis `AnalyticCache` stores the result under keys and TTLs from `src/configs/analytic.config.ts`.
 
 The module orchestrates only. Owner features expose `*AnalyticDomain` / `*AnalyticRepository` pairs; Analytic injects those domains and never opens foreign Prisma models. That boundary is `rules/cross-module.md`.
 
@@ -97,28 +97,33 @@ flowchart LR
 
 ### Admin
 
-Mounted under `/admin`. Controllers:
-
-| Controller | Path prefix | Surface |
-|---|---|---|
-| `AnalyticDashboardAdminController` | `/analytic` | Live dashboard metrics (users, auth, devices, API keys, term policies, workspaces, projects) |
-| `AnalyticAnomalyAdminController` | `/analytic/anomaly` | Anomaly summary per signal; matching `/list` for offset-paginated detail |
-| `AnalyticFraudAdminController` | `/analytic/fraud` | Fraud summary per signal; matching `/list`; `GET /risk-score/:userId` and `GET /risk-scores` |
+Mounted under `/admin`. One controller, `AnalyticAdminController` (`analytic.admin.controller.ts`), path `/analytic`. Dashboard metrics sit at `/analytic/*`. Anomaly reports sit at `/analytic/anomaly/*` (summary per signal, matching `/list` for offset-paginated detail). Fraud reports sit at `/analytic/fraud/*` (summary per signal, matching `/list`, plus `GET /risk-score/:userId` and `GET /risk-scores`).
 
 Admin guard stack on these routes: `@ApiKeyProtected`, `@AuthJwtAccessProtected`, `@UserProtected`, `@RoleProtected(EnumRoleType.admin)`, `@PolicyProtected({ subject: EnumPolicySubject.analytic, action: [EnumPolicyAction.read] })`, `@TermPolicyAcceptanceProtected`, plus `@RequestThrottle({ user: true })`. Admin scope carries no workspace header. Guard order and admin scope: `rules/http.md`, `rules/security.md`.
 
-Anomaly and fraud detail lists use offset pagination (`@PaginationOffsetQuery`, `@ResponsePaging`). Pagination rules: `rules/pagination.md`.
+Anomaly and fraud detail lists, and `GET /fraud/risk-scores`, use offset pagination (`@PaginationOffsetQuery`, `@ResponsePaging`) with `AnalyticDefaultAvailableOrderBy` (`createdAt`, `id`) as the order-by allow-list. Three dashboard distributions are offset-paginated as well, with a bare `@PaginationOffsetQuery()`: `GET /analytic/workspaces/membership`, `GET /analytic/workspaces/activity-volume`, and `GET /analytic/projects/membership`. Pagination rules: `rules/pagination.md`.
+
+A signal that the database cannot group and page in one query computes its rows, slices `[skip, skip + limit)`, and builds the envelope with `PaginationService.offsetPage`, so `page` is 1-based and `totalPage` counts the whole computed set. Page metadata: [Pagination](pagination.md).
 
 ### User (current workspace)
 
-Mounted under `/user`. Both controllers use path `/analytic` and resolve the workspace from `x-workspace-id` only.
+Mounted under `/user`. `AnalyticUserController` uses path `/analytic` and resolves the workspace from `x-workspace-id` only.
 
-| Controller | Routes | Membership |
-|---|---|---|
-| `AnalyticUserController` | `GET /workspace/summary` | any workspace member |
-| `AnalyticUserAdminController` | `GET /workspace/invite-funnel`, `/workspace/join-outcomes`, `/workspace/member-roles`, `/workspace/activity` | workspace `admin` (owner short-circuits as elsewhere) |
+| Route | Membership |
+|---|---|
+| `GET /workspace/summary` | any workspace member |
+| `GET /workspace/invite-funnel` | workspace `admin` (owner short-circuits as elsewhere) |
+| `GET /workspace/join-outcomes` | workspace `admin` |
+| `GET /workspace/member-roles` | workspace `admin` |
+| `GET /workspace/activity` | workspace `admin` |
 
 User stack includes `@FeatureFlagProtected('workspace')`, `@WorkspaceProtected`, `@WorkspaceMemberProtected` (with role where required), and `@TermPolicyAcceptanceProtected`. These routes do not use `PolicyProtected` or `EnumPolicySubject.analytic`.
+
+### Response shapes and Swagger
+
+Every route declares its payload shape on `@Response` or `@ResponsePaging`, and those schemas live in `src/modules/analytic/dtos/response/`. Each one is an object at the top level. The five distributions over a fixed enum take no pagination and send their rows as a named array field inside it: admin `GET /analytic/workspaces/invite-funnel` and `/analytic/workspaces/join-outcomes` and user `GET /analytic/workspace/invite-funnel` and `/analytic/workspace/join-outcomes` carry `AnalyticStatusCountResponseSchema` (`{ statuses: [...] }`), and user `GET /analytic/workspace/member-roles` carries `AnalyticRoleCountResponseSchema` (`{ roles: [...] }`). Handlers and HTTP services return `IResponseReturn<T>`, and `IResponsePagingReturn<T>` on the paginated routes; `ResponseInterceptor` takes `data` off that return and serializes it against the declared schema. Schema and envelope rules: `rules/dto.md`. Flow: [Response](response.md).
+
+Each endpoint has a zero-argument doc factory in `src/modules/analytic/docs/analytic.admin.doc.ts` or `analytic.user.doc.ts`, in the controller's order, carrying the same i18n message path and the same response schema the route declares. Those factories (`*.doc.ts`) sit outside the coverage set and have no unit spec; there are no files under `test/modules/analytic/docs/`. Query parameters reach the OpenAPI document from the zod schema bound on `@Query({ schema })` through `standardSchemaConverter`. Doc factory rules: `rules/http.md`.
 
 ## Caching and config
 
@@ -132,6 +137,10 @@ Key patterns and default TTLs in `analytic.config.ts`:
 | Anomaly summary | `Analytic:anomaly:{signal}:{window}` | 5m |
 | Fraud summary | `Analytic:fraud:{signal}:{window}` | 5m |
 | Fraud risk score | `Analytic:fraud:risk:{userId}` | 10m |
+
+`{metric}`, `{signal}`, `{window}` and `{userId}` are filled by `HelperStringService.fillPattern`, which raises `HelperPatternTokenMissingException` (`52202`, 500) for a placeholder the call supplies no value for. `{window}` itself comes from `AnalyticDateUtil`, from `analytic.cache.windowTokenPattern` (`{start}:{end}`) or `workspaceWindowTokenPattern` (`{workspaceId}:{start}:{end}`), with an absent bound rendering `_`.
+
+A paginated dashboard distribution appends `page=<n>:perPage=<n>` to its `{metric}` token, so each page caches under its own key.
 
 The same config file holds anomaly and fraud detection thresholds (windows, minimum counts, risk weights, band labels). Values are literals via `ms(...)`; they are not environment-driven.
 
@@ -159,8 +168,8 @@ An action one user takes on another writes an actor row and a target row ([Activ
 |---|---|---|
 | `authSessionRevoke` | `userRevokeSession`, `userRevokeAllSessions`, `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/auth/session-revoke` |
 | Session after admin revoke (`computeSessionAfterAdmin`) | `userRevokeSessionByAdmin`, `userRevokeAllSessionsByAdmin` | `GET /admin/analytic/fraud/session-after-admin` and `/list` |
-| Workspace activity volume | Every action in the workspace except `ActivityLogWorkspaceVolumeExcludedActions` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
+| Workspace activity volume | Every action in the workspace except the ones listed in `ActivityLogWorkspaceVolumeContract` | `GET /admin/analytic/workspaces/activity-volume`, `GET /user/analytic/workspace/summary`, `GET /user/analytic/workspace/activity` |
 
 - `authSessionRevoke` counts the rows of the user whose sessions were revoked, so an admin revoke counts once. Every account self-deletion writes `userRevokeAllSessions`, including one that revoked no session, so each self-deletion adds one to this metric and one to the `userDeleteSelf` count. Every credential lockout writes `userRevokeAllSessions` the same way, so each lockout also adds one to this metric. An admin revoking a session of their own account writes only `adminSessionRevoke`, which this metric does not count.
 - The session-after-admin signal reads the target rows, whose `userId` is the user whose sessions were revoked, and flags a login by that same user within `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs`. An admin status change to `blocked` or `inactive` that revokes sessions writes `userRevokeAllSessionsByAdmin` too, so it feeds both metrics.
-- `ActivityLogWorkspaceVolumeExcludedActions` (owned by the activity-log module) lists the eleven workspace and project target actions. `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.
+- `ActivityLogWorkspaceVolumeContract` (owned by the activity-log module) lists the eleven workspace and project target actions. `workspaceCreatedByAdmin` stays counted, because the admin's row for that event carries no workspace.

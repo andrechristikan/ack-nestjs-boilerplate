@@ -240,7 +240,7 @@ Unlike standard installation, Docker automatically serves your JWKS files throug
 - **Access JWKS**: `http://localhost:3011/.well-known/access-jwks.json`
 - **Refresh JWKS**: `http://localhost:3011/.well-known/refresh-jwks.json`
 
-The Docker setup includes a JWKS server that automatically hosts the generated key files, eliminating the need for external hosting.
+The JWKS server in Compose hosts the generated key files.
 
 ### Run Containers
 
@@ -390,7 +390,7 @@ pnpm start:prod
 
 ## Development Tools
 
-These commands help maintain code quality during development:
+These commands run during development:
 
 ```bash
 # Format code with Prettier
@@ -402,10 +402,10 @@ pnpm lint
 # Fix linting issues automatically
 pnpm lint:fix
 
-# Run tests
+# Run unit specs (`test/**/*.spec.ts`); does not collect coverage
 pnpm test
 
-# Run tests with coverage
+# Same suite plus `--coverage` (100% thresholds then apply)
 pnpm test:cov
 
 # Type-check without emitting (also run by the pre-commit hook)
@@ -417,6 +417,8 @@ pnpm deadcode
 # Spell check
 pnpm spell
 ```
+
+`pnpm test` is `TZ=UTC vitest run --passWithNoTests`. It does not collect coverage. `coverage.enabled` is `false` in `vitest.config.ts`. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds on branches, functions, lines, and statements apply. The suite is unit specs. Integration and e2e tests are not collected. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `.github/workflows/linter.yml` runs on `pull_request`. `testTimeout` is 5000ms.
 
 Here are useful commands for managing your dependencies:
 
@@ -437,7 +439,7 @@ pnpm clean && pnpm install
 
 ## Accessing the Application
 
-Once your application is successfully running, you can access various endpoints and tools:
+Endpoints and tools:
 
 - **🌐 Base URL**: `http://localhost:3000`
   - Main API endpoint

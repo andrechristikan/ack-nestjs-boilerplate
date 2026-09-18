@@ -3,9 +3,9 @@ on:
     workflow_dispatch:
     # pull_request:
     #     branches:
-    #       - main
-    #       - staging
-    #       - development
+    #         - main
+    #         - staging
+    #         - development
 
 env:
     NODE_VERSION: lts/*

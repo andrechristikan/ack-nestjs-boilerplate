@@ -8,11 +8,14 @@ import {
 import { ProjectGuard } from '@modules/project/guards/project.guard';
 import { ProjectMemberGuard } from '@modules/project/guards/project.member.guard';
 import { ProjectRoleGuard } from '@modules/project/guards/project.role.guard';
-import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import {
-    RequestStore,
-    RequestStoreNullable,
-} from '@common/request/decorators/request.decorator';
+    SetMetadata,
+    UseGuards,
+    applyDecorators,
+    createParamDecorator,
+} from '@nestjs/common';
+import { ClsServiceManager } from 'nestjs-cls';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 
 /**
  * Requires the `projectId` route param to resolve to an existing, non-deleted project in the current workspace.
@@ -23,14 +26,37 @@ export function ProjectProtected(): MethodDecorator {
 }
 
 /**
- * Reads the current project, or one of its fields, that `ProjectGuard` stored.
+ * Reads the current project, or one of its fields, that `ProjectGuard` stored; throws when either is absent.
  * @public
  */
-export function ProjectCurrent<K extends Extract<keyof Project, string>>(
-    field?: K
-): ParameterDecorator {
-    return RequestStore(ProjectStoreKey, field);
-}
+export const ProjectCurrent = createParamDecorator<
+    Extract<keyof Project, string> | undefined,
+    Project | NonNullable<Project[Extract<keyof Project, string>]>
+>(
+    (
+        field: Extract<keyof Project, string> | undefined
+    ): Project | NonNullable<Project[Extract<keyof Project, string>]> => {
+        const project = ClsServiceManager.getClsService().get<
+            Project | undefined
+        >(ProjectStoreKey);
+        if (project === undefined || project === null) {
+            throw new RequestContextMissingException(ProjectStoreKey);
+        }
+
+        if (field === undefined || field === null) {
+            return project;
+        }
+
+        const value = project[field];
+        if (value === undefined || value === null) {
+            throw new RequestContextMissingException(
+                `${ProjectStoreKey}.${field}`
+            );
+        }
+
+        return value;
+    }
+);
 
 /**
  * Requires the caller to be a member of the project resolved by `@ProjectProtected()`. Stack above
@@ -53,11 +79,37 @@ export function ProjectMemberProtected(
 }
 
 /**
- * Reads the caller's project member row, or one of its fields, stored by the role-less `@ProjectMemberProtected()`; null on every route that passes roles, because `ProjectRoleGuard` stores no member row.
+ * Reads the caller's project member row, or one of its fields, that the role-less `@ProjectMemberProtected()` stored. Valid only on a route using that role-less form: a role-gated route stores no row, and the read throws `RequestContextMissingException`.
  * @public
  */
-export function ProjectMemberCurrent<
-    K extends Extract<keyof ProjectMember, string>,
->(field?: K): ParameterDecorator {
-    return RequestStoreNullable(ProjectMemberStoreKey, field);
-}
+export const ProjectMemberCurrent = createParamDecorator<
+    Extract<keyof ProjectMember, string> | undefined,
+    | ProjectMember
+    | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]>
+>(
+    (
+        field: Extract<keyof ProjectMember, string> | undefined
+    ):
+        | ProjectMember
+        | NonNullable<ProjectMember[Extract<keyof ProjectMember, string>]> => {
+        const projectMember = ClsServiceManager.getClsService().get<
+            ProjectMember | undefined
+        >(ProjectMemberStoreKey);
+        if (projectMember === undefined || projectMember === null) {
+            throw new RequestContextMissingException(ProjectMemberStoreKey);
+        }
+
+        if (field === undefined || field === null) {
+            return projectMember;
+        }
+
+        const value = projectMember[field];
+        if (value === undefined || value === null) {
+            throw new RequestContextMissingException(
+                `${ProjectMemberStoreKey}.${field}`
+            );
+        }
+
+        return value;
+    }
+);

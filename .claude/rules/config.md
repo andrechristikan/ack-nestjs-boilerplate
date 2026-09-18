@@ -62,7 +62,7 @@ holds, because a division living in a service hides the unit from the one file t
 **This governs a CONFIG value only.** A duration computed at request time — a
 `HelperDateService.diff` result, a remainder a Redis script returned — has no config key to
 name, so converting it where it is consumed is correct and stays
-(`auth.jwt.domain.ts` refresh-token remainder, `request.throttler.service.ts` retry-after).
+(`auth.jwt.domain.ts` refresh-token remainder, `request.throttle-storage.service.ts` retry-after).
 
 ## Size is bytes
 
@@ -97,6 +97,8 @@ relative fragment, because the host is the one the request already arrived on
   file.** `String.prototype.replace` reads its string second argument as a template, so `$&`,
   `` $` ``, `$'`, `$$` and `$1` in a token, an id, an object key or any other value that
   arrived from the wire are expanded instead of inserted. `() => value` is inserted verbatim.
+- **A pattern with two or more placeholders is filled by
+  `HelperStringService.fillPattern(pattern, values)`** (`rules/code-style.md` owns that rule).
 - A `startsWith` prefix test against an INCOMING request URL matches a route rather than
   building one, and this rule does not govern it.
 - The key suffix is `Pattern`, and `rules/naming.md` carries its boundary against `Regex`.

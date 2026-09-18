@@ -68,20 +68,22 @@ export class AuthPasswordUtil {
         const salt: string = this.helperHashService.bcryptGenerateSalt(
             this.passwordSaltLength
         );
+        const passwordExpiredDuration = this.helperDateService.createDuration({
+            milliseconds: options?.temporary
+                ? this.passwordExpiredTemporaryInMs
+                : this.passwordExpiredInMs,
+        });
         const passwordExpired: Date = this.helperDateService.forward(
             today,
-            this.helperDateService.createDuration({
-                milliseconds: options?.temporary
-                    ? this.passwordExpiredTemporaryInMs
-                    : this.passwordExpiredInMs,
-            })
+            passwordExpiredDuration
         );
         const passwordHash = this.helperHashService.bcryptHash(password, salt);
+        const passwordPeriodDuration = this.helperDateService.createDuration({
+            days: this.passwordPeriodInDays,
+        });
         const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
-            this.helperDateService.createDuration({
-                days: this.passwordPeriodInDays,
-            })
+            passwordPeriodDuration
         );
 
         return {
@@ -112,9 +114,11 @@ export class AuthPasswordUtil {
         password: string
     ): PasswordHistory | null {
         for (const history of histories) {
-            if (
-                this.helperHashService.bcryptCompare(password, history.password)
-            ) {
+            const isPasswordMatch = this.helperHashService.bcryptCompare(
+                password,
+                history.password
+            );
+            if (isPasswordMatch) {
                 return history;
             }
         }

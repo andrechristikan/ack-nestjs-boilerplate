@@ -118,6 +118,14 @@ export class NotificationEmailAccountDomain {
                 NotificationPayloadEncryptionPurpose,
                 userId
             );
+            const passwordExpiredAtDate =
+                this.helperDateService.createFromIso(passwordExpiredAt);
+            const passwordExpiredAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordExpiredAtDate);
+            const passwordCreatedAtDate =
+                this.helperDateService.createFromIso(passwordCreatedAt);
+            const passwordCreatedAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.welcomeByAdmin,
                 recipients: [email],
@@ -126,12 +134,8 @@ export class NotificationEmailAccountDomain {
                     ...this.defaultTemplateData,
                     username,
                     password,
-                    passwordExpiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordCreatedAt)
-                    ),
+                    passwordExpiredAt: passwordExpiredAtFormatted,
+                    passwordCreatedAt: passwordCreatedAtFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -160,9 +164,10 @@ export class NotificationEmailAccountDomain {
                 NotificationPayloadEncryptionPurpose,
                 userId
             );
-            const expiredAtFormatted = this.helperDateService.formatToRFC2822(
-                this.helperDateService.createFromIso(expiredAt)
-            );
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const expiredInMinutesFormatted = String(expiredInMinutes);
 
             const result = await this.awsSESService.send({

@@ -9,6 +9,8 @@ import type { IResponsePagingReturn } from '@common/response/interfaces/response
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
+import { ApiKeyAdminListSelect } from '@modules/api-key/constants/api-key.constant';
+import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import type { IApiKeyRepository } from '@modules/api-key/interfaces/api-key.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
@@ -28,18 +30,19 @@ export class ApiKeyRepository implements IApiKeyRepository {
         }: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKey>> {
-        return this.paginationService.offset<ApiKey, Prisma.ApiKeyWhereInput>(
-            this.databaseService.client.apiKey,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...isActive,
-                    ...type,
-                },
-            }
-        );
+    ): Promise<IResponsePagingReturn<IApiKeyList>> {
+        return this.paginationService.offset<
+            IApiKeyList,
+            Prisma.ApiKeyWhereInput
+        >(this.databaseService.client.apiKey, {
+            ...params,
+            where: {
+                ...where,
+                ...isActive,
+                ...type,
+            },
+            select: ApiKeyAdminListSelect,
+        });
     }
 
     async create(

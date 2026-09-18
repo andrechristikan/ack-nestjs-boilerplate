@@ -13,6 +13,7 @@ import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import {
@@ -34,7 +35,7 @@ export interface IUserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>>;
+    ): Promise<IResponsePagingReturn<IUserList>>;
     findActive(): Promise<IUserContact[]>;
     findOneById(id: string): Promise<User | null>;
     findOneActiveById(id: string): Promise<User | null>;

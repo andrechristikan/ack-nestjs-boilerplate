@@ -1,4 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import type {
@@ -47,6 +49,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { Duration } from 'luxon';
 
 @Injectable()
@@ -75,6 +78,12 @@ export class AnalyticDashboardDomain {
         private readonly projectMemberAnalyticDomain: ProjectMemberAnalyticDomain
     ) {}
 
+    private pageToken(params: IPaginationQueryOffsetParams<unknown>): string {
+        const page = Math.floor(params.skip / params.limit) + 1;
+
+        return `page=${page}:perPage=${params.limit}`;
+    }
+
     private async cached<T>(
         metric: string,
         start: Date | undefined,
@@ -100,12 +109,14 @@ export class AnalyticDashboardDomain {
             'users.registrations',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userAnalyticDomain.countRegistrations(
+            async () => {
+                const count = await this.userAnalyticDomain.countRegistrations(
                     startDate,
                     endDate
-                ),
-            })
+                );
+
+                return { count };
+            }
         );
     }
 
@@ -216,18 +227,16 @@ export class AnalyticDashboardDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached(
-            'users.selfDelete',
-            startDate,
-            endDate,
-            async () => ({
-                count: await this.activityLogAnalyticDomain.countByActionsInRange(
+        return this.cached('users.selfDelete', startDate, endDate, async () => {
+            const count =
+                await this.activityLogAnalyticDomain.countByActionsInRange(
                     [EnumActivityLogAction.userDeleteSelf],
                     startDate,
                     endDate
-                ),
-            })
-        );
+                );
+
+            return { count };
+        });
     }
 
     usersClaimUsername(
@@ -238,13 +247,16 @@ export class AnalyticDashboardDomain {
             'users.claimUsername',
             startDate,
             endDate,
-            async () => ({
-                count: await this.activityLogAnalyticDomain.countByActionsInRange(
-                    [EnumActivityLogAction.userClaimUsername],
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                        [EnumActivityLogAction.userClaimUsername],
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -265,12 +277,14 @@ export class AnalyticDashboardDomain {
             'auth.loginFrequency',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userLoginAnalyticDomain.loginFrequency(
+            async () => {
+                const count = await this.userLoginAnalyticDomain.loginFrequency(
                     startDate,
                     endDate
-                ),
-            })
+                );
+
+                return { count };
+            }
         );
     }
 
@@ -316,18 +330,21 @@ export class AnalyticDashboardDomain {
             'auth.sessionRevoke',
             startDate,
             endDate,
-            async () => ({
-                count: await this.activityLogAnalyticDomain.countByActionsInRange(
-                    [
-                        EnumActivityLogAction.userRevokeSession,
-                        EnumActivityLogAction.userRevokeSessionByAdmin,
-                        EnumActivityLogAction.userRevokeAllSessions,
-                        EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                    ],
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                        [
+                            EnumActivityLogAction.userRevokeSession,
+                            EnumActivityLogAction.userRevokeSessionByAdmin,
+                            EnumActivityLogAction.userRevokeAllSessions,
+                            EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                        ],
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -393,26 +410,32 @@ export class AnalyticDashboardDomain {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached('auth.refresh', startDate, endDate, async () => ({
-            count: await this.activityLogAnalyticDomain.countByActionsInRange(
-                [EnumActivityLogAction.userRefreshToken],
-                startDate,
-                endDate
-            ),
-        }));
+        return this.cached('auth.refresh', startDate, endDate, async () => {
+            const count =
+                await this.activityLogAnalyticDomain.countByActionsInRange(
+                    [EnumActivityLogAction.userRefreshToken],
+                    startDate,
+                    endDate
+                );
+
+            return { count };
+        });
     }
 
     authLogoutRate(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        return this.cached('auth.logout', startDate, endDate, async () => ({
-            count: await this.activityLogAnalyticDomain.countByActionsInRange(
-                [EnumActivityLogAction.userLogout],
-                startDate,
-                endDate
-            ),
-        }));
+        return this.cached('auth.logout', startDate, endDate, async () => {
+            const count =
+                await this.activityLogAnalyticDomain.countByActionsInRange(
+                    [EnumActivityLogAction.userLogout],
+                    startDate,
+                    endDate
+                );
+
+            return { count };
+        });
     }
 
     authVerificationFunnel(
@@ -455,12 +478,15 @@ export class AnalyticDashboardDomain {
             'auth.passwordChange',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userPasswordAnalyticDomain.passwordChangeCount(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.userPasswordAnalyticDomain.passwordChangeCount(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -481,12 +507,15 @@ export class AnalyticDashboardDomain {
             'auth.adminForcePassword',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userPasswordAnalyticDomain.adminForcePasswordCount(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.userPasswordAnalyticDomain.adminForcePasswordCount(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -504,12 +533,15 @@ export class AnalyticDashboardDomain {
             'auth.twoFactorAdminReset',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userTwoFactorAnalyticDomain.adminResetCount(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.userTwoFactorAnalyticDomain.adminResetCount(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -521,29 +553,35 @@ export class AnalyticDashboardDomain {
             'auth.twoFactorVerify',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userTwoFactorAnalyticDomain.verifySuccessCount(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.userTwoFactorAnalyticDomain.verifySuccessCount(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
-    authBackupCodeRegen(
+    authBackupCodeRegeneration(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
         return this.cached(
-            'auth.backupCodeRegen',
+            'auth.backupCodeRegeneration',
             startDate,
             endDate,
-            async () => ({
-                count: await this.userTwoFactorAnalyticDomain.backupCodeRegenCount(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.userTwoFactorAnalyticDomain.backupCodeRegenerationCount(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -561,12 +599,15 @@ export class AnalyticDashboardDomain {
             'devices.registration',
             startDate,
             endDate,
-            async () => ({
-                count: await this.deviceAnalyticDomain.countRegistrations(
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.deviceAnalyticDomain.countRegistrations(
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -596,13 +637,16 @@ export class AnalyticDashboardDomain {
             'devices.infoRefresh',
             startDate,
             endDate,
-            async () => ({
-                count: await this.activityLogAnalyticDomain.countByActionsInRange(
-                    [EnumActivityLogAction.userDeviceRefresh],
-                    startDate,
-                    endDate
-                ),
-            })
+            async () => {
+                const count =
+                    await this.activityLogAnalyticDomain.countByActionsInRange(
+                        [EnumActivityLogAction.userDeviceRefresh],
+                        startDate,
+                        endDate
+                    );
+
+                return { count };
+            }
         );
     }
 
@@ -648,8 +692,9 @@ export class AnalyticDashboardDomain {
             undefined,
             undefined,
             async () => {
+                const now = this.helperDateService.create();
                 const before = this.helperDateService.backward(
-                    this.helperDateService.create(),
+                    now,
                     Duration.fromObject({ days: 30 })
                 );
                 const rows =
@@ -722,12 +767,14 @@ export class AnalyticDashboardDomain {
             'workspaces.creation',
             startDate,
             endDate,
-            async () => ({
-                count: await this.workspaceAnalyticDomain.countCreated(
+            async () => {
+                const count = await this.workspaceAnalyticDomain.countCreated(
                     startDate,
                     endDate
-                ),
-            })
+                );
+
+                return { count };
+            }
         );
     }
 
@@ -766,20 +813,32 @@ export class AnalyticDashboardDomain {
         );
     }
 
-    workspacesMembership(): Promise<IAnalyticWorkspaceCount[]> {
-        return this.cached('workspaces.membership', undefined, undefined, () =>
-            this.workspaceMemberAnalyticDomain.membershipDistribution()
+    workspacesMembership(
+        params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        const token = this.pageToken(params);
+        const metric = `workspaces.membership:${token}`;
+
+        return this.cached(metric, undefined, undefined, () =>
+            this.workspaceMemberAnalyticDomain.membershipDistributionOffset(
+                params
+            )
         );
     }
 
     workspacesActivityVolume(
         startDate: Date,
-        endDate: Date
-    ): Promise<IAnalyticWorkspaceCount[]> {
-        return this.cached('workspaces.activity', startDate, endDate, () =>
-            this.activityLogAnalyticDomain.groupActivityByWorkspaceInRange(
+        endDate: Date,
+        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        const token = this.pageToken(params);
+        const metric = `workspaces.activity:${token}`;
+
+        return this.cached(metric, startDate, endDate, () =>
+            this.activityLogAnalyticDomain.groupActivityByWorkspaceOffset(
                 startDate,
-                endDate
+                endDate,
+                params
             )
         );
     }
@@ -793,9 +852,16 @@ export class AnalyticDashboardDomain {
         );
     }
 
-    projectsMembership(): Promise<IAnalyticProjectCount[]> {
-        return this.cached('projects.membership', undefined, undefined, () =>
-            this.projectMemberAnalyticDomain.membershipDistribution()
+    projectsMembership(
+        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
+        const token = this.pageToken(params);
+        const metric = `projects.membership:${token}`;
+
+        return this.cached(metric, undefined, undefined, () =>
+            this.projectMemberAnalyticDomain.membershipDistributionOffset(
+                params
+            )
         );
     }
 }

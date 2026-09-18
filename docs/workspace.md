@@ -1,6 +1,6 @@
 # Workspace Documentation
 
-This documentation explains the features and usage of the **Workspace Module**: Located at `src/modules/workspace`
+Workspace lives in `src/modules/workspace`.
 
 ## Overview
 
@@ -121,7 +121,7 @@ Requires `x-workspace-id` to resolve to an existing, non-deleted workspace, thro
 
 ### `WorkspaceCurrent()` / `WorkspaceMemberCurrent()`
 
-**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored. Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field. Both are built on `RequestStore`, so a route that reads one without the matching guard answers `RequestContextMissingException` (500, `50304`). See [Security and Middleware][ref-doc-security-and-middleware].
+**Parameter decorators** that read back the `Workspace` and `WorkspaceMember` the guards stored. Each takes an optional field name typed against its model: `@WorkspaceCurrent()` returns the whole row, `@WorkspaceCurrent('id')` returns that field. Both return a non-null value, so a route that reads one without the matching guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`). See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### The `/admin` scope takes none of this
 

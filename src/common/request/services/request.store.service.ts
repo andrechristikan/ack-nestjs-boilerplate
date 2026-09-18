@@ -10,11 +10,14 @@ export class RequestStoreService {
     }
 
     get<T>(key: string): T | null {
-        return (this.clsService.get<T>(key) as T | null) ?? null;
+        const storedValue = this.clsService.get<T>(key) as T | null;
+
+        return storedValue ?? null;
     }
 
     merge<T extends object>(key: string, value: Partial<T>): void {
-        const existing = this.get<T>(key) ?? ({} as T);
+        const storedValue = this.get<T>(key);
+        const existing = storedValue ?? ({} as T);
         this.set<T>(key, { ...existing, ...value });
     }
 }

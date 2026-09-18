@@ -14,9 +14,9 @@ import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/use
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type {
-    IUser,
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -38,7 +38,7 @@ export class UserHttpService {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userDomain.getListOffsetByAdmin(
             pagination,
             status,
@@ -62,10 +62,12 @@ export class UserHttpService {
                 { countryId, email, name, roleId, username },
                 createdBy
             );
+        const createTimeoutInMs =
+            this.userOnboardingDomain.getCreateTimeoutInMs();
         const [created] = await this.workspaceDomain.commitOnboarding(
             [input],
             EnumUserCreateMode.admin,
-            this.userOnboardingDomain.getCreateTimeoutInMs(),
+            createTimeoutInMs,
             EnumActivityLogAction.adminUserCreate
         );
         if (input.password) {
@@ -96,13 +98,17 @@ export class UserHttpService {
     }: UserCheckUsernameRequestDto): Promise<
         IResponseReturn<IUserCheckUsername>
     > {
-        return { data: await this.userDomain.checkUsername(username) };
+        const checkUsername = await this.userDomain.checkUsername(username);
+
+        return { data: checkUsername };
     }
 
     async checkEmail({
         email,
     }: UserCheckEmailRequestDto): Promise<IResponseReturn<IUserCheckEmail>> {
-        return { data: await this.userDomain.checkEmail(email) };
+        const checkEmail = await this.userDomain.checkEmail(email);
+
+        return { data: checkEmail };
     }
 
     async deleteSelf(userId: string): Promise<void> {

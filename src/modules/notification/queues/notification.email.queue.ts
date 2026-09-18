@@ -546,18 +546,19 @@ export class NotificationEmailQueue {
             ...invite
         }: INotificationWorkspaceInviteUnregisteredPayload
     ): Promise<void> {
+        const encryptedInviteAcceptLink =
+            this.helperEncryptionService.aes256Encrypt(
+                inviteAcceptLink,
+                this.encryptionSecretKey,
+                NotificationPayloadEncryptionPurpose,
+                invite.reference
+            );
         const payload: INotificationEmailUnregisteredQueuePayload<INotificationWorkspaceInviteUnregisteredEncryptedPayload> =
             {
                 send: { email },
                 data: {
                     ...invite,
-                    encryptedInviteAcceptLink:
-                        this.helperEncryptionService.aes256Encrypt(
-                            inviteAcceptLink,
-                            this.encryptionSecretKey,
-                            NotificationPayloadEncryptionPurpose,
-                            invite.reference
-                        ),
+                    encryptedInviteAcceptLink,
                 },
             };
 

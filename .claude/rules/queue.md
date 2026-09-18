@@ -43,7 +43,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 - **The processor service owns no business rule.** It translates the payload and calls a domain, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
 - Mark a non-fatal failure with `QueueException`'s fatal flag so a retryable error does not page anyone.
 - **A failure that no retry can fix is thrown as BullMQ's `UnrecoverableError`**, so BullMQ stops retrying and the base reports it at once. `NotificationEmailProcessor` maps `HelperDecryptFailedException` to it: a payload that does not decrypt never will.
-- **A handler call inside `try` is `return await`.** A bare `return this.service.x()` hands back the promise before it settles, so its rejection skips the `catch` and any mapping written there never runs.
+- **A handler call inside `try` is awaited into a `const` and returned.** A bare `return this.service.x()` hands back the promise before it settles, so its rejection skips the `catch` and any mapping written there never runs (`rules/code-style.md`).
 
 ## Payloads
 

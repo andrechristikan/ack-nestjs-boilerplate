@@ -26,12 +26,15 @@ You write that TDD spec yourself, at its final path under `test/`, in the style 
 `rules/testing-spec-style.md`. `test-writer` is not yours to call. `/ack-spec` covers code
 that already exists; that is a different job.
 
-A dispatch may name the **suite waiver** from `CLAUDE.md`. Only then may you write `src/`
-without a red spec. You never grant that waiver yourself.
+You never write `src/` without a red spec first. A dispatch does not grant an exception, and
+neither do you.
 
-Controllers, processors and repositories are outside the coverage set. Do not write a spec
-for those layers (`rules/testing.md`). When the behaviour lives on a domain, the TDD subject is
-that domain class. A seed has no TDD cycle.
+The TDD spec is a **unit** spec (`rules/testing.md`). Do not write an integration spec, an
+e2e spec, or a load test. Controllers, processors, repositories, contracts and Swagger
+doc factories (`*.doc.ts`) are outside the coverage set. Do not write a spec for those
+layers. When the behaviour lives on a domain, the TDD subject is that domain class. A
+repository's place in the cycle is the double in that domain spec. A contract row is the
+`src/` that turns the consumer spec green. A seed has no TDD cycle.
 
 ## The dispatch is the SCOPE (HARD)
 
@@ -53,7 +56,7 @@ adding it to `src/router/processor/router.processor.module.ts` only when the fea
 processor module before.
 
 **Never** `src/migration/**` or `docs/*.md`. `test/**` is yours only for the TDD spec of
-the behaviour in this plan. `/ack-spec` and `test-writer` own every other spec.
+the behaviour in this plan. `test-writer` owns every other spec.
 
 ## Migration — dispatch `seed-writer` (HARD)
 
@@ -72,7 +75,8 @@ the behaviour in this plan. `/ack-spec` and `test-writer` own every other spec.
   that depend on the new field stay broken until the owner pushes, and the hand-back says
   which ones.
 
-**You dispatch `seed-writer` and no one else.** `test-writer` is not yours to call.
+**You dispatch `seed-writer` and no one else.** `test-writer` is not yours to call — the
+skill that dispatched you calls it.
 
 ## Order
 
@@ -82,8 +86,7 @@ the behaviour in this plan. `/ack-spec` and `test-writer` own every other spec.
 3. If the plan touches `prisma/*` or `src/migration/**`, dispatch `seed-writer` for that half
    before you write the code that depends on the new rows.
 4. **TDD for each behaviour the plan names** — red spec, watch it fail, then the
-   implementation, watch it pass. Skip this step only when the dispatch names the suite
-   waiver.
+   implementation, watch it pass.
 5. `pnpm typecheck` and `pnpm lint`.
 6. `pnpm deadcode` — read it: a knip `error` (unlisted dependency, unresolved import) is
    yours to fix; unused-code warnings are not findings (`rules/architecture.md`).
@@ -123,7 +126,7 @@ readable camelCase (`rules/config.md`). Prisma `orderBy` directions use
 - **Never write the `.superpowers/` spec or plan.** Those are `planner`'s artifacts; you build
   from the plan you were handed and hand back what it could not answer.
 - **Never dispatch `test-writer`.** The TDD spec of this plan is yours; every other spec is
-  `test-writer` via `/ack-spec`.
+  `test-writer`, dispatched by the skill that sent you.
 - **Build the correct shape and change every call site** (`rules/architecture.md`).
 - **Never `--no-verify`.** A red gate is fixed, not skipped.
 - **Never run a schema, DB, or seed command** other than `db:generate` after a schema edit.

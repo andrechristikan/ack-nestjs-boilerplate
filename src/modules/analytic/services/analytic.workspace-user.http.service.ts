@@ -1,8 +1,9 @@
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticWorkspaceUserDomain } from '@modules/analytic/domains/analytic.workspace-user.domain';
 import type {
     IAnalyticMetricCount,
-    IAnalyticRoleCount,
-    IAnalyticStatusCount,
+    IAnalyticRoleCountList,
+    IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
@@ -15,59 +16,72 @@ export class AnalyticWorkspaceUserHttpService {
         private readonly analyticDateUtil: AnalyticDateUtil
     ) {}
 
-    summary(
+    async summary(
         workspaceId: string,
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticWorkspaceSummary> {
+    ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticWorkspaceUserDomain.summary(
+        const data = await this.analyticWorkspaceUserDomain.summary(
             workspaceId,
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    inviteFunnel(
+    async inviteFunnel(
         workspaceId: string,
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticStatusCount[]> {
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticWorkspaceUserDomain.inviteFunnel(
+        const statuses = await this.analyticWorkspaceUserDomain.inviteFunnel(
             workspaceId,
             range.startDate,
             range.endDate
         );
+
+        return { data: { statuses } };
     }
 
-    joinOutcomes(
+    async joinOutcomes(
         workspaceId: string,
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticStatusCount[]> {
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticWorkspaceUserDomain.joinOutcomes(
+        const statuses = await this.analyticWorkspaceUserDomain.joinOutcomes(
             workspaceId,
             range.startDate,
             range.endDate
         );
+
+        return { data: { statuses } };
     }
 
-    memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
-        return this.analyticWorkspaceUserDomain.memberRoles(workspaceId);
+    async memberRoles(
+        workspaceId: string
+    ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
+        const roles =
+            await this.analyticWorkspaceUserDomain.memberRoles(workspaceId);
+
+        return { data: { roles } };
     }
 
-    activity(
+    async activity(
         workspaceId: string,
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticWorkspaceUserDomain.activity(
+        const data = await this.analyticWorkspaceUserDomain.activity(
             workspaceId,
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 }

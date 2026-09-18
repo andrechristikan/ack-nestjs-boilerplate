@@ -16,14 +16,17 @@ export class HelloHttpService {
         const dateIso = this.helperDateService.formatToIso(date);
         const dateTimestamp = this.helperDateService.getTimestamp(date);
 
+        const app = this.helloUtil.getApp();
+        const message = this.helloUtil.getMessage();
+
         return {
             data: {
                 date: {
                     iso: dateIso,
                     timestamp: dateTimestamp,
                 },
-                app: this.helloUtil.getApp(),
-                message: this.helloUtil.getMessage(),
+                app,
+                message,
             },
         };
     }

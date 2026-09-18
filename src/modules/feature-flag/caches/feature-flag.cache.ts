@@ -26,7 +26,7 @@ export class FeatureFlagCache {
     }
 
     async getCacheByKey(key: string): Promise<FeatureFlag | null> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             const cachedFeatureFlag =
                 await this.cacheManager.get<FeatureFlag>(cacheKey);
@@ -38,7 +38,7 @@ export class FeatureFlagCache {
     }
 
     async setCacheByKey(key: string, featureFlag: FeatureFlag): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             await this.cacheManager.set(
                 cacheKey,
@@ -51,7 +51,7 @@ export class FeatureFlagCache {
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             await this.cacheManager.del(cacheKey);
         } catch (error: unknown) {

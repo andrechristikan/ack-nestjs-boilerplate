@@ -1,19 +1,18 @@
 # Doc Documentation
 
-This documentation explains the features and usage of **Doc Module**: Located at `src/common/doc`
+Swagger decorators live in `src/common/doc`.
 
 ## Overview
 
 Decorators that build the [Swagger/OpenAPI][ref-nestjs-swagger] document from route metadata and the same zod schemas used for request validation.
 
+A feature Swagger factory lives at `src/modules/<feature>/docs/<feature>.<scope>.doc.ts` and is `applyDecorators` of this kit. It sits outside the coverage set and has no unit spec. The kit in `src/common/doc/` is in the coverage set.
+
 Features:
-- Standardized API documentation structure
-- Automatic error response documentation
-- Built-in pagination support
-- File upload/download documentation
-- Multiple authentication method support
-- Request validation documentation
-- Custom language header support
+- `Doc` stamps operation metadata, shared headers, and the standard error responses
+- `DocRequest` documents params, queries, and the request Content-Type; `DocRequestFile` documents multipart uploads
+- `DocResponse` / `DocResponsePaging` / `DocResponseFile` document the envelope, pagination queries, and file downloads
+- `DocAuth` documents JWT, social, and `x-api-key`; `DocGuard` documents role, policy, and term-policy 403 responses
 
 ## Related Documents
 

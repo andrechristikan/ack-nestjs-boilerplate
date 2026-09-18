@@ -25,8 +25,9 @@ export class AuthSocialAppleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
 
+        const appleHeaderName = this.appleHeader.toLowerCase();
         const requestHeaders =
-            (request.headers[this.appleHeader.toLowerCase()] as string)?.split(
+            (request.headers[appleHeaderName] as string)?.split(
                 `${this.applePrefix} `
             ) ?? [];
         if (requestHeaders.length !== 2) {

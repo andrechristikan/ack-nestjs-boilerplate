@@ -122,7 +122,11 @@ export class ProjectRepository implements IProjectRepository {
                     },
                 });
             } catch (error: unknown) {
-                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
                     throw error;
                 }
             }

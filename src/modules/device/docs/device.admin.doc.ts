@@ -11,11 +11,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { DeviceOwnershipResponseDto } from '@modules/device/dtos/response/device.ownership.response.dto';
+import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import {
     DeviceOwnershipDocParamsId,
     DeviceOwnershipDocQueryList,
 } from '@modules/device/constants/device.doc.constant';
-import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
 export function DeviceAdminListDoc(): MethodDecorator {
     return applyDecorators(

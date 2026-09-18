@@ -22,11 +22,11 @@ export class RoleGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredRoles =
-            this.reflector.get<EnumRoleType[]>(
-                RoleRequiredMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const roleMetadata = this.reflector.get<EnumRoleType[]>(
+            RoleRequiredMetaKey,
+            context.getHandler()
+        );
+        const requiredRoles = roleMetadata ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
         const policies = await this.roleDomain.validateRoleGuard(

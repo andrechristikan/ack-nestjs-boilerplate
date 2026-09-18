@@ -6,6 +6,7 @@
         "node_modules",
         "dist",
         "coverage",
+        ".vitest",
         "logs",
         "keys",
         ".warmup",

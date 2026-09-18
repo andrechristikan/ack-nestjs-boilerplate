@@ -80,7 +80,7 @@ export default async function (app: NestApplication): Promise<void> {
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: docJsonUrlPattern.replace(
                 '{docPrefix}',
-                docPrefix
+                () => docPrefix
             ),
             explorer: true,
             customSiteTitle: docName,

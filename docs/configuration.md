@@ -1,6 +1,6 @@
 # Configuration Documentation
 
-This documentation explains the features and usage of **Config Module**: Located at `src/configs`
+Config lives in `src/configs`.
 
 ## Overview
 
@@ -17,6 +17,7 @@ NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Configuration Structure](#configuration-structure)
+  - [Patterns and their placeholders](#patterns-and-their-placeholders)
 - [App Configuration](#app-configuration)
 - [Auth Configuration](#auth-configuration)
 - [Database Configuration](#database-configuration)
@@ -66,6 +67,13 @@ The configuration modules are imported and registered in `src/configs/index.ts` 
 })
 export class CommonModule {}
 ```
+
+### Patterns and their placeholders
+
+A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders: cache and Redis keys, S3 object paths and URLs, email links, and the export filename. The consumer fills it at the point of use, and the number of placeholders decides how:
+
+- One placeholder is filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
+- Two or more go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
 
 ### App Configuration
 
@@ -444,7 +452,7 @@ cors: {
 > - **Exact port matching** is supported (e.g., `api.example.com:3000`); port wildcards are not supported
 > - **Protocol-agnostic**: both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers (including `user-agent`) plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 > - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
 
 **`helmet`** - Strict-Transport-Security parameters for the Helmet profile
@@ -465,9 +473,9 @@ throttle: {
   user: IRequestThrottlePolicy;                                 // Per-userId limiter, opt-in (100 / 60s, block 60s)
   route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>; // Per-IP-per-handler tiers, opt-in
   headerPrefix: string;           // Prefix for the suffixed rate-limit headers (default: 'X-RateLimit')
-  keyPattern: string;             // Window log key (default: 'Request:Throttler:{name}:{tracker}')
-  blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
-  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttler:Seq:{name}:{tracker}')
+  keyPattern: string;             // Window log key (default: 'Request:Throttle:{name}:{tracker}')
+  blockKeyPattern: string;        // Block key (default: 'Request:Throttle:Block:{name}:{tracker}')
+  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttle:Seq:{name}:{tracker}')
 }
 
 interface IRequestThrottlePolicy {
@@ -561,15 +569,6 @@ onboarding: {
 ```
 
 > Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
-
-**`passwordLockout`** - Write-conflict budget of the credential lockout transaction
-```typescript
-passwordLockout: {
-  writeConflictMaxAttempts: number;  // Total attempts, first included, that UserPasswordDomain.reachMaxPasswordAttempt makes when MongoDB reports a write conflict (P2034) (default: 3)
-}
-```
-
-> The lockout reruns its transaction immediately, with no backoff. Details: [Authentication](authentication.md).
 
 ### Documentation Configuration
 
@@ -766,7 +765,7 @@ This configuration manages user session key patterns for Redis storage.
 
 **`keyPattern`** - Session key pattern
 ```typescript
-keyPattern: string              // Redis key pattern for user sessions
+keyPattern: string              // Redis key pattern for user sessions ('User:{userId}:Session:{sessionId}')
 ```
 
 ### Term Policy Configuration
@@ -1087,8 +1086,12 @@ cache: {
     fraud: string;                // Analytic:fraud:{signal}:{window}
     riskScore: string;            // Analytic:fraud:risk:{userId}
   };
+  windowTokenPattern: string;          // '{start}:{end}'
+  workspaceWindowTokenPattern: string; // '{workspaceId}:{start}:{end}'
 }
 ```
+
+`AnalyticDateUtil` fills the two token patterns and `AnalyticCache` fills the four key patterns. A paginated dashboard metric appends `page=<n>:perPage=<n>` to its metric token, so one page of a list caches under its own key.
 
 **`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
 

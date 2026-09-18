@@ -47,9 +47,11 @@ export class RoleDomain {
         role: IRole,
         timestamp: Date
     ): IActivityLogStagedEvent {
+        const metadata = this.roleUtil.mapActivityLogMetadata(role, timestamp);
+
         return this.activityLogDomain.prepare({
             action,
-            metadata: this.roleUtil.mapActivityLogMetadata(role, timestamp),
+            metadata,
         });
     }
 
@@ -101,11 +103,12 @@ export class RoleDomain {
         }
 
         const roleId = this.databaseUtil.createId();
+        const timestamp = this.helperDateService.create();
         const events = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleCreate,
                 { id: roleId, name: data.name, type: data.type },
-                this.helperDateService.create()
+                timestamp
             ),
         ];
         const created = await this.roleRepository.create(roleId, data);
@@ -124,11 +127,12 @@ export class RoleDomain {
             throw new RoleNotFoundException();
         }
 
+        const timestamp = this.helperDateService.create();
         const events = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleUpdate,
                 { id: role.id, name: role.name, type: data.type },
-                this.helperDateService.create()
+                timestamp
             ),
         ];
         const updated = await this.roleRepository.update(id, data);
@@ -149,11 +153,12 @@ export class RoleDomain {
             throw new RoleUsedException();
         }
 
+        const timestamp = this.helperDateService.create();
         const events = [
             this.prepareActivityLog(
                 EnumActivityLogAction.adminRoleDelete,
                 role,
-                this.helperDateService.create()
+                timestamp
             ),
         ];
         const deleted = await this.roleRepository.delete(id);

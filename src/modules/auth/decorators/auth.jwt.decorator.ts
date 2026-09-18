@@ -7,29 +7,33 @@ import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.gua
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 
-const AuthJwtPayloadParam = createParamDecorator<string | null, unknown>(
-    (field: string | null, ctx: ExecutionContext): unknown => {
+/**
+ * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request; throws when either is absent.
+ * @public
+ */
+export const AuthJwtPayload: <T = IAuthJwtAccessTokenPayload>(
+    field?: Extract<keyof T, string>
+) => ParameterDecorator = createParamDecorator<string | undefined, unknown>(
+    (field: string | undefined, ctx: ExecutionContext): unknown => {
         const { user } = ctx
             .switchToHttp()
             .getRequest<IRequestApp<Record<string, unknown>>>();
-        if (!user) {
+        if (user === undefined || user === null) {
             throw new RequestContextMissingException('request.user');
         }
 
-        return field === null ? user : user[field];
+        if (field === undefined || field === null) {
+            return user;
+        }
+
+        const value = user[field];
+        if (value === undefined || value === null) {
+            throw new RequestContextMissingException(`request.user.${field}`);
+        }
+
+        return value;
     }
 );
-
-/**
- * Reads the JWT payload, or one of its fields, that the authenticating guard wrote to the request.
- * @public
- */
-export function AuthJwtPayload<
-    T = IAuthJwtAccessTokenPayload,
-    K extends Extract<keyof T, string> = Extract<keyof T, string>,
->(field?: K): ParameterDecorator {
-    return AuthJwtPayloadParam(field ?? null);
-}
 
 /**
  * Extracts the raw JWT token from the Authorization header, stripping the scheme prefix.

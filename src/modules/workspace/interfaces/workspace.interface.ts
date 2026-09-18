@@ -3,16 +3,22 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
+    Prisma,
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
+import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 export interface IWorkspaceMember extends WorkspaceMember {
     user: IUserRef;
 }
+
+export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
+    select: typeof WorkspaceInviteUserListSelect;
+}>;
 
 export interface IWorkspaceInviteInviter {
     name: string | null;

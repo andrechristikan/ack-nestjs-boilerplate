@@ -6,7 +6,7 @@ import type {
     IPaginationEqual,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -30,7 +30,7 @@ import {
     SessionAdminRevokeDoc,
 } from '@modules/session/docs/session.admin.doc';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
-import type { ISession } from '@modules/session/interfaces/session.interface';
+import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -79,7 +79,7 @@ export class SessionAdminController {
         userId: string,
         @PaginationQueryFilterEqualBoolean('isRevoked')
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.sessionHttpService.getListOffsetByAdmin(
             userId,
             pagination,

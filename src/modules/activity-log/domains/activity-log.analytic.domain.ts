@@ -1,11 +1,10 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { ActivityLogWorkspaceVolumeExcludedActions } from '@modules/activity-log/constants/activity-log.analytic.constant';
+import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import type {
     IActivityLogAnalyticActionCount,
-    IActivityLogAnalyticEventRow,
-    IActivityLogAnalyticListRow,
-} from '@modules/activity-log/interfaces/activity-log.analytic.repository.interface';
+    IActivityLogAnalyticEvent,
+} from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
@@ -47,7 +46,7 @@ export class ActivityLogAnalyticDomain {
         actions: EnumActivityLogAction[],
         startDate: Date,
         endDate: Date
-    ): Promise<IActivityLogAnalyticEventRow[]> {
+    ): Promise<IActivityLogAnalyticEvent[]> {
         return this.activityLogAnalyticRepository.findManyByActionsInRange(
             actions,
             startDate,
@@ -61,34 +60,20 @@ export class ActivityLogAnalyticDomain {
         endDate: Date
     ): Promise<number> {
         return this.activityLogAnalyticRepository.countByWorkspaceInRange(
-            ActivityLogWorkspaceVolumeExcludedActions,
+            [...ActivityLogWorkspaceVolumeContract],
             workspaceId,
             startDate,
             endDate
         );
     }
 
-    groupActivityByWorkspaceInRange(
+    groupActivityByWorkspaceOffset(
         startDate: Date,
         endDate: Date,
-        take?: number
-    ): Promise<IAnalyticWorkspaceCount[]> {
-        return this.activityLogAnalyticRepository.groupActivityByWorkspaceInRange(
-            ActivityLogWorkspaceVolumeExcludedActions,
-            startDate,
-            endDate,
-            take
-        );
-    }
-
-    listOffsetByActions(
-        actions: EnumActivityLogAction[],
-        startDate: Date | undefined,
-        endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLogAnalyticListRow>> {
-        return this.activityLogAnalyticRepository.listOffsetByActions(
-            actions,
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        return this.activityLogAnalyticRepository.groupActivityByWorkspaceOffset(
+            [...ActivityLogWorkspaceVolumeContract],
             startDate,
             endDate,
             params

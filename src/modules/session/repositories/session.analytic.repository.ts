@@ -1,29 +1,21 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
+import type { ISessionAnalyticRepository } from '@modules/session/interfaces/session.analytic-repository.interface';
 import type {
-    ISessionAnalyticListRow,
-    ISessionAnalyticRepository,
-    ISessionAnalyticSessionRow,
+    ISessionAnalyticSession,
     ISessionAnalyticUserCount,
-} from '@modules/session/interfaces/session.analytic.repository.interface';
+} from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class SessionAnalyticRepository implements ISessionAnalyticRepository {
-    constructor(
-        private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
-    ) {}
+    constructor(private readonly databaseService: DatabaseService) {}
 
     async findActiveWithGeoInRange(
         startDate?: Date,
         endDate?: Date
-    ): Promise<ISessionAnalyticSessionRow[]> {
+    ): Promise<ISessionAnalyticSession[]> {
         return this.databaseService.client.session.findMany({
             where: {
                 isRevoked: false,
@@ -80,18 +72,5 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         return this.databaseService.client.session.count({
             where: { isRevoked: false },
         });
-    }
-
-    async listOffset(
-        params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionAnalyticListRow>> {
-        const { where, ...rest } = params;
-        return this.paginationService.offset(
-            this.databaseService.client.session,
-            {
-                ...rest,
-                where: where ?? {},
-            }
-        );
     }
 }

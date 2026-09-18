@@ -1,13 +1,16 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import { AnalyticAnomalyDomain } from '@modules/analytic/domains/analytic.anomaly.domain';
 import type {
     IAnalyticAnomalySummary,
-    IAnalyticDeviceProliferationRow,
-    IAnalyticImpossibleTravelRow,
-    IAnalyticLoginSpikeIpRow,
-    IAnalyticLoginTimeAnomalyRow,
-    IAnalyticNearLockoutRow,
+    IAnalyticDeviceProliferation,
+    IAnalyticImpossibleTravel,
+    IAnalyticLoginSpikeIp,
+    IAnalyticLoginTimeAnomaly,
+    IAnalyticNearLockout,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
@@ -20,22 +23,24 @@ export class AnalyticAnomalyHttpService {
         private readonly analyticDateUtil: AnalyticDateUtil
     ) {}
 
-    impossibleTravelSummary(
+    async impossibleTravelSummary(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticAnomalySummary> {
+    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticAnomalyDomain.impossibleTravelSummary(
+        const data = await this.analyticAnomalyDomain.impossibleTravelSummary(
             range.startDate ?? null,
             range.endDate ?? null
         );
+
+        return { data };
     }
 
     impossibleTravelList(
         startDate: Date | undefined,
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravelRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
         return this.analyticAnomalyDomain.impossibleTravelList(
             range.startDate ?? null,
@@ -44,56 +49,73 @@ export class AnalyticAnomalyHttpService {
         );
     }
 
-    loginSpikeIpSummary(windowMs?: number): Promise<IAnalyticAnomalySummary> {
-        return this.analyticAnomalyDomain.loginSpikeIpSummary(windowMs ?? null);
+    async loginSpikeIpSummary(
+        windowMs?: number
+    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
+        const data = await this.analyticAnomalyDomain.loginSpikeIpSummary(
+            windowMs ?? null
+        );
+
+        return { data };
     }
 
     loginSpikeIpList(
         windowMs: number | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIpRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIp>> {
         return this.analyticAnomalyDomain.loginSpikeIpList(
             windowMs ?? null,
             params
         );
     }
 
-    failedLoginSpikeSummary(): Promise<IAnalyticAnomalySummary> {
-        return this.analyticAnomalyDomain.failedLoginSpikeSummary();
+    async failedLoginSpikeSummary(): Promise<
+        IResponseReturn<IAnalyticAnomalySummary>
+    > {
+        const data = await this.analyticAnomalyDomain.failedLoginSpikeSummary();
+
+        return { data };
     }
 
     failedLoginSpikeList(
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockoutRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
         return this.analyticAnomalyDomain.failedLoginSpikeList(params);
     }
 
-    deviceProliferationSummary(): Promise<IAnalyticAnomalySummary> {
-        return this.analyticAnomalyDomain.deviceProliferationSummary();
+    async deviceProliferationSummary(): Promise<
+        IResponseReturn<IAnalyticAnomalySummary>
+    > {
+        const data =
+            await this.analyticAnomalyDomain.deviceProliferationSummary();
+
+        return { data };
     }
 
     deviceProliferationList(
         params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferationRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferation>> {
         return this.analyticAnomalyDomain.deviceProliferationList(params);
     }
 
-    loginTimeSummary(
+    async loginTimeSummary(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticAnomalySummary> {
+    ): Promise<IResponseReturn<IAnalyticAnomalySummary>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticAnomalyDomain.loginTimeSummary(
+        const data = await this.analyticAnomalyDomain.loginTimeSummary(
             range.startDate ?? null,
             range.endDate ?? null
         );
+
+        return { data };
     }
 
     loginTimeList(
         startDate: Date | undefined,
         endDate: Date | undefined,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomalyRow>> {
+    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
         return this.analyticAnomalyDomain.loginTimeList(
             range.startDate ?? null,

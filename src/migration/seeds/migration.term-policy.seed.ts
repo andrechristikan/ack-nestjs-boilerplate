@@ -9,6 +9,7 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 
 /**
@@ -53,6 +54,9 @@ export class MigrationTermPolicySeed
             await this.databaseService.withTransaction(
                 async tx => {
                     for (const termPolicy of this.termPolicies) {
+                        const plainContents: Prisma.TermPolicyContentCreateInput[] =
+                            this.databaseUtil.toPlainArray(termPolicy.contents);
+
                         await tx.termPolicy.upsert({
                             where: {
                                 type_version: {
@@ -62,9 +66,7 @@ export class MigrationTermPolicySeed
                             },
                             create: {
                                 ...termPolicy,
-                                contents: this.databaseUtil.toPlainArray(
-                                    termPolicy.contents
-                                ),
+                                contents: plainContents,
                                 status: EnumTermPolicyStatus.published,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,

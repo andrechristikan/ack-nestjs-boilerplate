@@ -56,16 +56,22 @@ export class LoggerUtil {
 
         return Object.fromEntries(
             Object.entries(value).map(([key, item]) => {
-                if (this.sensitiveFields.has(key.toLowerCase())) {
+                const hasSensitiveKey = this.sensitiveFields.has(
+                    key.toLowerCase()
+                );
+                if (hasSensitiveKey) {
                     return [key, LoggerRedactedValue];
                 }
 
-                return [
-                    key,
-                    typeof item === 'object'
-                        ? this.redactNested(item, depth + 1)
-                        : this.sanitizeMessage(item),
-                ];
+                if (typeof item === 'object') {
+                    const redactedItem = this.redactNested(item, depth + 1);
+
+                    return [key, redactedItem];
+                } else {
+                    const sanitizedItem = this.sanitizeMessage(item);
+
+                    return [key, sanitizedItem];
+                }
             })
         );
     }
@@ -170,47 +176,63 @@ export class LoggerUtil {
     maskUrl(url: string): string {
         try {
             const parsed = new URL(url);
-            return `${parsed.origin}${this.maskPath(parsed.pathname)}`;
+            const maskedPath = this.maskPath(parsed.pathname);
+
+            return `${parsed.origin}${maskedPath}`;
         } catch {
             return this.maskPath(url.split('?')[0].split('#')[0]);
         }
     }
 
     serializeRequest(request: IRequestApp): Record<string, unknown> {
+        const route = this.serializeRoute(request);
+        let referer: string | undefined;
+        if (request.headers.referer) {
+            referer = this.maskUrl(request.headers.referer);
+        } else {
+            referer = undefined;
+        }
+        const clientIp = this.extractClientIP(request);
+        const user = this.serializeUser(request);
+        const query = this.redactValue(request.query);
+        const params = this.serializeParams(request.params);
+        const headers = this.redactValue(request.headers);
+
         return {
             id: request.id,
             method: request.method,
-            route: this.serializeRoute(request),
+            route,
             userAgent: request.headers['user-agent'],
             contentType: request.headers?.['content-type'],
-            referer: request.headers.referer
-                ? this.maskUrl(request.headers.referer)
-                : undefined,
+            referer,
             remoteAddress: (request as unknown as { remoteAddress: string })
                 .remoteAddress,
             remotePort: (request as unknown as { remotePort: number })
                 .remotePort,
-            ip: this.extractClientIP(request),
-            user: this.serializeUser(request),
-            query: this.redactValue(request.query),
-            params: this.serializeParams(request.params),
-            headers: this.redactValue(request.headers),
+            ip: clientIp,
+            user,
+            query,
+            params,
+            headers,
         };
     }
 
     serializeResponse(response: Response): Record<string, unknown> {
+        const headers = this.redactValue(response.getHeaders());
+
         return {
             httpCode: response.statusCode,
             contentLength: response.getHeader('content-length'),
             responseTime: response.getHeader('X-Response-Time'),
-            headers: this.redactValue(response.getHeaders()),
+            headers,
         };
     }
 
     serializeError(error: Error): Record<string, unknown> {
+        const message = this.sanitizeMessage(error.message);
         const defaultError = {
             type: error.name,
-            message: this.sanitizeMessage(error.message),
+            message,
             code: (error as unknown as { status?: number })?.status,
             statusCode: (
                 error as unknown as { response?: { statusCode?: number } }

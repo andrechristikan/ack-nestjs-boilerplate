@@ -8,7 +8,7 @@ import type {
     IUser,
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password.repository.interface';
+import type { IUserPasswordRepository } from '@modules/user/interfaces/user.password-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

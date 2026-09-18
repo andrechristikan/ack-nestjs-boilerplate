@@ -20,7 +20,7 @@ export class ApiKeyCache {
     }
 
     async getCacheByKey(key: string): Promise<ApiKey | null> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
         if (cachedApiKey) {
             return cachedApiKey;
@@ -30,7 +30,7 @@ export class ApiKeyCache {
     }
 
     async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         try {
             await this.cacheManager.set(cacheKey, apiKey);
         } catch (error: unknown) {
@@ -39,7 +39,7 @@ export class ApiKeyCache {
     }
 
     async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', key);
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
         await this.cacheManager.del(cacheKey);
         return;
     }

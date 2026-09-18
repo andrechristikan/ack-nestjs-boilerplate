@@ -50,9 +50,9 @@ export class WorkspaceHttpService {
     }
 
     getCurrentWorkspace(workspace: Workspace): IResponseReturn<Workspace> {
-        return {
-            data: this.workspaceDomain.getCurrentWorkspace(workspace),
-        };
+        const current = this.workspaceDomain.getCurrentWorkspace(workspace);
+
+        return { data: current };
     }
 
     async updateWorkspace(

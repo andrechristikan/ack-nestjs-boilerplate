@@ -7,7 +7,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import {
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
@@ -17,7 +16,8 @@ import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
@@ -25,8 +25,8 @@ import { UserUsernameContainBadWordException } from '@modules/user/exceptions/us
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
+    IUserImport,
     IUserImportPrepared,
-    IUserImportRow,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
@@ -62,7 +62,7 @@ export class UserImportDomain {
     }
 
     async prepareImportByAdmin(
-        data: IUserImportRow[],
+        data: IUserImport[],
         createdBy: string
     ): Promise<IUserImportPrepared> {
         const emails = data.map(item => item.email);
@@ -132,19 +132,13 @@ export class UserImportDomain {
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
-                termPolicy: {
-                    [EnumTermPolicyType.cookies]: false,
-                    [EnumTermPolicyType.marketing]: false,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.termsOfService]: true,
-                },
+                termPolicy: { ...UserTermPolicyContract.defaults },
                 acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
+                    ...UserTermPolicyContract.requiredTypes,
                 ],
                 password: passwordHasheds[index],
                 passwordHistoryType:
-                    UserCreateModeRules[EnumUserCreateMode.admin]
+                    UserCreateContract[EnumUserCreateMode.admin]
                         .passwordHistoryType,
                 verification: null,
                 workspaceContext: workspaceContexts[index],
@@ -162,21 +156,24 @@ export class UserImportDomain {
         createdBy: string
     ): Promise<void> {
         await Promise.all(
-            users.map((newUser, index) =>
-                this.notificationQueue.sendWelcomeByAdmin(
+            users.map((newUser, index) => {
+                const passwordCreatedAt = this.helperDateService.formatToIso(
+                    passwordHasheds[index].passwordCreated
+                );
+                const passwordExpiredAt = this.helperDateService.formatToIso(
+                    passwordHasheds[index].passwordExpired
+                );
+
+                return this.notificationQueue.sendWelcomeByAdmin(
                     newUser.id,
                     {
                         password: passwordStrings[index],
-                        passwordCreatedAt: this.helperDateService.formatToIso(
-                            passwordHasheds[index].passwordCreated
-                        ),
-                        passwordExpiredAt: this.helperDateService.formatToIso(
-                            passwordHasheds[index].passwordExpired
-                        ),
+                        passwordCreatedAt,
+                        passwordExpiredAt,
                     },
                     createdBy
-                )
-            )
+                );
+            })
         );
     }
 

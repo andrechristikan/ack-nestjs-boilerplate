@@ -9,14 +9,14 @@ import {
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
-    WorkspaceDocParamsId,
-    WorkspaceDocQueryList,
-} from '@modules/workspace/constants/workspace.doc.constant';
-import {
     WorkspaceDefaultAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
+import {
+    WorkspaceDocParamsId,
+    WorkspaceDocQueryList,
+} from '@modules/workspace/constants/workspace.doc.constant';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import type { WorkspaceMemberResponseDto } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';

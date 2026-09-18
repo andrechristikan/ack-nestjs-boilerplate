@@ -1,10 +1,10 @@
 # Authorization Documentation
 
-This documentation explains the features and usage of: 
-- **UserProtected**: Located at `src/modules/user/decorators`
-- **RoleProtected**: Located at `src/modules/role/decorators`
-- **PolicyProtected**: Located at `src/modules/policy/decorators`
-- **TermPolicyAcceptanceProtected**: Located at `src/modules/term-policy/decorators`
+Decorator locations:
+- **UserProtected**: `src/modules/user/decorators`
+- **RoleProtected**: `src/modules/role/decorators`
+- **PolicyProtected**: `src/modules/policy/decorators`
+- **TermPolicyAcceptanceProtected**: `src/modules/term-policy/decorators`
 
 The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarised here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
@@ -88,7 +88,7 @@ A route takes only the slots it needs; the relative order of the ones it takes n
 
 - A social-login guard (`@AuthSocialGoogleProtected()`) takes the JWT slot for that route.
 - `@RequestThrottle({ ... })` sits outside this order. It mounts an interceptor, so it runs after every guard whatever its position in the stack. Routes declare it below `@ApiKeyProtected()`, so the rate limit reads next to the guards protecting the same route. See [Security and Middleware][ref-doc-security-and-middleware].
-- Activity logging takes no slot. Domains stage events through `ActivityLogDomain.stage`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
+- Activity logging takes no slot. Domains build events with `ActivityLogDomain.prepare` and queue them with `ActivityLogDomain.stagePrepared`, and the global `ActivityLogInterceptor` writes them after the handler settles. See [Activity Log][ref-doc-activity-log].
 - A guard that depends on state an earlier guard sets sits ABOVE that guard in source, so it runs after it.
 - `@FeatureFlagProtected()` sits ABOVE `@AuthJwtAccessProtected()` so the flag guard sees `request.user`. Below it the guard always takes its anonymous branch, which makes `targetUserIds` and any rollout below 100% inert on that route.
 - The workspace and project slots are used by the `/user` scope. The `/admin` scope reaches the same resources through `@RoleProtected()` + `@PolicyProtected()` instead, and takes the workspace or project id from the path.
@@ -124,9 +124,9 @@ async profile(
 
 #### UserCurrent Parameter Decorator
 
-Extracts the authenticated user object from the request context.
+Reads back the authenticated user `UserGuard` stored, or one of its fields when a field name is passed.
 
-**Returns:** `IUser | undefined`
+**Returns:** `IUser`, or the named field of it. Both are non-null: an empty store key, or a field holding `null`, throws `RequestContextMissingException` (500, `50304`).
 
 **Usage:**
 

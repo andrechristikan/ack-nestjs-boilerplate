@@ -177,10 +177,12 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         delete rMetadata.messageProperties;
                     }
 
-                    const pagination =
+                    const storedPagination =
                         this.requestStoreService.get<Partial<IPaginationQuery>>(
                             PaginationStoreKey
-                        ) ?? {};
+                        );
+                    const pagination = storedPagination ?? {};
+                    const orderBy = this.mapOrderBy(pagination.orderBy);
                     const finalMetadata: ResponsePagingMetadataDto = {
                         ...metadata,
                         type,
@@ -196,7 +198,7 @@ export class ResponsePagingInterceptor<T> implements NestInterceptor {
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
-                        orderBy: this.mapOrderBy(pagination.orderBy),
+                        orderBy,
                         availableSearch: pagination.availableSearch ?? [],
                         availableOrderBy: pagination.availableOrderBy ?? [],
                     };

@@ -5,7 +5,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import type { TwoFactor } from '@generated/prisma-client/client';
 import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
 import type { IAuthTwoFactorVerifyResult } from '@modules/auth/interfaces/auth.interface';
-import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor.repository.interface';
+import type { IUserTwoFactorRepository } from '@modules/user/interfaces/user.two-factor-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -21,6 +21,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         currentBackupCodes: string[]
     ): Prisma.TwoFactorUpdateManyArgs {
         const isBackupCode = method === EnumAuthTwoFactorMethod.backupCodes;
+        const lastUsedAt = this.helperDateService.create();
 
         return {
             where: {
@@ -30,7 +31,7 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
                 }),
             },
             data: {
-                lastUsedAt: this.helperDateService.create(),
+                lastUsedAt,
                 ...(isBackupCode && {
                     backupCodes: newBackupCodes,
                 }),
@@ -41,10 +42,12 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
     private buildSetupTwoFactorData(
         pendingSecretEncrypted: string
     ): Prisma.TwoFactorUpdateInput {
+        const updatedAt = this.helperDateService.create();
+
         return {
             pendingSecret: pendingSecretEncrypted,
             attempt: 0,
-            updatedAt: this.helperDateService.create(),
+            updatedAt,
         };
     }
 
@@ -70,9 +73,12 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         verified: IAuthTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
-        const { count } = await tx.twoFactor.updateMany(
-            this.buildVerifyTwoFactorArgs(userId, verified, currentBackupCodes)
+        const verifyArgs = this.buildVerifyTwoFactorArgs(
+            userId,
+            verified,
+            currentBackupCodes
         );
+        const { count } = await tx.twoFactor.updateMany(verifyArgs);
 
         return count > 0;
     }
@@ -82,14 +88,13 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         verified: IAuthTwoFactorVerifyResult,
         currentBackupCodes: string[]
     ): Promise<boolean> {
+        const verifyArgs = this.buildVerifyTwoFactorArgs(
+            userId,
+            verified,
+            currentBackupCodes
+        );
         const { count } =
-            await this.databaseService.client.twoFactor.updateMany(
-                this.buildVerifyTwoFactorArgs(
-                    userId,
-                    verified,
-                    currentBackupCodes
-                )
-            );
+            await this.databaseService.client.twoFactor.updateMany(verifyArgs);
 
         return count > 0;
     }
@@ -98,9 +103,11 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         userId: string,
         pendingSecretEncrypted: string
     ): Promise<TwoFactor> {
+        const setupData = this.buildSetupTwoFactorData(pendingSecretEncrypted);
+
         return this.databaseService.client.twoFactor.update({
             where: { userId },
-            data: this.buildSetupTwoFactorData(pendingSecretEncrypted),
+            data: setupData,
         });
     }
 
@@ -111,20 +118,22 @@ export class UserTwoFactorRepository implements IUserTwoFactorRepository {
         currentBackupCodes: string[]
     ): Promise<boolean> {
         return this.databaseService.withTransaction(async tx => {
-            const { count } = await tx.twoFactor.updateMany(
-                this.buildVerifyTwoFactorArgs(
-                    userId,
-                    verified,
-                    currentBackupCodes
-                )
+            const verifyArgs = this.buildVerifyTwoFactorArgs(
+                userId,
+                verified,
+                currentBackupCodes
             );
+            const { count } = await tx.twoFactor.updateMany(verifyArgs);
             if (count === 0) {
                 return false;
             }
 
+            const setupData = this.buildSetupTwoFactorData(
+                pendingSecretEncrypted
+            );
             await tx.twoFactor.update({
                 where: { userId },
-                data: this.buildSetupTwoFactorData(pendingSecretEncrypted),
+                data: setupData,
             });
 
             return true;

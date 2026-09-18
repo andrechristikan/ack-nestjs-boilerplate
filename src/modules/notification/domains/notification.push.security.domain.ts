@@ -34,7 +34,8 @@ export class NotificationPushSecurityDomain {
         }: INotificationSendPushPayload,
         data: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping new login notification',
@@ -59,9 +60,8 @@ export class NotificationPushSecurityDomain {
         const city = this.requestContextService.resolveCity(
             data.requestLog.geoLocation
         );
-        const loginAt = this.helperDateService.formatToRFC2822(
-            this.helperDateService.createFromIso(data.loginAt)
-        );
+        const loginAtDate = this.helperDateService.createFromIso(data.loginAt);
+        const loginAt = this.helperDateService.formatToRFC2822(loginAtDate);
         const title = this.messageService.setMessage(notification.title);
         const body = this.messageService.setMessage(notification.body, {
             properties: { device, city, username, loginAt },
@@ -100,7 +100,8 @@ export class NotificationPushSecurityDomain {
         notificationId,
         userId,
     }: INotificationSendPushPayload): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping reset two-factor notification',
@@ -160,7 +161,8 @@ export class NotificationPushSecurityDomain {
         }: INotificationSendPushPayload,
         data: INotificationTemporaryPasswordPushPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping temporary password notification',
@@ -179,8 +181,11 @@ export class NotificationPushSecurityDomain {
             };
         }
 
+        const passwordExpiredAtDate = this.helperDateService.createFromIso(
+            data.passwordExpiredAt
+        );
         const passwordExpiredAt = this.helperDateService.formatToRFC2822(
-            this.helperDateService.createFromIso(data.passwordExpiredAt)
+            passwordExpiredAtDate
         );
 
         const title = this.messageService.setMessage(notification.title);
@@ -221,7 +226,8 @@ export class NotificationPushSecurityDomain {
         notificationId,
         userId,
     }: INotificationSendPushPayload): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping reset password notification',
@@ -278,7 +284,8 @@ export class NotificationPushSecurityDomain {
         notificationId,
         userId,
     }: INotificationSendPushPayload): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping forgot password notification',

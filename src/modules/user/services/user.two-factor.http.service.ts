@@ -56,11 +56,11 @@ export class UserTwoFactorHttpService {
     getTwoFactorStatus(
         user: IUser
     ): IResponseReturn<UserTwoFactorStatusResponseDto> {
-        return {
-            data: this.userUtil.mapTwoFactor(
-                this.userTwoFactorDomain.getTwoFactorStatus(user)
-            ),
-        };
+        const twoFactorStatus =
+            this.userTwoFactorDomain.getTwoFactorStatus(user);
+        const twoFactor = this.userUtil.mapTwoFactor(twoFactorStatus);
+
+        return { data: twoFactor };
     }
 
     async setupTwoFactor(

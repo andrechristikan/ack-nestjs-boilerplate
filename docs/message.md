@@ -1,6 +1,6 @@
 # Message Documentation
 
-This documentation explains the features and usage of **Message Module**: Located at `src/common/message`
+i18n lives in `src/common/message`. Message files live in `src/languages/`.
 
 ## Overview
 

@@ -214,13 +214,16 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         { type, version }: TermPolicyCreateRequestDto,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
+        const plainContents: Prisma.TermPolicyContentCreateInput[] =
+            this.databaseUtil.toPlainArray(contents);
+
         return this.databaseService.client.termPolicy.create({
             data: {
                 id: termPolicyId,
                 type,
                 version,
                 status: EnumTermPolicyStatus.draft,
-                contents: this.databaseUtil.toPlainArray(contents),
+                contents: plainContents,
             },
         });
     }
@@ -245,12 +248,15 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             contents[contentIndex] = content;
         }
 
+        const plainContents: Prisma.TermPolicyContentCreateInput[] =
+            this.databaseUtil.toPlainArray(contents);
+
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
-                contents: this.databaseUtil.toPlainArray(contents),
+                contents: plainContents,
             },
         });
     }
@@ -259,16 +265,18 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         termPolicyId: string,
         newContent: ITermPolicyContent
     ): Promise<TermPolicy> {
+        const plainContent = this.databaseUtil.toPlainObject<
+            ITermPolicyContent,
+            Prisma.TermPolicyContentCreateInput
+        >(newContent);
+
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
                 contents: {
-                    push: this.databaseUtil.toPlainObject<
-                        ITermPolicyContent,
-                        Prisma.TermPolicyContentCreateInput
-                    >(newContent),
+                    push: plainContent,
                 },
             },
         });
@@ -284,12 +292,15 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             contents.splice(contentIndex, 1);
         }
 
+        const plainContents: Prisma.TermPolicyContentCreateInput[] =
+            this.databaseUtil.toPlainArray(contents);
+
         return this.databaseService.client.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
-                contents: this.databaseUtil.toPlainArray(contents),
+                contents: plainContents,
             },
         });
     }
@@ -299,13 +310,15 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         termPolicyId: string,
         contents: ITermPolicyContent[]
     ): Promise<TermPolicy> {
+        const publishedAt = this.helperDateService.create();
+
         return tx.termPolicy.update({
             where: {
                 id: termPolicyId,
             },
             data: {
                 status: EnumTermPolicyStatus.published,
-                publishedAt: this.helperDateService.create(),
+                publishedAt,
                 contents,
             },
         });

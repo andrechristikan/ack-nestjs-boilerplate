@@ -40,8 +40,13 @@ export class DeviceUtil {
         deviceOwnership: IDeviceOwnership,
         sessionCount: number
     ): IActivityLogMetadata {
+        const metadata = this.mapActivityLogMetadata(
+            deviceOwnership,
+            sessionCount
+        );
+
         return {
-            ...this.mapActivityLogMetadata(deviceOwnership, sessionCount),
+            ...metadata,
             targetUserId: deviceOwnership.userId,
             targetUsername: deviceOwnership.user.username,
             timestamp: deviceOwnership.updatedAt,
@@ -54,8 +59,13 @@ export class DeviceUtil {
         actorUserId: string,
         sessionCount: number
     ): IActivityLogMetadata {
+        const metadata = this.mapActivityLogMetadata(
+            deviceOwnership,
+            sessionCount
+        );
+
         return {
-            ...this.mapActivityLogMetadata(deviceOwnership, sessionCount),
+            ...metadata,
             actorUserId,
             timestamp: deviceOwnership.updatedAt,
         };

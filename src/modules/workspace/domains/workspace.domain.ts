@@ -108,7 +108,8 @@ export class WorkspaceDomain {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
+        const isSlugPatternValid = this.slugRegex.test(slug);
+        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new WorkspaceSlugInvalidException();
         }
     }
@@ -284,10 +285,11 @@ export class WorkspaceDomain {
                             rows.push({ ...users[index], twoFactor });
                         }
 
-                        await this.createOwnedForUsersInTx(
-                            tx,
-                            this.buildOwnedUsers(inputs, attempt)
+                        const ownedUsers = this.buildOwnedUsers(
+                            inputs,
+                            attempt
                         );
+                        await this.createOwnedForUsersInTx(tx, ownedUsers);
 
                         for (const input of inputs) {
                             if (
@@ -309,15 +311,14 @@ export class WorkspaceDomain {
                             );
                         }
 
-                        return {
+                        const events = this.prepareOnboardingActivities(
+                            inputs,
                             rows,
-                            events: this.prepareOnboardingActivities(
-                                inputs,
-                                rows,
-                                mode,
-                                adminPayloadAction
-                            ),
-                        };
+                            mode,
+                            adminPayloadAction
+                        );
+
+                        return { rows, events };
                     },
                     { timeout: timeoutInMs }
                 );
@@ -326,11 +327,17 @@ export class WorkspaceDomain {
 
                 return onboarded.rows;
             } catch (error: unknown) {
-                if (this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (isSlugCollision) {
                     continue;
                 }
 
-                throw this.userOnboardingUtil.mapCreateCollision(error);
+                const exception =
+                    this.userOnboardingUtil.mapCreateCollision(error);
+                throw exception;
             }
         }
 
@@ -345,33 +352,35 @@ export class WorkspaceDomain {
     ): IActivityLogStagedEvent[] {
         const events: IActivityLogStagedEvent[] = [];
         if (adminPayloadAction) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: adminPayloadAction,
-                    metadata:
-                        this.userOnboardingDomain.buildAdminPayloadMetadata(
-                            adminPayloadAction,
-                            users
-                        ),
-                })
-            );
+            const adminPayloadMetadata =
+                this.userOnboardingDomain.buildAdminPayloadMetadata(
+                    adminPayloadAction,
+                    users
+                );
+            const adminPayloadEvent = this.activityLogDomain.prepare({
+                action: adminPayloadAction,
+                metadata: adminPayloadMetadata,
+            });
+            events.push(adminPayloadEvent);
         }
 
         for (const [index, input] of inputs.entries()) {
-            for (const activity of this.userOnboardingDomain.buildOnboardingActivities(
-                mode,
-                input,
-                users[index]
-            )) {
-                events.push(
-                    this.activityLogDomain.prepare({
-                        action: activity.action,
-                        userId: activity.userId,
-                        createdBy: activity.createdBy,
-                        workspaceId: activity.workspaceId,
-                        metadata: activity.metadata,
-                    })
+            const onboardingActivities =
+                this.userOnboardingDomain.buildOnboardingActivities(
+                    mode,
+                    input,
+                    users[index]
                 );
+
+            for (const activity of onboardingActivities) {
+                const activityEvent = this.activityLogDomain.prepare({
+                    action: activity.action,
+                    userId: activity.userId,
+                    createdBy: activity.createdBy,
+                    workspaceId: activity.workspaceId,
+                    metadata: activity.metadata,
+                });
+                events.push(activityEvent);
             }
         }
 
@@ -407,7 +416,11 @@ export class WorkspaceDomain {
                     this.createInTx(tx, userId, create, slug, workspaceId)
                 );
             } catch (error: unknown) {
-                if (!this.databaseUtil.isUniqueCollision(error, 'slug')) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
                     throw error;
                 }
 

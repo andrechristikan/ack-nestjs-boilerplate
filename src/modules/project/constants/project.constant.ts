@@ -8,16 +8,19 @@ import {
  * @public
  */
 export const ProjectStoreKey = 'ProjectStore';
+
 /**
  * Request-store key holding the caller's project membership.
  * @public
  */
 export const ProjectMemberStoreKey = 'ProjectMemberStore';
+
 /**
  * Request-store key holding whether `ProjectRoleGuard` let the caller through on the workspace-owner bypass instead of a `ProjectMember` row.
  * @public
  */
 export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
+
 /**
  * Route metadata key holding the project roles `@ProjectMemberProtected` requires.
  * @public

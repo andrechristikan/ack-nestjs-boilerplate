@@ -396,19 +396,22 @@ export class UserTwoFactorDomain {
         }
 
         try {
+            const actorMetadata =
+                this.userUtil.mapActivityLogActorMetadata(user);
+            const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
+                user,
+                updatedBy
+            );
             const events = [
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.adminUserResetTwoFactor,
-                    metadata: this.userUtil.mapActivityLogActorMetadata(user),
+                    metadata: actorMetadata,
                 }),
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.userResetTwoFactorByAdmin,
                     userId,
                     createdBy: updatedBy,
-                    metadata: this.userUtil.mapActivityLogTargetMetadata(
-                        user,
-                        updatedBy
-                    ),
+                    metadata: targetMetadata,
                 }),
             ];
             const now = this.helperDateService.create();

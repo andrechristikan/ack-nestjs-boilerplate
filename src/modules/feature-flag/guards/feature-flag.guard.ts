@@ -39,13 +39,18 @@ export class FeatureFlagGuard implements CanActivate {
 
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const rawAnonymousId = request.headers[this.anonymousHeaderName];
-        const anonymousId =
-            typeof rawAnonymousId !== 'string' ||
-            rawAnonymousId.length === 0 ||
-            rawAnonymousId.length > this.anonymousIdMaxLength ||
-            !this.anonymousIdPattern.test(rawAnonymousId)
-                ? null
-                : rawAnonymousId;
+        let anonymousId: string | null = null;
+        if (
+            typeof rawAnonymousId === 'string' &&
+            rawAnonymousId.length > 0 &&
+            rawAnonymousId.length <= this.anonymousIdMaxLength
+        ) {
+            const isAnonymousIdValid =
+                this.anonymousIdPattern.test(rawAnonymousId);
+            if (isAnonymousIdValid) {
+                anonymousId = rawAnonymousId;
+            }
+        }
 
         await this.featureFlagDomain.validateFeatureFlag(
             featureFlagKeyPath,

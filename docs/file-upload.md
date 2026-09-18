@@ -1,16 +1,10 @@
 # File Upload Documentation
 
-This documentation explains the features and usage of:
-- **File Module**: Located at `src/common/file`
-- **Aws S3 Module**: Located at `src/common/aws` 
+File upload lives in `src/common/file`. S3 lives in `src/common/aws`.
 
 ## Overview
 
-Decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing.
-
-The module supports:
-
-**Direct Upload**: Traditional multipart form-data upload where files are sent through the backend server. Ideal for small to medium files and when you need immediate server-side processing.
+Decorators, pipes, and services for single and multiple uploads, file validation, and CSV processing. Direct upload is multipart form-data through the API. Time-limited object access is [Presign][ref-doc-presign].
 
 
 ## Related Documentation
@@ -151,9 +145,9 @@ A mixin pipe built by `FileExtensionPipe(allowedExtensions)`. The declared exten
 For each file:
 
 1. The declared extension comes off `file.originalname` through `FileService.extractExtensionFromFilename`, and has to be a member of `allowedExtensions`.
-2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package. The sniffed type is accepted when `FileExtensionSignatures` (`src/common/file/constants/file.constant.ts`) maps some member of the allow-list onto it.
+2. The first bytes of `file.buffer` are sniffed through `FileService.sniffExtensionFromBuffer`, which wraps the `file-type` package. The sniffed type is accepted when `FileExtensionContract` (`src/common/file/contracts/file.extension.contract.ts`) maps some member of the allow-list onto it.
 
-`csv` is the signature-less member of `FileExtensionSignatures`: its entry is an empty array. A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list, and rejected for every other member. `hbs` is not in the table; templates are not uploaded through this pipe. Adding an uploadable extension to a group enum means adding its row to that table.
+`csv` is the signature-less member of `FileExtensionContract`: its entry is an empty array. A sniff that returns nothing is accepted when the declared extension is `csv` and that member is in the allow-list, and rejected for every other member. `hbs` is not in the table; templates are not uploaded through this pipe. Adding an uploadable extension to a group enum means adding its row to that table.
 
 **Usage:**
 Pass an array of allowed file extensions from the enum constants. A single file and an array of files are both accepted, and every element of an array is validated: one rejected file rejects the request.

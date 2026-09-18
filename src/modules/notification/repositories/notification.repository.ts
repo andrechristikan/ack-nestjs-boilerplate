@@ -3,7 +3,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { NotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationCreate,
@@ -37,7 +37,7 @@ export class NotificationRepository implements INotificationRepository {
             body,
             pendingChannels,
             deliveredChannels,
-        } = NotificationKindRules[kind];
+        } = NotificationKindContract[kind];
 
         return {
             id,
@@ -102,8 +102,10 @@ export class NotificationRepository implements INotificationRepository {
     ): Promise<Notification> {
         const today = this.helperDateService.create();
 
+        const createData = this.buildCreateData(kind, payload, today);
+
         return this.databaseService.client.notification.create({
-            data: this.buildCreateData(kind, payload, today),
+            data: createData,
         });
     }
 
@@ -115,11 +117,11 @@ export class NotificationRepository implements INotificationRepository {
         return this.databaseService.withTransaction(async tx => {
             const created: Notification[] = [];
             for (const { kind, payload } of entries) {
-                created.push(
-                    await tx.notification.create({
-                        data: this.buildCreateData(kind, payload, today),
-                    })
-                );
+                const createData = this.buildCreateData(kind, payload, today);
+                const row = await tx.notification.create({
+                    data: createData,
+                });
+                created.push(row);
             }
 
             return created;
@@ -130,6 +132,8 @@ export class NotificationRepository implements INotificationRepository {
         userId: string,
         notificationId: string
     ): Promise<Notification> {
+        const readAt = this.helperDateService.create();
+
         return this.databaseService.client.notification.update({
             where: {
                 id: notificationId,
@@ -138,12 +142,14 @@ export class NotificationRepository implements INotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperDateService.create(),
+                readAt,
             },
         });
     }
 
     async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
+        const readAt = this.helperDateService.create();
+
         return this.databaseService.client.notification.updateMany({
             where: {
                 userId,
@@ -151,7 +157,7 @@ export class NotificationRepository implements INotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperDateService.create(),
+                readAt,
             },
         });
     }

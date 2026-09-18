@@ -67,6 +67,14 @@ export class NotificationEmailSecurityDomain {
                 userId
             );
 
+            const passwordExpiredAtDate =
+                this.helperDateService.createFromIso(passwordExpiredAt);
+            const passwordExpiredAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordExpiredAtDate);
+            const passwordCreatedAtDate =
+                this.helperDateService.createFromIso(passwordCreatedAt);
+            const passwordCreatedAtFormatted =
+                this.helperDateService.formatToRFC2822(passwordCreatedAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.temporaryPasswordByAdmin,
                 recipients: [email],
@@ -75,12 +83,8 @@ export class NotificationEmailSecurityDomain {
                     ...this.defaultTemplateData,
                     username,
                     password,
-                    passwordExpiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordExpiredAt)
-                    ),
-                    passwordCreatedAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(passwordCreatedAt)
-                    ),
+                    passwordExpiredAt: passwordExpiredAtFormatted,
+                    passwordCreatedAt: passwordCreatedAtFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -165,6 +169,10 @@ export class NotificationEmailSecurityDomain {
                 userId
             );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.forgotPassword,
                 recipients: [email],
@@ -173,9 +181,7 @@ export class NotificationEmailSecurityDomain {
                     ...this.defaultTemplateData,
                     username,
                     link,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                     reference,
                     expiredInMinutes: String(expiredInMinutes),
                 },
@@ -232,6 +238,9 @@ export class NotificationEmailSecurityDomain {
         }: INotificationNewDeviceLoginPayload
     ): Promise<IQueueResponse> {
         try {
+            const loginAtDate = this.helperDateService.createFromIso(loginAt);
+            const loginAtFormatted =
+                this.helperDateService.formatToRFC2822(loginAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.newDeviceLogin,
                 recipients: [email],
@@ -241,9 +250,7 @@ export class NotificationEmailSecurityDomain {
                     username,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(loginAt)
-                    ),
+                    loginAt: loginAtFormatted,
                     userAgent: flatten(userAgent),
                     ipAddress: ipAddress ?? '',
                 },

@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAnalyticTwoFactorAttemptSnapshot } from '@modules/analytic/interfaces/analytic.interface';
-import type { IUserTwoFactorAnalyticRepository } from '@modules/user/interfaces/user.two-factor.analytic.repository.interface';
+import type { IUserTwoFactorAnalyticRepository } from '@modules/user/interfaces/user.two-factor-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

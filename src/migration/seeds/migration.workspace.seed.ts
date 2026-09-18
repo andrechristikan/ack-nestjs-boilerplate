@@ -110,10 +110,11 @@ export class MigrationWorkspaceSeed
 
                     await this.databaseService.withTransaction(
                         async tx => {
+                            const slugCandidates = this.drawSlugCandidates();
                             const workspace = await tx.workspace.create({
                                 data: {
                                     name: `${user.username}'s Workspace`,
-                                    slug: this.drawSlugCandidates()[0],
+                                    slug: slugCandidates[0],
                                     createdBy: MigrationUserSuperAdminId,
                                     updatedBy: MigrationUserSuperAdminId,
                                 },

@@ -1,14 +1,14 @@
 import type { IAnalyticDeviceProliferationResult } from '@modules/analytic/interfaces/analytic.anomaly.interface';
-import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
 import type {
     IAnalyticCountBucket,
     IAnalyticMetricRate,
 } from '@modules/analytic/interfaces/analytic.interface';
 import type {
-    IDeviceOwnershipAnalyticCreatedRow,
-    IDeviceOwnershipAnalyticInactiveRow,
+    IDeviceOwnershipAnalyticCreated,
+    IDeviceOwnershipAnalyticInactive,
     IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+} from '@modules/device/interfaces/device.interface';
 import { DeviceAnalyticRepository } from '@modules/device/repositories/device.analytic.repository';
 import { DeviceOwnershipAnalyticRepository } from '@modules/device/repositories/device.ownership.analytic.repository';
 import { Injectable } from '@nestjs/common';
@@ -55,14 +55,14 @@ export class DeviceAnalyticDomain {
         return this.deviceOwnershipAnalyticRepository.countPerUser();
     }
 
-    findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactiveRow[]> {
+    findInactive(before: Date): Promise<IDeviceOwnershipAnalyticInactive[]> {
         return this.deviceOwnershipAnalyticRepository.findInactive(before);
     }
 
     findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreatedRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
         return this.deviceOwnershipAnalyticRepository.findCreatedInRange(
             startDate,
             endDate
@@ -71,7 +71,7 @@ export class DeviceAnalyticDomain {
 
     sharedFingerprints(
         minUsers: number
-    ): Promise<IAnalyticSharedFingerprintRow[]> {
+    ): Promise<IAnalyticSharedFingerprint[]> {
         return this.deviceOwnershipAnalyticRepository.sharedFingerprints(
             minUsers
         );

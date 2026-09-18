@@ -5,8 +5,10 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
-import { RequestTimeout } from '@common/request/decorators/request.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import {
+    RequestThrottle,
+    RequestTimeout,
+} from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';

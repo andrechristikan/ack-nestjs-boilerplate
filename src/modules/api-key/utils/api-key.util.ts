@@ -56,12 +56,10 @@ export class ApiKeyUtil {
         },
         currentDate: Date
     ): boolean {
-        return (
-            apiKey &&
-            apiKey.isActive &&
-            !this.isExpired(apiKey, currentDate) &&
-            !this.isNotYetActive(apiKey, currentDate)
-        );
+        const isExpired = this.isExpired(apiKey, currentDate);
+        const isNotYetActive = this.isNotYetActive(apiKey, currentDate);
+
+        return apiKey && apiKey.isActive && !isExpired && !isNotYetActive;
     }
 
     validateType(

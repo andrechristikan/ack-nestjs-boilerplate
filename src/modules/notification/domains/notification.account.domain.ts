@@ -253,6 +253,10 @@ export class NotificationAccountDomain {
             notificationId,
         };
 
+        const censoredMobileNumber = this.helperStringService.censor(
+            data.mobileNumber
+        );
+
         const results = await Promise.allSettled([
             this.notificationRepository.create(
                 EnumNotificationKind.verifiedMobileNumber,
@@ -261,9 +265,7 @@ export class NotificationAccountDomain {
                     userId: user.id,
                     metadata: {
                         username: user.username,
-                        mobileNumber: this.helperStringService.censor(
-                            data.mobileNumber
-                        ),
+                        mobileNumber: censoredMobileNumber,
                     },
                     createdBy: user.id,
                 }

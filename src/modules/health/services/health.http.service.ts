@@ -31,7 +31,9 @@ export class HealthHttpService {
             if (error instanceof ServiceUnavailableException) {
                 const response = error.getResponse();
 
-                if (this.healthUtil.isHealthCheckResult(response)) {
+                const isHealthCheckResult =
+                    this.healthUtil.isHealthCheckResult(response);
+                if (isHealthCheckResult) {
                     return this.mapResponse(response);
                 }
             }
@@ -41,8 +43,10 @@ export class HealthHttpService {
     }
 
     private mapResponse(result: HealthCheckResult): HealthResponseDto {
+        const status = this.healthUtil.mapStatus(result.status);
+
         return {
-            status: this.healthUtil.mapStatus(result.status),
+            status,
             info: result.info,
             error: result.error,
             details: result.details,
@@ -50,15 +54,15 @@ export class HealthHttpService {
     }
 
     async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
-        const data = await this.resolveResponse(this.healthDomain.checkAws());
+        const check = this.healthDomain.checkAws();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
 
     async checkDatabase(): Promise<IResponseReturn<HealthDatabaseResponseDto>> {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkDatabase()
-        );
+        const check = this.healthDomain.checkDatabase();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
@@ -66,17 +70,15 @@ export class HealthHttpService {
     async checkThirdParty(): Promise<
         IResponseReturn<HealthThirdPartyResponseDto>
     > {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkThirdParty()
-        );
+        const check = this.healthDomain.checkThirdParty();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }
 
     async checkInstance(): Promise<IResponseReturn<HealthInstanceResponseDto>> {
-        const data = await this.resolveResponse(
-            this.healthDomain.checkInstance()
-        );
+        const check = this.healthDomain.checkInstance();
+        const data = await this.resolveResponse(check);
 
         return { data };
     }

@@ -42,12 +42,14 @@ export class TermPolicyContentDomain {
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
         timestamp: Date
     ): IActivityLogStagedEvent {
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            termPolicy,
+            timestamp
+        );
+
         return this.activityLogDomain.prepare({
             action,
-            metadata: this.termPolicyUtil.mapActivityLogMetadata(
-                termPolicy,
-                timestamp
-            ),
+            metadata,
         });
     }
 
@@ -114,20 +116,22 @@ export class TermPolicyContentDomain {
         const termPolicy = await this.findOneDraftById(termPolicyId);
 
         try {
+            const presign = this.awsS3Service.mapPresign(
+                { key, size },
+                {
+                    access: EnumAwsS3Accessibility.private,
+                }
+            );
             const mappedContent: ITermPolicyContent = {
                 language,
-                ...this.awsS3Service.mapPresign(
-                    { key, size },
-                    {
-                        access: EnumAwsS3Accessibility.private,
-                    }
-                ),
+                ...presign,
             };
+            const timestamp = this.helperDateService.create();
             const events = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyUpdateContent,
                     termPolicy,
-                    this.helperDateService.create()
+                    timestamp
                 ),
             ];
             await this.termPolicyRepository.updateContent(
@@ -163,20 +167,22 @@ export class TermPolicyContentDomain {
         }
 
         try {
+            const presign = this.awsS3Service.mapPresign(
+                { key, size },
+                {
+                    access: EnumAwsS3Accessibility.private,
+                }
+            );
             const mappedContent: ITermPolicyContent = {
                 language,
-                ...this.awsS3Service.mapPresign(
-                    { key, size },
-                    {
-                        access: EnumAwsS3Accessibility.private,
-                    }
-                ),
+                ...presign,
             };
+            const timestamp = this.helperDateService.create();
             const events = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyAddContent,
                     termPolicy,
-                    this.helperDateService.create()
+                    timestamp
                 ),
             ];
             await this.termPolicyRepository.addContent(
@@ -211,11 +217,12 @@ export class TermPolicyContentDomain {
         }
 
         try {
+            const timestamp = this.helperDateService.create();
             const events = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyRemoveContent,
                     termPolicy,
-                    this.helperDateService.create()
+                    timestamp
                 ),
             ];
             await this.termPolicyRepository.removeContent(

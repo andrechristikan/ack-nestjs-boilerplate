@@ -1,6 +1,6 @@
 # Request Validation Documentation
 
-This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+Request validation lives in `src/common/request`.
 
 ## Overview
 
@@ -47,7 +47,12 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 }
 ```
 
-The subclass adds one rule on top of the framework pipe: a `body` argument arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked. Binding a body is therefore always `@Body({ schema: <Module><Action>RequestSchema })`. The constraint when writing one: `rules/validation.md`.
+The subclass adds two rules on top of the framework pipe:
+
+- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
+- **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
+
+The pipe also strips prototype-polluting keys from the value before validating. The constraint when writing a schema: `rules/validation.md`.
 
 **Processing flow**:
 ```
@@ -229,6 +234,7 @@ Shared schemas:
 - `RequestRequiredStringSchema` — non-empty string
 - `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
 - `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
 ## File Validation Pipes
 
@@ -291,7 +297,11 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
     "tooBig": "{property} is longer than the maximum allowed.",
     "invalidFormat": "{property} does not match the expected format.",
     "invalidValue": "{property} is not one of the allowed values.",
+    "notMultipleOf": "{property} is not a multiple of the required step.",
     "unrecognizedKeys": "The request contains fields that are not allowed.",
+    "invalidUnion": "{property} does not match any of the allowed shapes.",
+    "invalidKey": "{property} contains a key that is not allowed.",
+    "invalidElement": "{property} contains an element that is not allowed.",
     "custom": "{property} failed a validation rule.",
     "isPassword": {
       "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."

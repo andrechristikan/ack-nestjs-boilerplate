@@ -1,6 +1,6 @@
 # Handling Error Documentation
 
-This documentation explains the features and usage of **Exception Filter Module**: Located at `src/app/filters`
+Exception filters live in `src/app/filters`.
 
 ## Overview
 
@@ -35,7 +35,7 @@ Exception filters turn thrown errors into the same HTTP error body, with i18n me
 
 ## Exception Filters
 
-ACK NestJS Boilerplate uses 5 specialized exception filters, registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
+Five exception filters are registered globally as `APP_FILTER` providers in `src/app/app.module.ts`. The provider array order is:
 
 1. `AppGeneralFilter`
 2. `AppBaseExceptionFilter`
@@ -47,21 +47,27 @@ NestJS evaluates global filters in reverse of the registration array, so the mos
 
 1. **AppValidationImportFilter** - Handles `FileImportException`
 2. **AppValidationFilter** - Handles `RequestValidationException`
-3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, throttler, etc.)
+3. **AppHttpFilter** - Handles framework `HttpException` (route 404s, rate-limit `ThrottlerException`, etc.)
 4. **AppBaseExceptionFilter** - Handles `AppBaseException` (every application error)
 5. **AppGeneralFilter** - Catches all unhandled exceptions
 
 `AppBaseException` does not extend `HttpException`, so the relative position of those two filters does not change which one catches a given error.
 
 **Processing flow**:
-```
-Exception thrown
-    ↓
-Match specific filter? (validation import/request, AppBaseException, framework HTTP)
-    ↓ No
-AppGeneralFilter (fallback)
-    ↓
-Standardized error response + Sentry (if applicable)
+
+```mermaid
+flowchart TD
+    E[Exception thrown] --> M{Matching filter?}
+    M -->|FileImportException| VI[AppValidationImportFilter]
+    M -->|RequestValidationException| V[AppValidationFilter]
+    M -->|HttpException| H[AppHttpFilter]
+    M -->|AppBaseException| B[AppBaseExceptionFilter]
+    M -->|none of the above| G[AppGeneralFilter]
+    VI --> R[Error envelope plus Sentry when that filter reports]
+    V --> R
+    H --> R
+    B --> R
+    G --> R
 ```
 
 **Common behavior**:
@@ -142,7 +148,7 @@ x-request-id: 550e8400-e29b-41d4-a716-446655440000
 x-correlation-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 ```
 
-A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (the global throttler guard, the per-route guard, or the per-user interceptor) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
+A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whichever limiter blocks the request (`RequestThrottleDefaultGuard`, `RequestThrottleRouteGuard`, or `RequestThrottleUserInterceptor`) before the exception reaches any filter, and the filter preserves it. See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Exception Filters
 
@@ -199,7 +205,7 @@ A rate-limited 429 also carries `Retry-After`, in seconds. It is set by whicheve
 
 **Location**: `src/app/filters/app.http.filter.ts`
 
-**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, throttler 429, payload limits, etc.)
+**Catches**: `@Catch(HttpException)` - framework HTTP exceptions only (route 404s, rate-limit `ThrottlerException` 429, payload limits, etc.)
 
 **Use case**: NestJS/framework `HttpException`s. Application code does not throw `HttpException`; every application error is an `AppBaseException` subclass handled by `AppBaseExceptionFilter`.
 

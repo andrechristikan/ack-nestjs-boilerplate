@@ -78,10 +78,7 @@ export class ProjectMemberHttpService {
         );
     }
 
-    async leaveProject(
-        project: Project,
-        member: ProjectMember | null
-    ): Promise<void> {
+    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
         await this.projectMemberDomain.leaveProject(project, member);
     }
 }

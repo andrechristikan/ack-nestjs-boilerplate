@@ -17,7 +17,7 @@ import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-i
 import { UserVerificationEmailResendLimitExceededException } from '@modules/user/exceptions/user.verification-email-resend-limit-exceeded.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
-    IUserOnboardingVerificationRow,
+    IUserOnboardingVerification,
     IUserVerificationCreate,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
@@ -64,15 +64,17 @@ export class UserVerificationDomain {
         this.verificationOtpLength = this.configService.get<number>(
             'verification.otpLength'
         )!;
-        this.verificationExpiredInMinutes =
-            this.configService.get<number>('verification.expiredInMs')! /
-            ms('1m');
+        const verificationExpiredInMs = this.configService.get<number>(
+            'verification.expiredInMs'
+        )!;
+        this.verificationExpiredInMinutes = verificationExpiredInMs / ms('1m');
         this.verificationTokenLength = this.configService.get<number>(
             'verification.tokenLength'
         )!;
-        this.verificationResendInMinutes =
-            this.configService.get<number>('verification.resendInMs')! /
-            ms('1m');
+        const verificationResendInMs = this.configService.get<number>(
+            'verification.resendInMs'
+        )!;
+        this.verificationResendInMinutes = verificationResendInMs / ms('1m');
         this.verificationLinkPattern = this.configService.get<string>(
             'verification.linkPattern'
         )!;
@@ -112,10 +114,12 @@ export class UserVerificationDomain {
         if (type === EnumVerificationType.mobileNumber) {
             const token = this.verificationCreateOtp();
             const hashedToken = this.helperHashService.sha256Hash(token);
+            const reference = this.verificationCreateReference();
+            const expiredAt = this.verificationSetExpiredDate();
 
             return {
-                reference: this.verificationCreateReference(),
-                expiredAt: this.verificationSetExpiredDate(),
+                reference,
+                expiredAt,
                 type: EnumVerificationType.mobileNumber,
                 token,
                 hashedToken,
@@ -126,13 +130,17 @@ export class UserVerificationDomain {
 
         const token = this.verificationCreateToken();
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const link = this.verificationLinkPattern
-            .replace('{homeUrl}', () => this.homeUrl)
-            .replace('{token}', () => token);
+        const link = this.helperStringService.fillPattern(
+            this.verificationLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+
+        const reference = this.verificationCreateReference();
+        const expiredAt = this.verificationSetExpiredDate();
 
         return {
-            reference: this.verificationCreateReference(),
-            expiredAt: this.verificationSetExpiredDate(),
+            reference,
+            expiredAt,
             type: EnumVerificationType.email,
             token,
             hashedToken,
@@ -215,8 +223,13 @@ export class UserVerificationDomain {
             );
 
             if (today < canResendAt) {
+                const resendDuration = this.helperDateService.diff(
+                    today,
+                    canResendAt
+                );
+
                 throw new UserVerificationEmailResendLimitExceededException(
-                    this.helperDateService.diff(today, canResendAt).minutes
+                    resendDuration.minutes
                 );
             }
         }
@@ -243,10 +256,11 @@ export class UserVerificationDomain {
 
             this.activityLogDomain.stagePrepared(events);
 
+            const expiredAt = this.helperDateService.formatToIso(
+                emailVerification.expiredAt
+            );
             await this.notificationQueue.sendVerificationEmail(user.id, {
-                expiredAt: this.helperDateService.formatToIso(
-                    emailVerification.expiredAt
-                ),
+                expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
@@ -304,7 +318,7 @@ export class UserVerificationDomain {
     async createFromOnboardingInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        verification: IUserOnboardingVerificationRow,
+        verification: IUserOnboardingVerification,
         createdBy: string
     ): Promise<Verification> {
         return this.userVerificationRepository.createFromOnboardingInTx(

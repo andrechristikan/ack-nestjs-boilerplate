@@ -30,7 +30,7 @@ done
 | `50000` | `src/app` — `EnumAppStatusCodeError` |
 | `50100`–`50109` | `src/common/file` |
 | `50200`–`50215` | `src/common/pagination` |
-| `50300`–`50303` | `src/common/request` |
+| `50300`–`50304` | `src/common/request` |
 | `50400`–`50401` | `session` |
 | `50500`–`50504` | `role` |
 | `50600`–`50606` | `feature-flag` |
@@ -49,7 +49,7 @@ done
 | `51900`–`51902` | `src/common/response` |
 | `52000` | `activity-log` |
 | `52100` | `analytic` |
-| `52200`–`52201` | `src/common/helper` |
+| `52200`–`52202` | `src/common/helper` |
 
 | Note | Detail |
 |---|---|

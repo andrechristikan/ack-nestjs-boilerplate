@@ -5,7 +5,7 @@ import type {
     UserMobileNumber,
 } from '@generated/prisma-client/client';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number.repository.interface';
+import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

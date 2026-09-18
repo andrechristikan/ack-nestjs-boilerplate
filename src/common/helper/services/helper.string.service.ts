@@ -6,8 +6,10 @@ import { validateEmail } from '@common/request/validations/request.custom-email.
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import {
     HelperStringAlphanumericCharacters,
+    HelperStringPatternTokenRegex,
     HelperStringUppercaseAlphanumericCharacters,
 } from '@common/helper/constants/helper.constant';
+import { HelperPatternTokenMissingException } from '@common/helper/exceptions/helper.pattern-token-missing.exception';
 import { Injectable } from '@nestjs/common';
 import { randomInt } from 'node:crypto';
 
@@ -60,9 +62,25 @@ export class HelperStringService {
         );
     }
 
+    /** Fills every `{token}` of a pattern in ONE pass, so a substituted value is never read again as a token. */
+    fillPattern(pattern: string, values: Record<string, string>): string {
+        return pattern.replace(
+            HelperStringPatternTokenRegex,
+            (_match, token: string) => {
+                if (!Object.hasOwn(values, token)) {
+                    throw new HelperPatternTokenMissingException(token);
+                }
+
+                return values[token];
+            }
+        );
+    }
+
     generateSlug(prefix: string, maxLength: number): string {
         const randomLength = maxLength - prefix.length;
-        return `${prefix}${this.random(randomLength)}`;
+        const randomSuffix = this.random(randomLength);
+
+        return `${prefix}${randomSuffix}`;
     }
 
     censor(text: string): string {
@@ -139,7 +157,7 @@ export class HelperStringService {
 
                 return (
                     normalizedPath === basePattern ||
-                    normalizedPath.startsWith(basePattern + '/')
+                    normalizedPath.startsWith(`${basePattern}/`)
                 );
             }
 

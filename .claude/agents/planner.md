@@ -67,9 +67,8 @@ or `prisma/`.
 
 **A plan step that changes `src/` is red-green.** It names the TDD spec `coder` will write,
 the command that watches it fail, the implementation files, and the command that watches it
-pass. `test-writer` is not in this pipeline. A PLAN dispatch may name the suite waiver from
-`CLAUDE.md`; then a `src/` step is implementation plus `pnpm typecheck` / `pnpm lint`, and
-no spec file. A seed step has no TDD cycle.
+pass. `test-writer` is not in this pipeline: a spec covering code the plan does not write is
+the skill's dispatch, not a plan step. A seed step has no TDD cycle.
 
 **A plan step that touches `prisma/*` or `src/migration/**` names `seed-writer` as the agent
 that writes that tree.** `coder` does not write `src/migration/**`. The schema EDIT is still a

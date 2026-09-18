@@ -50,9 +50,9 @@ export class ProjectHttpService {
     }
 
     getProject(project: Project): IResponseReturn<Project> {
-        return {
-            data: this.projectDomain.getProject(project),
-        };
+        const current = this.projectDomain.getProject(project);
+
+        return { data: current };
     }
 
     async updateProject(

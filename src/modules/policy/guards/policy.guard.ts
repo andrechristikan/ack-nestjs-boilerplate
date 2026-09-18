@@ -24,11 +24,11 @@ export class PolicyGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPolicies =
-            this.reflector.get<PolicyRequestDto[]>(
-                PolicyRequiredMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const policyMetadata = this.reflector.get<PolicyRequestDto[]>(
+            PolicyRequiredMetaKey,
+            context.getHandler()
+        );
+        const requiredPolicies = policyMetadata ?? [];
 
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
         const policies = this.requestStoreService.get<Policy[]>(PolicyStoreKey);

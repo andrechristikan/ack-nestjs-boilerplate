@@ -24,10 +24,9 @@ export class FeatureFlagUtil {
             const newVal = newMetadata[key];
             const oldVal = oldMetadata[key];
 
-            if (
-                this.metadataValueType(newVal) !==
-                this.metadataValueType(oldVal)
-            ) {
+            const newValueType = this.metadataValueType(newVal);
+            const oldValueType = this.metadataValueType(oldVal);
+            if (newValueType !== oldValueType) {
                 return false;
             } else if (
                 newVal === undefined ||

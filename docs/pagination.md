@@ -1,6 +1,6 @@
 # Pagination Module Documentation
 
-This documentation explains the features and usage of the **Pagination Module** located at `src/common/pagination`.
+Pagination lives in `src/common/pagination`.
 
 ## Overview
 
@@ -33,7 +33,9 @@ Query parsing is pipes plus factory functions.
 - [Table of Contents](#table-of-contents)
 - [Module](#module)
     - [PaginationService](#paginationservice)
+        - [Shaping the row: include or select](#shaping-the-row-include-or-select)
         - [offset<TReturn>()](#offsettreturn)
+        - [offsetPage<TReturn>()](#offsetpagetreturn)
         - [cursor<TReturn>()](#cursortreturn)
     - [Input Validation (Pipes)](#input-validation-pipes)
     - [Decorators](#decorators)
@@ -79,12 +81,36 @@ Core service that processes pagination operations without redundant validation (
 |---|---|---|
 | Controller param, produced by the pipes | `IPaginationQueryOffsetParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `skip` |
 | Controller param, produced by the pipes | `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy?`, `where?`, `cursor?`, `cursorField?` |
-| Service args, produced by the repository | `IPaginationOffsetArgs<TArgsWhere>` | the offset params above, plus `include?` |
-| Service args, produced by the repository | `IPaginationCursorArgs<TArgsWhere>` | the cursor params above, plus `include?` and `includeCount?` |
+| Service args, produced by the repository | `IPaginationOffsetArgs<TArgsWhere>` | the offset params above, plus `include?` or `select?` |
+| Service args, produced by the repository | `IPaginationCursorArgs<TArgsWhere>` | the cursor params above, plus `include?` or `select?`, and `includeCount?` |
 
-Every one of these types takes a single generic, `TArgsWhere`. `include` and `includeCount` exist only on the repository tier, so a controller signature cannot express them and a client cannot reach them.
+Every one of these types takes a single generic, `TArgsWhere`. `include`, `select` and `includeCount` exist only on the repository tier, so a controller signature cannot express them and a client cannot reach them.
 
-There is no `select` in the pagination types. A repository shapes its reads with `include` and a nested select constant, never through a pagination argument.
+#### Shaping the row: `include` or `select`
+
+Both repository-tier arg types intersect `IPaginationShape`, a union of `{ include?: unknown; select?: never }` and `{ select?: unknown; include?: never }`. One call therefore carries `include` or `select`, and a call carrying both fails `tsc`.
+
+`select` reaches `findMany` and nothing else. The count query is issued as `count({ where })`, so a narrowed projection never changes the total a page reports.
+
+A read whose row is narrower than the model declares that projection once, as a `satisfies Prisma.<Model>Select` constant in the module's `constants/` folder, and pins the row type to it:
+
+```typescript
+// src/modules/session/constants/session.constant.ts
+export const SessionListSelect = {
+    id: true,
+    userId: true,
+    /* the remaining columns follow; jti is not among them */
+} satisfies Prisma.SessionSelect;
+
+// src/modules/session/interfaces/session.interface.ts
+export type ISessionListRow = Prisma.SessionGetPayload<{
+    select: typeof SessionListSelect;
+}>;
+```
+
+The `GetPayload` form ties the row type to the constant, so a column added to or removed from the projection moves the type with it. A nested relation takes its own select constant in the same place (`user: { select: UserRefSelect }`), and arrives narrowed the same way.
+
+`User.password`, `Session.jti`, `ApiKey.hash`, `PasswordHistory.password` and `WorkspaceInvite.token` sit outside the `*ListSelect` constant of their module, so a paginated read of those models leaves the credential in the database.
 
 **Methods:**
 
@@ -105,7 +131,7 @@ async offset<TReturn, TArgsWhere = unknown>(
 
 **Parameters:**
 - `repository`: Repository instance implementing IPaginationRepository
-- `args`: the pipe-validated `IPaginationQueryOffsetParams<TArgsWhere>` the controller received, widened by the repository with `include`
+- `args`: the pipe-validated `IPaginationQueryOffsetParams<TArgsWhere>` the controller received, widened by the repository with `include` or `select`
 
 **`args.orderBy` Support:**
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
@@ -130,6 +156,26 @@ async offset<TReturn, TArgsWhere = unknown>(
 }
 ```
 
+#### offsetPage\<TReturn\>()
+
+Builds that same offset return from items and a total already in hand.
+
+```typescript
+offsetPage<TReturn>(
+    items: TReturn[],
+    count: number,
+    params: { skip: number; limit: number }
+): IPaginationOffsetReturn<TReturn>
+```
+
+`offset()` calls it once its count and `findMany` queries resolve. It is also public: the analytic anomaly and fraud detail lists compute their rows, slice `[skip, skip + limit)`, and pass the slice with the full length.
+
+The page arithmetic lives here, and every offset response carries the result of it:
+
+- `page` is 1-based: `Math.floor(skip / limit) + 1`, so the first page reports `1`
+- `totalPage` is `Math.ceil(count / limit)`, so a result with no rows reports `0`
+- `hasNext` is `page < totalPage` and `hasPrevious` is `page > 1`; `nextPage` and `previousPage` are present only when the matching flag is `true`
+
 #### cursor\<TReturn\>()
 
 Executes cursor-based pagination.
@@ -147,7 +193,7 @@ async cursor<TReturn, TArgsWhere = unknown>(
 
 **Parameters:**
 - `repository`: Repository instance
-- `args`: the pipe-validated `IPaginationQueryCursorParams<TArgsWhere>` the controller received, widened by the repository with `include` and `includeCount`
+- `args`: the pipe-validated `IPaginationQueryCursorParams<TArgsWhere>` the controller received, widened by the repository with `include` or `select`, and with `includeCount`
 
 **`args.orderBy` Support:**
 - Always an array: `[{ createdAt: 'desc' }]`, `[{ createdAt: 'desc' }, { name: 'asc' }]`
@@ -217,7 +263,7 @@ Service (Business Logic)
 
 **Pipe Chain:** `@PaginationOffsetQuery` binds `PaginationSearchPipe` → `PaginationOffsetPipe` → `PaginationOrderPipe`, and `@PaginationCursorQuery` binds `PaginationSearchPipe` → `PaginationCursorPipe` → `PaginationOrderPipe`. The first two pipes carry the raw `orderBy` query value through untouched; `PaginationOrderPipe` runs last and is the one that turns it into `IPaginationOrderBy[]`, which is why the handler parameter type is `IPaginationQueryOffsetParams` / `IPaginationQueryCursorParams` rather than the pipe-level shape.
 
-**Query Allow-List:** Every pipe in the chain builds its return value from a fixed list of named keys and never spreads the incoming query object. Anything a client sends that is not on that list is dropped before the handler runs, so `?where=`, `?select=`, `?include=`, and `?includeCount=` cannot reach Prisma. `include` and `includeCount` are set by the repository or not at all.
+**Query Allow-List:** Every pipe in the chain builds its return value from a fixed list of named keys and never spreads the incoming query object. Anything a client sends that is not on that list is dropped before the handler runs, so `?where=`, `?select=`, `?include=`, and `?includeCount=` cannot reach Prisma. `include`, `select` and `includeCount` are set by the repository or not at all, and none of the three appears on a pipe-output type.
 
 **Absent Allow-Lists Ignore, They Do Not Reject:** both `availableSearch` and `availableOrderBy` are optional. Absent, `null`, and `[]` all behave identically, and a bare `@PaginationOffsetQuery()` with no options at all compiles and runs.
 
@@ -277,7 +323,7 @@ pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
 }
 ```
 
-That is the whole surface a handler receives. `include` is absent by design; the repository adds it when it calls `PaginationService`.
+That is the whole surface a handler receives. The row shape is absent from it: the repository adds `include` or `select` when it calls `PaginationService`.
 
 ##### @PaginationCursorQuery
 
@@ -777,7 +823,7 @@ The response reports the applied ordering back in the same `field:direction` for
 
 ### Basic Offset Pagination
 
-A list route travels `Controller → HTTP Service → Domain → Repository`. The domain forwards the pagination params, the repository is the layer that adds `include`, and the item schema declared on `@ResponsePaging` shapes each row on the way out.
+A list route travels `Controller → HTTP Service → Domain → Repository`. The domain forwards the pagination params, the repository is the layer that adds `include` or `select`, and the item schema declared on `@ResponsePaging` shapes each row on the way out.
 
 **Controller:**
 ```typescript
@@ -789,7 +835,7 @@ async list(
         availableOrderBy: UserDefaultAvailableOrderBy,
     })
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
@@ -798,7 +844,7 @@ async list(
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<IUser>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userDomain.getListOffsetByAdmin(pagination);
 }
 ```
@@ -807,7 +853,7 @@ async getListOffsetByAdmin(
 ```typescript
 async getListOffsetByAdmin(
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<IUser>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userRepository.findWithPaginationOffset(pagination);
 }
 ```
@@ -818,9 +864,9 @@ async findWithPaginationOffset({
     where,
     ...params
 }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>): Promise<
-    IResponsePagingReturn<IUser>
+    IResponsePagingReturn<IUserListRow>
 > {
-    return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
+    return this.paginationService.offset<IUserListRow, Prisma.UserWhereInput>(
         this.databaseService.client.user,
         {
             ...params,
@@ -828,11 +874,13 @@ async findWithPaginationOffset({
                 ...where,
                 deletedAt: null,
             },
-            include: { role: true, twoFactor: true },
+            select: UserListSelect,
         }
     );
 }
 ```
+
+`UserListSelect` names the columns this route returns, and `IUserListRow` is `Prisma.UserGetPayload<{ select: typeof UserListSelect }>`. `password` is outside the constant, so the hash stays in the database.
 
 **API Request:**
 ```
@@ -912,7 +960,7 @@ async list(
     roleId?: Record<string, IPaginationEqual>,
     @PaginationQueryFilterEqualString('countryId')
     countryId?: Record<string, IPaginationEqual>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userHttpService.getListOffsetByAdmin(
         pagination,
         status,
@@ -929,7 +977,7 @@ async getListOffsetByAdmin(
     status?: Record<string, IPaginationIn>,
     roleId?: Record<string, IPaginationEqual>,
     countryId?: Record<string, IPaginationEqual>
-): Promise<IResponsePagingReturn<IUser>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userDomain.getListOffsetByAdmin(
         pagination,
         status,
@@ -951,8 +999,8 @@ async findWithPaginationOffset(
     status?: Record<string, IPaginationIn>,
     roleId?: Record<string, IPaginationEqual>,
     countryId?: Record<string, IPaginationEqual>
-): Promise<IResponsePagingReturn<IUser>> {
-    return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
+): Promise<IResponsePagingReturn<IUserListRow>> {
+    return this.paginationService.offset<IUserListRow, Prisma.UserWhereInput>(
         this.databaseService.client.user,
         {
             ...params,
@@ -963,10 +1011,7 @@ async findWithPaginationOffset(
                 ...roleId,     // Spreads { roleId: { equals: '...' } }
                 deletedAt: null,
             },
-            include: {
-                role: true,
-                twoFactor: true,
-            },
+            select: UserListSelect,
         }
     );
 }
@@ -1018,7 +1063,7 @@ export class UserAdminController {
         roleId?: Record<string, IPaginationEqual>,
         @PaginationQueryFilterEqualString('countryId')
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<UserListResponseDto>> {
+    ): Promise<IResponsePagingReturn<IUserListRow>> {
         return this.userHttpService.getListOffsetByAdmin(
             pagination,
             status,
@@ -1060,7 +1105,7 @@ async list(
         availableOrderBy: UserDefaultAvailableOrderBy,
     })
     pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
     return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```

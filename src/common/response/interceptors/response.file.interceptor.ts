@@ -9,6 +9,7 @@ import { map } from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -26,6 +27,7 @@ export class ResponseFileInterceptor implements NestInterceptor {
     constructor(
         private readonly fileService: FileService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly configService: ConfigService
     ) {
@@ -81,13 +83,18 @@ export class ResponseFileInterceptor implements NestInterceptor {
     }
 
     private createDefaultFilename(timestamp: number): string {
-        return this.filenameExportPattern
-            .replace('{timestamp}', String(timestamp))
-            .replace('{extension}', EnumFileExtensionDocument.csv);
+        return this.helperStringService.fillPattern(
+            this.filenameExportPattern,
+            {
+                timestamp: String(timestamp),
+                extension: EnumFileExtensionDocument.csv,
+            }
+        );
     }
 
     private createDisposition(filename: string, fallback: string): string {
-        const ascii = this.fileService.sanitizeFilename(filename) || fallback;
+        const sanitizedFilename = this.fileService.sanitizeFilename(filename);
+        const ascii = sanitizedFilename || fallback;
 
         return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
     }
@@ -117,21 +124,21 @@ export class ResponseFileInterceptor implements NestInterceptor {
                     const defaultFilename =
                         this.createDefaultFilename(timestamp);
                     const filename = responseData.filename ?? defaultFilename;
-                    const mime =
-                        this.fileService.extractMimeFromFilename(filename) ??
-                        'application/octet-stream';
+                    const mimeFromFilename =
+                        this.fileService.extractMimeFromFilename(filename);
+                    const mime = mimeFromFilename ?? 'application/octet-stream';
 
-                    this.responseMetadataService.setHeaders(
-                        response,
-                        this.responseMetadataService.create()
+                    const metadata = this.responseMetadataService.create();
+                    this.responseMetadataService.setHeaders(response, metadata);
+
+                    const disposition = this.createDisposition(
+                        filename,
+                        defaultFilename
                     );
 
                     return new StreamableFile(fileBuffer, {
                         type: mime,
-                        disposition: this.createDisposition(
-                            filename,
-                            defaultFilename
-                        ),
+                        disposition,
                         length: fileBuffer.length,
                     });
                 })

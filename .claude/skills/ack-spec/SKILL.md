@@ -65,9 +65,10 @@ reaches past its own scope: a global mock, a shared fixture, a relocated helper,
 `coverage.enabled` is `false` in `vitest.config.ts`, so `pnpm test` never applies the
 threshold. Report the totals with the command that produced them.
 
-Controllers, processors, repositories, and the paths on the coverage denylist sit outside
-the coverage set — a gap there is not an `/ack-spec` gap (`rules/testing.md`). Changing the
-denylist is an owner change to `vitest.config.ts`.
+Controllers, processors, repositories, contracts, Swagger doc factories (`*.doc.ts`), and
+the paths on the coverage denylist sit outside the coverage set — a gap there is not an
+`/ack-spec` gap (`rules/testing.md`). The doc kit in `src/common/doc/` is measured. Changing
+the denylist is an owner change to `vitest.config.ts`.
 
 **100% is the bar.** A file in scope still short of it is another `test-writer` dispatch,
 until the per-file rows read 100 across statements, branches, functions and lines. Read the
@@ -83,6 +84,7 @@ It is not a waiver.
 - **No `src/` changes. None.** A blocked compile is a hand-back with the file and the error.
   The owner takes it to `/ack-code`.
 - **No review, no boot.** This skill dispatches `test-writer` and nothing else.
+- **Unit specs only.** Integration, e2e, and load tests are not this suite (`rules/testing.md`).
 - Never delete or skip a spec to reach green.
 - Never lower the coverage threshold, add a path to the coverage denylist, or add an
   ignore comment.

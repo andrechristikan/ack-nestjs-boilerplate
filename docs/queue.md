@@ -1,6 +1,6 @@
 # Queue Documentation
 
-This documentation explains the features and usage of **Queue Module**: Located at `src/queues`
+The BullMQ framework layer lives in `src/queues`. Named queues are registered by the owning feature.
 
 ## Overview
 
@@ -160,7 +160,7 @@ For example, the `notificationEmail` queue:
 }
 ```
 
-You can override these options when adding jobs to the queue.
+A single `add()` call overrides any of these options for that job.
 
 ## Creating New Queue
 

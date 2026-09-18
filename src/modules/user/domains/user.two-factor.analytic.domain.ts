@@ -44,7 +44,10 @@ export class UserTwoFactorAnalyticDomain {
         );
     }
 
-    backupCodeRegenCount(startDate: Date, endDate: Date): Promise<number> {
+    backupCodeRegenerationCount(
+        startDate: Date,
+        endDate: Date
+    ): Promise<number> {
         return this.activityLogAnalyticDomain.countByActionsInRange(
             [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes],
             startDate,

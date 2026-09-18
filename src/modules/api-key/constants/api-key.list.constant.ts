@@ -5,11 +5,13 @@ import { EnumApiKeyType } from '@generated/prisma-client/client';
  * @public
  */
 export const ApiKeyDefaultAvailableSearch = ['name'];
+
 /**
  * Sort fields the admin API key list accepts.
  * @public
  */
 export const ApiKeyDefaultAvailableOrderBy = ['createdAt', 'name'];
+
 /**
  * API key types the admin API key list filter accepts.
  * @public

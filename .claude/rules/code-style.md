@@ -10,6 +10,11 @@ decorators, lifecycle hooks. **If Nest already provides it, a hand-rolled versio
 regardless of how well it works.** No service locator, no manual instantiation of an
 injectable, no bare `@UseGuards` where a `@<Feature>Protected()` decorator is the convention.
 
+One service locator call is sanctioned: a `createParamDecorator` factory runs outside the
+injection context, so a store-reading decorator reaches CLS through
+`ClsServiceManager.getClsService()` (`rules/security.md`). Everything else injects
+`RequestStoreService`.
+
 ## Path aliases — a relative import is a defect
 
 The alias table is `tsconfig.json` `paths`, and it is the only one (Vitest and knip read it):
@@ -47,6 +52,68 @@ the constructor. A reader meets the helpers before the code that calls them, and
 surface of the class stays in one uninterrupted block instead of being cut apart by helpers.
 
 This is a layout rule, not a visibility rule — it does not change what is private.
+
+## A `this.` call lands in a `const` first (HARD)
+
+A call rooted at `this` — `this.method()`, `this.dependency.method()`, awaited or not — is
+assigned to a `const` before the value is used. The variable is what the next line reads. One
+call, one named value: the argument list of the line below says what is being passed instead of
+how it was computed, and a debugger stops on the result.
+
+Restricted positions:
+
+- an argument of any call, including `new X(this.y())` and `throw new E(this.z())`
+- an object-literal property value
+- an `if` / `else if` / `while` condition, and a ternary test or branch
+- any compound expression containing the call — `!this.x()`, `a && this.x()`, `a ?? this.x()`,
+  arithmetic — including inside a `return`
+- a template literal, a spread, a `for…of` iterable, an element-access index
+- a `throw` operand: `const exception = this.util.mapCollision(error); throw exception;`
+- inside a callback's block body
+
+Allowed, because the call is the whole expression and nothing reads it in place:
+
+- `return this.x()` and `return await this.x()` — but `return this.x().y` is restricted
+- an arrow whose entire body IS the call: `rows.map(row => this.map(row))`
+- an array element, including `Promise.all([this.x(), this.y()])`
+- a method reference: `this.logQuery.bind(this)`
+- an assignment or an expression statement: `const row = await this.repo.find()`, `await this.flush()`
+
+`await`, `!`, `as`, `satisfies` and optional chaining around the call do not lift the
+restriction. A ternary branch becomes `if` / `else` over a typed `let`, so the call stays
+lazy — hoisting an IO or database call out of a branch that may not run is a behaviour change,
+while a pure synchronous call may be hoisted.
+
+No linter enforces this: the positions are too many to express as selectors worth maintaining,
+and a violation costs readability rather than correctness. `reviewer` checks it on every diff.
+
+## A composed string is a template or a pattern (HARD)
+
+`+` never joins strings. Two fragments are a template literal; a string carrying placeholders is
+a `{token}` pattern, and how it is filled depends on how many tokens it has:
+
+- **One token** — `String.prototype.replace` with a FUNCTION replacement whenever the value is
+  not a literal in the same file (`rules/config.md` — the string form expands `$&`, `` $` ``,
+  `$'`, `$$` and `$1` inside the value). A literal replacement stays a plain string: `''` is
+  written `''`, never `() => ''`.
+- **Two or more** — `HelperStringService.fillPattern(pattern, values)`, one pass over every
+  token. Chained replaces fill left to right, so a value substituted first is rescanned by the
+  next call: a value carrying the literal text of a later token forges the result. One pass
+  reads the pattern before any substitution exists. A token the record does not supply throws
+  `HelperPatternTokenMissingException`, because a half-filled key reads fine and collides
+  silently.
+
+```ts
+const key = `${workspaceId}:${startToken}:${endToken}`;
+const url = CdnUrlPattern.replace('{key}', () => key);
+const sessionKey = this.helperStringService.fillPattern(SessionKeyPattern, {
+    userId,
+    sessionId,
+});
+```
+
+A pattern constant is named for what it is (`rules/naming.md` reserves the `Pattern` suffix for
+a placeholder string), so the token set is declared once and every filler reads the same name.
 
 ## Independent awaits run concurrently (HARD)
 
@@ -102,6 +169,7 @@ carries a JSDoc whose first line states what the symbol IS or DOES, followed by 
 - `*.enum.ts` — the tag sits on the enum
 - `*.exception.ts`
 - `*.constant.ts`
+- `*.contract.ts`
 - `src/common/doc/interfaces/doc.interface.ts`
 
 ```ts

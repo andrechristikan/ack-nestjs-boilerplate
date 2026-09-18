@@ -3,6 +3,7 @@
  * @public
  */
 export const ProjectDefaultAvailableSearch = ['name'];
+
 /**
  * Sort fields the admin offset project list accepts.
  * @public

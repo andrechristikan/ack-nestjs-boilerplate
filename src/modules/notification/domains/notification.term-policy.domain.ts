@@ -70,12 +70,16 @@ export class NotificationTermPolicyDomain {
 
         for (const chunk of chunks) {
             const emailPayload: INotificationEmailSendPayload[] = chunk.map(
-                user => ({
-                    userId: user.id,
-                    email: user.email,
-                    username: user.username,
-                    notificationId: this.databaseUtil.createId(),
-                })
+                user => {
+                    const notificationId = this.databaseUtil.createId();
+
+                    return {
+                        userId: user.id,
+                        email: user.email,
+                        username: user.username,
+                        notificationId,
+                    };
+                }
             );
 
             const entries: INotificationCreateEntry[] = emailPayload.map(

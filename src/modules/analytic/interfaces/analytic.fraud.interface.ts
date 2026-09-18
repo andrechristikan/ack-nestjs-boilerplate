@@ -15,56 +15,56 @@ export interface IAnalyticFraudRiskScore {
     contributingSignalCodes: string[];
 }
 
-export interface IAnalyticCredentialStuffingRow {
+export interface IAnalyticCredentialStuffing {
     ipAddress: string;
     uniqueUsers: number;
     failCount: number;
 }
 
-export interface IAnalyticAccountTakeoverRow {
+export interface IAnalyticAccountTakeover {
     userId: string;
     indicatorCodes: string[];
     passwordChangedAt: Date;
 }
 
-export interface IAnalyticMassRegistrationRow {
+export interface IAnalyticMassRegistration {
     key: string;
     count: number;
 }
 
-export interface IAnalyticPasswordResetEnumerationRow {
+export interface IAnalyticPasswordResetEnumeration {
     key: string;
     count: number;
 }
 
-export interface IAnalyticSharedFingerprintRow {
+export interface IAnalyticSharedFingerprint {
     fingerprint: string;
     userCount: number;
     userIds: string[];
 }
 
-export interface IAnalyticSessionAfterAdminRow {
+export interface IAnalyticSessionAfterAdmin {
     userId: string;
     revokedAt: Date;
     loginAt: Date;
 }
 
-export interface IAnalyticForgotPasswordAbuseRow {
+export interface IAnalyticForgotPasswordAbuse {
     userId: string;
     tokenCount: number;
 }
 
-export interface IAnalyticRefreshSpikeRow {
+export interface IAnalyticRefreshSpike {
     userId: string;
     count: number;
 }
 
-export interface IAnalyticBackupCodeNewDeviceRow {
+export interface IAnalyticBackupCodeNewDevice {
     userId: string;
     regeneratedAt: Date;
 }
 
-export interface IAnalyticApiKeyBurstRow {
+export interface IAnalyticApiKeyBurst {
     userId: string;
     count: number;
 }

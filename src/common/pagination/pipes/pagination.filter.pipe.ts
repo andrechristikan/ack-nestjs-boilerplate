@@ -332,7 +332,8 @@ export function PaginationQueryFilterDatePipe(
                 return;
             }
 
-            if (!this.helperDateService.checkIso(value)) {
+            const isIsoDate = this.helperDateService.checkIso(value);
+            if (!isIsoDate) {
                 throw new PaginationFilterInvalidValueException(metadata.data!);
             }
 

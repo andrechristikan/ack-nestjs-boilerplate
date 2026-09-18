@@ -76,10 +76,12 @@ export class UserAuthHttpService {
             workspaceContext
         );
         if (prepared) {
+            const createTimeoutInMs =
+                this.userOnboardingDomain.getCreateTimeoutInMs();
             await this.workspaceDomain.commitOnboarding(
                 [prepared],
                 EnumUserCreateMode.social,
-                this.userOnboardingDomain.getCreateTimeoutInMs()
+                createTimeoutInMs
             );
         }
 
@@ -142,10 +144,12 @@ export class UserAuthHttpService {
                 },
                 workspaceContext
             );
+        const createTimeoutInMs =
+            this.userOnboardingDomain.getCreateTimeoutInMs();
         const [created] = await this.workspaceDomain.commitOnboarding(
             [input],
             EnumUserCreateMode.signUp,
-            this.userOnboardingDomain.getCreateTimeoutInMs()
+            createTimeoutInMs
         );
         await this.userAuthDomain.notifyWelcome(created.id, emailVerification);
     }

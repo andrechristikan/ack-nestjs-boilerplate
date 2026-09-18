@@ -1,6 +1,7 @@
 import { Catch, HttpStatus, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
@@ -31,8 +32,8 @@ export class AppGeneralFilter implements ExceptionFilter {
         this.sendToSentry(exception);
 
         const statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-        const messagePath = `http.${statusHttp}`;
-        const statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+        const messagePath = 'http.serverError.internalServerError';
+        const statusCode = EnumAppStatusCodeError.unknown;
 
         const metadata = this.responseMetadataService.create();
 
@@ -42,7 +43,7 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode,
-            statusCodeKey: 'unknown',
+            statusCodeKey: EnumAppStatusCodeError[statusCode],
             module: 'app',
             message,
             metadata,

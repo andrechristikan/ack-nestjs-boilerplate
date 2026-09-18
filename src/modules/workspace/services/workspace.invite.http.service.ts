@@ -17,6 +17,7 @@ import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/re
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -30,7 +31,7 @@ export class WorkspaceInviteHttpService {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
         const { data, ...others } =
             await this.workspaceInviteDomain.getInvitesList(
                 workspaceId,
@@ -110,12 +111,12 @@ export class WorkspaceInviteHttpService {
         const { workspace, invite, inviter } =
             await this.workspaceInviteDomain.previewInvite(inviteToken);
 
-        return {
-            data: this.workspaceUtil.mapInvitePreview(
-                workspace,
-                invite,
-                inviter
-            ),
-        };
+        const preview = this.workspaceUtil.mapInvitePreview(
+            workspace,
+            invite,
+            inviter
+        );
+
+        return { data: preview };
     }
 }

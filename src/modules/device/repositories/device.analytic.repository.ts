@@ -1,6 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
-import type { IDeviceAnalyticRepository } from '@modules/device/interfaces/device.analytic.repository.interface';
+import type { IDeviceAnalyticRepository } from '@modules/device/interfaces/device.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -148,7 +148,7 @@ claim to state what IS, and drop the contrast:
 | `there is no explicit $transaction wrapper around it` | `the four effects travel as one nested write, which lands atomically` |
 | `the session count is not stored on the model` | `activeSessionCount is computed per read by a _count on sessions` |
 | `derived from platform, whether or not a token came with the request` | `derived from platform` |
-| `both paths pass the same action, so only createdBy differs` | `both paths write the userRemoveDevice action; createdBy is the acting user` |
+| `both paths pass the same action, so only createdBy differs` | `the self path writes userRemoveDevice and the admin path writes userRemoveDeviceByAdmin` |
 
 **A negation is only allowed when it states a CONTRACT** — what a caller does not send, what a
 guard does not do, what a payload does not carry. A negation that rebuts a former state, or a

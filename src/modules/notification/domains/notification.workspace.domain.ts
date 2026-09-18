@@ -81,16 +81,18 @@ export class NotificationWorkspaceDomain {
                 username: user.username,
             };
 
-            promises.push(
-                this.notificationPushQueue.sendWorkspaceInvite(pushPayload, {
+            const pushSent = this.notificationPushQueue.sendWorkspaceInvite(
+                pushPayload,
+                {
                     workspaceId: data.workspaceId,
                     workspaceName: data.workspaceName,
                     inviterName: data.inviterName,
                     workspaceMemberRole: data.workspaceMemberRole,
                     reference: data.reference,
                     expiredAt: data.expiredAt,
-                })
+                }
             );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -154,7 +156,7 @@ export class NotificationWorkspaceDomain {
                 username: user.username,
             };
 
-            promises.push(
+            const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinRequest(
                     pushPayload,
                     {
@@ -162,8 +164,8 @@ export class NotificationWorkspaceDomain {
                         workspaceName: data.workspaceName,
                         requesterName: data.requesterName,
                     }
-                )
-            );
+                );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -229,12 +231,12 @@ export class NotificationWorkspaceDomain {
                 username: user.username,
             };
 
-            promises.push(
+            const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinAccepted(
                     pushPayload,
                     data
-                )
-            );
+                );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);
@@ -301,12 +303,12 @@ export class NotificationWorkspaceDomain {
                 username: user.username,
             };
 
-            promises.push(
+            const pushSent =
                 this.notificationPushQueue.sendWorkspaceJoinRejected(
                     pushPayload,
                     data
-                )
-            );
+                );
+            promises.push(pushSent);
         }
 
         const results = await Promise.allSettled(promises);

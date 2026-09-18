@@ -59,7 +59,8 @@ export class RouterProcessorModule {}
 ## One controller per scope, and the scope decides everything
 
 `<module>.<scope>.controller.ts` with `<scope>` ∈ `admin` · `public` · `user` · `system` ·
-`shared`. The scope is not a label — three rules key off it:
+`shared`. One file per scope, however many endpoints it holds. The scope is not a label — three
+rules key off it:
 
 | Scope | Prefix | Auth surface | Pagination |
 |---|---|---|---|

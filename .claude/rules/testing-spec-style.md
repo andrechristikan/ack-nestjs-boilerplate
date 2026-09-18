@@ -75,8 +75,11 @@ The rules the skeleton encodes:
   class (or token). A real collaborator sitting in the provider list makes the spec depend on
   code it does not cover, and its failure lands on the wrong file. The one thing you do NOT
   double is the subject.
-- **Never assert on a logger or a `console` call, and never re-mock them.** A spec that
-  asserts on a log line is asserting on the one thing that is allowed to change freely
+- **Never assert on a logger or a `console` call, and never re-mock them.** `test/setup.ts`
+  mutes Nest `Logger` (and `ConsoleLogger`) with assigned no-ops.
+  `Test.createTestingModule()` installs a `TestingLogger` whose `error` still prints, so the
+  mute is those no-ops. A spec that spies it, `vi.mock`s `@nestjs/common`, or asserts on a
+  log line is asserting on the one thing that is allowed to change freely
   (`rules/logging.md`).
 - **Mock variable names mirror the DI param they replace — `camelCase`.** Fixture and data
   locals are `camelCase` too (`rules/naming.md`). There is no snake_case surface in
@@ -251,7 +254,8 @@ implementation nobody maintains.
 The verified substitutes:
 
 - **A param decorator** — apply the decorator to a plain object and read the factory back off
-  the metadata.
+  the metadata. A store decorator reads CLS through `ClsServiceManager.getClsService()`, so the
+  spec spies that static and returns a `ClsService` double.
 - **A class ref for `Reflector` / `context.getClass()`** — an object literal carries metadata
   fine: `const classRef = {} as Type<unknown>` plus `Reflect.defineMetadata(key, value, classRef)`.
 - **A subclass of an abstract exception or base** — instantiate a REAL concrete subclass from
@@ -290,8 +294,9 @@ the private describes are additional, never a replacement.
 
 ## How to spec each layer
 
-The layer decides what is real and what is doubled. Getting this wrong is what produces slow,
-brittle specs that test the mock instead of the code.
+This skeleton is **unit**. The three kinds, and which this suite collects, are
+`rules/testing.md`. The layer decides what is real and what is doubled. Getting this wrong
+is what produces slow, brittle specs that test the mock instead of the code.
 
 - **Util / cache / queue** — mock what it injects (`ConfigService`, the helper, the cache
   store, the BullMQ `Queue`); assert the value it computes or the call it hands to the
@@ -327,8 +332,10 @@ brittle specs that test the mock instead of the code.
   (`rules/database.md`) — `mockDeep<DatabaseService>()` there, not a repository.
 
 Do not spec framework wiring, Prisma itself, a `@Module` decorator, a controller, a
-processor, or a repository. There is no behavior of ours in the first three, and the last
-three are outside the coverage set (`rules/testing.md`).
+processor, a repository, a contract table, or a Swagger doc factory (`*.doc.ts`). There is
+no behavior of ours in the first three, and the last five are outside the coverage set
+(`rules/testing.md`). A unit spec doubles the repository from the domain. A repository as
+subject with Prisma and Mongo real is an integration test, and that kind is not this suite.
 
 ## Writing the spec
 

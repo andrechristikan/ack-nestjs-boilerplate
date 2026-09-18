@@ -6,7 +6,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -99,7 +99,10 @@ import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceInviteList,
+    IWorkspaceMember,
+} from '@modules/workspace/interfaces/workspace.interface';
 import {
     WorkspaceCurrent,
     WorkspaceMemberCurrent,
@@ -469,7 +472,7 @@ export class WorkspaceUserController {
             WorkspaceInviteDefaultStatus
         )
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
         return this.workspaceInviteHttpService.getInvitesList(
             workspace.id,
             pagination,

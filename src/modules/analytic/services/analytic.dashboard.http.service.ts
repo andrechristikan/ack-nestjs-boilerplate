@@ -1,3 +1,9 @@
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type {
+    IResponsePagingReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
+import type { Prisma } from '@generated/prisma-client/client';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
 import type {
     IAnalyticApiKeyActiveExpired,
@@ -13,7 +19,7 @@ import type {
     IAnalyticProjectCount,
     IAnalyticProjectCreation,
     IAnalyticSessionDeviceRatio,
-    IAnalyticStatusCount,
+    IAnalyticStatusCountList,
     IAnalyticTermPolicyAcceptanceRate,
     IAnalyticTermPolicyTimeToAccept,
     IAnalyticTwoFactorAdoption,
@@ -31,464 +37,604 @@ export class AnalyticDashboardHttpService {
         private readonly analyticDateUtil: AnalyticDateUtil
     ) {}
 
-    usersRegistrations(
+    async usersRegistrations(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersRegistrations(
+        const data = await this.analyticDashboardDomain.usersRegistrations(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersChurn(startDate?: Date, endDate?: Date): Promise<IAnalyticMetricRate> {
+    async usersChurn(
+        startDate?: Date,
+        endDate?: Date
+    ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersChurn(
+        const data = await this.analyticDashboardDomain.usersChurn(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersBlocked(
+    async usersBlocked(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBlockedUsers> {
+    ): Promise<IResponseReturn<IAnalyticBlockedUsers>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersBlocked(
+        const data = await this.analyticDashboardDomain.usersBlocked(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersSignUpWith(
+    async usersSignUpWith(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersSignUpWith(
+        const data = await this.analyticDashboardDomain.usersSignUpWith(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersSignUpFrom(
+    async usersSignUpFrom(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersSignUpFrom(
+        const data = await this.analyticDashboardDomain.usersSignUpFrom(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersEmailVerification(
+    async usersEmailVerification(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricRate> {
+    ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersEmailVerification(
+        const data = await this.analyticDashboardDomain.usersEmailVerification(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersMobileVerification(
+    async usersMobileVerification(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricRate> {
+    ): Promise<IResponseReturn<IAnalyticMetricRate>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersMobileVerification(
+        const data = await this.analyticDashboardDomain.usersMobileVerification(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersStatusDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.usersStatusDistribution();
+    async usersStatusDistribution(): Promise<
+        IResponseReturn<IAnalyticBucketsResult>
+    > {
+        const data =
+            await this.analyticDashboardDomain.usersStatusDistribution();
+
+        return { data };
     }
 
-    usersCountryDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.usersCountryDistribution();
+    async usersCountryDistribution(): Promise<
+        IResponseReturn<IAnalyticBucketsResult>
+    > {
+        const data =
+            await this.analyticDashboardDomain.usersCountryDistribution();
+
+        return { data };
     }
 
-    usersRoleDistribution(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.usersRoleDistribution();
+    async usersRoleDistribution(): Promise<
+        IResponseReturn<IAnalyticBucketsResult>
+    > {
+        const data = await this.analyticDashboardDomain.usersRoleDistribution();
+
+        return { data };
     }
 
-    usersSelfDelete(
+    async usersSelfDelete(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersSelfDelete(
+        const data = await this.analyticDashboardDomain.usersSelfDelete(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersClaimUsername(
+    async usersClaimUsername(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersClaimUsername(
+        const data = await this.analyticDashboardDomain.usersClaimUsername(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    usersMobileChurn(
+    async usersMobileChurn(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMobileChurn> {
+    ): Promise<IResponseReturn<IAnalyticMobileChurn>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.usersMobileChurn(
+        const data = await this.analyticDashboardDomain.usersMobileChurn(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authLoginFrequency(
+    async authLoginFrequency(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authLoginFrequency(
+        const data = await this.analyticDashboardDomain.authLoginFrequency(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authLoginMethod(
+    async authLoginMethod(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.authLoginMethod(
+        const data = await this.analyticDashboardDomain.authLoginMethod(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authLoginSource(
+    async authLoginSource(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.authLoginSource(
+        const data = await this.analyticDashboardDomain.authLoginSource(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authLockout(
+    async authLockout(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticLockoutMetrics> {
+    ): Promise<IResponseReturn<IAnalyticLockoutMetrics>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authLockout(
+        const data = await this.analyticDashboardDomain.authLockout(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authSessionRevoke(
+    async authSessionRevoke(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authSessionRevoke(
+        const data = await this.analyticDashboardDomain.authSessionRevoke(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authConcurrentSessions(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.authConcurrentSessions();
+    async authConcurrentSessions(): Promise<
+        IResponseReturn<IAnalyticBucketsResult>
+    > {
+        const data =
+            await this.analyticDashboardDomain.authConcurrentSessions();
+
+        return { data };
     }
 
-    authSessionsGeo(
+    async authSessionsGeo(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.authSessionsGeo(
+        const data = await this.analyticDashboardDomain.authSessionsGeo(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authSessionsUserAgent(
+    async authSessionsUserAgent(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticBucketsResult> {
+    ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.authSessionsUserAgent(
+        const data = await this.analyticDashboardDomain.authSessionsUserAgent(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authRefreshTokenVolume(
+    async authRefreshTokenVolume(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authRefreshTokenVolume(
+        const data = await this.analyticDashboardDomain.authRefreshTokenVolume(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authLogoutRate(
+    async authLogoutRate(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authLogoutRate(
+        const data = await this.analyticDashboardDomain.authLogoutRate(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authVerificationFunnel(
+    async authVerificationFunnel(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticVerificationFunnels> {
+    ): Promise<IResponseReturn<IAnalyticVerificationFunnels>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authVerificationFunnel(
+        const data = await this.analyticDashboardDomain.authVerificationFunnel(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authPasswordExpiry(): Promise<IAnalyticPasswordExpiry> {
-        return this.analyticDashboardDomain.authPasswordExpiry();
+    async authPasswordExpiry(): Promise<
+        IResponseReturn<IAnalyticPasswordExpiry>
+    > {
+        const data = await this.analyticDashboardDomain.authPasswordExpiry();
+
+        return { data };
     }
 
-    authPasswordChange(
+    async authPasswordChange(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authPasswordChange(
+        const data = await this.analyticDashboardDomain.authPasswordChange(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authForgotPasswordConversion(
+    async authForgotPasswordConversion(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticForgotPasswordConversion> {
+    ): Promise<IResponseReturn<IAnalyticForgotPasswordConversion>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authForgotPasswordConversion(
-            range.startDate,
-            range.endDate
-        );
+        const data =
+            await this.analyticDashboardDomain.authForgotPasswordConversion(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data };
     }
 
-    authAdminForcePassword(
+    async authAdminForcePassword(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authAdminForcePassword(
+        const data = await this.analyticDashboardDomain.authAdminForcePassword(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authTwoFactorAdoption(): Promise<IAnalyticTwoFactorAdoption> {
-        return this.analyticDashboardDomain.authTwoFactorAdoption();
+    async authTwoFactorAdoption(): Promise<
+        IResponseReturn<IAnalyticTwoFactorAdoption>
+    > {
+        const data = await this.analyticDashboardDomain.authTwoFactorAdoption();
+
+        return { data };
     }
 
-    authTwoFactorAdminReset(
+    async authTwoFactorAdminReset(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authTwoFactorAdminReset(
+        const data = await this.analyticDashboardDomain.authTwoFactorAdminReset(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    authTwoFactorVerifySuccess(
+    async authTwoFactorVerifySuccess(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authTwoFactorVerifySuccess(
-            range.startDate,
-            range.endDate
-        );
+        const data =
+            await this.analyticDashboardDomain.authTwoFactorVerifySuccess(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data };
     }
 
-    authBackupCodeRegen(
+    async authBackupCodeRegeneration(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.authBackupCodeRegen(
-            range.startDate,
-            range.endDate
-        );
+        const data =
+            await this.analyticDashboardDomain.authBackupCodeRegeneration(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data };
     }
 
-    authTwoFactorAttempt(): Promise<IAnalyticTwoFactorAttemptSnapshot> {
-        return this.analyticDashboardDomain.authTwoFactorAttempt();
+    async authTwoFactorAttempt(): Promise<
+        IResponseReturn<IAnalyticTwoFactorAttemptSnapshot>
+    > {
+        const data = await this.analyticDashboardDomain.authTwoFactorAttempt();
+
+        return { data };
     }
 
-    devicesRegistration(
+    async devicesRegistration(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.devicesRegistration(
+        const data = await this.analyticDashboardDomain.devicesRegistration(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    devicesPlatform(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.devicesPlatform();
+    async devicesPlatform(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
+        const data = await this.analyticDashboardDomain.devicesPlatform();
+
+        return { data };
     }
 
-    devicesPushToken(): Promise<IAnalyticMetricRate> {
-        return this.analyticDashboardDomain.devicesPushToken();
+    async devicesPushToken(): Promise<IResponseReturn<IAnalyticMetricRate>> {
+        const data = await this.analyticDashboardDomain.devicesPushToken();
+
+        return { data };
     }
 
-    devicesInfoRefresh(
+    async devicesInfoRefresh(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.devicesInfoRefresh(
+        const data = await this.analyticDashboardDomain.devicesInfoRefresh(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    devicesSessionRatio(): Promise<IAnalyticSessionDeviceRatio> {
-        return this.analyticDashboardDomain.devicesSessionRatio();
+    async devicesSessionRatio(): Promise<
+        IResponseReturn<IAnalyticSessionDeviceRatio>
+    > {
+        const data = await this.analyticDashboardDomain.devicesSessionRatio();
+
+        return { data };
     }
 
-    devicesPerUser(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.devicesPerUser();
+    async devicesPerUser(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
+        const data = await this.analyticDashboardDomain.devicesPerUser();
+
+        return { data };
     }
 
-    devicesInactivity(): Promise<IAnalyticMetricCount> {
-        return this.analyticDashboardDomain.devicesInactivity();
+    async devicesInactivity(): Promise<IResponseReturn<IAnalyticMetricCount>> {
+        const data = await this.analyticDashboardDomain.devicesInactivity();
+
+        return { data };
     }
 
-    apiKeysLifecycle(
+    async apiKeysLifecycle(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticApiKeyLifecycle> {
+    ): Promise<IResponseReturn<IAnalyticApiKeyLifecycle>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.apiKeysLifecycle(
+        const data = await this.analyticDashboardDomain.apiKeysLifecycle(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    apiKeysActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
-        return this.analyticDashboardDomain.apiKeysActiveExpired();
+    async apiKeysActiveExpired(): Promise<
+        IResponseReturn<IAnalyticApiKeyActiveExpired>
+    > {
+        const data = await this.analyticDashboardDomain.apiKeysActiveExpired();
+
+        return { data };
     }
 
-    apiKeysTypeMix(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.apiKeysTypeMix();
+    async apiKeysTypeMix(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
+        const data = await this.analyticDashboardDomain.apiKeysTypeMix();
+
+        return { data };
     }
 
-    termPoliciesAcceptanceRate(
+    async termPoliciesAcceptanceRate(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticTermPolicyAcceptanceRate> {
+    ): Promise<IResponseReturn<IAnalyticTermPolicyAcceptanceRate>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.termPoliciesAcceptanceRate(
-            range.startDate,
-            range.endDate
-        );
+        const data =
+            await this.analyticDashboardDomain.termPoliciesAcceptanceRate(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data };
     }
 
-    termPoliciesTimeToAccept(
+    async termPoliciesTimeToAccept(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticTermPolicyTimeToAccept> {
+    ): Promise<IResponseReturn<IAnalyticTermPolicyTimeToAccept>> {
         const range = this.analyticDateUtil.optionalRange(startDate, endDate);
-        return this.analyticDashboardDomain.termPoliciesTimeToAccept(
+        const data =
+            await this.analyticDashboardDomain.termPoliciesTimeToAccept(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data };
+    }
+
+    async workspacesCreation(
+        startDate?: Date,
+        endDate?: Date
+    ): Promise<IResponseReturn<IAnalyticMetricCount>> {
+        const range = this.analyticDateUtil.requireRange(startDate, endDate);
+        const data = await this.analyticDashboardDomain.workspacesCreation(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    workspacesCreation(
+    async workspacesVisibility(): Promise<
+        IResponseReturn<IAnalyticBucketsResult>
+    > {
+        const data = await this.analyticDashboardDomain.workspacesVisibility();
+
+        return { data };
+    }
+
+    async workspacesInviteFunnel(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticMetricCount> {
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.workspacesCreation(
-            range.startDate,
-            range.endDate
-        );
+        const statuses =
+            await this.analyticDashboardDomain.workspacesInviteFunnel(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data: { statuses } };
     }
 
-    workspacesVisibility(): Promise<IAnalyticBucketsResult> {
-        return this.analyticDashboardDomain.workspacesVisibility();
-    }
-
-    workspacesInviteFunnel(
+    async workspacesJoinOutcomes(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticStatusCount[]> {
+    ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.workspacesInviteFunnel(
-            range.startDate,
-            range.endDate
-        );
+        const statuses =
+            await this.analyticDashboardDomain.workspacesJoinOutcomes(
+                range.startDate,
+                range.endDate
+            );
+
+        return { data: { statuses } };
     }
 
-    workspacesJoinOutcomes(
+    async workspacesMembership(
+        params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        return this.analyticDashboardDomain.workspacesMembership(params);
+    }
+
+    async workspacesActivityVolume(
+        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticStatusCount[]> {
+    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.workspacesJoinOutcomes(
-            range.startDate,
-            range.endDate
-        );
-    }
 
-    workspacesMembership(): Promise<IAnalyticWorkspaceCount[]> {
-        return this.analyticDashboardDomain.workspacesMembership();
-    }
-
-    workspacesActivityVolume(
-        startDate?: Date,
-        endDate?: Date
-    ): Promise<IAnalyticWorkspaceCount[]> {
-        const range = this.analyticDateUtil.requireRange(startDate, endDate);
         return this.analyticDashboardDomain.workspacesActivityVolume(
             range.startDate,
-            range.endDate
+            range.endDate,
+            params
         );
     }
 
-    projectsCreation(
+    async projectsCreation(
         startDate?: Date,
         endDate?: Date
-    ): Promise<IAnalyticProjectCreation> {
+    ): Promise<IResponseReturn<IAnalyticProjectCreation>> {
         const range = this.analyticDateUtil.requireRange(startDate, endDate);
-        return this.analyticDashboardDomain.projectsCreation(
+        const data = await this.analyticDashboardDomain.projectsCreation(
             range.startDate,
             range.endDate
         );
+
+        return { data };
     }
 
-    projectsMembership(): Promise<IAnalyticProjectCount[]> {
-        return this.analyticDashboardDomain.projectsMembership();
+    async projectsMembership(
+        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
+        return this.analyticDashboardDomain.projectsMembership(params);
     }
 }

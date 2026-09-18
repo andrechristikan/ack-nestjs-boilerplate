@@ -4,7 +4,7 @@ import type {
     IAnalyticApiKeyLifecycle,
     IAnalyticCountBucket,
 } from '@modules/analytic/interfaces/analytic.interface';
-import type { IApiKeyAnalyticCreatedRow } from '@modules/api-key/interfaces/api-key.analytic.repository.interface';
+import type { IApiKeyAnalyticCreated } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyAnalyticRepository } from '@modules/api-key/repositories/api-key.analytic.repository';
 import { Injectable } from '@nestjs/common';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -64,7 +64,7 @@ export class ApiKeyAnalyticDomain {
     findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IApiKeyAnalyticCreatedRow[]> {
+    ): Promise<IApiKeyAnalyticCreated[]> {
         return this.apiKeyAnalyticRepository.findCreatedInRange(
             startDate,
             endDate

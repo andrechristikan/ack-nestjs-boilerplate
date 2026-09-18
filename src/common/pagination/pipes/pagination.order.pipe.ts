@@ -113,14 +113,18 @@ export function PaginationOrderPipe(
         ): IPaginationOrderBy[] {
             const orderByExtractFromRequest =
                 this.extractOrderByToArray(orderBy);
-            const parsedOrderBy =
+            let parsedOrderBy: IPaginationOrderBy[];
+            if (
                 orderByExtractFromRequest.length === 0 ||
                 defaultAvailableOrder.length === 0
-                    ? [...PaginationDefaultOrderBy]
-                    : this.validateOrderBy(
-                          orderByExtractFromRequest,
-                          defaultAvailableOrder
-                      );
+            ) {
+                parsedOrderBy = [...PaginationDefaultOrderBy];
+            } else {
+                parsedOrderBy = this.validateOrderBy(
+                    orderByExtractFromRequest,
+                    defaultAvailableOrder
+                );
+            }
 
             this.requestStoreService.merge<IPaginationQuery>(
                 PaginationStoreKey,

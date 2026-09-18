@@ -22,14 +22,17 @@ Processor ───▶ Processor Service ─┘
 | **Controller** | Route, decorator stack, return shape | Business rules, domains, repositories |
 | **HTTP / processor service** | Translating DTO or job payload into domain calls, response DTOs | Business rules, repositories |
 | **Domain** (`domains/`) | Business rules, orchestration, typed exceptions, i18n paths, `withTransaction` | Model queries on `client`, HTTP, `Job` |
-| **Repository** | Prisma via `databaseService.client` or `tx`, filter `null → {}` | Feature exceptions, i18n, another model |
+| **Repository** | Prisma via `databaseService.client` or `tx`, filter `null → {}` | Feature exceptions, i18n, a write to another model |
 | **Util** | Pure shaping (hash, map, compare) | IO, decisions, another module's util |
 | **Queue class** (`queues/`) | The only `add` / `upsertJobScheduler`; encrypts secret payload fields | Business rules |
 
-- **Repository header interface REQUIRED:** `I<Feature>Repository` in `interfaces/…repository.interface.ts`, class `implements` it. Inject the class.
+- **Repository header interface REQUIRED:** `I<Feature>Repository` in `interfaces/<module>.[<concern>-]repository.interface.ts`, class `implements` it. Inject the class. A filename carries at most four dot-separated name parts, an `*.interface.ts` at most three; extra middle segments collapse with `-`.
 - **No header interface** for a domain, HTTP service, processor service, util, cache, queue, factory, or any `src/common/` service or util.
 - Modules per feature: `<feature>.repository|domain|http|processor.module.ts`. Controllers register in `src/router/http/router.http.<scope>.module.ts`; processor modules are aggregated by `src/router/processor/router.processor.module.ts`. No `forwardRef`.
 - An injected class is a **value import** — `import type` erases DI metadata and fails at boot.
+- **`+` never joins strings.** Two fragments are a template literal; a placeholder string is a `{token}` pattern. One token: `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file. Two or more: `HelperStringService.fillPattern(pattern, values)`, one pass, so a value cannot carry a later token's text.
+- **A `this.` call lands in a `const` before it is used** as an argument, an object property, a condition, a compound expression, a template, a spread, a `for…of` iterable, an index, a `throw` operand, or a ternary branch. `return this.x()`, an arrow whose body IS the call, an array element and `this.m.bind(this)` stay inline. No linter enforces it; review does.
+- **One statement needs no transaction.** `withTransaction` covers a multi-statement or multi-document write; the repository owns it when the write is its own, the domain when it spans repositories. `client.$transaction` is called nowhere else, and a write conflict is not retried.
 
 ---
 
@@ -47,6 +50,11 @@ Processor ───▶ Processor Service ─┘
 | Method / field | camelCase | `findById` |
 | DTO | `…RequestSchema` + `…RequestDto`, `…ResponseSchema` + `…ResponseDto` | `UserCreateRequestSchema` |
 | Queue payload | `I<Module><Action>QueuePayload` (kind **last**) | `INotificationEmailQueuePayload` |
+| Narrowed list read | `I<Module>List` — never a `Row` suffix | `IUserList` |
+| Prisma select constant | `<Module>[<Audience>][<Concern>]Select` | `UserAdminListSelect` |
+| Contract table | `<Module><Concept>Contract`, one per file under `contracts/` | `ActivityLogActionContract` |
+
+**One controller per scope** (`<module>.<scope>.controller.ts`), whatever its size; concerns split in the HTTP services and doc factories behind it. **Three constants files per module** and no more: `<module>.constant.ts`, `<module>.doc.constant.ts`, `<module>.list.constant.ts`. **One interface per file**, except the module's own `<module>.interface.ts` collection; a data constant never sits in a class file.
 
 Never `UPPER_SNAKE_CASE`. Wire is camelCase only. **No `./` or `../` imports** — aliases:
 `@app/* @common/* @configs/* @modules/* @router/* @migration/* @queues/* @test/* @generated/* @instrument @swagger @main @migration`.
@@ -92,7 +100,7 @@ Guards run bottom-up. Admin routes never carry workspace/project guards. Return 
 - **Every JWT-protected handler** (`@AuthJwtAccessProtected` / `@AuthJwtRefreshProtected`) carries `@RequestThrottle({ user: true })`. One call per handler; a sensitive route adds `route:` in that same call. `public` and `system` omit it. Method decorator only; class-level does not compile.
 - **`@FeatureFlagProtected` takes the bare key.** Workspace-scoped and project-scoped routes on `user` / `shared` / `public` carry `@FeatureFlagProtected('workspace')`. Admin does not.
 - **`@RoleProtected` never lists `superAdmin`.** The bypass runs before the required list.
-- **Activity is not a decorator.** A domain stages with `ActivityLogDomain.stage(...)` after success.
+- **Activity is not a decorator.** A domain prepares with `ActivityLogDomain.prepare(...)` before the write and stages with `stagePrepared(...)` after it.
 
 ---
 
@@ -104,19 +112,20 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 
 ## Database · Queues · Security
 
-- **DB:** only repositories query `databaseService.client`; a domain opens `databaseService.withTransaction` only when the work spans more than one repository and passes `tx` to `*InTx(tx, …)` methods; a multi-statement write on one repository's model opens its transaction inside that repository. Soft delete: `client.<model>.softDelete` / `restore`. `createdBy` / `updatedBy` are stamped from the request actor (nested writes included); pass them explicitly only where there is no HTTP actor.
+- **DB:** a paginated read whose row is narrower than the model passes a `select` (mutually exclusive with `include`, `findMany` only), so a password hash or a session `jti` never leaves the database; only repositories query `databaseService.client`; a domain opens `databaseService.withTransaction` only when the work spans more than one repository and passes `tx` to `*InTx(tx, …)` methods; a multi-statement write on one repository's model opens its transaction inside that repository. Soft delete: `client.<model>.softDelete` / `restore`. `createdBy` / `updatedBy` are stamped from the request actor (nested writes included); pass them explicitly only where there is no HTTP actor.
 - **Queues:** `@QueueProcessor(EnumQueue.X)` + `extends QueueProcessorBase` (constructor passes `sentryService` to `super`). Work in `*.processor.service.ts`. `return await` inside `try`. Unretryable failure → `UnrecoverableError`.
 - **Crypto:** `node:crypto` through `Helper*` services only. AES-256-GCM via `HelperEncryptionService.aes256Encrypt(value, secret, purpose, context)`. `randomInt` / `randomBytes`, never `Math.random`. Secret comparisons via `sha256Compare` (constant-time). No MD5, no `crypto-js`.
 - **Secrets:** never in a log, a URL, a response, activity metadata, or a plaintext job payload. Add new sensitive keys to `LoggerSensitiveFields`.
-- **Sessions:** invalidate after password change/reset, logout, device removal, admin revoke, or role/status change (admin `blocked`/`inactive` revokes every session). Revoke in the DB, then purge exactly those ids from the session cache.
-- **Activity log:** `ActivityLogDomain.stage(...)` after success. An action on another user stages two rows — the actor's action plus the paired `…ByAdmin`/`…ByOwner`/`…ByInvitee` action for the affected user (`userId`, `createdBy` = actor) — with `targetUserId` / `actorUserId` in metadata; skip the pair when actor and target are the same user.
+- **Sessions:** invalidate after password change/reset, logout, device removal, self-deletion, lockout, two-factor disable or reset, admin revoke, or role/status change (admin `blocked`/`inactive` revokes every session). Order is commit, purge, stage. A partial revoke purges exactly the revoked ids; a whole-user revoke scans and unlinks every key of that user.
+- **Store decorators** (`@UserCurrent()`, `@WorkspaceCurrent()`, `@ApiKeyPayload()`, `@AuthJwtPayload()`, …) read CLS in their own `createParamDecorator` factory, take an optional typed field, return non-null, and throw `RequestContextMissingException` (50304) when the value or field is missing. `@ProjectMemberCurrent()` only under the role-less `@ProjectMemberProtected()`.
+- **Activity log:** `ActivityLogDomain.prepare(...)` before the write, `stagePrepared(...)` after it; a path that always throws carries `onError: true`. An action on another user stages two rows — the actor's action plus the paired `…ByAdmin`/`…ByOwner`/`…ByInvitee` action for the affected user (`userId`, `createdBy` = actor) — with `targetUserId` / `actorUserId` in metadata; skip the pair when actor and target are the same user.
 
 ---
 
 ## Comments · Config · Logging
 
 - Default **zero comments**. Banned JSDoc tags: `@param @returns @example @throws @implements …`.
-- Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts`, `*.exception.ts`, `*.constant.ts` carries a one-line JSDoc plus `@public`.
+- Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts`, `*.exception.ts`, `*.constant.ts`, `*.contract.ts` carries a one-line JSDoc plus `@public`.
 - Config: `ConfigService.get('namespace.key')` — never `process.env` in feature code. Durations `In<Unit>` from `ms('…')`; sizes `InBytes` from `bytes('…')`; URLs are `…Pattern` keys with `.replace('{x}', () => value)`.
 - Logger: `private readonly logger = new Logger(ClassName.name)`; errors object-first. Sentry reporting goes through `SentryService` from the filter chain and `QueueProcessorBase`.
 
@@ -127,5 +136,5 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 - `prisma/schema.prisma` may be edited; never run `db:migrate`, `db:studio` or `migration:*`.
 - Never stage or commit unless asked. PNPM only.
 - No backward compatibility — correct shape, update every call site.
-- Specs mirror `src/` under `test/**/*.spec.ts` (Vitest, `vitest-mock-extended`); controllers, processors and repositories are outside the coverage set.
+- Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/Mongo) and e2e (running app) are not this suite. Controllers, processors, repositories, contracts and Swagger doc factories (`*.doc.ts`) are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
 - English for code, comments, commits, docs. Verify with `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`.

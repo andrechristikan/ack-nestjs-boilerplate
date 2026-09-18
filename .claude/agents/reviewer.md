@@ -204,6 +204,14 @@ When the dispatch asks you to hit an endpoint after boot: routes sit under the g
 plus the scope prefix. Read `app.globalPrefix` from the boot log. A `user` or `shared` route
 needs the `x-workspace-id` header (`rules/http.md`).
 
+## The `this`-call rule has no linter
+
+`rules/code-style.md` → "A `this.` call lands in a `const` first" is not enforced by ESLint, so
+a diff is the only place it is caught. Read every changed line for a `this.`-rooted call sitting
+in a restricted position — an argument, an object-literal property value, a condition, a compound
+expression, a template literal, a spread, a `for…of` iterable, an index, a `throw` operand, or a
+ternary branch. The rule file holds the allowed positions.
+
 ## Boundaries
 
 - No fixes, no edits, no spec, no test run.

@@ -116,6 +116,7 @@ export default [
             '.github/*',
             '.husky/*',
             'coverage/*',
+            '.vitest/*',
             'dist/*',
             'docs/*',
             'node_modules/*',

@@ -13,10 +13,12 @@ import type { IResponsePagingReturn } from '@common/response/interfaces/response
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import { UserAdminListSelect } from '@modules/user/constants/user.constant';
 import type {
     IUser,
     IUserContact,
     IUserCreateWithWorkspaceInput,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
@@ -44,6 +46,8 @@ export class UserRepository implements IUserRepository {
     private buildUserCreateData(
         input: IUserCreateWithWorkspaceInput
     ): Prisma.UserUncheckedCreateInput {
+        const lastWorkspaceChangedAt = this.helperDateService.create();
+
         return {
             id: input.userId,
             email: input.email,
@@ -56,7 +60,7 @@ export class UserRepository implements IUserRepository {
             isVerified: input.isVerified,
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
-            lastWorkspaceChangedAt: this.helperDateService.create(),
+            lastWorkspaceChangedAt,
             termPolicy: input.termPolicy,
             createdBy: input.createdBy,
             deletedAt: null,
@@ -79,8 +83,8 @@ export class UserRepository implements IUserRepository {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
-        return this.paginationService.offset<IUser, Prisma.UserWhereInput>(
+    ): Promise<IResponsePagingReturn<IUserList>> {
+        return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
             this.databaseService.client.user,
             {
                 ...params,
@@ -91,10 +95,7 @@ export class UserRepository implements IUserRepository {
                     ...roleId,
                     deletedAt: null,
                 },
-                include: {
-                    role: { include: { policies: true } },
-                    twoFactor: true,
-                },
+                select: UserAdminListSelect,
             }
         );
     }
@@ -257,8 +258,9 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         input: IUserCreateWithWorkspaceInput
     ): Promise<IUser> {
+        const createData = this.buildUserCreateData(input);
         const user = await tx.user.create({
-            data: this.buildUserCreateData(input),
+            data: createData,
             include: {
                 role: { include: { policies: true } },
             },
@@ -301,10 +303,12 @@ export class UserRepository implements IUserRepository {
     }
 
     async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
+        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+
         return this.databaseService.client.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: this.databaseUtil.toPlainObject(photo),
+                photo: plainPhoto,
             },
         });
     }

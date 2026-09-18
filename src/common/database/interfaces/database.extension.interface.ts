@@ -1,12 +1,12 @@
 import type { Prisma } from '@generated/prisma-client/client';
 
-export type IDatabaseRow = Record<string, unknown>;
+export type IDatabaseData = Record<string, unknown>;
 
 export interface IDatabaseModelContext {
-    update: (args: { where: unknown; data: IDatabaseRow }) => Promise<unknown>;
+    update: (args: { where: unknown; data: IDatabaseData }) => Promise<unknown>;
 }
 
-export interface IDatabaseSoftDeleteData extends IDatabaseRow {
+export interface IDatabaseSoftDeleteData extends IDatabaseData {
     deletedAt?: Date;
     deletedBy?: string;
     updatedBy?: string;
@@ -17,7 +17,7 @@ export interface IDatabaseSoftDeleteArgs {
     data?: IDatabaseSoftDeleteData;
 }
 
-export interface IDatabaseRestoreData extends IDatabaseRow {
+export interface IDatabaseRestoreData extends IDatabaseData {
     updatedBy?: string;
 }
 

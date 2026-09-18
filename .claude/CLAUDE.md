@@ -82,7 +82,10 @@ the most specific catch runs first.
   — key material into `keys/`, printed as paths only; `--direct-insert` also upserts that
   target's `.env` variables and rotates them
 - `pnpm typecheck` — `tsc --noEmit`. `pnpm build` runs it too, but proves nothing on its own
-- `pnpm test` — `TZ=UTC vitest run --passWithNoTests`; `pnpm test:cov` adds `--coverage`
+- `pnpm test` — `TZ=UTC vitest run --passWithNoTests`; `pnpm test:cov` adds `--coverage`.
+  `vitest.config.ts` sets `isolate: false`, `fsModuleCache: true`, and `test/setup.ts` as
+  `setupFiles`. `.github/workflows/test.yml` is `workflow_dispatch`; `linter.yml` runs on
+  `pull_request`.
 - `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` · `pnpm spell`
 - `pnpm db:studio` · `pnpm vault:pull`
 - `docker-compose up -d` — MongoDB replica set, Redis, BullBoard, JWKS server, Vault
@@ -149,11 +152,12 @@ the 100% threshold. Coverage is `pnpm test:cov`, and a scoped coverage run exits
 spec passing because the threshold is global — read the `Tests` line and the per-file rows,
 not the exit code and not the global summary.
 
-**A coverage gap is never closed silently.** `/ack-spec` is the skill that writes specs —
+**A coverage gap is never closed silently.** `/ack-spec` is the skill built for it —
 100% is the bar it exists to reach, so it keeps dispatching `test-writer` until the per-file
 rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
-`ack-code` does not dispatch `test-writer`. `coder` writes the TDD spec for the behaviour
-in its plan; `/ack-spec` writes every other spec.
+`coder` writes the TDD spec for the behaviour in its plan. `/ack-code` dispatches
+`test-writer` too, for specs that cover code the run did not write — the gap a finished run
+leaves behind, or a tree the owner names.
 A commit touching `src/` or `test/` goes through the hooks, and `pre-commit` does not collect
 coverage, so neither is a way past the threshold.
 
@@ -169,8 +173,8 @@ and `general-purpose` is `allow` in `.claude/settings.json`: an external skill s
 skill's flow.** A project skill dispatches the agents in `.claude/agents/` and nothing else;
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
-work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched
-only by `/ack-spec`.
+work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched by
+`/ack-spec` and by `/ack-code`, never by another agent.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
@@ -263,10 +267,11 @@ installs them once:
   fail because the behaviour is absent, then implement. `coder` carries
   `superpowers:test-driven-development` and writes that spec itself. `/ack-spec` is the
   other half: the code already exists and it wins.
-- **This checkout has no `test/**/*.spec.ts`.** While that is true, `/ack-code` may dispatch
-  `coder` with the suite waiver and land `src/` without a red spec. The moment any unit spec
-  exists, TDD is mandatory and that waiver is gone. Seeds, controllers, and repositories
-  never have a TDD cycle.
+- **The suite is unit specs** under `test/**/*.spec.ts` (`rules/testing.md`). A domain spec
+  doubles the repository; a repository is not a unit subject. Integration (adapter plus real
+  engine) and e2e (running app) are other kinds and are not this suite. Seeds, controllers,
+  processors, repositories, contracts and Swagger doc factories (`*.doc.ts`) never have a
+  TDD cycle.
 - **Build the correct shape and change every call site.** No deprecated-but-kept field, no
   `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent
   pattern.

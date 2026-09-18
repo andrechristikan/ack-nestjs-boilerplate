@@ -1,8 +1,6 @@
 # Cache Documentation
 
-This documentation explains the features and usage of:
-- **Cache Module**: Located at `src/common/cache`
-- **Redis Module**: Located at `src/common/redis`
+Cache lives in `src/common/cache`. The Redis client lives in `src/common/redis`.
 
 ## Overview
 
@@ -46,9 +44,9 @@ The stack is **cache-manager v7**, **Keyv** as the storage interface, and `@keyv
 - **Single Cache Connection**: Only ONE Redis connection is created for caching and shared across every cache consumer. BullMQ opens its own connections against `QUEUE_REDIS_URL` and does not reuse this client
 - **Single Configuration**: Defined once in `redis.config.ts`
 - **Reusable Providers**: `CacheMainProvider` and `SessionCacheProvider` share the same Redis client
-- **Direct client consumer**: `RequestThrottlerStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
+- **Direct client consumer**: `RequestThrottleStorageService` injects `RedisClientCachedProvider` itself and runs its sliding-window Lua script on that same connection, so rate limiting adds no Redis connection of its own. See [Security and Middleware Documentation][ref-doc-security-and-middleware]
 
-`RedisCacheModule` creates one Redis connection. Cache classes, `SessionCacheProvider`, and `RequestThrottlerStorageService` inject that client.
+`RedisCacheModule` creates one Redis connection. Cache classes, `SessionCacheProvider`, and `RequestThrottleStorageService` inject that client.
 
 ### Global Module Pattern
 
@@ -71,7 +69,7 @@ CommonModule
     │
     └── SessionDomainModule (Global)
         └── Uses: RedisClientCachedProvider
-        └── Provides: SessionCacheProvider, SessionDomain, SessionCache, SessionUtil
+        └── Provides: SessionCacheProvider, SessionDomain, SessionCache, SessionUtil, SessionAnalyticDomain
 ```
 
 ### RedisCacheModule
@@ -119,6 +117,15 @@ export class FeatureFlagCache {
 
 A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCache`, `AuthCache`, `FeatureFlagCache`, `AnalyticCache`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
 
+**Building a key from its config pattern.** Every key pattern lives in config, and how it is filled follows the number of placeholders in it:
+
+| Placeholders | Filled by | Patterns |
+|---|---|---|
+| one | `String.prototype.replace('{name}', () => value)` | `ApiKey:{key}`, `FeatureFlag:{key}`, `Apis:{key}`, `TwoFactor:Challenge:{token}`, `TwoFactor:Lock:{userId}` |
+| two or more | `HelperStringService.fillPattern(pattern, values)` | `User:{userId}:Session:{sessionId}`, the four `Analytic:*` patterns, the throttle storage patterns |
+
+The function form of `replace` stops a value containing `$&` or `$1` from being read as a replacement pattern. `fillPattern` scans `{token}` once and substitutes from the value map, so a substituted value is never re-read as a token, and a token with no entry raises `HelperPatternTokenMissingException` (`52202`, 500).
+
 ### SessionDomainModule
 
 **Purpose:** Provides cache for session management only
@@ -138,13 +145,13 @@ export class SessionCache {
 }
 ```
 
-`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)). `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache` and `SessionUtil`, and exports `SessionDomain` and `SessionCache`.
+`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)). `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`, and exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`.
 
 Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
 ### Session Cache
 
-`SessionCache` (`src/modules/session/caches/session.cache.ts`) stores one entry per login under the `session.keyPattern` key, with `{userId}` and `{sessionId}` substituted.
+`SessionCache` (`src/modules/session/caches/session.cache.ts`) stores one entry per login under the `session.keyPattern` key (`User:{userId}:Session:{sessionId}`). `HelperStringService.fillPattern` fills both placeholders in a single pass, and a placeholder the call supplies no value for raises `HelperPatternTokenMissingException` (`52202`, 500) rather than leaving the literal `{token}` in a Redis key.
 
 | Method | What it does |
 |---|---|

@@ -14,7 +14,7 @@ import {
 } from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { Response } from 'express';
-import type { LoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import type { ILoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
 import type { Options } from 'pino-http';
@@ -131,38 +131,49 @@ export class LoggerOptionService {
                 level as number
             );
 
-            return {
+            const sanitizedMessage = this.loggerUtil.sanitizeMessage(
+                message ?? msg
+            );
+
+            const log: Record<string, unknown> = {
                 severity,
                 context: context ?? LoggerAutoContext,
                 timestamp: today.valueOf(),
-                msg: this.loggerUtil.sanitizeMessage(message ?? msg),
+                msg: sanitizedMessage,
                 service: {
                     name: this.name,
                     environment: this.env,
                     version: this.version,
                 },
-                ...(Object.keys(additionalData).length > 0 && {
-                    additionalData: this.loggerUtil.redactValue(additionalData),
-                }),
-
-                ...(this.env !== EnumAppEnvironment.production && {
-                    debug: this.addDebugInfo({
-                        pid,
-                        hostname,
-                    }),
-                }),
-                ...(!!err && {
-                    err: this.loggerUtil.serializeError(
-                        (error as Error) ?? (err as Error)
-                    ),
-                }),
-                ...(!!res && {
-                    res,
-                }),
-                ...(!!req && {
-                    req,
-                }),
             };
+
+            if (Object.keys(additionalData).length > 0) {
+                log.additionalData =
+                    this.loggerUtil.redactValue(additionalData);
+            }
+
+            if (this.env !== EnumAppEnvironment.production) {
+                log.debug = this.addDebugInfo({
+                    pid,
+                    hostname,
+                });
+            }
+
+            if (err) {
+                log.err = this.loggerUtil.serializeError(
+                    (error as Error) ?? (err as Error)
+                );
+            }
+
+            if (res) {
+                log.res = res;
+            }
+
+            if (req) {
+                log.req = req;
+            }
+
+            return log;
         };
     }
 
@@ -194,7 +205,7 @@ export class LoggerOptionService {
 
     private addDebugInfo(
         additionalParams: Record<string, unknown>
-    ): LoggerDebugInfo | undefined {
+    ): ILoggerDebugInfo | undefined {
         if (this.env === EnumAppEnvironment.production) {
             return undefined;
         }
@@ -235,24 +246,31 @@ export class LoggerOptionService {
     }
 
     async createOptions(): Promise<Params> {
+        const logFormatter = this.createLogFormatter();
+        const mixin = this.createMixin();
+        const transports = this.buildTransports();
+        const redactionConfig = this.createRedactionConfig();
+        const serializers = this.createSerializers();
+        const autoLoggingConfig = this.createAutoLoggingConfig();
+
         return {
             forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
                 genReqId: (request: IRequestApp) =>
                     this.loggerUtil.getRequestId(request),
                 formatters: {
-                    log: this.createLogFormatter(),
+                    log: logFormatter,
                 },
-                mixin: this.createMixin(),
+                mixin,
                 messageKey: 'msg',
                 timestamp: false,
                 wrapSerializers: false,
                 base: null,
-                transport: this.buildTransports(),
+                transport: transports,
                 level: this.enable ? this.level : 'silent',
-                redact: this.createRedactionConfig(),
-                serializers: this.createSerializers(),
-                autoLogging: this.createAutoLoggingConfig(),
+                redact: redactionConfig,
+                serializers,
+                autoLogging: autoLoggingConfig,
             } as unknown as Params['pinoHttp'],
         };
     }

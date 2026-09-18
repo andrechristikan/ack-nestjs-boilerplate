@@ -14,9 +14,6 @@ export interface IUserConfig {
         createTimeoutInMs: number;
         createBulkTimeoutInMs: number;
     };
-    passwordLockout: {
-        writeConflictMaxAttempts: number;
-    };
 }
 
 export default registerAs('user', (): IUserConfig => ({
@@ -31,8 +28,5 @@ export default registerAs('user', (): IUserConfig => ({
     onboarding: {
         createTimeoutInMs: ms('10s'),
         createBulkTimeoutInMs: ms('30s'),
-    },
-    passwordLockout: {
-        writeConflictMaxAttempts: 3,
     },
 }));

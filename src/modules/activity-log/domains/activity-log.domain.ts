@@ -7,7 +7,7 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
-import { ActivityLogContractByAction } from '@modules/activity-log/constants/activity-log.contract.constant';
+import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import { ActivityLogStageStoreKey } from '@modules/activity-log/constants/activity-log.constant';
 import {
     EnumActivityLogUser,
@@ -16,13 +16,13 @@ import {
 import { ActivityLogContractInvalidException } from '@modules/activity-log/exceptions/activity-log.contract-invalid.exception';
 import type {
     IActivityLog,
-    IActivityLogContract,
+    IActivityLogActionContract,
     IActivityLogFlushOptions,
     IActivityLogMetadata,
     IActivityLogStageInput,
     IActivityLogStagedEvent,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IActivityLogCreateManyRow } from '@modules/activity-log/interfaces/activity-log.repository.interface';
+import type { IActivityLogCreate } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { WorkspaceStoreKey } from '@modules/workspace/constants/workspace.constant';
@@ -37,8 +37,10 @@ export class ActivityLogDomain {
         private readonly requestStoreService: RequestStoreService
     ) {}
 
-    private getContract(action: EnumActivityLogAction): IActivityLogContract {
-        const found = ActivityLogContractByAction[action];
+    private getContract(
+        action: EnumActivityLogAction
+    ): IActivityLogActionContract {
+        const found = ActivityLogActionContract[action];
         if (!found) {
             throw new ActivityLogContractInvalidException();
         }
@@ -156,11 +158,11 @@ export class ActivityLogDomain {
         return workspace.id;
     }
 
-    private buildFlushRow(
+    private buildFlushCreate(
         event: IActivityLogStagedEvent,
         payloadUserId: string | null,
         requestLog: IRequestLog
-    ): IActivityLogCreateManyRow {
+    ): IActivityLogCreate {
         const contract = this.getContract(event.action);
         const metadata = this.validateMetadata(event.action, event.metadata);
         const userId = this.resolveUserId(
@@ -178,15 +180,17 @@ export class ActivityLogDomain {
             userId
         );
 
+        const description = this.activityLogUtil.getDescription(
+            event.action,
+            metadata
+        );
+
         return {
             userId,
             createdBy,
             workspaceId,
             action: event.action,
-            description: this.activityLogUtil.getDescription(
-                event.action,
-                metadata
-            ),
+            description,
             requestLog,
             metadata,
         };
@@ -224,10 +228,10 @@ export class ActivityLogDomain {
             return;
         }
 
-        const staged =
-            this.requestStoreService.get<IActivityLogStagedEvent[]>(
-                ActivityLogStageStoreKey
-            ) ?? [];
+        const stagedEvents = this.requestStoreService.get<
+            IActivityLogStagedEvent[]
+        >(ActivityLogStageStoreKey);
+        const staged = stagedEvents ?? [];
         staged.push(...events);
 
         this.requestStoreService.set(ActivityLogStageStoreKey, staged);
@@ -259,8 +263,8 @@ export class ActivityLogDomain {
             throw new ActivityLogContractInvalidException();
         }
 
-        const rows: IActivityLogCreateManyRow[] = toFlush.map(event =>
-            this.buildFlushRow(event, payloadUserId, requestLog)
+        const rows: IActivityLogCreate[] = toFlush.map(event =>
+            this.buildFlushCreate(event, payloadUserId, requestLog)
         );
 
         await this.activityLogRepository.createMany(rows);

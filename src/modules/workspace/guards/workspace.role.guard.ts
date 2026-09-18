@@ -23,11 +23,11 @@ export class WorkspaceRoleGuard implements CanActivate {
     ) {}
 
     canActivate(context: ExecutionContext): boolean {
-        const allowedRoles =
-            this.reflector.get<EnumWorkspaceMemberRole[]>(
-                WorkspaceRoleMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const requiredRoles = this.reflector.get<EnumWorkspaceMemberRole[]>(
+            WorkspaceRoleMetaKey,
+            context.getHandler()
+        );
+        const allowedRoles = requiredRoles ?? [];
 
         const member = this.requestStoreService.get<WorkspaceMember>(
             WorkspaceMemberStoreKey

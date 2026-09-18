@@ -58,6 +58,7 @@ src/modules/<feature>/
 ├── domains/                         domain classes (`rules/architecture.md`)
 ├── services/                        HTTP and processor service files
 ├── caches/                          cache classes (`rules/cache.md`)
+├── contracts/                       the module's rule tables (`rules/naming.md`)
 ├── factories/                       factory classes
 └── queues/                          queue classes
 ```

@@ -1,8 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import type {
-    IUserVerificationAnalyticRepository,
-    IUserVerificationAnalyticUsedBucket,
-} from '@modules/user/interfaces/user.verification.analytic.repository.interface';
+import type { IUserVerificationAnalyticRepository } from '@modules/user/interfaces/user.verification-analytic-repository.interface';
+import type { IUserVerificationAnalyticUsedBucket } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 

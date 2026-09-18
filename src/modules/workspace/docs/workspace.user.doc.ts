@@ -9,14 +9,6 @@ import {
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import {
-    WorkspaceInviteDocParamsId,
-    WorkspaceInviteDocQueryList,
-    WorkspaceJoinRequestDocParamsId,
-    WorkspaceJoinRequestDocQueryList,
-    WorkspaceMemberDocParamsId,
-    WorkspaceMemberDocQueryList,
-} from '@modules/workspace/constants/workspace.doc.constant';
-import {
     WorkspaceCursorAvailableOrderBy,
     WorkspaceDefaultAvailableSearch,
     WorkspaceInviteDefaultAvailableOrderBy,
@@ -24,6 +16,14 @@ import {
     WorkspaceJoinRequestDefaultAvailableOrderBy,
     WorkspaceMemberDefaultAvailableOrderBy,
 } from '@modules/workspace/constants/workspace.list.constant';
+import {
+    WorkspaceInviteDocParamsId,
+    WorkspaceInviteDocQueryList,
+    WorkspaceJoinRequestDocParamsId,
+    WorkspaceJoinRequestDocQueryList,
+    WorkspaceMemberDocParamsId,
+    WorkspaceMemberDocQueryList,
+} from '@modules/workspace/constants/workspace.doc.constant';
 import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';

@@ -29,9 +29,14 @@ elsewhere.
 ## A repository owns only its own model (HARD)
 
 A repository class issues reads and writes against the Prisma model it owns, and against
-satellite models that have no repository of their own. `DeviceOwnershipRepository` owns
-`DeviceOwnership` and `Device` because there is no `DeviceRepository`. `UserPasswordRepository`
-does not own `User` — `UserRepository` does.
+satellite models that have no repository of their own. `NotificationRepository` owns
+`Notification` and its `NotificationDelivery` rows, which no other class writes.
+`UserPasswordRepository` does not own `User` — `UserRepository` does, and `DeviceRepository`
+owns `Device` while `DeviceOwnershipRepository` owns `DeviceOwnership`.
+
+Ownership binds writes. A read may `include`, `select` or filter on a related model
+(`deviceOwnership.findMany({ include: { device: true } })`), because a read changes nothing and
+the alternative is a second round trip for every row.
 
 Ownership is per class, not per feature. `WorkspaceInviteRepository` does not read
 `WorkspaceMember` or `User` or `Project`. Nested writes count as statements against the related

@@ -134,8 +134,8 @@ export default registerAs('request', (): IConfigRequest => ({
             },
         },
         headerPrefix: 'X-RateLimit',
-        keyPattern: 'Request:Throttler:{name}:{tracker}',
-        blockKeyPattern: 'Request:Throttler:Block:{name}:{tracker}',
-        sequenceKeyPattern: 'Request:Throttler:Seq:{name}:{tracker}',
+        keyPattern: 'Request:Throttle:{name}:{tracker}',
+        blockKeyPattern: 'Request:Throttle:Block:{name}:{tracker}',
+        sequenceKeyPattern: 'Request:Throttle:Seq:{name}:{tracker}',
     },
 }));

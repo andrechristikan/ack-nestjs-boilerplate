@@ -43,16 +43,36 @@ Every one of these MUST invalidate the affected sessions:
 - password reset / forgot-password completion
 - logout
 - device removal
+- account self-deletion — the same transaction revokes the user's sessions and device
+  ownerships and clears their push tokens
+- reaching the maximum password attempt — the lockout transaction deactivates the account and
+  revokes its sessions and device ownerships
+- two-factor disable, and an admin two-factor reset
 - role or status change that revokes access — an admin setting a user `blocked` or `inactive`
   revokes every session of that user in the same transaction as the status write
 - an admin revoke of one session (`DELETE …/session/revoke/:sessionId`) or of all of them
   (`DELETE …/session/revoke-all`)
 
 Invalidation is two steps and both are required: the session rows are revoked in the database,
-then exactly the revoked ids are purged from the session cache after the commit. The JWT
-guards read the cache, so a revoke that skips the purge leaves the token working. A revoke
-that finds no active session is a no-op, except on the revoke-all route, which answers
+then the session cache is purged after the commit. The JWT guards read the cache, so a revoke
+that skips the purge leaves the token working.
+
+Which purge depends on how much was revoked:
+
+- **One session, or a named subset** — `SessionCache.deleteLogins(userId, sessions)` purges
+  exactly the revoked ids.
+- **Every session of one user** — `SessionDomain.purgeLoginsByUser(userId)` scans the user's
+  key pattern and unlinks every entry, so an entry written by a login that raced the revoke
+  goes too.
+
+The order on every path is commit, then purge, then stage the activity rows. A purge failure
+after the commit is logged and swallowed; the rows stay revoked. A revoke that finds no active
+session is a no-op, except on the revoke-all route and a single revoke, which answer
 `SessionNotFoundException`.
+
+A session write that a revoke must not resurrect is filtered, not merely ordered:
+`isRevoked: false` is part of the `where` of every revoke and of the refresh rotation, and the
+refresh cache write is conditional on the entry still existing.
 
 Skipping it leaves a live token for an account the user believes they secured. It is silent, and nothing fails until it matters.
 
@@ -66,18 +86,26 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
 
 ## Activity log
 
-- Feature domains enqueue with `ActivityLogDomain.stage`. The global `ActivityLogInterceptor`
-  (`APP_INTERCEPTOR`) awaits flush when the CLS stage queue is non-empty.
-- Default `stage` is success-path only (call after business success). `stage({ onError: true })`
-  is one call that covers both paths: flushed on success and on error — do not stage again in a
-  catch. Error-path flush writes only events with `onError: true`; other staged events are
-  discarded.
-- Per-action contracts (`ActivityLogContractByAction`) resolve `user` / `workspace` and validate
+- Staging is two calls. `ActivityLogDomain.prepare(input)` builds one event and validates it
+  against the action's contract; `stagePrepared(events)` puts prepared events on the CLS queue.
+  The global `ActivityLogInterceptor` (`APP_INTERCEPTOR`) awaits flush when that queue is
+  non-empty.
+- **Prepare before the write, stage after it.** A contract failure throws at `prepare`, so it
+  fails the request before anything is written. Staging after the write keeps a committed
+  change from going unlogged. A value only the write produces — a generated id, a row count —
+  is either drawn before the write (`DatabaseUtil.createId()`, the domain's pre-write `now`) or,
+  where the write alone can produce it, prepared after the commit; the admin revoke-all count is
+  the one path that prepares after committing.
+- Default `prepare` is success-path only. `prepare({ onError: true })` covers both paths:
+  flushed on success and on error — do not stage again in a catch. Error-path flush writes only
+  events with `onError: true`; other staged events are discarded. An event on a path that
+  always throws — a failed login, a lockout — carries `onError: true` or it is never written.
+- Per-action contracts (`ActivityLogActionContract`) resolve `user` / `workspace` and validate
   metadata with a per-action zod schema; contract failure throws. Every
   `EnumActivityLogAction` member has a contract and an `activityLog` i18n key.
-  - `user=payload`: the row belongs to the JWT user, resolved at flush; `stage` carries no
+  - `user=payload`: the row belongs to the JWT user, resolved at flush; `prepare` carries no
     `userId` and no `createdBy`.
-  - `user=target`: the row belongs to the `userId` passed to `stage`, and `stage` also passes
+  - `user=target`: the row belongs to the `userId` passed to `prepare`, which also passes
     `createdBy` — the acting user, or the row's own user on a self or public path.
   - `workspace=payload` reads only `WorkspaceStoreKey`; `workspace=target` takes the staged
     `workspaceId`; `workspace=none` stores none.
@@ -92,13 +120,26 @@ The decorator stack in `rules/http.md` is the enforcement order and it is exact.
   paired row carries `actorUserId`. The ids are required by the schema, never optional.
 - A new paired action is a Prisma enum member (`rules/prisma-schema.md`), a contract entry, a
   metadata schema, an i18n key, and — when it duplicates an existing count — an entry in
-  `ActivityLogWorkspaceVolumeExcludedActions` or the analytic action lists, so one event
+  `ActivityLogWorkspaceVolumeContract` or the analytic action lists, so one event
   counts once.
 - Activity metadata is returned through the typed response schema, so it never carries a secret or a value the owner of the row may not see.
 - **Never log a secret into activity metadata.** It is durable storage, queried by admins.
 
 ## Request store
 
-Per-request state lives in one CLS-backed `RequestStoreService` (`src/common/request/services/request.store.service.ts`), keyed by `*StoreKey` constants — the request's own (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `RequestActorStoreKey`, `RequestThrottleHandledStoreKey`) and the guards' (`AuthPayloadStoreKey`, `UserStoreKey`, `ApiKeyStoreKey`, `PolicyStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`, `ProjectStoreKey`, `ProjectMemberStoreKey`, …). `RequestActorStoreKey` is the actor the audit stamping reads (`rules/database.md`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
+Per-request state lives in one CLS-backed `RequestStoreService` (`src/common/request/services/request.store.service.ts`), keyed by `*StoreKey` constants — the request's own (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `RequestActorStoreKey`, `RequestThrottleHandledStoreKey`) and the guards' (`AuthPayloadStoreKey`, `UserStoreKey`, `ApiKeyStoreKey`, `PolicyStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`, `ProjectStoreKey`, `ProjectMemberStoreKey`, `ProjectWorkspaceOwnerStoreKey`), plus the two a kit writes for itself (`ActivityLogStageStoreKey`, `PaginationStoreKey`). `RequestActorStoreKey` is the actor the audit stamping reads (`rules/database.md`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
 
 Geo-location and user-agent are resolved once per request into `RequestLogStoreKey` as an `IRequestLog`, then threaded to the repository as the last method parameter. Do not re-parse them downstream.
+
+**A class reads the store through the injected `RequestStoreService`.** A param decorator is the
+exception: `createParamDecorator` runs outside Nest's injection context, so its factory reads the
+store through `ClsServiceManager.getClsService()` — the only sanctioned service-locator call in
+`src/` (`rules/code-style.md`).
+
+Every store decorator returns a non-null value. It reads its key, and its optional `field` when
+one is given, and throws `RequestContextMissingException` (`50304`, HTTP 500) when either is
+missing, which is what a route stacking the decorator without the guard that fills the key looks
+like. A handler therefore never receives `null` from `@UserCurrent()`, `@WorkspaceCurrent()`,
+`@ApiKeyPayload()`, `@AuthJwtPayload()` or their siblings, and `@ProjectMemberCurrent()` is valid
+only under the role-less `@ProjectMemberProtected()`, because `ProjectRoleGuard` stores no member
+row. The missing key travels in `rawError` to Sentry, never in the response body.

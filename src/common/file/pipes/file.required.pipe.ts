@@ -20,7 +20,8 @@ export function FileRequiredPipe(): Type<PipeTransform> {
         }
 
         transform(value: IFileInput): IFileInput {
-            if (this.isEmptyValue(value)) {
+            const isEmpty = this.isEmptyValue(value);
+            if (isEmpty) {
                 throw new FileRequiredException();
             }
 

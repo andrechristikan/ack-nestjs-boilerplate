@@ -15,6 +15,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type {
+    Project,
     User,
     Workspace,
     WorkspaceInvite,
@@ -42,6 +43,7 @@ import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exce
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import type {
     IWorkspaceInviteCreate,
+    IWorkspaceInviteList,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -116,21 +118,25 @@ export class WorkspaceInviteDomain {
     ): IWorkspaceInviteTokenData {
         const token = this.helperStringService.random(this.inviteTokenLength);
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const reference = `${this.inviteReferencePrefix}-${this.helperStringService.random(
+        const referenceRandom = this.helperStringService.random(
             this.inviteReferenceRandomLength
-        )}`;
+        );
+        const reference = `${this.inviteReferencePrefix}-${referenceRandom}`;
+        const now = this.helperDateService.create();
         const expiredAt = this.helperDateService.forward(
-            this.helperDateService.create(),
+            now,
             Duration.fromObject({
                 days: expiryDurationInDays ?? this.inviteExpiredInDays,
             })
         );
-        const claimLink = this.inviteLinkPattern
-            .replace('{homeUrl}', () => this.homeUrl)
-            .replace('{token}', () => token);
-        const signUpLink = this.inviteSignUpLinkPattern
-            .replace('{homeUrl}', () => this.homeUrl)
-            .replace('{token}', () => token);
+        const claimLink = this.helperStringService.fillPattern(
+            this.inviteLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
+        const signUpLink = this.helperStringService.fillPattern(
+            this.inviteSignUpLinkPattern,
+            { homeUrl: this.homeUrl, token }
+        );
 
         return {
             token,
@@ -153,6 +159,7 @@ export class WorkspaceInviteDomain {
         const inviterName =
             inviter?.name ?? inviter?.username ?? workspace.name;
 
+        const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
         const payloadBase: Omit<
             INotificationWorkspaceInvitePayload,
             'inviteAcceptLink'
@@ -162,7 +169,7 @@ export class WorkspaceInviteDomain {
             inviterName,
             workspaceMemberRole: invite.workspaceRole,
             reference: invite.reference,
-            expiredAt: this.helperDateService.formatToIso(invite.expiredAt),
+            expiredAt,
         };
 
         if (existingUser) {
@@ -238,7 +245,7 @@ export class WorkspaceInviteDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceInvite>> {
+    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(
@@ -261,13 +268,18 @@ export class WorkspaceInviteDomain {
             throw new WorkspaceInviteRoleRequiredException();
         }
 
+        let projectLookup: Promise<Project | null> | null;
+        if (create.projectId) {
+            projectLookup = this.projectDomain.getActiveByIdAndWorkspace(
+                create.projectId,
+                workspace.id
+            );
+        } else {
+            projectLookup = null;
+        }
+
         const [project, duplicate, existingUser] = await Promise.all([
-            create.projectId
-                ? this.projectDomain.getActiveByIdAndWorkspace(
-                      create.projectId,
-                      workspace.id
-                  )
-                : null,
+            projectLookup,
             this.workspaceInviteRepository.existsPendingByWorkspaceAndEmail(
                 workspace.id,
                 create.email
@@ -298,15 +310,15 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (existingUser && existingUser.id !== actorId) {
-            events.push(
+            const workspaceInviteCreatedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                     userId: existingUser.id,
                     createdBy: actorId,
                     workspaceId: workspace.id,
                     metadata: { actorUserId: actorId },
-                })
-            );
+                });
+            events.push(workspaceInviteCreatedByAdminEvent);
         }
 
         const invite = await this.workspaceInviteRepository.createPending({
@@ -414,15 +426,15 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (existingUser && existingUser.id !== actorId) {
-            events.push(
+            const workspaceInviteRevokedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     userId: existingUser.id,
                     createdBy: actorId,
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorId },
-                })
-            );
+                });
+            events.push(workspaceInviteRevokedByAdminEvent);
         }
 
         await this.workspaceInviteRepository.revoke(workspaceInviteId);
@@ -493,15 +505,15 @@ export class WorkspaceInviteDomain {
             }),
         ];
         if (invite.invitedByUserId !== userId) {
-            events.push(
+            const workspaceInviteAcceptedByInviteeEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                     userId: invite.invitedByUserId,
                     createdBy: userId,
                     workspaceId: invite.workspaceId,
                     metadata: { actorUserId: userId },
-                })
-            );
+                });
+            events.push(workspaceInviteAcceptedByInviteeEvent);
         }
 
         await this.databaseService.withTransaction(async tx => {

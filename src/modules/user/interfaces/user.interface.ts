@@ -14,11 +14,16 @@ import {
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type {
     Country,
+    Prisma,
     TwoFactor,
     User,
     UserMobileNumber,
     UserPhoto,
 } from '@generated/prisma-client/client';
+import type {
+    UserAdminListSelect,
+    UserAdminNearLockoutSelect,
+} from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
     IAuthToken,
@@ -32,6 +37,14 @@ export interface IUser extends User {
     role: IRoleWithPolicies;
     twoFactor: TwoFactor | null;
 }
+
+export type IUserList = Prisma.UserGetPayload<{
+    select: typeof UserAdminListSelect;
+}>;
+
+export type IUserNearLockout = Prisma.UserGetPayload<{
+    select: typeof UserAdminNearLockoutSelect;
+}>;
 
 export type IUserContact = Pick<User, 'id' | 'email' | 'username'>;
 
@@ -119,7 +132,7 @@ export interface IUserOnboardingActivity {
     metadata: IActivityLogMetadata;
 }
 
-export interface IUserOnboardingVerificationRow {
+export interface IUserOnboardingVerification {
     reference: string;
     token: string;
     type: EnumVerificationType;
@@ -129,12 +142,17 @@ export interface IUserOnboardingVerificationRow {
     isUsed: boolean;
 }
 
-export interface IUserCreateModeRule {
+export interface IUserCreateContract {
     createdAction: EnumActivityLogAction;
     logsVerificationEmailRequest: boolean;
     passwordHistoryType: EnumPasswordHistoryType | null;
     personalWorkspaceAction: EnumActivityLogAction;
     logsActingAdmin: boolean;
+}
+
+export interface IUserTermPolicyContract {
+    defaults: Record<EnumTermPolicyType, boolean>;
+    requiredTypes: EnumTermPolicyType[];
 }
 
 export type IUserOnboardingAdminAction =
@@ -155,7 +173,7 @@ export interface IUserCreateWithWorkspaceInput {
     acceptedTermPolicyTypes: EnumTermPolicyType[];
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
-    verification: IUserOnboardingVerificationRow | null;
+    verification: IUserOnboardingVerification | null;
     workspaceContext: IUserSignUpWorkspaceContext;
     createdBy: string;
 }
@@ -182,7 +200,7 @@ export interface IUserCreateByAdminPrepared {
     passwordString: string;
 }
 
-export interface IUserImportRow {
+export interface IUserImport {
     username: string;
     email: string;
     name?: string;
@@ -284,4 +302,40 @@ export interface IUserLoginOutcome {
     lastWorkspaceChangedAt: Date | null;
     tokens?: IAuthToken;
     twoFactor?: IUserLoginTwoFactorChallenge;
+}
+
+export interface IUserAnalyticGroupCount<T extends string = string> {
+    key: T;
+    count: number;
+}
+
+export interface IUserAnalyticSignUp {
+    id: string;
+    email: string;
+    signUpAt: Date;
+    signUpFrom: EnumUserSignUpFrom;
+}
+
+export interface IUserAnalyticRef {
+    id: string;
+    email: string;
+    passwordAttempt: number | null;
+}
+
+export interface IUserForgotPasswordAnalytic {
+    id: string;
+    userId: string;
+    isUsed: boolean;
+    createdAt: Date;
+    to: string;
+}
+
+export interface IUserForgotPasswordAnalyticUserCount {
+    userId: string;
+    count: number;
+}
+
+export interface IUserVerificationAnalyticUsedBucket {
+    isUsed: boolean;
+    count: number;
 }

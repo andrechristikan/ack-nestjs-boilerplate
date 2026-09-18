@@ -1,6 +1,6 @@
 # Environment Documentation
 
-This documentation explains **Environment**: Located at `.env.example`
+Environment variables are listed in `.env.example`.
 
 ## Overview
 

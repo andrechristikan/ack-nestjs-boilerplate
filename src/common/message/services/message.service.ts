@@ -68,14 +68,17 @@ export class MessageService {
         };
 
         const overridden = this.setMessage(issue.message, properties);
+        let message: string;
+        if (overridden === issue.message) {
+            message = this.setMessage(`request.error.${key}`, properties);
+        } else {
+            message = overridden;
+        }
 
         return {
             key,
             property,
-            message:
-                overridden === issue.message
-                    ? this.setMessage(`request.error.${key}`, properties)
-                    : overridden,
+            message,
         };
     }
 
@@ -84,9 +87,12 @@ export class MessageService {
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {
-        const language: string = options?.customLanguage
-            ? this.filterLanguage(options.customLanguage)
-            : this.defaultLanguage;
+        let language: string;
+        if (options?.customLanguage) {
+            language = this.filterLanguage(options.customLanguage);
+        } else {
+            language = this.defaultLanguage;
+        }
 
         return this.i18n.translate(path, {
             lang: language,
@@ -107,9 +113,10 @@ export class MessageService {
         errors: IMessageValidationImportErrorParam[],
         options?: IMessageErrorOptions
     ): IMessageValidationImportError[] {
-        return errors.map(val => ({
-            row: val.row,
-            errors: this.setValidationMessage(val.errors, options),
-        }));
+        return errors.map(val => {
+            const errors = this.setValidationMessage(val.errors, options);
+
+            return { row: val.row, errors };
+        });
     }
 }

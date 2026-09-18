@@ -11,11 +11,11 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
+import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 import {
     SessionDocParamsId,
     SessionDocQueryList,
 } from '@modules/session/constants/session.doc.constant';
-import { SessionDefaultAvailableOrderBy } from '@modules/session/constants/session.list.constant';
 
 export function SessionAdminListDoc(): MethodDecorator {
     return applyDecorators(

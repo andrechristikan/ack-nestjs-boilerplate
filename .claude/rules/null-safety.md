@@ -24,7 +24,8 @@ TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rule
 Prefer **passing the whole request DTO** into the HTTP service (`userProfileHttpService.updateProfile(userId, body)`). Normalize `undefined → null` only when a domain or HTTP method takes a discrete `T | null` param and the DTO field is optional:
 
 ```ts
-return this.userProfileHttpService.updateSomething(userId, dto.field ?? null);
+const field = dto.field ?? null;
+return this.userProfileHttpService.updateSomething(userId, field);
 ```
 
 A domain or HTTP signature that accepts `bio?: string` has pushed the ambiguity one layer deeper and made every downstream call site re-decide what an absent value means.

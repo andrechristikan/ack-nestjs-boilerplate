@@ -9,6 +9,7 @@ import {
  * @public
  */
 export const WorkspaceDefaultAvailableSearch = ['slug', 'name'];
+
 /**
  * Sort fields the admin offset workspace list accepts.
  * @public
@@ -27,6 +28,7 @@ export const WorkspaceCursorAvailableOrderBy = ['createdAt'];
  * @public
  */
 export const WorkspaceMemberDefaultAvailableOrderBy = ['joinedAt'];
+
 /**
  * Workspace roles the workspace member list filter accepts.
  * @public
@@ -40,11 +42,13 @@ export const WorkspaceMemberDefaultRole = Object.values(
  * @public
  */
 export const WorkspaceInviteDefaultAvailableSearch = ['email', 'reference'];
+
 /**
  * Cursor-route allow-list: every field here is immutable, and a sort key that moves makes a scroll skip and repeat rows.
  * @public
  */
 export const WorkspaceInviteDefaultAvailableOrderBy = ['createdAt'];
+
 /**
  * Invite statuses the workspace invite list filter accepts.
  * @public
@@ -58,6 +62,7 @@ export const WorkspaceInviteDefaultStatus = Object.values(
  * @public
  */
 export const WorkspaceJoinRequestDefaultAvailableOrderBy = ['createdAt'];
+
 /**
  * Join-request statuses the workspace join-request list filter accepts.
  * @public

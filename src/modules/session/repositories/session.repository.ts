@@ -10,8 +10,10 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import { SessionListSelect } from '@modules/session/constants/session.constant';
 import type {
     ISession,
+    ISessionList,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
@@ -36,9 +38,9 @@ export class SessionRepository implements ISessionRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.paginationService.offset<
-            ISession,
+            ISessionList,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -47,14 +49,7 @@ export class SessionRepository implements ISessionRepository {
                 ...isRevoked,
                 userId,
             },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-            },
+            select: SessionListSelect,
         });
     }
 
@@ -64,9 +59,9 @@ export class SessionRepository implements ISessionRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         return this.paginationService.cursor<
-            ISession,
+            ISessionList,
             Prisma.SessionWhereInput
         >(this.databaseService.client.session, {
             ...others,
@@ -75,14 +70,7 @@ export class SessionRepository implements ISessionRepository {
                 userId,
                 isRevoked: false,
             },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-            },
+            select: SessionListSelect,
         });
     }
 
@@ -121,6 +109,9 @@ export class SessionRepository implements ISessionRepository {
         expiredAt: Date,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session> {
+        const plainUserAgent = this.databaseUtil.toPlainObject(userAgent);
+        const plainGeoLocation = this.databaseUtil.toPlainObject(geoLocation);
+
         return tx.session.create({
             data: {
                 id: sessionId,
@@ -130,8 +121,8 @@ export class SessionRepository implements ISessionRepository {
                 isRevoked: false,
                 ipAddress,
                 deviceOwnershipId,
-                userAgent: this.databaseUtil.toPlainObject(userAgent),
-                geoLocation: this.databaseUtil.toPlainObject(geoLocation),
+                userAgent: plainUserAgent,
+                geoLocation: plainGeoLocation,
                 createdBy: userId,
             },
         });
@@ -142,12 +133,13 @@ export class SessionRepository implements ISessionRepository {
         sessionId: string,
         jti: string
     ): Promise<boolean> {
+        const now = this.helperDateService.create();
         const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,
                 isRevoked: false,
                 expiredAt: {
-                    gte: this.helperDateService.create(),
+                    gte: now,
                 },
             },
             data: { jti },

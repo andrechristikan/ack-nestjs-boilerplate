@@ -58,12 +58,14 @@ export class TermPolicyDomain {
         termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
         timestamp: Date
     ): IActivityLogStagedEvent {
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            termPolicy,
+            timestamp
+        );
+
         return this.activityLogDomain.prepare({
             action,
-            metadata: this.termPolicyUtil.mapActivityLogMetadata(
-                termPolicy,
-                timestamp
-            ),
+            metadata,
         });
     }
 
@@ -72,11 +74,15 @@ export class TermPolicyDomain {
         contents: ITermPolicyContent[]
     ): ITermPolicyContent[] {
         return newItems.map(item => {
-            const language = contents.find(
-                c =>
-                    this.fileService.extractFilenameFromPath(c.key) ===
-                    this.fileService.extractFilenameFromPath(item.key)
-            )?.language as EnumMessageLanguage;
+            const language = contents.find(c => {
+                const contentFilename =
+                    this.fileService.extractFilenameFromPath(c.key);
+                const itemFilename = this.fileService.extractFilenameFromPath(
+                    item.key
+                );
+
+                return contentFilename === itemFilename;
+            })?.language as EnumMessageLanguage;
 
             return { ...item, language };
         });
@@ -118,9 +124,8 @@ export class TermPolicyDomain {
 
         try {
             const mappedContents: ITermPolicyContent[] = contents.map(
-                ({ language, key, size }: ITermPolicyContentUpload) => ({
-                    language,
-                    ...this.awsS3Service.mapPresign(
+                ({ language, key, size }: ITermPolicyContentUpload) => {
+                    const presign = this.awsS3Service.mapPresign(
                         {
                             key,
                             size,
@@ -128,15 +133,18 @@ export class TermPolicyDomain {
                         {
                             access: EnumAwsS3Accessibility.private,
                         }
-                    ),
-                })
+                    );
+
+                    return { language, ...presign };
+                }
             );
             const termPolicyId = this.databaseUtil.createId();
+            const timestamp = this.helperDateService.create();
             const events = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyCreate,
                     { id: termPolicyId, type, version },
-                    this.helperDateService.create()
+                    timestamp
                 ),
             ];
             const created = await this.termPolicyRepository.create(
@@ -168,11 +176,12 @@ export class TermPolicyDomain {
 
         try {
             const contentPath = this.termPolicyUtil.getPath(termPolicy);
+            const timestamp = this.helperDateService.create();
             const events = [
                 this.prepareActivityLog(
                     EnumActivityLogAction.adminTermPolicyDelete,
                     termPolicy,
-                    this.helperDateService.create()
+                    timestamp
                 ),
             ];
             const [deleted] = await Promise.all([

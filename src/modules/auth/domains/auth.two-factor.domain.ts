@@ -175,9 +175,10 @@ export class AuthTwoFactorDomain {
 
         if (method === EnumAuthTwoFactorMethod.code) {
             const secret = this.readSecret(twoFactor.secret, twoFactor.userId);
+            const isValid = this.verifyCode(secret, normalizedCode);
 
             return {
-                isValid: this.verifyCode(secret, normalizedCode),
+                isValid,
                 method: method!,
             };
         }
@@ -216,10 +217,9 @@ export class AuthTwoFactorDomain {
         userId: string,
         code: string
     ): boolean {
-        return this.verifyCode(
-            this.readSecret(encryptedPendingSecret, userId),
-            code.trim()
-        );
+        const pendingSecret = this.readSecret(encryptedPendingSecret, userId);
+
+        return this.verifyCode(pendingSecret, code.trim());
     }
 
     /** Generates a new secret, its encrypted form bound to the user, and the otpauth URL for 2FA enrollment. */

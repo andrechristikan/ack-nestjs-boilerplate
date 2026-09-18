@@ -12,13 +12,18 @@ import {
 } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 
-export interface INotificationKindRule {
+export interface INotificationKindContract {
     type: EnumNotificationType;
     priority: EnumNotificationPriority;
     title: string;
     body: string;
     pendingChannels: EnumNotificationChannel[];
     deliveredChannels: EnumNotificationChannel[];
+}
+
+export interface INotificationSettingContract {
+    type: EnumNotificationType;
+    channels: EnumNotificationChannel[];
 }
 
 export interface INotificationCreate {

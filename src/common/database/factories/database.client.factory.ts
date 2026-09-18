@@ -26,6 +26,8 @@ export class DatabaseClientFactory extends PrismaClient<
      * back with `ReturnType`; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
      */
     create() {
-        return this.$extends(this.databaseExtensionUtil.build());
+        const extension = this.databaseExtensionUtil.build();
+
+        return this.$extends(extension);
     }
 }

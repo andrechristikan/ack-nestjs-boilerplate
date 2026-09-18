@@ -3,23 +3,12 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
 import type {
     IActivityLog,
-    IActivityLogMetadata,
+    IActivityLogCreate,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
-
-export interface IActivityLogCreateManyRow {
-    userId: string;
-    createdBy: string;
-    workspaceId: string | null;
-    action: EnumActivityLogAction;
-    description: string;
-    requestLog: IRequestLog;
-    metadata: IActivityLogMetadata;
-}
+import { Prisma } from '@generated/prisma-client/client';
 
 export interface IActivityLogRepository {
     findUserScopedWithPaginationOffset(
@@ -52,5 +41,5 @@ export interface IActivityLogRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    createMany(rows: IActivityLogCreateManyRow[]): Promise<Prisma.BatchPayload>;
+    createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload>;
 }

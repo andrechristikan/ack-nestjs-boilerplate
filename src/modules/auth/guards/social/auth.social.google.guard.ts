@@ -27,8 +27,9 @@ export class AuthSocialGoogleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
 
+        const googleHeaderName = this.googleHeader.toLowerCase();
         const requestHeaders =
-            (request.headers[this.googleHeader.toLowerCase()] as string)?.split(
+            (request.headers[googleHeaderName] as string)?.split(
                 `${this.googlePrefix} `
             ) ?? [];
         if (requestHeaders.length !== 2) {

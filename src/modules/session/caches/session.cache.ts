@@ -1,4 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
 import type KeyvRedis from '@keyv/redis';
 import {
@@ -23,15 +24,17 @@ export class SessionCache {
         @Inject(SessionCacheProvider) private cacheManager: Cache,
         @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.keyPattern = this.configService.get<string>('session.keyPattern')!;
     }
 
     private buildKey(userId: string, sessionId: string): string {
-        return this.keyPattern
-            .replace('{userId}', userId)
-            .replace('{sessionId}', sessionId);
+        return this.helperStringService.fillPattern(this.keyPattern, {
+            userId,
+            sessionId,
+        });
     }
 
     private getStore(): KeyvRedis<string> {
@@ -42,9 +45,8 @@ export class SessionCache {
         userId: string,
         sessionId: string
     ): Promise<ISessionCache | null> {
-        const cached = await this.cacheManager.get<ISessionCache>(
-            this.buildKey(userId, sessionId)
-        );
+        const key = this.buildKey(userId, sessionId);
+        const cached = await this.cacheManager.get<ISessionCache>(key);
 
         return cached ?? null;
     }
@@ -56,12 +58,12 @@ export class SessionCache {
         jti: string,
         expiredAt: Date
     ): Promise<void> {
-        const ttl = Math.floor(
-            expiredAt.getTime() - this.helperDateService.create().getTime()
-        );
+        const now = this.helperDateService.create();
+        const ttl = Math.floor(expiredAt.getTime() - now.getTime());
 
+        const key = this.buildKey(userId, sessionId);
         await this.cacheManager.set<ISessionCache>(
-            this.buildKey(userId, sessionId),
+            key,
             {
                 userId,
                 sessionId,
@@ -81,13 +83,12 @@ export class SessionCache {
         expiredInMs: number
     ): Promise<boolean> {
         const store = this.getStore();
-        const key = store.createKeyPrefix(
-            this.buildKey(userId, sessionId),
-            store.namespace
-        );
+        const sessionKey = this.buildKey(userId, sessionId);
+        const key = store.createKeyPrefix(sessionKey, store.namespace);
+        const now = this.helperDateService.create();
         const value = await this.keyv.serializeData<ISessionCache>({
             value: { ...session, jti },
-            expires: this.helperDateService.create().getTime() + expiredInMs,
+            expires: now.getTime() + expiredInMs,
         });
         const client = await store.getClient();
         const reply = await client.set(key, value as string, {
@@ -112,10 +113,8 @@ export class SessionCache {
     /** Deletes every session login entry of a user, found by `SCAN` on the shared client. */
     async deleteLoginsByUser(userId: string): Promise<void> {
         const store = this.getStore();
-        const match = store.createKeyPrefix(
-            this.buildKey(userId, '*'),
-            store.namespace
-        );
+        const userKey = this.buildKey(userId, '*');
+        const match = store.createKeyPrefix(userKey, store.namespace);
         const clients = await store.getMasterNodes();
         for (const client of clients) {
             for await (const keys of client.scanIterator({

@@ -74,6 +74,10 @@ export class NotificationEmailWorkspaceDomain {
                 userId
             );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
                 recipients: [email],
@@ -85,9 +89,7 @@ export class NotificationEmailWorkspaceDomain {
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                 },
                 ...(cc?.length && { cc }),
                 ...(bcc?.length && { bcc }),
@@ -119,6 +121,10 @@ export class NotificationEmailWorkspaceDomain {
                 reference
             );
 
+            const expiredAtDate =
+                this.helperDateService.createFromIso(expiredAt);
+            const expiredAtFormatted =
+                this.helperDateService.formatToRFC2822(expiredAtDate);
             const result = await this.awsSESService.send({
                 templateName: EnumNotificationProcess.workspaceInvite,
                 recipients: [email],
@@ -130,9 +136,7 @@ export class NotificationEmailWorkspaceDomain {
                     workspaceMemberRole,
                     inviteAcceptLink,
                     reference,
-                    expiredAt: this.helperDateService.formatToRFC2822(
-                        this.helperDateService.createFromIso(expiredAt)
-                    ),
+                    expiredAt: expiredAtFormatted,
                 },
             });
 

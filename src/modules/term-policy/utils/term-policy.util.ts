@@ -1,5 +1,6 @@
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
@@ -16,7 +17,8 @@ export class TermPolicyUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.uploadContentPath = this.configService.get<string>(
             'termPolicy.uploadContentPath'
@@ -33,9 +35,10 @@ export class TermPolicyUtil {
     }
 
     getPath(termPolicy: TermPolicy): string {
-        return this.uploadContentPath
-            .replace('{type}', termPolicy.type)
-            .replace('{version}', termPolicy.version.toString());
+        return this.helperStringService.fillPattern(this.uploadContentPath, {
+            type: termPolicy.type,
+            version: termPolicy.version.toString(),
+        });
     }
 
     /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */
@@ -45,9 +48,10 @@ export class TermPolicyUtil {
         language: EnumMessageLanguage,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.uploadContentPath
-            .replace('{type}', type)
-            .replace('{version}', version.toString());
+        const path: string = this.helperStringService.fillPattern(
+            this.uploadContentPath,
+            { type, version: version.toString() }
+        );
 
         let fullPath: string = `${path}/${language}.${extension.toLowerCase()}`;
         if (fullPath.startsWith('/')) {
@@ -67,9 +71,10 @@ export class TermPolicyUtil {
     }
 
     getContentPublicPath(type: EnumTermPolicyType, version: number): string {
-        return this.contentPublicPath
-            .replace('{type}', type)
-            .replace('{version}', version.toString());
+        return this.helperStringService.fillPattern(this.contentPublicPath, {
+            type,
+            version: version.toString(),
+        });
     }
 
     mapActivityLogMetadata(

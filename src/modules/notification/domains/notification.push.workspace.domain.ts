@@ -32,7 +32,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceInvitePushPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping workspace invite notification',
@@ -96,7 +97,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRequestPushPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping workspace join request notification',
@@ -160,7 +162,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinAcceptedPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping workspace join accepted notification',
@@ -223,7 +226,8 @@ export class NotificationPushWorkspaceDomain {
         }: INotificationSendPushPayload,
         data: INotificationWorkspaceJoinRejectedPayload
     ): Promise<IQueueResponse> {
-        if (!this.firebaseService.isInitialized()) {
+        const isInitialized = this.firebaseService.isInitialized();
+        if (!isInitialized) {
             return {
                 message:
                     'Firebase not initialized, skipping workspace join rejected notification',

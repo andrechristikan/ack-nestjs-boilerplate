@@ -14,9 +14,9 @@ import { RequestResponseTimeMiddleware } from '@common/request/middlewares/reque
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
 import { RequestWorkspaceMiddleware } from '@common/request/middlewares/request.workspace.middleware';
 import { RequestCompressionMiddleware } from '@common/request/middlewares/request.compression.middleware';
-import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
-import { RequestThrottlerModule } from '@common/request/request.throttler.module';
-import { RequestThrottlerGuard } from '@common/request/guards/request.throttler.guard';
+import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
+import { RequestThrottleModule } from '@common/request/request.throttle.module';
+import { RequestThrottleDefaultGuard } from '@common/request/guards/request.throttle-default.guard';
 import { RequestThrottleRouteGuard } from '@common/request/guards/request.throttle-route.guard';
 
 /**
@@ -28,7 +28,7 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
     providers: [
         {
             provide: APP_GUARD,
-            useClass: RequestThrottlerGuard,
+            useClass: RequestThrottleDefaultGuard,
         },
         {
             provide: APP_GUARD,
@@ -37,11 +37,11 @@ import { RequestThrottleRouteGuard } from '@common/request/guards/request.thrott
     ],
     imports: [
         ThrottlerModule.forRootAsync({
-            imports: [ConfigModule, RequestThrottlerModule],
-            inject: [ConfigService, RequestThrottlerStorageService],
+            imports: [ConfigModule, RequestThrottleModule],
+            inject: [ConfigService, RequestThrottleStorageService],
             useFactory: (
                 config: ConfigService,
-                storage: RequestThrottlerStorageService
+                storage: RequestThrottleStorageService
             ): ThrottlerModuleOptions => ({
                 throttlers: [
                     {

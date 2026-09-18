@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -48,6 +49,7 @@ export class WorkspaceJoinRequestDomain {
         private readonly activityLogDomain: ActivityLogDomain,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
         private readonly featureFlagDomain: FeatureFlagDomain
@@ -78,9 +80,10 @@ export class WorkspaceJoinRequestDomain {
         ]);
         const requesterName =
             requester?.name ?? requester?.username ?? 'A user';
-        const link = this.joinRequestReviewLinkPattern
-            .replace('{homeUrl}', () => this.homeUrl)
-            .replace('{joinRequestId}', () => joinRequest.id);
+        const link = this.helperStringService.fillPattern(
+            this.joinRequestReviewLinkPattern,
+            { homeUrl: this.homeUrl, joinRequestId: joinRequest.id }
+        );
 
         await Promise.all(
             reviewers.map(reviewer =>
@@ -208,15 +211,15 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            events.push(
+            const workspaceJoinAcceptedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                     userId: joinRequest.userId,
                     createdBy: reviewerId,
                     workspaceId: joinRequest.workspaceId,
                     metadata: { actorUserId: reviewerId },
-                })
-            );
+                });
+            events.push(workspaceJoinAcceptedByAdminEvent);
         }
 
         await this.databaseService.withTransaction(async tx => {
@@ -271,15 +274,15 @@ export class WorkspaceJoinRequestDomain {
             }),
         ];
         if (joinRequest.userId !== reviewerId) {
-            events.push(
+            const workspaceJoinRejectedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                     userId: joinRequest.userId,
                     createdBy: reviewerId,
                     workspaceId: workspace.id,
                     metadata: { actorUserId: reviewerId },
-                })
-            );
+                });
+            events.push(workspaceJoinRejectedByAdminEvent);
         }
 
         await this.workspaceJoinRequestRepository.reject(

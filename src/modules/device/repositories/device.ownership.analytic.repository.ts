@@ -1,11 +1,11 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import type { IAnalyticSharedFingerprintRow } from '@modules/analytic/interfaces/analytic.fraud.interface';
+import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.fraud.interface';
 import type {
-    IDeviceOwnershipAnalyticCreatedRow,
-    IDeviceOwnershipAnalyticInactiveRow,
-    IDeviceOwnershipAnalyticRepository,
+    IDeviceOwnershipAnalyticCreated,
+    IDeviceOwnershipAnalyticInactive,
     IDeviceOwnershipAnalyticUserCount,
-} from '@modules/device/interfaces/device.ownership.analytic.repository.interface';
+} from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipAnalyticRepository } from '@modules/device/interfaces/device.ownership-analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -29,7 +29,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
 
     async findInactive(
         before: Date
-    ): Promise<IDeviceOwnershipAnalyticInactiveRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticInactive[]> {
         return this.databaseService.client.deviceOwnership.findMany({
             where: {
                 isRevoked: false,
@@ -47,7 +47,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
     async findCreatedInRange(
         startDate: Date,
         endDate: Date
-    ): Promise<IDeviceOwnershipAnalyticCreatedRow[]> {
+    ): Promise<IDeviceOwnershipAnalyticCreated[]> {
         return this.databaseService.client.deviceOwnership.findMany({
             where: {
                 createdAt: { gte: startDate, lt: endDate },
@@ -63,7 +63,7 @@ export class DeviceOwnershipAnalyticRepository implements IDeviceOwnershipAnalyt
 
     async sharedFingerprints(
         minUsers: number
-    ): Promise<IAnalyticSharedFingerprintRow[]> {
+    ): Promise<IAnalyticSharedFingerprint[]> {
         const ownerships =
             await this.databaseService.client.deviceOwnership.findMany({
                 where: { isRevoked: false },

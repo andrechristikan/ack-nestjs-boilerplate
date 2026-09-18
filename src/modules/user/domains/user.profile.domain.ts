@@ -58,7 +58,7 @@ export class UserProfileDomain {
     ): string {
         const path: string = this.uploadPhotoProfilePath.replace(
             '{userId}',
-            user
+            () => user
         );
         return this.fileService.createRandomFilename({
             path,

@@ -88,7 +88,9 @@ export class UserLoginDomain {
             );
         user.twoFactor = attempted;
 
-        if (this.authTwoFactorDomain.checkAttempt(user)) {
+        const isTwoFactorAttemptMaxed =
+            this.authTwoFactorDomain.checkAttempt(user);
+        if (isTwoFactorAttemptMaxed) {
             await this.authCache.lockTwoFactorAttempt(user);
         }
     }
@@ -137,9 +139,11 @@ export class UserLoginDomain {
             })
         );
 
+        const loginAction =
+            this.userUtil.resolveLoginActivityLogAction(loginWith);
         const events = [
             this.activityLogDomain.prepare({
-                action: this.userUtil.resolveLoginActivityLogAction(loginWith),
+                action: loginAction,
                 userId: user.id,
                 createdBy: user.id,
             }),
@@ -147,13 +151,15 @@ export class UserLoginDomain {
         const now = this.helperDateService.create();
         const { isNewDevice, sessionShouldBeInactive } =
             await this.databaseService.withTransaction(async tx => {
+                const notificationProvider =
+                    this.deviceUtil.resolveNotificationProvider(
+                        device.platform ?? null
+                    );
                 const upserted = await this.deviceDomain.upsertForLoginInTx(
                     tx,
                     user.id,
                     device,
-                    this.deviceUtil.resolveNotificationProvider(
-                        device.platform ?? null
-                    ),
+                    notificationProvider,
                     now
                 );
                 let revoked: ISessionRef[] = [];
@@ -196,23 +202,23 @@ export class UserLoginDomain {
         ];
 
         if (sessionShouldBeInactive && sessionShouldBeInactive.length > 0) {
-            promises.push(
-                this.sessionDomain.purgeRevokedLogins(
-                    user.id,
-                    sessionShouldBeInactive
-                )
+            const purged = this.sessionDomain.purgeRevokedLogins(
+                user.id,
+                sessionShouldBeInactive
             );
+            promises.push(purged);
         }
 
         if (isNewDevice) {
-            promises.push(
+            const loginAtIso = this.helperDateService.formatToIso(loginAt);
+            const newDeviceLoginSent =
                 this.notificationQueue.sendNewDeviceLogin(user.id, {
                     requestLog,
                     loginFrom,
                     loginWith,
-                    loginAt: this.helperDateService.formatToIso(loginAt),
-                })
-            );
+                    loginAt: loginAtIso,
+                });
+            promises.push(newDeviceLoginSent);
         }
 
         await Promise.all(promises);
@@ -241,10 +247,11 @@ export class UserLoginDomain {
                 emailVerification
             );
 
+            const expiredAt = this.helperDateService.formatToIso(
+                emailVerification.expiredAt
+            );
             await this.notificationQueue.sendVerificationEmail(user.id, {
-                expiredAt: this.helperDateService.formatToIso(
-                    emailVerification.expiredAt
-                ),
+                expiredAt,
                 reference: emailVerification.reference,
                 link: emailVerification.link,
                 expiredInMinutes: emailVerification.expiredInMinutes,
@@ -426,14 +433,17 @@ export class UserLoginDomain {
         );
 
         const session = await this.sessionCache.getLogin(userId, sessionId);
-        if (
-            !session ||
-            !oldJti ||
-            !this.helperHashService.sha256Compare(
-                this.helperHashService.sha256Hash(session.jti),
-                this.helperHashService.sha256Hash(oldJti)
-            )
-        ) {
+        if (!session || !oldJti) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
+
+        const sessionJtiHash = this.helperHashService.sha256Hash(session.jti);
+        const oldJtiHash = this.helperHashService.sha256Hash(oldJti);
+        const isJtiMatch = this.helperHashService.sha256Compare(
+            sessionJtiHash,
+            oldJtiHash
+        );
+        if (!isJtiMatch) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
@@ -451,13 +461,14 @@ export class UserLoginDomain {
             ];
             await this.databaseService.withTransaction(async tx => {
                 await this.sessionDomain.updateJtiInTx(tx, sessionId, newJti);
+                const now = this.helperDateService.create();
                 await this.userRepository.updateLoginInTx(
                     tx,
                     userId,
                     loginFrom,
                     loginWith,
                     requestLog.ipAddress,
-                    this.helperDateService.create()
+                    now
                 );
             });
 

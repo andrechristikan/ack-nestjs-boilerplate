@@ -9,13 +9,13 @@ import {
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
-    RoleDocParamsId,
-    RoleDocQueryList,
-} from '@modules/role/constants/role.doc.constant';
-import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
+import {
+    RoleDocParamsId,
+    RoleDocQueryList,
+} from '@modules/role/constants/role.doc.constant';
 import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
 import { RoleSchema } from '@modules/role/dtos/role.dto';

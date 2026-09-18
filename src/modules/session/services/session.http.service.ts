@@ -8,7 +8,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
-import type { ISession } from '@modules/session/interfaces/session.interface';
+import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { Injectable } from '@nestjs/common';
 
@@ -20,7 +20,7 @@ export class SessionHttpService {
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         const { data, ...others } =
             await this.sessionDomain.getListOffsetByAdmin(
                 userId,
@@ -36,7 +36,7 @@ export class SessionHttpService {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISession>> {
+    ): Promise<IResponsePagingReturn<ISessionList>> {
         const { data, ...others } = await this.sessionDomain.getListCursor(
             userId,
             pagination

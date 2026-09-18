@@ -1,6 +1,6 @@
 # Notification Documentation
 
-This documentation explains the features and usage of **Notification Module**: Located at `src/modules/notification`
+Notification lives in `src/modules/notification`.
 
 ## Overview
 
@@ -74,7 +74,7 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
-A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindRules` (`src/modules/notification/constants/notification.notify.constant.ts`), one entry per `EnumNotificationKind`, holding the type, the priority, the i18n title and body keys, and two channel lists: `pendingChannels` and `deliveredChannels`. `NotificationRepository` reads that entry and creates the delivery rows from it.
+A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts`), one entry per `EnumNotificationKind`, holding the type, the priority, the i18n title and body keys, and two channel lists: `pendingChannels` and `deliveredChannels`. `NotificationRepository` reads that entry and creates the delivery rows from it.
 
 > **`inApp` and `silent` are considered immediately "delivered"**: they sit in `deliveredChannels`, so their `processedAt` and `sentAt` are both stamped at creation time in the repository and no separate queue job is needed for them. `email` and `push` sit in `pendingChannels` and go through the async queue.
 
@@ -302,7 +302,7 @@ The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.
 
 Users control which notification channels are active per type. Settings are stored in `NotificationUserSetting` (one row per `userId + type + channel`).
 
-Allowed type+channel combinations are defined in `NotificationSettingUpdateAllowedCombinations`:
+Allowed type+channel combinations are defined in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts`):
 
 | Type | Allowed Channels |
 |------|-----------------|

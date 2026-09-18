@@ -17,10 +17,8 @@ export class RequestRequestLogMiddleware implements NestMiddleware {
     ) {}
 
     use(req: IRequestApp, _res: Response, next: NextFunction): void {
-        this.requestStoreService.set(
-            RequestLogStoreKey,
-            this.requestUtil.buildRequestLog(req)
-        );
+        const requestLog = this.requestUtil.buildRequestLog(req);
+        this.requestStoreService.set(RequestLogStoreKey, requestLog);
 
         next();
     }

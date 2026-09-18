@@ -86,10 +86,11 @@ export class ResponseInterceptor<T> implements NestInterceptor {
                         const { metadata: responseMetadata } = responseData;
 
                         const payload = responseData.data ?? undefined;
-                        data =
-                            payload === undefined
-                                ? undefined
-                                : await this.serialize(schema, payload);
+                        if (payload === undefined) {
+                            data = undefined;
+                        } else {
+                            data = await this.serialize(schema, payload);
+                        }
                         httpStatus = responseMetadata?.httpStatus ?? httpStatus;
                         statusCode = responseMetadata?.statusCode ?? statusCode;
                         messagePath =

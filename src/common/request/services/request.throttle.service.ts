@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerException } from '@nestjs/throttler';
-import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
 import type { Response } from 'express';
 import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
-import { RequestThrottlerStorageService } from '@common/request/services/request.throttler.service';
+import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 
 /**
  * Counts a hit for a named limiter, fails open on storage trouble, and either blocks with
@@ -16,7 +15,7 @@ export class RequestThrottleService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly storageService: RequestThrottlerStorageService
+        private readonly storageService: RequestThrottleStorageService
     ) {
         this.headerPrefix = this.configService.get<string>(
             'request.throttle.headerPrefix'
@@ -29,22 +28,13 @@ export class RequestThrottleService {
         tracker: string,
         policy: IRequestThrottlePolicy
     ): Promise<void> {
-        let record: ThrottlerStorageRecord | null;
-        try {
-            record = await this.storageService.increment(
-                tracker,
-                policy.ttlInMs,
-                policy.limit,
-                policy.blockDurationInMs,
-                name
-            );
-        } catch {
-            record = null;
-        }
-
-        if (!record) {
-            return;
-        }
+        const record = await this.storageService.increment(
+            tracker,
+            policy.ttlInMs,
+            policy.limit,
+            policy.blockDurationInMs,
+            name
+        );
 
         if (record.isBlocked) {
             response.setHeader('Retry-After', record.timeToBlockExpire);

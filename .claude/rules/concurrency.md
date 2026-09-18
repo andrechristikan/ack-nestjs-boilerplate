@@ -100,8 +100,9 @@ guard clause holds.
 
 ## Cache is best-effort, never a lock
 
-A cache read, write, or delete that fails falls through to the database. **A cache entry is
-never the thing that enforces an invariant** — no cache-based mutual exclusion, no "if the key
-is absent, nobody else is running". Where exclusion is genuinely needed, it is a database
+A cache read that fails falls through to the database. **A cache entry is never the thing that
+enforces an invariant** — no cache-based mutual exclusion, no "if the key is absent, nobody else
+is running". A write or delete whose failure the request must not survive propagates instead of
+being swallowed; `rules/cache.md` holds the list. Where exclusion is genuinely needed, it is a database
 constraint or an explicit lock key with a TTL, and the TTL lives in config
 (`rules/cache.md`, `rules/config.md`).

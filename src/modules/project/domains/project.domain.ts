@@ -57,7 +57,8 @@ export class ProjectDomain {
     }
 
     private assertSlugAllowed(slug: string): void {
-        if (slug.length > this.slugMaxLength || !this.slugRegex.test(slug)) {
+        const isSlugPatternValid = this.slugRegex.test(slug);
+        if (slug.length > this.slugMaxLength || !isSlugPatternValid) {
             throw new ProjectSlugInvalidException();
         }
     }
@@ -99,9 +100,9 @@ export class ProjectDomain {
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
     ): Promise<IResponsePagingReturn<Project>> {
-        const memberUserId = this.projectUtil.isWorkspaceOwner(workspaceMember)
-            ? null
-            : workspaceMember.userId;
+        const isWorkspaceOwner =
+            this.projectUtil.isWorkspaceOwner(workspaceMember);
+        const memberUserId = isWorkspaceOwner ? null : workspaceMember.userId;
 
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
@@ -124,10 +125,11 @@ export class ProjectDomain {
             }),
         ];
 
+        const slugCandidates = this.drawSlugCandidates();
         const project = await this.projectRepository.create(
             workspaceId,
             create,
-            this.drawSlugCandidates()
+            slugCandidates
         );
 
         this.activityLogDomain.stagePrepared(events);

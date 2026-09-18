@@ -1,6 +1,6 @@
 # Activity Log Documentation
 
-This documentation explains the features and usage of **Activity Log Module**: Located at `src/modules/activity-log`
+Activity Log lives in `src/modules/activity-log`.
 
 ## Overview
 
@@ -8,12 +8,12 @@ Activity Log records audited user actions. During the request, a domain builds e
 
 An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
 
-**Failed credential logins:** On a credential password mismatch, `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. When the attempt counter is already at the limit, `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. Both requests answer an error, and `onError: true` is what writes their rows. All three contracts in `ActivityLogContractByAction` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n descriptions: `activityLog.userLoginFailed` ("Login failed with invalid credentials") and `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached"). Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+**Failed credential logins:** On a credential password mismatch, `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. When the attempt counter is already at the limit, `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. Both requests answer an error, and `onError: true` is what writes their rows. All three contracts in `ActivityLogActionContract` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n descriptions: `activityLog.userLoginFailed` ("Login failed with invalid credentials") and `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached"). Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
 
 **Notes:**
 
 - Flush failures are logged and do not change the handler outcome.
-- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogContractByAction` declares what it holds. Metadata is returned to the client through a typed response schema. The constraint when changing this: `.claude/rules/security.md`.
+- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogActionContract` declares what it holds. Metadata is returned to the client through a typed response schema. The constraint when changing this: `.claude/rules/security.md`.
 
 ## Related Documents
 
@@ -47,8 +47,8 @@ An action one user takes on another user writes two rows: one owned by the actor
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
 | `ActivityLogRepository` | Data access (Prisma), including `createMany`, which runs the insert in its own transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
-| `ActivityLogContractByAction` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
-| `ActivityLogWorkspaceVolumeExcludedActions` | Target-side workspace and project actions left out of workspace volume metrics |
+| `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
+| `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
 
 ## List Endpoints
 
@@ -95,7 +95,7 @@ sequenceDiagram
 
 ## Staging an activity
 
-Every caller follows one order: prepare and validate every event before the write it records can commit, then write, then stage the prepared events. A session or device path commits, then writes or purges the session cache, then stages. `prepare` validates the metadata against `ActivityLogContractByAction[action].metadata` and checks the user and workspace fields, so a contract failure throws before anything is committed, and a failed write stages nothing. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
+Every caller follows one order: prepare and validate every event before the write it records can commit, then write, then stage the prepared events. A session or device path commits, then writes or purges the session cache, then stages. `prepare` validates the metadata against `ActivityLogActionContract[action].metadata` and checks the user and workspace fields, so a contract failure throws before anything is committed, and a failed write stages nothing. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
 
 ```typescript
 const roleId = this.databaseUtil.createId();
@@ -184,7 +184,7 @@ flowchart TD
 - **Self targets:** The admin single-session revoke and the admin device removal accept the admin's own account and then write the actor row only. Status change, temporary password, two-factor reset, and revoke-all reject the admin's own account with `UserNotSelfException` (400, `51001`) and write no row.
 - **Single-row actions:** An action whose actor is the affected user writes one row under its plain name: every self-service `user…` action, `userRemoveDevice`, `userRevokeSession`, `workspaceCreated`, `workspaceUpdated`, `workspaceVisibilityUpdated`, `workspaceDeleted`, `workspaceSwitched`, `workspaceJoinRequested`, `workspaceMemberLeft`, `projectCreated`, `projectUpdated`, `projectDeleted`, and `projectMemberLeft`. An invite resend writes no row.
 - **Revoke rows first:** An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair. Account self-deletion stages `userRevokeAllSessions` and then `userDeleteSelf`; the credential lockout stages `userRevokeAllSessions` and then `userReachMaxPasswordAttempt`. Both paths write both rows every time, including when no session was revoked. The password and two-factor paths that revoke every session write no revoke-all row.
-- **Counting:** `ActivityLogWorkspaceVolumeExcludedActions` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
+- **Counting:** `ActivityLogWorkspaceVolumeContract` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
 
 The pair model and the self check are bound by `.claude/rules/security.md` (Activity log).
 

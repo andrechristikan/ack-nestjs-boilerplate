@@ -18,7 +18,8 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserInactiveForbiddenException } from '@modules/user/exceptions/user.inactive-forbidden.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
@@ -89,13 +90,19 @@ export class UserAuthDomain {
             throw new UserPasswordNotSetException();
         }
 
-        if (this.authPasswordUtil.checkPasswordAttempt(user)) {
+        const isPasswordAttemptMaxed =
+            this.authPasswordUtil.checkPasswordAttempt(user);
+        if (isPasswordAttemptMaxed) {
             await this.userPasswordDomain.reachMaxPasswordAttempt(user.id);
 
             throw new UserPasswordAttemptMaxException();
-        } else if (
-            !this.authPasswordUtil.validatePassword(password, user.password)
-        ) {
+        }
+
+        const isPasswordValid = this.authPasswordUtil.validatePassword(
+            password,
+            user.password
+        );
+        if (!isPasswordValid) {
             await this.userLoginDomain.recordLoginFailed(user.id);
 
             throw new UserPasswordNotMatchException();
@@ -109,12 +116,14 @@ export class UserAuthDomain {
             throw new UserPasswordExpiredException();
         }
 
+        const now = this.helperDateService.create();
+
         return this.userLoginDomain.handleLogin(
             user,
             device,
             from,
             EnumUserLoginWith.credential,
-            this.helperDateService.create()
+            now
         );
     }
 
@@ -179,20 +188,18 @@ export class UserAuthDomain {
                     : EnumUserSignUpWith.socialGoogle,
             isVerified: true,
             termPolicy: {
+                ...UserTermPolicyContract.defaults,
                 [EnumTermPolicyType.cookies]: cookies,
                 [EnumTermPolicyType.marketing]: marketing,
-                [EnumTermPolicyType.privacy]: true,
-                [EnumTermPolicyType.termsOfService]: true,
             },
             acceptedTermPolicyTypes: [
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
+                ...UserTermPolicyContract.requiredTypes,
                 ...(cookies ? [EnumTermPolicyType.cookies] : []),
                 ...(marketing ? [EnumTermPolicyType.marketing] : []),
             ],
             password: null,
             passwordHistoryType:
-                UserCreateModeRules[EnumUserCreateMode.social]
+                UserCreateContract[EnumUserCreateMode.social]
                     .passwordHistoryType,
             verification: null,
             workspaceContext,
@@ -217,12 +224,14 @@ export class UserAuthDomain {
             user.isVerified = true;
         }
 
+        const now = this.helperDateService.create();
+
         return this.userLoginDomain.handleLogin(
             user,
             device,
             from,
             loginWith,
-            this.helperDateService.create()
+            now
         );
     }
 
@@ -292,20 +301,18 @@ export class UserAuthDomain {
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: false,
                 termPolicy: {
+                    ...UserTermPolicyContract.defaults,
                     [EnumTermPolicyType.cookies]: cookies,
                     [EnumTermPolicyType.marketing]: marketing,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.termsOfService]: true,
                 },
                 acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
+                    ...UserTermPolicyContract.requiredTypes,
                     ...(cookies ? [EnumTermPolicyType.cookies] : []),
                     ...(marketing ? [EnumTermPolicyType.marketing] : []),
                 ],
                 password,
                 passwordHistoryType:
-                    UserCreateModeRules[EnumUserCreateMode.signUp]
+                    UserCreateContract[EnumUserCreateMode.signUp]
                         .passwordHistoryType,
                 verification: {
                     reference: emailVerification.reference,
@@ -327,10 +334,11 @@ export class UserAuthDomain {
         userId: string,
         emailVerification: IUserVerificationEmailCreate
     ): Promise<void> {
+        const expiredAt = this.helperDateService.formatToIso(
+            emailVerification.expiredAt
+        );
         await this.notificationQueue.sendWelcome(userId, {
-            expiredAt: this.helperDateService.formatToIso(
-                emailVerification.expiredAt
-            ),
+            expiredAt,
             reference: emailVerification.reference,
             link: emailVerification.link,
             expiredInMinutes: emailVerification.expiredInMinutes,

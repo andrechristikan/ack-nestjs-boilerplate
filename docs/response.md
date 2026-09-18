@@ -1,6 +1,6 @@
 # Response Documentation
 
-This documentation explains the features and usage of **Response Module**: Located at `src/common/response`
+The response envelope lives in `src/common/response`.
 
 ## Overview
 
@@ -45,6 +45,10 @@ Standard API response decorator with optional caching.
 - `options` (optional): Configuration options
   - `schema` (zod schema): The payload shape. Its absence declares a route that returns no data
   - `cache` (boolean | object): Enable caching
+
+**Requirements:**
+- Handler returns `IResponseReturn<T>`
+- `ResponseInterceptor` reads `data` and `metadata` off that object, so a payload returned outside it reaches the envelope as no `data` at all
 
 **Interceptor:** `ResponseInterceptor` - serializes the payload against `options.schema`, then wraps it into the standard envelope with metadata and a localized message via [MessageService][ref-doc-message]
 
@@ -105,7 +109,7 @@ async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
 
 `notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
 
-`metadata` accepts a `messagePath` beside `messageProperties`. `ResponseInterceptor` reads the decorator's path first and then applies `responseMetadata?.messagePath ?? messagePath` (`src/common/response/interceptors/response.interceptor.ts:96`), so a handler that returns one replaces the path its route declared, and one that returns none keeps it. Every route in `src/` takes the second branch: the path on the decorator is the path that is sent.
+`metadata` accepts a `messagePath` beside `messageProperties`. `ResponseInterceptor` reads the decorator's path first and then applies `responseMetadata?.messagePath ?? messagePath` (`src/common/response/interceptors/response.interceptor.ts`), so a handler that returns one replaces the path its route declared, and one that returns none keeps it. Every route in `src/` takes the second branch: the path on the decorator is the path that is sent.
 
 ### @ResponsePaging
 
@@ -135,12 +139,14 @@ async list(
     availableOrderBy: UserDefaultAvailableOrderBy,
   })
   pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
+): Promise<IResponsePagingReturn<IUserListRow>> {
   return this.userHttpService.getListOffsetByAdmin(pagination);
 }
 ```
 
-`UserHttpService.getListOffsetByAdmin` forwards to the domain and repository. The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`.
+`UserHttpService.getListOffsetByAdmin` forwards to the domain and repository. The page fields (`type`, `count`, `page`, `perPage`, `totalPage`, `hasNext`, `hasPrevious`, `nextPage`, `previousPage`) come from `PaginationService.offset`, which computes them in `offsetPage`: `page` is 1-based, so the first page reports `1`, and `totalPage` is `Math.ceil(count / perPage)`, so a page with no rows reports `0`.
+
+The handler's generic is the ROW type the repository returns, and the schema on the decorator is what shapes that row on the way out. `IUserListRow` is `Prisma.UserGetPayload<{ select: typeof UserListSelect }>`, the projection the read asked for (see [Pagination Documentation][ref-doc-pagination]).
 
 **Cursor-based Pagination:**
 
@@ -172,7 +178,7 @@ File download response decorator that handles CSV and PDF file downloads with pr
 - `extension` is `EnumFileExtensionDocument.csv` or `EnumFileExtensionDocument.pdf`
 - CSV data is a string (already converted)
 - PDF data is a Buffer
-- Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
+- Optional `filename` - if not provided, the interceptor fills the `response.filenameExportPattern` config (`export-{timestamp}.{extension}`) through `HelperStringService.fillPattern`, with the request timestamp and the literal `csv`, so the generated fallback is always a `.csv` name. A PDF download carries an explicit `filename`
 
 **Interceptor:** `ResponseFileInterceptor` - validates data based on extension type, converts to Buffer, rejects a buffer larger than `file.maxSizeExportInBytes` (2 MB) with `FileExceedMaxSizeExportException` (422, `50105`), sets content headers (Content-Type, Content-Disposition, Content-Length), returns StreamableFile
 
@@ -200,7 +206,9 @@ async export(
 
 ## Serialization
 
-A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. A response schema is a `z.object`, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it. The constraint when writing one: `rules/dto.md`.
+A route declares its payload shape on the decorator, and the interceptor validates the handler's payload against that schema before the envelope is sent. Every response schema in `src/` is a `z.object` at the top level, so a key the schema does not declare is stripped: a column added to the Prisma model stays out of the response until someone declares it. The constraint when writing one: `rules/dto.md`.
+
+A route whose payload is a list of rows over a fixed enum declares that list as a named array field of an object, and `@Response` carries the object schema. `GET /admin/analytic/workspaces/invite-funnel` sends `{ "statuses": [ { "status": …, "count": … } ] }` and `GET /user/analytic/workspace/member-roles` sends `{ "roles": [ … ] }`.
 
 Serialization is **fail-closed** in both directions. A payload that the schema rejects raises `ResponseSerializationException`, and so does a handler that returns data on a route which declared no schema.
 
@@ -246,6 +254,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
         description: 'User ID who owns the device',
         example: faker.database.mongodbObjectId(),
     }),
+    /* the nested device, owner, and revocation fields follow */
 });
 
 export type DeviceOwnershipResponseDto = z.infer<

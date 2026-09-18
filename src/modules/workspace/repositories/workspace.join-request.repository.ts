@@ -12,7 +12,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
-import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request.repository.interface';
+import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
 import type { IWorkspaceJoinRequestCreateData } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 

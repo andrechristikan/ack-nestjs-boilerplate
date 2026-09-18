@@ -39,10 +39,12 @@ export class UserImportHttpService {
                 })),
                 createdBy
             );
+        const createBulkTimeoutInMs =
+            this.userOnboardingDomain.getCreateBulkTimeoutInMs();
         const users = await this.workspaceDomain.commitOnboarding(
             inputs,
             EnumUserCreateMode.admin,
-            this.userOnboardingDomain.getCreateBulkTimeoutInMs(),
+            createBulkTimeoutInMs,
             EnumActivityLogAction.adminUserImport
         );
         await this.userImportDomain.notifyImported(
@@ -89,8 +91,10 @@ export class UserImportHttpService {
             role: user.role.name,
         }));
 
+        const csv = this.fileService.writeCsv<UserExportResponseDto>(users);
+
         return {
-            data: this.fileService.writeCsv<UserExportResponseDto>(users),
+            data: csv,
             extension: EnumFileExtensionDocument.csv,
         };
     }

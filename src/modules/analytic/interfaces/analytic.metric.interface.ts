@@ -134,6 +134,14 @@ export interface IAnalyticStatusCount {
     count: number;
 }
 
+export interface IAnalyticStatusCountList {
+    statuses: IAnalyticStatusCount[];
+}
+
+export interface IAnalyticRoleCountList {
+    roles: IAnalyticRoleCount[];
+}
+
 export interface IAnalyticWorkspaceSummary {
     memberCount: number;
     projectCount: number;

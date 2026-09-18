@@ -120,7 +120,7 @@ The boilerplate targets:
 - Sliding session (for example, a refresh token that expires after 7 days of inactivity but can be extended up to a fixed maximum lifetime)
 
 ### Test
-- [ ] Unit test suite: Vitest is configured (`vitest.config.ts`, `pnpm test`) and `test/` holds no spec files, so `pnpm test` passes on `--passWithNoTests`
+- [x] Unit test
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -170,7 +170,9 @@ For more information see [package.json][ref-package-json]
 
 ### 🎯 Architecture Highlights
 
-- **Repository Pattern** - Feature modules layer Controller, HTTP service, domain, and repository; only repositories query Prisma
+- **Repository Pattern** - Only repositories query Prisma.
+HTTP path: Controller, HTTP service, domain, repository.
+Queue path: Processor, processor service, domain.
 - **Modular Structure** - One folder per feature under `src/modules/`
 - **12-Factor App** - Configuration comes from environment variables, read by `registerAs` config files
 - **Workspaces & Projects** - Every user lands in a workspace at creation, personal by default or the inviting workspace when they sign up through an invite; workspace and project membership, invites, and join requests, gated by the `workspace` feature flag
@@ -235,7 +237,7 @@ For more information see [package.json][ref-package-json]
 
 ### 📝 Testing & Documentation
 
-- **Vitest Testing** - `vitest.config.ts` matches `test/**/*.spec.ts`, compiles through SWC, and holds v8 coverage at a 100% threshold for branches, functions, lines, and statements
+- **Vitest Testing** - Unit specs at `test/**/*.spec.ts`, compiled through SWC. `pnpm test` does not collect coverage; `pnpm test:cov` does (100% thresholds). `.github/workflows/test.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`. `.github/workflows/linter.yml` runs on `pull_request`.
 - **Swagger UI** - Generated from the route decorators and schemas, and written to `generated/swagger.json`
 - **Detailed Docs** - 30+ documentation files covering all features, including the full [status code catalog][ref-doc-status-codes]
 - **Docker Support** - `docker-compose.yml` runs MongoDB (replica set), Redis, BullBoard, and the JWKS server; the `apis` and `vault` profiles add the API and Vault

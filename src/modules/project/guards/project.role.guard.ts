@@ -27,11 +27,11 @@ export class ProjectRoleGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const allowedRoles =
-            this.reflector.get<EnumProjectMemberRole[]>(
-                ProjectRoleMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const requiredRoles = this.reflector.get<EnumProjectMemberRole[]>(
+            ProjectRoleMetaKey,
+            context.getHandler()
+        );
+        const allowedRoles = requiredRoles ?? [];
 
         const project = this.requestStoreService.get<Project>(ProjectStoreKey);
         const workspaceMember = this.requestStoreService.get<WorkspaceMember>(

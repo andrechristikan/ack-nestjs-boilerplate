@@ -145,15 +145,15 @@ export class WorkspaceMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorMember.userId) {
-            events.push(
+            const workspaceOwnershipTransferredByOwnerEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                     userId: targetMember.userId,
                     createdBy: actorMember.userId,
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorMember.userId },
-                })
-            );
+                });
+            events.push(workspaceOwnershipTransferredByOwnerEvent);
         }
 
         await this.workspaceMemberRepository.transferOwnership(
@@ -229,15 +229,15 @@ export class WorkspaceMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorMember.userId) {
-            events.push(
+            const workspaceMemberRoleUpdatedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
                     createdBy: actorMember.userId,
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorMember.userId },
-                })
-            );
+                });
+            events.push(workspaceMemberRoleUpdatedByAdminEvent);
         }
 
         await this.workspaceMemberRepository.updateRole(
@@ -278,15 +278,15 @@ export class WorkspaceMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorMember.userId) {
-            events.push(
+            const workspaceMemberRemovedByAdminEvent =
                 this.activityLogDomain.prepare({
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                     userId: targetMember.userId,
                     createdBy: actorMember.userId,
                     workspaceId: workspaceId,
                     metadata: { actorUserId: actorMember.userId },
-                })
-            );
+                });
+            events.push(workspaceMemberRemovedByAdminEvent);
         }
 
         await this.workspaceMemberRepository.removeMember(targetMember.id);

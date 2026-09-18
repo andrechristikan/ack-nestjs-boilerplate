@@ -36,7 +36,8 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
         }
 
         const schema = metadata.schema;
-        if (!schema || !this.toValidate(metadata)) {
+        const isValidated = this.toValidate(metadata);
+        if (!schema || !isValidated) {
             return value;
         }
 
@@ -47,9 +48,12 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
             this.validateOptions
         );
         if (result.issues) {
-            throw this.exceptionFactory(
-                this.stampEmptyIssuePaths(result.issues, metadata.data)
+            const stampedIssues = this.stampEmptyIssuePaths(
+                result.issues,
+                metadata.data
             );
+            const exception = this.exceptionFactory(stampedIssues);
+            throw exception;
         }
 
         return this.isTransformEnabled ? result.value : value;

@@ -1,9 +1,9 @@
 import { applyDecorators } from '@nestjs/common';
 import {
+    Doc,
     DocAuth,
     DocResponsePaging,
 } from '@common/doc/decorators/doc.decorator';
-import { Doc } from '@common/doc/decorators/doc.decorator';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 import type { CountryResponseDto } from '@modules/country/dtos/response/country.response.dto';
 import {

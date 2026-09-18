@@ -41,9 +41,10 @@ export class AppBaseExceptionFilter implements ExceptionFilter {
 
         this.sendToSentry(exception);
 
+        const responseMetadata = this.responseMetadataService.create();
         const metadata: ResponseMetadataDto = {
             ...exception.metadata,
-            ...this.responseMetadataService.create(),
+            ...responseMetadata,
         };
 
         const message: string = this.messageService.setMessage(

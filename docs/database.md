@@ -1,6 +1,6 @@
 # Database Documentation
 
-This documentation explains the features and usage of **Database Module**: Located at `src/common/database`
+The Database Module lives in `src/common/database`.
 
 ## Overview
 
@@ -160,7 +160,7 @@ The migration script is a special seed command that configures AWS S3 bucket pol
 
 **What It Does:**
 
-This script automatically configures essential S3 bucket settings in the correct order:
+The seed applies these S3 bucket settings, in this order:
 
 1. **Block Public Access Configuration** - Controls public access restrictions
 2. **Disable ACL Configuration** - Enforces bucket owner ownership controls
@@ -202,7 +202,7 @@ For **Private Buckets**:
 
 ## Initial Seeded Data
 
-When you run `pnpm migration:seed`, the following initial data will be created in your database. This data is essential for testing and development purposes.
+`pnpm migration:seed` creates the data below, which local development and testing run against.
 
 ### API Keys
 
@@ -565,7 +565,6 @@ What that means for callers:
   - More than one statement, or a multi-document write, on one repository's own models: the repository method calls `this.databaseService.withTransaction` itself and takes no `tx`. `SessionRepository.revokeActiveByUser`, `ActivityLogRepository.createMany`, and `NotificationRepository.createMany` are examples.
   - A write that spans more than one repository: the domain calls `this.databaseService.withTransaction` and each collaborator is an `*InTx(tx, ...)` method with required `tx: IDatabaseTransactionClient`. A method that does not join a caller-owned transaction takes no `tx`. `DeviceDomain.refresh` opens the transaction around `DeviceOwnershipRepository.touchInTx` and `DeviceRepository.refreshInTx`. `WorkspaceDomain.commitOnboarding` opens the onboarding `withTransaction` (`UserHttpModule` imports `WorkspaceDomainModule`; `UserDomainModule` does not). The constraint when changing this: `rules/database.md`.
 - `withTransaction(fn, options?)` takes `IDatabaseTransactionOptions` (`interfaces/database.client.interface.ts`), Prisma's `transactionOptions` shape. Omitted options keep Prisma's defaults (`maxWait` 2 s, `timeout` 5 s). A caller passes options only from its own `*TimeoutInMs` config key: `WorkspaceDomain.commitOnboarding` receives `user.onboarding.createTimeoutInMs` or `createBulkTimeoutInMs`, and the seeds read `database.seedTransactionTimeoutInMs`.
-- A MongoDB write conflict aborts a transaction with Prisma code `P2034`, recognised by `DatabaseUtil.isWriteConflict(error)`. The credential lockout (`UserPasswordDomain.reachMaxPasswordAttempt`) is the one caller that retries on it: its domain-owned `for` loop reruns the whole `withTransaction` immediately, with no backoff, up to `user.passwordLockout.writeConflictMaxAttempts` attempts in total, and rethrows any other error on the spot. See [Authentication][ref-doc-authentication].
 - The MongoDB ping lives in `HealthDatabaseIndicator.isHealthy()` (`src/modules/health/indicators/health.database.indicator.ts`), which calls `databaseService.client.$runCommandRaw({ ping: 1 })`. `DatabaseService` carries no health method.
 
 ### Automatic Actor Stamping
@@ -677,4 +676,3 @@ For setup and seeding on MongoDB, see the sections above.
 [ref-doc-configuration]: configuration.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-activity-log]: activity-log.md
-[ref-doc-authentication]: authentication.md

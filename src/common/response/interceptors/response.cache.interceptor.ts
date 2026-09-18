@@ -32,6 +32,6 @@ export class ResponseCacheInterceptor extends CacheBaseInterceptor {
             return undefined;
         }
 
-        return this.keyPattern.replace('{key}', key);
+        return this.keyPattern.replace('{key}', () => key);
     }
 }

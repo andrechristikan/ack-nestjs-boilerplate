@@ -112,10 +112,11 @@ export class MigrationPolicySeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Policies...');
 
+        const roleNames = this.rolePolicies.map(rolePolicy => rolePolicy.role);
         const roles = await this.databaseService.client.role.findMany({
             where: {
                 name: {
-                    in: this.rolePolicies.map(rolePolicy => rolePolicy.role),
+                    in: roleNames,
                 },
             },
             select: {

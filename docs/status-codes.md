@@ -1,6 +1,6 @@
 # Status Codes
 
-This document catalogs every application `statusCode` in the boilerplate, grouped by module.
+Application `statusCode` values, grouped by module.
 
 `statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. `module` + `statusCodeKey` identify an error more stably than the raw integer, which is why the envelope carries both.
 
@@ -32,7 +32,7 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51900` | `response` | `51900`–`51902` | 3 |
 | `52000` | `activity-log` | `52000` | 1 |
 | `52100` | `analytic` | `52100` | 1 |
-| `52200` | `helper` | `52200`–`52201` | 2 |
+| `52200` | `helper` | `52200`–`52202` | 3 |
 
 Next free hundred: `52300`. The enum files are the source; this map follows them.
 
@@ -88,7 +88,7 @@ Next free hundred: `52300`. The enum files are the source; this map follows them
 | `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
 | `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
 
-`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator (`RequestStore`) or `@AuthJwtPayload()` finds no value that its guard or middleware writes. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
+`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
@@ -320,8 +320,11 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 |---|---|---|---|---|---|
 | `decryptFailed` | `52200` | `decryptFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.decryptFailed` | We couldn't read protected data for this request. |
 | `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
+| `patternTokenMissing` | `52202` | `patternTokenMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.patternTokenMissing` | We couldn't build a value for this request. Missing pattern token: {token} |
 
 `HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
+
+`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, which makes a configured pattern and its call site disagree an error rather than a key holding the literal `{token}`.
 
 ## Related documents
 

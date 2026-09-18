@@ -70,12 +70,13 @@ export class NotificationQueue {
         }: INotificationWelcomeByAdminPayload,
         createdBy: string
     ): Promise<void> {
+        const encryptedPassword = this.encryptValue(password, userId);
         const payload: INotificationQueuePayload<INotificationWelcomeByAdminEncryptedPayload> =
             {
                 userId,
                 proceedBy: createdBy,
                 data: {
-                    encryptedPassword: this.encryptValue(password, userId),
+                    encryptedPassword,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
@@ -103,12 +104,13 @@ export class NotificationQueue {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
+        const encryptedLink = this.encryptValue(link, userId);
         const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
             {
                 userId,
                 proceedBy: userId,
                 data: {
-                    encryptedLink: this.encryptValue(link, userId),
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -154,12 +156,13 @@ export class NotificationQueue {
         }: INotificationTemporaryPasswordPayload,
         createdBy: string
     ): Promise<void> {
+        const encryptedPassword = this.encryptValue(password, userId);
         const payload: INotificationQueuePayload<INotificationTemporaryPasswordEncryptedPayload> =
             {
                 userId,
                 proceedBy: createdBy,
                 data: {
-                    encryptedPassword: this.encryptValue(password, userId),
+                    encryptedPassword,
                     passwordCreatedAt,
                     passwordExpiredAt,
                 },
@@ -225,12 +228,13 @@ export class NotificationQueue {
             reference,
         }: INotificationVerificationEmailPayload
     ): Promise<void> {
+        const encryptedLink = this.encryptValue(link, userId);
         const payload: INotificationQueuePayload<INotificationVerificationEmailEncryptedPayload> =
             {
                 userId,
                 proceedBy: userId,
                 data: {
-                    encryptedLink: this.encryptValue(link, userId),
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -260,12 +264,13 @@ export class NotificationQueue {
             resendInMinutes,
         }: INotificationForgotPasswordPayload
     ): Promise<void> {
+        const encryptedLink = this.encryptValue(link, userId);
         const payload: INotificationQueuePayload<INotificationForgotPasswordEncryptedPayload> =
             {
                 userId,
                 proceedBy: userId,
                 data: {
-                    encryptedLink: this.encryptValue(link, userId),
+                    encryptedLink,
                     expiredAt,
                     expiredInMinutes,
                     reference,
@@ -412,16 +417,17 @@ export class NotificationQueue {
         { inviteAcceptLink, ...invite }: INotificationWorkspaceInvitePayload,
         invitedByUserId: string
     ): Promise<void> {
+        const encryptedInviteAcceptLink = this.encryptValue(
+            inviteAcceptLink,
+            userId
+        );
         const payload: INotificationQueuePayload<INotificationWorkspaceInviteEncryptedPayload> =
             {
                 userId,
                 proceedBy: invitedByUserId,
                 data: {
                     ...invite,
-                    encryptedInviteAcceptLink: this.encryptValue(
-                        inviteAcceptLink,
-                        userId
-                    ),
+                    encryptedInviteAcceptLink,
                 },
             };
 
@@ -447,16 +453,17 @@ export class NotificationQueue {
         }: INotificationWorkspaceJoinRequestPayload,
         requestedByUserId: string
     ): Promise<void> {
+        const encryptedJoinRequestReviewLink = this.encryptValue(
+            joinRequestReviewLink,
+            userId
+        );
         const payload: INotificationQueuePayload<INotificationWorkspaceJoinRequestEncryptedPayload> =
             {
                 userId,
                 proceedBy: requestedByUserId,
                 data: {
                     ...joinRequest,
-                    encryptedJoinRequestReviewLink: this.encryptValue(
-                        joinRequestReviewLink,
-                        userId
-                    ),
+                    encryptedJoinRequestReviewLink,
                 },
             };
 

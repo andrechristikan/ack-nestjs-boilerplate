@@ -29,7 +29,9 @@ This file is the code rule set. Flow narrative: `docs/database.md` — explorer 
 
 ## Generated unique values
 
-A repository that generates a unique value itself — a slug, a reference, any random column behind a unique index — retries a bounded number of times from a `*MaxAttempts` config key, and **throws `DatabaseUniqueValueGenerationFailedException` when the attempts run out**.
+A generated unique value — a slug, a reference, any random column behind a unique index — is retried a bounded number of times from a `*MaxAttempts` config key, and **throws `DatabaseUniqueValueGenerationFailedException` when the attempts run out**. A value the REQUEST supplies is never retried: it fails on the first collision with the feature's own exception.
+
+The retry sits with whoever owns the transaction the write runs in — the repository when it owns its own write, the domain when the write is one statement of a multi-repository transaction. The candidates themselves are drawn by the feature (`rules/architecture.md`), because the generator lives in the service layer.
 
 - **NEVER let a raw `P2002` escape the repository as the exhaustion signal.** A caller cannot tell "we drew the same random string five times" from "the client sent a duplicate email", and the client receives an untranslated Prisma error either way.
 - A `P2002` that is **not** the generated column is a different failure and is rethrown untouched — the retry loop only owns collisions on the value it drew.
@@ -51,6 +53,17 @@ MongoDB transactions require the replica set — that is why `docker-compose` ru
 - **More than one repository.** The domain calls `this.databaseService.withTransaction` and calls each collaborator as `*InTx(tx, ...)`. A repository never opens this transaction.
 
 A repository never injects or calls another repository. Same-feature siblings are composed by the domain.
+
+A write of ONE statement opens no transaction. MongoDB is atomic per document, so wrapping a
+single `update` adds a round trip and a write-conflict surface for nothing. A single statement
+that touches several documents (`updateMany`, `createMany`) does need one, because only the
+per-document write is atomic.
+
+`withTransaction(fn, options?)` takes Prisma's `IDatabaseTransactionOptions` (`maxWait`,
+`timeout`, …). A caller passes options only from its own `*TimeoutInMs` config key
+(`rules/config.md`) — a bulk import and the seeds do, because Prisma's 5 s default is shorter
+than that work. A write conflict (`P2034`) is not retried anywhere: the request fails, and only
+a value the system GENERATES is retried (below).
 
 A method that runs inside that caller-owned transaction is named `*InTx` and takes `tx: IDatabaseTransactionClient` as its first parameter (`src/common/database/interfaces/database.client.interface.ts`). It issues every statement on `tx`. A method that does not join a caller-owned transaction takes no `tx` parameter and uses `this.databaseService.client`. There is no optional `tx?` and no `tx ?? this.databaseService.client` fallback. When the same write exists on both paths, the two methods are siblings — `create` and `createInTx` — not one method with an optional argument.
 

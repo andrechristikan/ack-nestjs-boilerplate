@@ -23,6 +23,8 @@ Consequences that are part of the rule, not side effects:
 
 **Database-level only.** No `.slice()` over a preloaded array, no in-memory filtering after a `findMany()`. That is a paginated endpoint that loads the whole collection.
 
+The exception is a COMPUTED result — a fraud or anomaly signal assembled from several reads and scored in the domain, where no single Prisma query can express the page. There the domain slices the computed set and builds the envelope with `PaginationService.offsetPage`, so the response still reports the same page arithmetic as every other route. A plain read never qualifies: if Prisma can page it, Prisma pages it.
+
 ## The controller side
 
 Query parsing is decorator-driven. Compose them; do not hand-parse `@Query`:
@@ -43,7 +45,7 @@ Every pagination type takes **one generic — the `Where` type**. `availableOrde
 
 Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `PaginationQueryFilterInEnum` · `PaginationQueryFilterNinEnum` · `PaginationQueryFilterEqualBoolean` · `PaginationQueryFilterEqualNumber` · `PaginationQueryFilterEqualString` · `PaginationQueryFilterNotEqual` · `PaginationQueryFilterDate`.
 
-`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants under `<module>/constants/`, in `<module>.list.constant.ts` — the file that holds a module's list-endpoint constants (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), alongside the enum defaults its filter decorators use (`ApiKeyDefaultType`). A module with no other list constants may keep them in `<module>.constant.ts`, but `.list.constant.ts` is the default and what every existing module does.
+`availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants in `<module>/constants/<module>.list.constant.ts` (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), beside the enum defaults its filter decorators use (`ApiKeyDefaultType`). That file holds a module's list-endpoint constants and nothing else (`rules/naming.md`).
 
 **Both allow-lists are OPTIONAL.** Absent, `null` and `[]` all mean the same thing, and a bare `@PaginationOffsetQuery()` compiles:
 
@@ -78,11 +80,15 @@ The types enforce it structurally, in two tiers:
 | Tier | Type | Carries |
 |---|---|---|
 | controller param, produced by the pipes | `IPaginationQueryOffsetParams<TArgsWhere>` · `IPaginationQueryCursorParams<TArgsWhere>` | `limit`, `orderBy`, `where?`, plus `skip` or `cursor?`/`cursorField?` |
-| service args, produced by the REPOSITORY | `IPaginationOffsetArgs<TArgsWhere>` · `IPaginationCursorArgs<TArgsWhere>` | the above **plus** `include?`, and `includeCount?` on cursor |
+| service args, produced by the REPOSITORY | `IPaginationOffsetArgs<TArgsWhere>` · `IPaginationCursorArgs<TArgsWhere>` | the above **plus** `include?` OR `select?`, and `includeCount?` on cursor |
 
-`include` and `includeCount` are repository-side arguments. They are absent from the pipe-output types on purpose, so a client cannot address them from the query string.
+`include`, `select` and `includeCount` are repository-side arguments. They are absent from the pipe-output types on purpose, so a client cannot address them from the query string.
 
-There is **no `select`** anywhere in the pagination types. Shape a paginated read with `include` and a nested select constant (`include: { user: { select: UserRefSelect } }`) — that is what every repository does.
+**`select` and `include` are mutually exclusive**, through the `IPaginationShape` union the args types intersect: passing both fails `tsc` rather than Prisma at runtime. `select` reaches `findMany` only — never `count`, which needs no shape.
+
+**A paginated read whose row is narrower than the model takes a `select`.** `include` restricts relations and nothing else, so a root scalar the row never declares still leaves the database — a password hash, a session `jti`, an API key hash. The read names the fields its row declares, through a `*Select` constant whose row type is pinned by `Prisma.<Model>GetPayload<{ select: typeof <Const> }>`, so dropping a field from the constant breaks the build rather than the response. A read that genuinely needs the whole model keeps `include`.
+
+`PaginationService.offsetPage(items, count, { skip, limit })` builds the offset envelope for a result the caller already paged — a `groupBy` distribution, say. The page it reports is 1-based, like every other paginated route.
 
 ## Filter shape
 

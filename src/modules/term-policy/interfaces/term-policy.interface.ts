@@ -34,3 +34,11 @@ export interface ITermPolicyContentPresign {
     language: EnumMessageLanguage;
     size: number;
 }
+
+export interface ITermPolicyAcceptanceAnalytic {
+    id: string;
+    userId: string;
+    termPolicyId: string;
+    acceptedAt: Date;
+    createdAt: Date;
+}

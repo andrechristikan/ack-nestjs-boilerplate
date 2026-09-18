@@ -1,9 +1,6 @@
 # Authentication Documentation
 
-This documentation explains the features and usage of:
-- **Authentication Module**: Located at `src/modules/auth`
-- **Session Module**: Located at `src/modules/session`
-- **ApiKey Module**: Located at `src/modules/api-key`
+Auth lives in `src/modules/auth`. Sessions live in `src/modules/session`. API keys live in `src/modules/api-key`.
 
 ## Overview
 
@@ -286,7 +283,7 @@ Credential checks run in a fixed order and each one throws before the next is re
 2. revokes every active session of the user, with the user as the revoking actor;
 3. revokes every live device ownership of the user and clears the push token of each of those devices ([Device][ref-doc-device]).
 
-A MongoDB write conflict (`P2034`, detected by `DatabaseUtil.isWriteConflict`) reruns the whole transaction immediately, up to `user.passwordLockout.writeConflictMaxAttempts` attempts in total (first attempt included). Any other error, and a write conflict on the last attempt, is rethrown and answers 500 (`AppUnknownException`); nothing is purged or staged, and the attempt counter stays at the limit, so the next login runs the lockout again. After the commit, the lockout deletes every session key of the user from Redis, then stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`. Both rows are written on every lockout, including one where the user had no active session.
+The transaction runs once. A domain exception raised inside it travels out as it is; every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again. After the commit, the lockout deletes every session key of the user from Redis, then stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`. Both rows are written on every lockout, including one where the user had no active session. `UserAuthDomain` then throws `UserPasswordAttemptMaxException`.
 
 ```mermaid
 sequenceDiagram
@@ -295,17 +292,16 @@ sequenceDiagram
     participant Redis
 
     API->>API: prepare userRevokeAllSessions, userReachMaxPasswordAttempt (onError)
-    loop up to writeConflictMaxAttempts
-        API->>Database: withTransaction: set user inactive,<br/>revoke sessions, revoke device ownerships + clear push tokens
-        alt Write conflict (P2034), attempts left
-            Database-->>API: Aborted, retry
-        else Committed
-            Database-->>API: Committed
-        end
+    API->>Database: withTransaction: set user inactive,<br/>revoke sessions, revoke device ownerships + clear push tokens
+    alt Committed
+        Database-->>API: Committed
+        API->>Redis: Delete every session key of the user
+        API->>API: stage userRevokeAllSessions, then userReachMaxPasswordAttempt
+        API->>API: throw UserPasswordAttemptMaxException
+    else Aborted
+        Database-->>API: Aborted
+        API->>API: 500 (AppUnknownException), nothing purged or staged
     end
-    API->>Redis: Delete every session key of the user
-    API->>API: stage userRevokeAllSessions, then userReachMaxPasswordAttempt
-    API->>API: throw UserPasswordAttemptMaxException
 ```
 
 Two branches then short-circuit before any session or token is created:
@@ -531,7 +527,7 @@ async profile(
 }
 ```
 
-`AuthJwtPayload<T, K>(field?)` reads `request.user`, which the authenticating guard wrote. `T` is the payload type and defaults to `IAuthJwtAccessTokenPayload`; `field` is typed as a key of `T`. Without a field it returns the whole payload, and with one it returns that field. The social login routes read `@AuthJwtPayload<IAuthSocialPayload>('email')`. When `request.user` is empty (a route that reads the payload without an authenticating guard), it throws `RequestContextMissingException` (500, `50304`).
+`AuthJwtPayload<T, K>(field?)` reads `request.user`, which the authenticating guard wrote. `T` is the payload type and defaults to `IAuthJwtAccessTokenPayload`; `field` is typed as a key of `T`. Without a field it returns the whole payload, and with one it returns that field, non-null. The social login routes read `@AuthJwtPayload<IAuthSocialPayload>('email')`. An empty `request.user` (a route that reads the payload without an authenticating guard), or a named field the payload does not carry, throws `RequestContextMissingException` (500, `50304`).
 
 #### Getting Raw Token
 
@@ -584,13 +580,13 @@ A unique identifier (32-character random string) generated during login and toke
    - New jti is stored in the database session record, then in Redis once the transaction has committed
    - The Redis write happens only while the session key still exists; a key purged by a revoke in the meantime makes the refresh answer 401
    - New tokens contain the new jti
-   - **Important**: the session's absolute expiry is never pushed out. The new refresh token and the Redis TTL both carry only the time still left on the presented refresh token, so a session cannot outlive `AUTH_JWT_REFRESH_TOKEN_EXPIRED` counted from login
+   - The session's absolute expiry is never pushed out: the new refresh token and the Redis TTL both carry only the time still left on the presented refresh token, so a session cannot outlive `AUTH_JWT_REFRESH_TOKEN_EXPIRED` counted from login
 
-5. **Security Benefits**
-   - **Token Reuse Detection**: If an old access/refresh token is used after refresh, the jti won't match
-   - **Session Tracking**: Each token refresh creates a new jti, allowing precise tracking of token usage
-   - **Instant Revocation**: Deleting the session from Redis immediately invalidates all tokens with that sessionId
-   - **Replay Attack Prevention**: Old tokens cannot be reused even if intercepted
+5. **What the check catches**
+   - An access or refresh token presented after a refresh carries the old jti, which no longer matches
+   - Each refresh writes a new jti, so a token maps to one point in the session's history
+   - Deleting the session key from Redis invalidates every token carrying that sessionId at once
+   - An intercepted old token cannot be replayed
 
 ## Social Authentication
 
@@ -874,18 +870,11 @@ sequenceDiagram
 
 A user whose two-factor is flagged `requiredSetup` completes enrollment at `POST /public/user/login/2fa/enable` with the same `challengeToken`, then verifies. Both routes are public: `@ApiKeyProtected()` is the only guard on either.
 
-See [Two-Factor Documentation][ref-doc-two-factor] for detailed.
+Details: [Two-Factor Documentation][ref-doc-two-factor].
 
 ## API Key Authentication
 
-API keys authenticate machines. They have no session. The key is checked against the database and cache.
-
-**Use Cases:**
-- External system integrations
-- Webhook endpoints
-- System-to-system communication
-- Background jobs and scheduled tasks
-- Third-party API access
+API keys authenticate machines. They have no session. The key is checked against the database and cache. The callers are external integrations, webhook senders, internal services, scheduled jobs, and third-party clients.
 
 ### Configuration
 
@@ -1013,7 +1002,7 @@ async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
 
 #### Getting API Key Payload
 
-`@ApiKeyPayload(field?)` reads the `ApiKey` that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored under `ApiKeyStoreKey`. With no argument it returns the whole `ApiKey`; with a field name typed against `ApiKey` it returns that field. It is built on `RequestStore` (see [Security and Middleware][ref-doc-security-and-middleware]), so a route that reads it without the guard answers `RequestContextMissingException` (500, `50304`).
+`@ApiKeyPayload(field?)` reads the `ApiKey` that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored under `ApiKeyStoreKey`. With no argument it returns the whole `ApiKey`; with a field name typed against `ApiKey` it returns that field. Both are non-null, so a route that reads it without the guard, or names a field holding `null`, answers `RequestContextMissingException` (500, `50304`). See [Security and Middleware][ref-doc-security-and-middleware].
 
 ### API Key Authentication Flow
 
@@ -1115,7 +1104,7 @@ Neither case revokes a session or writes an activity-log row. A successful call 
 
 Used to validate **both access and refresh tokens**.
 
-**Critical Behavior**: Every API call with an access token will check Redis. If the session is not found in Redis or the jti doesn't match, the request is rejected immediately, even if the token signature is valid.
+Every API call carrying an access token checks Redis. A session key that is missing, or a jti that does not match, rejects the request at once, even with a valid token signature.
 
 **Data Stored:**
 ```typescript

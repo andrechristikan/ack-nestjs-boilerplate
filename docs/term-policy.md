@@ -79,7 +79,7 @@ Term policies follow a two-stage status:
 
 Both paths resolve to the same key, so the two copies differ by bucket alone. The record's `contents` point at the public copy, each entry carrying the `access` of the bucket it names.
 
-**Important**: When a new version is published, `termPolicy[type]` is set to `false` for every active, non-deleted user, requiring them to accept the new version before accessing protected endpoints.
+Publishing a new version sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts the new version before reaching protected endpoints again.
 
 ## Flow
 
@@ -268,7 +268,7 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-**Critical**: Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, requiring re-acceptance. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts again. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### List Policies
 
@@ -293,7 +293,7 @@ Only draft policies can be deleted; anything else returns `400` (`statusInvalid`
 
 The `@TermPolicyAcceptanceProtected()` decorator protects endpoints by requiring users to accept specific policies before accessing them.
 
-**Important**: This decorator **requires** both `@UserProtected()` and `@AuthJwtAccessProtected()` to be applied. They are what put the user into the request store; without them the guard resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
+The guard reads the user out of the request store, which `@UserProtected()` fills and `@AuthJwtAccessProtected()` feeds. Without both, it resolves no user and throws `401 Unauthorized` (`jwtAccessTokenInvalid`).
 
 **Decorator order** (from top to bottom):
 

@@ -37,11 +37,11 @@ export class ProjectMemberDomain {
     ) {}
 
     private currentActorIsWorkspaceOwner(): boolean {
-        return (
-            this.requestStoreService.get<boolean>(
-                ProjectWorkspaceOwnerStoreKey
-            ) ?? false
+        const isWorkspaceOwner = this.requestStoreService.get<boolean>(
+            ProjectWorkspaceOwnerStoreKey
         );
+
+        return isWorkspaceOwner ?? false;
     }
 
     private assertProjectMemberPeerAllowed(
@@ -89,7 +89,9 @@ export class ProjectMemberDomain {
             throw new ProjectRoleForbiddenException();
         }
 
-        if (this.projectUtil.isWorkspaceOwner(workspaceMember)) {
+        const isWorkspaceOwner =
+            this.projectUtil.isWorkspaceOwner(workspaceMember);
+        if (isWorkspaceOwner) {
             return true;
         }
 
@@ -137,10 +139,8 @@ export class ProjectMemberDomain {
         targetMember: WorkspaceMember | null,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        this.assertProjectMemberPeerAllowed(
-            this.currentActorIsWorkspaceOwner(),
-            role
-        );
+        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
+        this.assertProjectMemberPeerAllowed(isWorkspaceOwner, role);
 
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
@@ -165,15 +165,14 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.projectMemberAssignedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                })
-            );
+            const assignedByAdminEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberAssignedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actorId },
+            });
+            events.push(assignedByAdminEvent);
         }
 
         const member = await this.projectMemberRepository.create(
@@ -203,8 +202,9 @@ export class ProjectMemberDomain {
             throw new ProjectMemberNotFoundException();
         }
 
+        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
         this.assertProjectMemberPeerAllowed(
-            this.currentActorIsWorkspaceOwner(),
+            isWorkspaceOwner,
             targetMember.role,
             newRole
         );
@@ -219,15 +219,14 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                })
-            );
+            const roleUpdatedByAdminEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actorId },
+            });
+            events.push(roleUpdatedByAdminEvent);
         }
 
         await this.projectMemberRepository.updateRole(targetMember.id, newRole);
@@ -253,8 +252,9 @@ export class ProjectMemberDomain {
             throw new ProjectMemberPeerForbiddenException();
         }
 
+        const isWorkspaceOwner = this.currentActorIsWorkspaceOwner();
         this.assertProjectMemberPeerAllowed(
-            this.currentActorIsWorkspaceOwner(),
+            isWorkspaceOwner,
             targetMember.role
         );
 
@@ -268,15 +268,14 @@ export class ProjectMemberDomain {
             }),
         ];
         if (targetMember.userId !== actorId) {
-            events.push(
-                this.activityLogDomain.prepare({
-                    action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                    userId: targetMember.userId,
-                    createdBy: actorId,
-                    workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actorId },
-                })
-            );
+            const removedByAdminEvent = this.activityLogDomain.prepare({
+                action: EnumActivityLogAction.projectMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actorId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actorId },
+            });
+            events.push(removedByAdminEvent);
         }
 
         await this.projectMemberRepository.removeMember(targetMember.id);
@@ -284,14 +283,7 @@ export class ProjectMemberDomain {
         this.activityLogDomain.stagePrepared(events);
     }
 
-    async leaveProject(
-        project: Project,
-        member: ProjectMember | null
-    ): Promise<void> {
-        if (!member) {
-            throw new ProjectMemberForbiddenException();
-        }
-
+    async leaveProject(project: Project, member: ProjectMember): Promise<void> {
         const events = [
             this.activityLogDomain.prepare({
                 action: EnumActivityLogAction.projectMemberLeft,

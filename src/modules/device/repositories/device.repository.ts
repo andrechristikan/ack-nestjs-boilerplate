@@ -1,12 +1,12 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import {
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
+import type {
+    Device,
     EnumDeviceNotificationProvider,
-    EnumDevicePlatform,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { Device } from '@generated/prisma-client/client';
 import type {
     IDeviceIdentity,
     IDeviceRefresh,

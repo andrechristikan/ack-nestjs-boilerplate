@@ -61,3 +61,9 @@ export const HelperEncryptionAuthTagLengthInBytes = 16;
  * @public
  */
 export const HelperEncryptionPayloadSeparator = '.';
+
+/**
+ * Matches one `{token}` placeholder of a pattern string, capturing the token name.
+ * @public
+ */
+export const HelperStringPatternTokenRegex = /\{(\w+)\}/g;

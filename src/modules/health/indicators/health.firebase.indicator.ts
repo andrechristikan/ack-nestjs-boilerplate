@@ -20,7 +20,8 @@ export class HealthFirebaseIndicator {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            if (!this.firebaseService.isInitialized()) {
+            const isInitialized = this.firebaseService.isInitialized();
+            if (!isInitialized) {
                 return indicator.down('Firebase Admin SDK not initialized');
             }
 

@@ -1,6 +1,6 @@
 # Project Documentation
 
-This documentation explains the features and usage of the **Project Module**: Located at `src/modules/project`
+Project lives in `src/modules/project`.
 
 ## Overview
 
@@ -133,14 +133,14 @@ Reads the `projectId` **route parameter** (there is no project header) and resol
 - **No arguments** applies `ProjectMemberGuard` alone, storing the row under `ProjectMemberStoreKey`. No row throws `ProjectMemberForbiddenException` (403, `51701`). This is the form used by `member leave`, which has nothing to remove without a row.
 - **With roles** applies `ProjectRoleGuard` alone. A missing workspace membership, a missing project membership, or a role outside the list throws `ProjectRoleForbiddenException` (403, `51702`).
 
-Because the role form does not bind `ProjectMemberGuard`, nothing is stored under `ProjectMemberStoreKey` on a role-gated route, and `@ProjectMemberCurrent()` is `null` there for every caller, the workspace owner included.
+Because the role form does not bind `ProjectMemberGuard`, nothing is stored under `ProjectMemberStoreKey` on a role-gated route, and `@ProjectMemberCurrent()` throws there for every caller, the workspace owner included. That decorator belongs only on a route using the role-less form.
 
 #### `ProjectCurrent()` / `ProjectMemberCurrent()`
 
-**Parameter decorators** that read back the `Project` and `ProjectMember` the guards stored. Each takes an optional field name typed against its model and returns the whole row without one.
+**Parameter decorators** that read back the `Project` and `ProjectMember` the guards stored. Each takes an optional field name typed against its model and returns the whole row without one. Both return a non-null value.
 
-- `ProjectCurrent()` is built on `RequestStore`: a route that reads it without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
-- `ProjectMemberCurrent()` is built on `RequestStoreNullable` and returns `ProjectMember | null`, so the handler receives `null` when no member row was stored. `ProjectMemberDomain.leaveProject` takes that value and throws `ProjectMemberForbiddenException` (403, `51701`) on `null`.
+- `ProjectCurrent()` on a route without `@ProjectProtected()` answers `RequestContextMissingException` (500, `50304`).
+- `ProjectMemberCurrent()` is valid only on a route carrying the role-less `@ProjectMemberProtected()`, the form that binds `ProjectMemberGuard`. A role-gated route stores no member row, so the read answers `RequestContextMissingException` (500, `50304`) there. `ProjectMemberDomain.leaveProject` receives the row itself; the caller's missing membership is already refused by the guard with `ProjectMemberForbiddenException` (403, `51701`).
 
 The store readers: [Security and Middleware][ref-doc-security-and-middleware].
 

@@ -33,7 +33,8 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
 import { SessionDomain } from '@modules/session/domains/session.domain';
-import { UserCreateModeRules } from '@modules/user/constants/user.create-mode.constant';
+import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
@@ -55,7 +56,8 @@ import type {
     IUserContact,
     IUserCreateByAdmin,
     IUserCreateByAdminPrepared,
-    IUserOnboardingVerificationRow,
+    IUserList,
+    IUserOnboardingVerification,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -88,19 +90,24 @@ export class UserDomain {
     ) {}
 
     /** Builds the used-and-verified email verification an admin-created account is verified by. */
-    private buildVerifiedVerificationRow(
+    private buildVerifiedVerification(
         email: string
-    ): IUserOnboardingVerificationRow {
+    ): IUserOnboardingVerification {
         const token = this.userVerificationDomain.verificationCreateToken();
+        const reference =
+            this.userVerificationDomain.verificationCreateReference();
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const expiredAt =
+            this.userVerificationDomain.verificationSetExpiredDate();
+        const verifiedAt = this.helperDateService.create();
 
         return {
-            reference:
-                this.userVerificationDomain.verificationCreateReference(),
-            token: this.helperHashService.sha256Hash(token),
+            reference,
+            token: hashedToken,
             type: EnumVerificationType.email,
             to: email,
-            expiredAt: this.userVerificationDomain.verificationSetExpiredDate(),
-            verifiedAt: this.helperDateService.create(),
+            expiredAt,
+            verifiedAt,
             isUsed: true,
         };
     }
@@ -140,7 +147,7 @@ export class UserDomain {
         status?: Record<string, IPaginationIn>,
         roleId?: Record<string, IPaginationEqual>,
         countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
+    ): Promise<IResponsePagingReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,
@@ -303,6 +310,12 @@ export class UserDomain {
                 username,
             ]);
         const isVerified = checkRole.type !== EnumRoleType.user;
+        let verification: IUserOnboardingVerification | null;
+        if (isVerified) {
+            verification = this.buildVerifiedVerification(email);
+        } else {
+            verification = null;
+        }
 
         return {
             input: {
@@ -315,23 +328,15 @@ export class UserDomain {
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
-                termPolicy: {
-                    [EnumTermPolicyType.cookies]: false,
-                    [EnumTermPolicyType.marketing]: false,
-                    [EnumTermPolicyType.privacy]: true,
-                    [EnumTermPolicyType.termsOfService]: true,
-                },
+                termPolicy: { ...UserTermPolicyContract.defaults },
                 acceptedTermPolicyTypes: [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
+                    ...UserTermPolicyContract.requiredTypes,
                 ],
                 password,
                 passwordHistoryType:
-                    UserCreateModeRules[EnumUserCreateMode.admin]
+                    UserCreateContract[EnumUserCreateMode.admin]
                         .passwordHistoryType,
-                verification: isVerified
-                    ? this.buildVerifiedVerificationRow(email)
-                    : null,
+                verification,
                 workspaceContext,
                 createdBy,
             },
@@ -346,14 +351,16 @@ export class UserDomain {
         passwordExpired: Date,
         createdBy: string
     ): Promise<void> {
+        const passwordCreatedAt =
+            this.helperDateService.formatToIso(passwordCreated);
+        const passwordExpiredAt =
+            this.helperDateService.formatToIso(passwordExpired);
         await this.notificationQueue.sendWelcomeByAdmin(
             userId,
             {
                 password: passwordString,
-                passwordCreatedAt:
-                    this.helperDateService.formatToIso(passwordCreated),
-                passwordExpiredAt:
-                    this.helperDateService.formatToIso(passwordExpired),
+                passwordCreatedAt,
+                passwordExpiredAt,
             },
             createdBy
         );
@@ -391,21 +398,23 @@ export class UserDomain {
                             userId,
                             { status }
                         );
+                    const actorMetadata =
+                        this.userUtil.mapActivityLogActorMetadata(row);
+                    const targetMetadata =
+                        this.userUtil.mapActivityLogTargetMetadata(
+                            row,
+                            updatedBy
+                        );
                     const prepared = [
                         this.activityLogDomain.prepare({
                             action: EnumActivityLogAction.adminUserUpdateStatus,
-                            metadata:
-                                this.userUtil.mapActivityLogActorMetadata(row),
+                            metadata: actorMetadata,
                         }),
                         this.activityLogDomain.prepare({
                             action,
                             userId,
                             createdBy: updatedBy,
-                            metadata:
-                                this.userUtil.mapActivityLogTargetMetadata(
-                                    row,
-                                    updatedBy
-                                ),
+                            metadata: targetMetadata,
                         }),
                     ];
                     let revokeAll: IActivityLogStagedEvent[] = [];

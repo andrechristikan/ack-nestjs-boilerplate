@@ -14,6 +14,7 @@ import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/a
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
+import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyDomain } from '@modules/api-key/domains/api-key.domain';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Injectable } from '@nestjs/common';
@@ -29,7 +30,7 @@ export class ApiKeyHttpService {
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<ApiKey>> {
+    ): Promise<IResponsePagingReturn<IApiKeyList>> {
         const { data, ...others } = await this.apiKeyDomain.getListByAdmin(
             pagination,
             isActive,
@@ -46,10 +47,9 @@ export class ApiKeyHttpService {
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const { apiKey, secret } = await this.apiKeyDomain.createByAdmin(body);
+        const created = this.apiKeyUtil.mapCreate(apiKey, secret);
 
-        return {
-            data: this.apiKeyUtil.mapCreate(apiKey, secret),
-        };
+        return { data: created };
     }
 
     async updateStatusByAdmin(
@@ -96,10 +96,9 @@ export class ApiKeyHttpService {
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const { apiKey, secret } = await this.apiKeyDomain.resetByAdmin(id);
+        const reset = this.apiKeyUtil.mapCreate(apiKey, secret);
 
-        return {
-            data: this.apiKeyUtil.mapCreate(apiKey, secret),
-        };
+        return { data: reset };
     }
 
     async deleteByAdmin(id: string): Promise<IResponseReturn<ApiKey>> {

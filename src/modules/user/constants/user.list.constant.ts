@@ -5,11 +5,13 @@ import { EnumUserStatus } from '@generated/prisma-client/client';
  * @public
  */
 export const UserDefaultAvailableSearch = ['name', 'username', 'email'];
+
 /**
  * Sort fields the admin user list accepts.
  * @public
  */
 export const UserDefaultAvailableOrderBy = ['createdAt', 'name'];
+
 /**
  * User statuses the admin user list filter accepts.
  * @public
