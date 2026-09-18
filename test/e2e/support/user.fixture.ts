@@ -86,36 +86,14 @@ export async function createActiveUser(
 }
 
 /**
- * Deletes the fixture user and every row referencing it that a spec may have created —
- * verifications, forgot-password requests, two-factor secret, and the user row itself.
+ * Deletes the fixture user. Every row referencing it (sessions, verifications, two-factor,
+ * notifications, memberships, …) goes with it through the schema's `onDelete: Cascade`.
  */
 export async function deleteUserFixture(
     app: INestApplication,
     userId: string
 ): Promise<void> {
-    const prisma = getPrismaClient(app);
-
-    await prisma.twoFactorBackupCode.deleteMany({
-        where: { twoFactor: { userId } },
-    });
-    await prisma.twoFactor.deleteMany({ where: { userId } });
-    await prisma.forgotPassword.deleteMany({ where: { userId } });
-    await prisma.verification.deleteMany({ where: { userId } });
-    await prisma.passwordHistory.deleteMany({ where: { userId } });
-    await prisma.session.deleteMany({ where: { userId } });
-    await prisma.deviceOwnership.deleteMany({ where: { userId } });
-    await prisma.activityLog.deleteMany({ where: { userId } });
-    await prisma.notificationDelivery.deleteMany({
-        where: { notification: { userId } },
-    });
-    await prisma.notification.deleteMany({ where: { userId } });
-    await prisma.notificationUserSetting.deleteMany({ where: { userId } });
-    await prisma.userMobileNumber.deleteMany({ where: { userId } });
-    await prisma.termPolicyUserAcceptance.deleteMany({ where: { userId } });
-    await prisma.workspaceJoinRequest.deleteMany({ where: { userId } });
-    await prisma.workspaceMember.deleteMany({ where: { userId } });
-    await prisma.projectMember.deleteMany({ where: { userId } });
-    await prisma.user.deleteMany({ where: { id: userId } });
+    await getPrismaClient(app).user.deleteMany({ where: { id: userId } });
 }
 
 /**

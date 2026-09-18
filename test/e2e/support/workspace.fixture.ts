@@ -70,16 +70,15 @@ export async function createWorkspaceInvite(
 }
 
 /**
- * Deletes the fixture workspace and its invites — the state cleanup a spec runs in `afterAll`
- * so a slug or token it created never leaks into another spec's assertions.
+ * Deletes the fixture workspace — the state cleanup a spec runs in `afterAll` so a slug or
+ * token it created never leaks into another spec's assertions. Invites, members and projects
+ * go with it through the schema's `onDelete: Cascade`.
  */
 export async function deleteWorkspaceFixture(
     app: INestApplication,
     workspaceId: string
 ): Promise<void> {
-    const prisma = getPrismaClient(app);
-
-    await prisma.workspaceInvite.deleteMany({ where: { workspaceId } });
-    await prisma.workspaceMember.deleteMany({ where: { workspaceId } });
-    await prisma.workspace.deleteMany({ where: { id: workspaceId } });
+    await getPrismaClient(app).workspace.deleteMany({
+        where: { id: workspaceId },
+    });
 }

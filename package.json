@@ -35,7 +35,7 @@
         "test:e2e": "TZ=UTC vitest run --config vitest.e2e.config.mts",
         "test:e2e:env:up": "docker compose -f docker-compose.e2e.yml -p ack-nestjs-e2e up -d",
         "test:e2e:env:down": "docker compose -f docker-compose.e2e.yml -p ack-nestjs-e2e down --volumes --remove-orphans",
-        "test:e2e:db:reset": "sh -c 'set -a; . ./.env.e2e; set +a; prisma migrate reset --force --skip-seed'",
+        "test:e2e:db:reset": "sh -c 'set -a; . ./.env.e2e; set +a; prisma migrate reset --force --skip-seed && pnpm migration:seed'",
         "test:watch": "TZ=UTC vitest",
         "test:cov": "TZ=UTC vitest run --passWithNoTests --coverage",
         "package:upgrade": "npx npm-check-updates -u",
