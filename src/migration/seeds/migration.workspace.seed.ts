@@ -178,29 +178,13 @@ export class MigrationWorkspaceSeed
                 return;
             }
 
-            await this.databaseService.client.$transaction([
-                this.databaseService.client.activityLog.deleteMany({
-                    where: {
-                        workspaceId: {
-                            in: workspaceIds,
-                        },
+            await this.databaseService.client.workspace.deleteMany({
+                where: {
+                    id: {
+                        in: workspaceIds,
                     },
-                }),
-                this.databaseService.client.workspaceMember.deleteMany({
-                    where: {
-                        workspaceId: {
-                            in: workspaceIds,
-                        },
-                    },
-                }),
-                this.databaseService.client.workspace.deleteMany({
-                    where: {
-                        id: {
-                            in: workspaceIds,
-                        },
-                    },
-                }),
-            ]);
+                },
+            });
         } catch (error: unknown) {
             this.logger.error(error, 'Error removing workspaces');
             throw error;

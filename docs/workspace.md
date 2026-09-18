@@ -62,11 +62,11 @@ The module covers four things: the workspace itself and its membership roles, in
 
 ### `WorkspaceMember` (`WorkspaceMembers`)
 
-`workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`, plus the audit columns. `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete.
+`workspaceId`, `userId`, `role` (`EnumWorkspaceMemberRole`), `joinedAt`, plus the audit columns. `@@unique([workspaceId, userId])`. No soft-delete columns: removing a member is a hard delete. The row is also deleted with its workspace or its user (see the delete-behaviour table in `database.md`).
 
 ### `WorkspaceInvite` (`WorkspaceInvites`)
 
-`workspaceId`, `email`, `workspaceRole`, optional `projectId` + `projectRole`, `token`, `reference`, `expiredAt`, `status`, `invitedByUserId`, `acceptedAt`, `acceptedByUserId`. `@@unique([token])` and `@@unique([reference])`.
+`workspaceId`, `email`, `workspaceRole`, optional `projectId` + `projectRole`, `token`, `reference`, `expiredAt`, `status`, `invitedByUserId`, `acceptedAt`, `acceptedByUserId`. `@@unique([token])` and `@@unique([reference])`. `invitedByUserId` is nullable, and both it and `acceptedByUserId` are set to null when the referenced user is physically deleted. A preview of an invite with no inviter shows the workspace name as `inviterName`.
 
 **`token` stores the SHA-256 hash, never the plain token.** The plain token exists only in the invite link that is emailed; a lookup hashes the incoming token and matches on that.
 

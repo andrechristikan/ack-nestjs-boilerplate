@@ -46,8 +46,9 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
         description: 'Current status of the invite',
         example: EnumWorkspaceInviteStatus.pending,
     }),
-    invitedByUserId: z.string().meta({
-        description: 'Identifier of the user who sent the invite',
+    invitedByUserId: z.string().nullable().meta({
+        description:
+            'Identifier of the user who sent the invite; null once that user is deleted',
         example: faker.string.uuid(),
     }),
     acceptedAt: z.date().nullable().meta({
