@@ -2,7 +2,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -25,7 +25,7 @@ export function RoleSystemListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<RoleListResponseDto>('role.list', {
+        DocResponsePagination<RoleListResponseDto>('role.list', {
             schema: RoleListResponseSchema,
             availableSearch: RoleDefaultAvailableSearch,
             availableOrderBy: RoleDefaultAvailableOrderBy,

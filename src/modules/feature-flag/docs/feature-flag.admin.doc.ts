@@ -4,7 +4,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -33,7 +33,7 @@ export function FeatureFlagAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
+        DocResponsePagination<FeatureFlagResponseDto>('featureFlag.list', {
             schema: FeatureFlagResponseSchema,
             availableSearch: FeatureFlagDefaultAvailableSearch,
             availableOrderBy: FeatureFlagDefaultAvailableOrderBy,

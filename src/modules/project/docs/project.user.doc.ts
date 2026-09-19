@@ -1,10 +1,10 @@
 import {
     Doc,
     DocAuth,
-    DocOneOf,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponseError,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
@@ -25,27 +25,27 @@ import { EnumProjectStatusCodeError } from '@modules/project/enums/project.statu
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
-const NotFoundDoc = DocOneOf(HttpStatus.NOT_FOUND, {
+const NotFoundDoc = DocResponseError(HttpStatus.NOT_FOUND, {
     statusCode: EnumProjectStatusCodeError.notFound,
     messagePath: 'project.error.notFound',
 });
 
-const RoleForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
+const RoleForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
     statusCode: EnumProjectStatusCodeError.roleForbidden,
     messagePath: 'project.error.roleForbidden',
 });
 
-const MemberForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
+const MemberForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
     statusCode: EnumProjectStatusCodeError.memberForbidden,
     messagePath: 'project.error.memberForbidden',
 });
 
-const MemberPeerForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
+const MemberPeerForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
     statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
     messagePath: 'project.error.memberPeerForbidden',
 });
 
-const MemberNotFoundDoc = DocOneOf(HttpStatus.NOT_FOUND, {
+const MemberNotFoundDoc = DocResponseError(HttpStatus.NOT_FOUND, {
     statusCode: EnumProjectStatusCodeError.memberNotFound,
     messagePath: 'project.error.memberNotFound',
 });
@@ -57,7 +57,7 @@ export function ProjectUserListDoc(): MethodDecorator {
                 'list projects in the current workspace; workspace owner/admin see all, others only assigned projects',
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocResponsePaging<ProjectResponseDto>('project.list', {
+        DocResponsePagination<ProjectResponseDto>('project.list', {
             schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
             availableOrderBy: ProjectCursorAvailableOrderBy,
@@ -126,7 +126,7 @@ export function ProjectUserUpdateSlugDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
             messagePath: 'project.error.slugAlreadyExists',
         }),
@@ -154,7 +154,7 @@ export function ProjectMemberUserListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,
-        DocResponsePaging<ProjectMemberResponseDto>('project.member.list', {
+        DocResponsePagination<ProjectMemberResponseDto>('project.member.list', {
             schema: ProjectMemberResponseSchema,
             availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
@@ -176,11 +176,11 @@ export function ProjectMemberUserAssignDoc(): MethodDecorator {
         NotFoundDoc,
         RoleForbiddenDoc,
         MemberPeerForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             messagePath: 'workspace.error.memberNotFound',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumProjectStatusCodeError.memberAlreadyAssigned,
             messagePath: 'project.error.memberAlreadyAssigned',
         }),

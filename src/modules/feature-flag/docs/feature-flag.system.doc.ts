@@ -2,7 +2,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -25,7 +25,7 @@ export function FeatureFlagSystemListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<FeatureFlagResponseDto>('featureFlag.list', {
+        DocResponsePagination<FeatureFlagResponseDto>('featureFlag.list', {
             schema: FeatureFlagResponseSchema,
             availableSearch: FeatureFlagDefaultAvailableSearch,
             availableOrderBy: FeatureFlagDefaultAvailableOrderBy,

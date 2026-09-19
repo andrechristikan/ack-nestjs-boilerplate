@@ -3,7 +3,7 @@ import {
     DocAuth,
     DocGuard,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
@@ -27,7 +27,7 @@ export function ActivityLogAdminListByUserDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<ActivityLogResponseDto>('activityLog.listByUser', {
+        DocResponsePagination<ActivityLogResponseDto>('activityLog.listByUser', {
             schema: ActivityLogResponseSchema,
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,
@@ -49,7 +49,7 @@ export function ActivityLogAdminListByWorkspaceDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<ActivityLogResponseDto>(
+        DocResponsePagination<ActivityLogResponseDto>(
             'activityLog.listByWorkspace',
             {
                 schema: ActivityLogResponseSchema,

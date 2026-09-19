@@ -225,8 +225,22 @@ the decorator stack, above `@Response`. The doc file mirrors the controller: one
 endpoint, same order.
 
 Use the primitives (`Doc`, `DocAuth`, `DocGuard`, `DocRequest`, `DocRequestFile`,
-`DocResponse`, `DocResponsePaging`, `DocResponseFile`, `DocDefault`, `DocOneOf`, `DocAnyOf`,
-`DocAllOf`). A bare `@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+`DocResponse`, `DocResponsePagination`, `DocResponseFile`, `DocResponseError`). A bare
+`@ApiOperation` / `@ApiResponse` bypasses the shared shape.
+
+**`DocResponseError(httpStatus, ...entries)` documents the non-success responses of one status**,
+each entry a `statusCode` plus its i18n `messagePath`. One entry at a status emits a plain schema,
+two or more emit a `oneOf`. Every primitive accumulates its entries on the decorated method and
+re-emits that status in full, so entries contributed by different primitives at one status compose
+instead of replacing each other, and their order inside `applyDecorators` does not change what the
+endpoint documents.
+
+**An endpoint documents every response it can return.** Every exception reachable on its flow
+carries an entry — raised by its guards, its controller, its HTTP service, its domain, or another
+module's domain it calls — and an entry for an error the endpoint cannot raise is removed. The
+shared authentication and authorization chain arrives through the `DocAuth` and `DocGuard` flags;
+the module's own errors are written in the factory with `DocResponseError`. One error has one
+source, never both.
 
 `@ApiQuery` / `@ApiParam` arrays live as PascalCase constants in
 `<module>/constants/<module>.doc.constant.ts`. Never an inline array, never generated from
@@ -242,10 +256,10 @@ pagination filters a pipe assembles.
 The route template, the `@Param('…')` key, and the `name` in the Swagger param constant must
 agree. A mismatch between the first two makes the param silently `undefined`.
 
-`DocResponsePaging` takes the SAME allow-list constants the controller's `@Pagination*Query`
+`DocResponsePagination` takes the SAME allow-list constants the controller's `@Pagination*Query`
 decorator takes, and `type` is required (`EnumPaginationType.offset` or `.cursor`).
 
-`DocResponse<T>` / `DocResponsePaging<T>` take the response SCHEMA in `options.schema`. A
+`DocResponse<T>` / `DocResponsePagination<T>` take the response SCHEMA in `options.schema`. A
 hand-written schema object beside a zod schema is a mirror. Every field carries
 `.meta({ description, example })` on the zod schema. Do not call `faker.seed()`.
 

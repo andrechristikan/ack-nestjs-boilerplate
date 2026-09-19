@@ -4,7 +4,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { AnalyticDefaultAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
@@ -752,7 +752,7 @@ export function AnalyticAdminWorkspacesMembershipDoc(): MethodDecorator {
         Doc({ summary: 'admin get member counts per workspace' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticWorkspaceCountResponseDto>(
+        DocResponsePagination<AnalyticWorkspaceCountResponseDto>(
             'analytic.workspacesMembership',
             {
                 schema: AnalyticWorkspaceCountResponseSchema,
@@ -769,7 +769,7 @@ export function AnalyticAdminWorkspacesActivityVolumeDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticWorkspaceCountResponseDto>(
+        DocResponsePagination<AnalyticWorkspaceCountResponseDto>(
             'analytic.workspacesActivityVolume',
             {
                 schema: AnalyticWorkspaceCountResponseSchema,
@@ -798,7 +798,7 @@ export function AnalyticAdminProjectsMembershipDoc(): MethodDecorator {
         Doc({ summary: 'admin get member counts per project' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticProjectCountResponseDto>(
+        DocResponsePagination<AnalyticProjectCountResponseDto>(
             'analytic.projectsMembership',
             {
                 schema: AnalyticProjectCountResponseSchema,
@@ -827,7 +827,7 @@ export function AnalyticAdminFraudCredentialStuffingListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all credential stuffing fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticCredentialStuffingResponseDto>(
+        DocResponsePagination<AnalyticCredentialStuffingResponseDto>(
             'analytic.fraudCredentialStuffingList',
             {
                 schema: AnalyticCredentialStuffingResponseSchema,
@@ -857,7 +857,7 @@ export function AnalyticAdminFraudAccountTakeoverListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all account takeover fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticAccountTakeoverResponseDto>(
+        DocResponsePagination<AnalyticAccountTakeoverResponseDto>(
             'analytic.fraudAccountTakeoverList',
             {
                 schema: AnalyticAccountTakeoverResponseSchema,
@@ -887,7 +887,7 @@ export function AnalyticAdminFraudMassRegistrationListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all mass registration fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticKeyCountResponseDto>(
+        DocResponsePagination<AnalyticKeyCountResponseDto>(
             'analytic.fraudMassRegistrationList',
             {
                 schema: AnalyticKeyCountResponseSchema,
@@ -920,7 +920,7 @@ export function AnalyticAdminFraudPasswordResetEnumerationListDoc(): MethodDecor
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticKeyCountResponseDto>(
+        DocResponsePagination<AnalyticKeyCountResponseDto>(
             'analytic.fraudPasswordResetEnumerationList',
             {
                 schema: AnalyticKeyCountResponseSchema,
@@ -952,7 +952,7 @@ export function AnalyticAdminFraudSharedFingerprintListDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticSharedFingerprintResponseDto>(
+        DocResponsePagination<AnalyticSharedFingerprintResponseDto>(
             'analytic.fraudSharedFingerprintList',
             {
                 schema: AnalyticSharedFingerprintResponseSchema,
@@ -985,7 +985,7 @@ export function AnalyticAdminFraudSessionAfterAdminListDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticSessionAfterAdminResponseDto>(
+        DocResponsePagination<AnalyticSessionAfterAdminResponseDto>(
             'analytic.fraudSessionAfterAdminList',
             {
                 schema: AnalyticSessionAfterAdminResponseSchema,
@@ -1018,7 +1018,7 @@ export function AnalyticAdminFraudForgotPasswordTokenAbuseListDoc(): MethodDecor
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticForgotPasswordAbuseResponseDto>(
+        DocResponsePagination<AnalyticForgotPasswordAbuseResponseDto>(
             'analytic.fraudForgotPasswordTokenAbuseList',
             {
                 schema: AnalyticForgotPasswordAbuseResponseSchema,
@@ -1048,7 +1048,7 @@ export function AnalyticAdminFraudRefreshSpikeListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all refresh token spike fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticUserCountResponseDto>(
+        DocResponsePagination<AnalyticUserCountResponseDto>(
             'analytic.fraudRefreshSpikeList',
             {
                 schema: AnalyticUserCountResponseSchema,
@@ -1080,7 +1080,7 @@ export function AnalyticAdminFraudBackupCodeNewDeviceListDoc(): MethodDecorator 
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticBackupCodeNewDeviceResponseDto>(
+        DocResponsePagination<AnalyticBackupCodeNewDeviceResponseDto>(
             'analytic.fraudBackupCodeNewDeviceList',
             {
                 schema: AnalyticBackupCodeNewDeviceResponseSchema,
@@ -1110,7 +1110,7 @@ export function AnalyticAdminFraudApiKeyBurstListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all api key burst fraud detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticUserCountResponseDto>(
+        DocResponsePagination<AnalyticUserCountResponseDto>(
             'analytic.fraudApiKeyBurstList',
             {
                 schema: AnalyticUserCountResponseSchema,
@@ -1141,7 +1141,7 @@ export function AnalyticAdminFraudRiskScoresDoc(): MethodDecorator {
         Doc({ summary: 'admin get all user fraud risk scores' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticFraudRiskScoreResponseDto>(
+        DocResponsePagination<AnalyticFraudRiskScoreResponseDto>(
             'analytic.fraudRiskScores',
             {
                 schema: AnalyticFraudRiskScoreResponseSchema,
@@ -1171,7 +1171,7 @@ export function AnalyticAdminAnomalyImpossibleTravelListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all impossible travel anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticImpossibleTravelResponseDto>(
+        DocResponsePagination<AnalyticImpossibleTravelResponseDto>(
             'analytic.anomalyImpossibleTravelList',
             {
                 schema: AnalyticImpossibleTravelResponseSchema,
@@ -1201,7 +1201,7 @@ export function AnalyticAdminAnomalyLoginSpikeIpListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all login spike by ip anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticLoginSpikeIpResponseDto>(
+        DocResponsePagination<AnalyticLoginSpikeIpResponseDto>(
             'analytic.anomalyLoginSpikeIpList',
             {
                 schema: AnalyticLoginSpikeIpResponseSchema,
@@ -1231,7 +1231,7 @@ export function AnalyticAdminAnomalyFailedLoginSpikeListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all failed login spike anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticNearLockoutResponseDto>(
+        DocResponsePagination<AnalyticNearLockoutResponseDto>(
             'analytic.anomalyFailedLoginSpikeList',
             {
                 schema: AnalyticNearLockoutResponseSchema,
@@ -1263,7 +1263,7 @@ export function AnalyticAdminAnomalyDeviceProliferationListDoc(): MethodDecorato
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticDeviceProliferationResponseDto>(
+        DocResponsePagination<AnalyticDeviceProliferationResponseDto>(
             'analytic.anomalyDeviceProliferationList',
             {
                 schema: AnalyticDeviceProliferationResponseSchema,
@@ -1293,7 +1293,7 @@ export function AnalyticAdminAnomalyLoginTimeListDoc(): MethodDecorator {
         Doc({ summary: 'admin get all login time anomaly detections' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<AnalyticLoginTimeAnomalyResponseDto>(
+        DocResponsePagination<AnalyticLoginTimeAnomalyResponseDto>(
             'analytic.anomalyLoginTimeList',
             {
                 schema: AnalyticLoginTimeAnomalyResponseSchema,

@@ -2,8 +2,8 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocOneOf,
-    DocResponsePaging,
+    DocResponseError,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -22,7 +22,7 @@ export function ActivityLogSharedListSelfDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<ActivityLogResponseDto>('activityLog.listSelf', {
+        DocResponsePagination<ActivityLogResponseDto>('activityLog.listSelf', {
             schema: ActivityLogResponseSchema,
             availableOrderBy: ActivityLogDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,
@@ -40,15 +40,15 @@ export function ActivityLogSharedListSelfByWorkspaceDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.notFound,
             messagePath: 'workspace.error.notFound',
         }),
-        DocOneOf(HttpStatus.FORBIDDEN, {
+        DocResponseError(HttpStatus.FORBIDDEN, {
             statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
             messagePath: 'workspace.error.memberForbidden',
         }),
-        DocResponsePaging<ActivityLogResponseDto>(
+        DocResponsePagination<ActivityLogResponseDto>(
             'activityLog.listSelfByWorkspace',
             {
                 schema: ActivityLogResponseSchema,

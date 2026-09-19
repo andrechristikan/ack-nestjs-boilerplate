@@ -4,7 +4,7 @@ import {
     DocAuth,
     DocGuard,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
 import { PasswordHistoryDefaultAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
@@ -25,7 +25,7 @@ export function PasswordHistoryAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
+        DocResponsePagination<PasswordHistoryResponseDto>('passwordHistory.list', {
             schema: PasswordHistoryResponseSchema,
             type: EnumPaginationType.offset,
             availableOrderBy: PasswordHistoryDefaultAvailableOrderBy,

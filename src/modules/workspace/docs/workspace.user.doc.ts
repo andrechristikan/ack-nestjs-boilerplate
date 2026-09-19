@@ -1,10 +1,10 @@
 import {
     Doc,
     DocAuth,
-    DocOneOf,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponseError,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
@@ -35,17 +35,17 @@ import type { WorkspaceResponseDto } from '@modules/workspace/dtos/response/work
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 
-const NotFoundDoc = DocOneOf(HttpStatus.NOT_FOUND, {
+const NotFoundDoc = DocResponseError(HttpStatus.NOT_FOUND, {
     statusCode: EnumWorkspaceStatusCodeError.notFound,
     messagePath: 'workspace.error.notFound',
 });
 
-const MemberForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
+const MemberForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
     statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
     messagePath: 'workspace.error.memberForbidden',
 });
 
-const RoleForbiddenDoc = DocOneOf(HttpStatus.FORBIDDEN, {
+const RoleForbiddenDoc = DocResponseError(HttpStatus.FORBIDDEN, {
     statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
     messagePath: 'workspace.error.roleForbidden',
 });
@@ -54,7 +54,7 @@ export function WorkspaceUserListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'list workspaces the caller is a member of' }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocResponsePaging<WorkspaceResponseDto>('workspace.list', {
+        DocResponsePagination<WorkspaceResponseDto>('workspace.list', {
             schema: WorkspaceResponseSchema,
             type: EnumPaginationType.cursor,
             availableSearch: WorkspaceDefaultAvailableSearch,
@@ -70,7 +70,7 @@ export function WorkspaceUserCreateDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.capReached,
             messagePath: 'workspace.error.capReached',
         }),
@@ -138,7 +138,7 @@ export function WorkspaceUserUpdateSlugDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
             messagePath: 'workspace.error.slugAlreadyExists',
         }),
@@ -174,7 +174,7 @@ export function WorkspaceUserTransferOwnershipDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             messagePath: 'workspace.error.memberNotFound',
         }),
@@ -188,7 +188,7 @@ export function WorkspaceUserLeaveDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.lastOwner,
             messagePath: 'workspace.error.lastOwner',
         }),
@@ -214,7 +214,7 @@ export function WorkspaceMemberUserListDoc(): MethodDecorator {
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
         MemberForbiddenDoc,
-        DocResponsePaging<WorkspaceMemberResponseDto>('workspace.member.list', {
+        DocResponsePagination<WorkspaceMemberResponseDto>('workspace.member.list', {
             schema: WorkspaceMemberResponseSchema,
             type: EnumPaginationType.cursor,
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
@@ -233,11 +233,11 @@ export function WorkspaceMemberUserUpdateRoleDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             messagePath: 'workspace.error.memberNotFound',
         }),
-        DocOneOf(HttpStatus.FORBIDDEN, {
+        DocResponseError(HttpStatus.FORBIDDEN, {
             statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
             messagePath: 'workspace.error.memberPeerForbidden',
         }),
@@ -253,11 +253,11 @@ export function WorkspaceMemberUserRemoveDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             messagePath: 'workspace.error.memberNotFound',
         }),
-        DocOneOf(HttpStatus.FORBIDDEN, {
+        DocResponseError(HttpStatus.FORBIDDEN, {
             statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
             messagePath: 'workspace.error.memberPeerForbidden',
         }),
@@ -273,7 +273,7 @@ export function WorkspaceInviteUserListDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocResponsePaging<WorkspaceInviteResponseDto>('workspace.invite.list', {
+        DocResponsePagination<WorkspaceInviteResponseDto>('workspace.invite.list', {
             schema: WorkspaceInviteResponseSchema,
             type: EnumPaginationType.cursor,
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
@@ -295,15 +295,15 @@ export function WorkspaceInviteUserCreateDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
             messagePath: 'workspace.error.inviteDuplicate',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteProjectMismatch,
             messagePath: 'workspace.error.inviteProjectMismatch',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
             messagePath: 'workspace.error.inviteRoleRequired',
         }),
@@ -328,11 +328,11 @@ export function WorkspaceInviteUserResendDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
             messagePath: 'workspace.error.inviteNotFound',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
             messagePath: 'workspace.error.inviteAlreadyProcessed',
         }),
@@ -350,11 +350,11 @@ export function WorkspaceInviteUserRevokeDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
             messagePath: 'workspace.error.inviteNotFound',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
             messagePath: 'workspace.error.inviteAlreadyProcessed',
         }),
@@ -372,7 +372,7 @@ export function WorkspaceInviteUserClaimDoc(): MethodDecorator {
             bodyType: EnumDocRequestBodyType.json,
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
             messagePath: 'workspace.error.inviteInvalid',
         }),
@@ -391,15 +391,15 @@ export function WorkspaceJoinRequestUserCreateDoc(): MethodDecorator {
         }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         NotFoundDoc,
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.notPublic,
             messagePath: 'workspace.error.notPublic',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
             messagePath: 'workspace.error.joinRequestAlreadyMember',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
             messagePath: 'workspace.error.joinRequestDuplicate',
         }),
@@ -421,7 +421,7 @@ export function WorkspaceJoinRequestUserListDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocResponsePaging<WorkspaceJoinRequestResponseDto>(
+        DocResponsePagination<WorkspaceJoinRequestResponseDto>(
             'workspace.joinRequest.list',
             {
                 schema: WorkspaceJoinRequestResponseSchema,
@@ -443,11 +443,11 @@ export function WorkspaceJoinRequestUserAcceptDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
             messagePath: 'workspace.error.joinRequestNotFound',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode:
                 EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
             messagePath: 'workspace.error.joinRequestAlreadyProcessed',
@@ -467,11 +467,11 @@ export function WorkspaceJoinRequestUserRejectDoc(): MethodDecorator {
         NotFoundDoc,
         MemberForbiddenDoc,
         RoleForbiddenDoc,
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
             messagePath: 'workspace.error.joinRequestNotFound',
         }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode:
                 EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
             messagePath: 'workspace.error.joinRequestAlreadyProcessed',

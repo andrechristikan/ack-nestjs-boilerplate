@@ -6,7 +6,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -37,7 +37,7 @@ export function TermPolicyAdminListDoc(): MethodDecorator {
             role: true,
             termPolicy: true,
         }),
-        DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
+        DocResponsePagination<TermPolicyResponseDto>('termPolicy.list', {
             schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,

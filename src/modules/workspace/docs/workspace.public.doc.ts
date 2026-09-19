@@ -1,9 +1,9 @@
 import {
     Doc,
     DocAuth,
-    DocOneOf,
     DocRequest,
     DocResponse,
+    DocResponseError,
 } from '@common/doc/decorators/doc.decorator';
 import {
     WorkspaceDocParamsSlug,
@@ -24,7 +24,7 @@ export function WorkspacePublicInvitePreviewDoc(): MethodDecorator {
         }),
         DocRequest({ params: WorkspaceInviteTokenDocParamsId }),
         DocAuth({ xApiKey: true }),
-        DocOneOf(HttpStatus.BAD_REQUEST, {
+        DocResponseError(HttpStatus.BAD_REQUEST, {
             statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
             messagePath: 'workspace.error.inviteInvalid',
         }),
@@ -47,7 +47,7 @@ export function WorkspacePublicPreviewDoc(): MethodDecorator {
         }),
         DocRequest({ params: WorkspaceDocParamsSlug }),
         DocAuth({ xApiKey: true }),
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.notFound,
             messagePath: 'workspace.error.notFound',
         }),

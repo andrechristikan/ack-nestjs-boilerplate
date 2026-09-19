@@ -1,5 +1,5 @@
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DocDefault } from '@common/doc/decorators/doc.decorator';
+import { DocResponseError } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
@@ -19,64 +19,67 @@ export const DocContentTypeMapping = {
 } as const;
 
 /**
- * Error responses every documented endpoint can return: server error, timeout, validation and environment forbidden.
+ * Metadata key the doc primitives accumulate their documented response entries under, on the
+ * decorated method. Deliberately not `swagger/apiResponse`: the entries stored here are
+ * un-assembled records, not assembled `ApiResponse` entries.
  * @public
  */
-export const DocStandardErrorResponse = {
-    internalServerError: DocDefault({
-        httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+export const DocResponseEntryMetaKey = 'DocResponseEntryMetaKey';
+
+/**
+ * Error responses every documented endpoint can return: server error, timeout, validation,
+ * environment forbidden and rate limit.
+ * @public
+ */
+export const DocGlobalErrorResponses = {
+    internalServerError: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
         messagePath: 'http.serverError.internalServerError',
         statusCode: EnumAppStatusCodeError.unknown,
     }),
-    requestTimeout: DocDefault({
-        httpStatus: HttpStatus.REQUEST_TIMEOUT,
+    requestTimeout: DocResponseError(HttpStatus.REQUEST_TIMEOUT, {
         messagePath: 'http.serverError.requestTimeout',
         statusCode: EnumRequestStatusCodeError.timeout,
     }),
-    validationError: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    validationError: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumRequestStatusCodeError.validation,
         messagePath: 'request.error.validation',
     }),
-    envForbidden: DocDefault({
-        httpStatus: HttpStatus.FORBIDDEN,
+    envForbidden: DocResponseError(HttpStatus.FORBIDDEN, {
         statusCode: EnumRequestStatusCodeError.envForbidden,
         messagePath: 'http.clientError.forbidden',
+    }),
+    tooManyRequests: DocResponseError(HttpStatus.TOO_MANY_REQUESTS, {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        messagePath: 'http.429',
     }),
 } as const;
 
 /**
- * Pagination error responses shared by offset and cursor list endpoints.
+ * Pagination error responses every offset and cursor list endpoint can return.
  * @public
  */
-export const DocPaginationSharedErrorResponses = {
-    orderByNotAllowed: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+export const DocPaginationErrorResponses = {
+    orderByNotAllowed: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.orderByNotAllowed,
         messagePath: 'pagination.error.orderByNotAllowed',
     }),
-    orderDirectionNotAllowed: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    orderDirectionNotAllowed: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.orderDirectionNotAllowed,
         messagePath: 'pagination.error.orderDirectionNotAllowed',
     }),
-    filterInvalidValue: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    filterInvalidValue: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
         messagePath: 'pagination.error.filterInvalidValue',
     }),
-    invalidPerPage: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidPerPage: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidPerPage,
         messagePath: 'pagination.error.invalidPerPage',
     }),
-    perPageExceedsMaximum: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    perPageExceedsMaximum: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.perPageExceedsMaximum,
         messagePath: 'pagination.error.perPageExceedsMaximum',
     }),
-    perPageCannotBeLessThanOne: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    perPageCannotBeLessThanOne: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
         messagePath: 'pagination.error.perPageCannotBeLessThanOne',
     }),
@@ -87,38 +90,31 @@ export const DocPaginationSharedErrorResponses = {
  * @public
  */
 export const DocPaginationCursorErrorResponses = {
-    invalidCursorPaginationParams: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidCursorPaginationParams: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
         messagePath: 'pagination.error.invalidCursorPaginationParams',
     }),
-    cursorTooLong: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    cursorTooLong: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.cursorTooLong,
         messagePath: 'pagination.error.cursorTooLong',
     }),
-    invalidCursorFormat: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidCursorFormat: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
         messagePath: 'pagination.error.invalidCursorFormat',
     }),
-    invalidCursorData: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidCursorData: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidCursorData,
         messagePath: 'pagination.error.invalidCursorData',
     }),
-    failedToEncodeCursor: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    failedToEncodeCursor: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.failedToEncodeCursor,
         messagePath: 'pagination.error.failedToEncodeCursor',
     }),
-    failedToDecodeCursor: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    failedToDecodeCursor: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.failedToDecodeCursor,
         messagePath: 'pagination.error.failedToDecodeCursor',
     }),
-    paginationConditionsChanged: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    paginationConditionsChanged: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidCursorPaginationParams,
         messagePath: 'pagination.error.paginationConditionsChanged',
     }),
@@ -129,23 +125,19 @@ export const DocPaginationCursorErrorResponses = {
  * @public
  */
 export const DocPaginationOffsetErrorResponses = {
-    invalidOffsetPaginationParams: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidOffsetPaginationParams: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidOffsetPaginationParams,
         messagePath: 'pagination.error.invalidOffsetPaginationParams',
     }),
-    invalidPage: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    invalidPage: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.invalidPage,
         messagePath: 'pagination.error.invalidPage',
     }),
-    pageExceedsMaximum: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    pageExceedsMaximum: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.pageExceedsMaximum,
         messagePath: 'pagination.error.pageExceedsMaximum',
     }),
-    pageCannotBeLessThanOne: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    pageCannotBeLessThanOne: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         statusCode: EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
         messagePath: 'pagination.error.pageCannotBeLessThanOne',
     }),
@@ -156,48 +148,39 @@ export const DocPaginationOffsetErrorResponses = {
  * @public
  */
 export const DocFileErrorResponses = {
-    required: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    required: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.required',
         statusCode: EnumFileStatusCodeError.required,
     }),
-    extensionInvalid: DocDefault({
-        httpStatus: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    extensionInvalid: DocResponseError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, {
         messagePath: 'file.error.extensionInvalid',
         statusCode: EnumFileStatusCodeError.extensionInvalid,
     }),
-    requiredExtractFirst: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    requiredExtractFirst: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.requiredExtractFirst',
         statusCode: EnumFileStatusCodeError.requiredExtractFirst,
     }),
-    exceedMaxDataExport: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    exceedMaxDataExport: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.exceedMaxDataExport',
         statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
     }),
-    exceedMaxSizeExport: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    exceedMaxSizeExport: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.exceedMaxSizeExport',
         statusCode: EnumFileStatusCodeError.exceedMaxSizeExport,
     }),
-    exceedMaxSizeUpload: DocDefault({
-        httpStatus: HttpStatus.PAYLOAD_TOO_LARGE,
+    exceedMaxSizeUpload: DocResponseError(HttpStatus.PAYLOAD_TOO_LARGE, {
         messagePath: 'file.error.exceedMaxSizeUpload',
         statusCode: EnumFileStatusCodeError.exceedMaxSizeUpload,
     }),
-    exceedMaxFiles: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    exceedMaxFiles: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.exceedMaxFiles',
         statusCode: EnumFileStatusCodeError.exceedMaxFiles,
     }),
-    fieldUnexpected: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    fieldUnexpected: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.fieldUnexpected',
         statusCode: EnumFileStatusCodeError.fieldUnexpected,
     }),
-    multipartInvalid: DocDefault({
-        httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+    multipartInvalid: DocResponseError(HttpStatus.UNPROCESSABLE_ENTITY, {
         messagePath: 'file.error.multipartInvalid',
         statusCode: EnumFileStatusCodeError.multipartInvalid,
     }),

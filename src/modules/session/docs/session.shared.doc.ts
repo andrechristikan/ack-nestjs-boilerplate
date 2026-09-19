@@ -5,7 +5,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { SessionResponseDto } from '@modules/session/dtos/response/session.response.dto';
@@ -23,7 +23,7 @@ export function SessionSharedListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<SessionResponseDto>('session.list', {
+        DocResponsePagination<SessionResponseDto>('session.list', {
             schema: SessionResponseSchema,
             availableOrderBy: SessionCursorAvailableOrderBy,
             type: EnumPaginationType.cursor,

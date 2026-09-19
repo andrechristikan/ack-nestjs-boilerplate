@@ -4,7 +4,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -26,7 +26,7 @@ export function NotificationSharedListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<NotificationResponseDto>('notification.list', {
+        DocResponsePagination<NotificationResponseDto>('notification.list', {
             schema: NotificationResponseSchema,
             availableOrderBy: NotificationDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,

@@ -17,21 +17,24 @@ export interface IDocOptions {
 }
 
 /**
- * One documented response variant for `DocOneOf`, `DocAnyOf` and `DocAllOf`: status code, message path and optional schema.
+ * One documented response variant for `DocResponseError`: status code, message path and optional schema.
  * @public
  */
-export interface IDocOfOptions<T = unknown> {
+export interface IDocResponseErrorOptions<T = unknown> {
     statusCode: number;
     messagePath: string;
     schema?: z.ZodType<T>;
 }
 
 /**
- * Options of `DocDefault`: a documented response variant plus its HTTP status.
+ * One accumulated response entry on the decorated method: a documented response variant, its HTTP
+ * status, and the envelope its schema extends. `envelope` defaults to `ResponseSchema`; a paginated
+ * entry passes `ResponsePagingSchema`.
  * @public
  */
-export interface IDocDefaultOptions<T = unknown> extends IDocOfOptions<T> {
+export interface IDocResponseEntry<T = unknown> extends IDocResponseErrorOptions<T> {
     httpStatus: HttpStatus;
+    envelope?: z.ZodObject;
 }
 
 /**
@@ -68,10 +71,11 @@ export interface IDocRequestFileOptions<T = unknown> extends Omit<
 }
 
 /**
- * Options of `DocGuard`: which policy, role and term-policy guards the endpoint documents.
+ * Options of `DocGuard`: which user, policy, role and term-policy guards the endpoint documents.
  * @public
  */
 export interface IDocGuardOptions {
+    user?: boolean;
     policy?: boolean;
     role?: boolean;
     termPolicy?: boolean;
@@ -88,10 +92,10 @@ export interface IDocResponseOptions<T = unknown> {
 }
 
 /**
- * Options of `DocResponsePaging`: item schema, pagination type, and the search and sort allow-lists.
+ * Options of `DocResponsePagination`: item schema, pagination type, and the search and sort allow-lists.
  * @public
  */
-export interface IDocResponsePagingOptions<
+export interface IDocResponsePaginationOptions<
     T = unknown,
 > extends IDocResponseOptions<T> {
     schema: z.ZodType<T>;

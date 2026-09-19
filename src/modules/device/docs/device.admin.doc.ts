@@ -5,7 +5,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { UserDocParamsId } from '@modules/user/constants/user.doc.constant';
@@ -31,7 +31,7 @@ export function DeviceAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<DeviceOwnershipResponseDto>('device.list', {
+        DocResponsePagination<DeviceOwnershipResponseDto>('device.list', {
             schema: DeviceOwnershipResponseSchema,
             availableOrderBy: DeviceDefaultAvailableOrderBy,
             type: EnumPaginationType.offset,

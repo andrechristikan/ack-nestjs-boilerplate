@@ -7,7 +7,7 @@ import {
     DocRequestFile,
     DocResponse,
     DocResponseFile,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 import type { UserListResponseDto } from '@modules/user/dtos/response/user.list.response.dto';
@@ -41,7 +41,7 @@ export function UserAdminListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<UserListResponseDto>('user.list', {
+        DocResponsePagination<UserListResponseDto>('user.list', {
             schema: UserListResponseSchema,
             availableSearch: UserDefaultAvailableSearch,
             availableOrderBy: UserDefaultAvailableOrderBy,

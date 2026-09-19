@@ -4,7 +4,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -35,7 +35,7 @@ export function RoleAdminListDoc(): MethodDecorator {
             queries: RoleDocQueryList,
         }),
         DocGuard({ role: true, policy: true, termPolicy: true }),
-        DocResponsePaging<RoleListResponseDto>('role.list', {
+        DocResponsePagination<RoleListResponseDto>('role.list', {
             schema: RoleListResponseSchema,
             availableSearch: RoleDefaultAvailableSearch,
             availableOrderBy: RoleDefaultAvailableOrderBy,

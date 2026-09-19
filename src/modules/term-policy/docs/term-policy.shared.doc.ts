@@ -4,7 +4,7 @@ import {
     DocGuard,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumDocRequestBodyType } from '@common/doc/enums/doc.enum';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -23,7 +23,7 @@ export function TermPolicySharedListAcceptedDoc(): MethodDecorator {
             xApiKey: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<TermPolicyUserAcceptanceResponseDto>(
+        DocResponsePagination<TermPolicyUserAcceptanceResponseDto>(
             'termPolicy.accepted',
             {
                 schema: TermPolicyUserAcceptanceResponseSchema,

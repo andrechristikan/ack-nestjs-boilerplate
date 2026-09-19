@@ -3,7 +3,7 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { PasswordHistoryCursorAvailableOrderBy } from '@modules/password-history/constants/password-history.list.constant';
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
@@ -20,7 +20,7 @@ export function PasswordHistorySharedListDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ termPolicy: true }),
-        DocResponsePaging<PasswordHistoryResponseDto>('passwordHistory.list', {
+        DocResponsePagination<PasswordHistoryResponseDto>('passwordHistory.list', {
             schema: PasswordHistoryResponseSchema,
             type: EnumPaginationType.cursor,
             availableOrderBy: PasswordHistoryCursorAvailableOrderBy,

@@ -3,7 +3,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
-    DocResponsePaging,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import type { TermPolicyResponseDto } from '@modules/term-policy/dtos/response/term-policy.response.dto';
@@ -22,7 +22,7 @@ export function TermPolicyPublicListDoc(): MethodDecorator {
         DocAuth({
             xApiKey: true,
         }),
-        DocResponsePaging<TermPolicyResponseDto>('termPolicy.list', {
+        DocResponsePagination<TermPolicyResponseDto>('termPolicy.list', {
             schema: TermPolicyResponseSchema,
             availableOrderBy: TermPolicyDefaultAvailableOrderBy,
             type: EnumPaginationType.cursor,

@@ -2,10 +2,10 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocOneOf,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponseError,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -30,7 +30,7 @@ export function ProjectAdminListDoc(): MethodDecorator {
         DocRequest({ queries: ProjectAdminListDocQueries }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
-        DocResponsePaging<ProjectResponseDto>('project.admin.list', {
+        DocResponsePagination<ProjectResponseDto>('project.admin.list', {
             schema: ProjectResponseSchema,
             availableSearch: ProjectDefaultAvailableSearch,
             availableOrderBy: ProjectDefaultAvailableOrderBy,
@@ -48,7 +48,7 @@ export function ProjectAdminGetDoc(): MethodDecorator {
         DocRequest({ params: ProjectDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumProjectStatusCodeError.notFound,
             messagePath: 'project.error.notFound',
         }),

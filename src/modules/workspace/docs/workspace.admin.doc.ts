@@ -2,10 +2,10 @@ import {
     Doc,
     DocAuth,
     DocGuard,
-    DocOneOf,
     DocRequest,
     DocResponse,
-    DocResponsePaging,
+    DocResponseError,
+    DocResponsePagination,
 } from '@common/doc/decorators/doc.decorator';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -30,7 +30,7 @@ export function WorkspaceAdminListDoc(): MethodDecorator {
         DocRequest({ queries: WorkspaceDocQueryList }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
-        DocResponsePaging<WorkspaceResponseDto>('workspace.admin.list', {
+        DocResponsePagination<WorkspaceResponseDto>('workspace.admin.list', {
             schema: WorkspaceResponseSchema,
             type: EnumPaginationType.offset,
             availableSearch: WorkspaceDefaultAvailableSearch,
@@ -48,7 +48,7 @@ export function WorkspaceAdminGetDoc(): MethodDecorator {
         DocRequest({ params: WorkspaceDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.notFound,
             messagePath: 'workspace.error.notFound',
         }),
@@ -64,11 +64,11 @@ export function WorkspaceAdminMemberListDoc(): MethodDecorator {
         DocRequest({ params: WorkspaceDocParamsId }),
         DocAuth({ xApiKey: true, jwtAccessToken: true }),
         DocGuard({ role: true }),
-        DocOneOf(HttpStatus.NOT_FOUND, {
+        DocResponseError(HttpStatus.NOT_FOUND, {
             statusCode: EnumWorkspaceStatusCodeError.notFound,
             messagePath: 'workspace.error.notFound',
         }),
-        DocResponsePaging<WorkspaceMemberResponseDto>(
+        DocResponsePagination<WorkspaceMemberResponseDto>(
             'workspace.admin.member.list',
             {
                 schema: WorkspaceMemberResponseSchema,

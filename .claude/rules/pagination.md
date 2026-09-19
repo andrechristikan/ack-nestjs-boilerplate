@@ -56,9 +56,16 @@ Available decorators: `PaginationOffsetQuery` · `PaginationCursorQuery` · `Pag
 
 **Set one wherever the endpoint has a defensible sort order or a real search column — and leave it out where it does not.** A device list, a join-request list, or a member list whose searchable identity lives on the joined `user` has nothing worth a `contains` search. An allow-list added so a field is non-empty is speculative generality.
 
-**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePaging` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
+**The Swagger doc factory imports the SAME constant the controller does.** `DocResponsePagination` documents the `search` query param only when it receives `availableSearch`, and the `orderBy` param only when it receives `availableOrderBy` — so a route whose doc omits them advertises nothing while the pipe still accepts the value. Both sides use the identical option names and the identical constant; **never inline a literal array into a `*.doc.ts`.** Two copies of one allow-list drift apart silently: the route keeps accepting the value while its doc advertises nothing, and neither `tsc` nor a test sees the gap.
 
-**`DocResponsePaging` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
+**An `availableOrderBy` names keys the returned row carries, and the layer that pages the rows
+applies them.** A key absent from the response schema is not sortable and does not belong in the
+allow-list, and a list assembled in memory sorts before it slices. `PaginationDefaultOrderBy`
+(`createdAt desc`) reaches the pager on every request that omits `orderBy`, whatever the
+allow-list holds, so an in-memory sort applies only the terms whose key the row declares and
+leaves the order it was given when none survives.
+
+**`DocResponsePagination` also requires `type`** — `EnumPaginationType.offset` or `.cursor`, matching the route's query decorator. It is a required field, so a block that omits it does not compile. Every paginated route has a strategy; there is no meaningful default, and a silent fallback would let a route mis-document itself with no compile error and no runtime signal.
 
 ## Two protections, and only one of them is the allow-lists
 
