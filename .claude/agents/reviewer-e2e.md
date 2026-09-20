@@ -96,7 +96,7 @@ Every HTTP request crosses them whether or not the change touched them:
   `ActivityLogInterceptor` (`activity-log.domain.module.ts`, flushes staged activity), and the
   Sentry SDK's tracing interceptor (`SentryModule`). The response interceptor that reads `metadata`
   off the returned envelope is route-local, mounted by `@Response()` /
-  `@ResponsePaging()` / `@ResponseFile()`, not an `APP_INTERCEPTOR`.
+  `@ResponsePagination()` / `@ResponseFile()`, not an `APP_INTERCEPTOR`.
 - **The route-local guard stack**, bottom-up: api key → JWT → feature flag → user status →
   workspace → project → role → policy → term policy. The order is exact
   (`rules/http.md`).

@@ -29,7 +29,7 @@ export interface IResponseReturn<T = unknown> {
     data?: T;
 }
 
-export type IResponsePagingReturn<T> = (
+export type IResponsePaginationReturn<T> = (
     IPaginationOffsetReturn<T> | IPaginationCursorReturn<T>
 ) & {
     metadata?: IResponseMetadata;

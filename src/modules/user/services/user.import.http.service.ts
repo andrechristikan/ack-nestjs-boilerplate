@@ -4,11 +4,16 @@ import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
+import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
+import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
@@ -23,7 +28,9 @@ export class UserImportHttpService {
         private readonly userImportDomain: UserImportDomain,
         private readonly userOnboardingDomain: UserOnboardingDomain,
         private readonly workspaceDomain: WorkspaceDomain,
-        private readonly fileService: FileService
+        private readonly fileService: FileService,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async importByAdmin(
@@ -56,14 +63,33 @@ export class UserImportHttpService {
     }
 
     async exportByAdmin(
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
+        const status = this.paginationQueryUtil.inEnum(
+            'status',
+            query.status,
+            UserDefaultStatus
+        );
+        const roleId = this.paginationQueryUtil.equalString(
+            'roleId',
+            query.roleId
+        );
+        const countryId = this.paginationQueryUtil.equalString(
+            'countryId',
+            query.countryId
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            filters: {
+                ...(status?.storeFilter ?? {}),
+                ...(roleId?.storeFilter ?? {}),
+                ...(countryId?.storeFilter ?? {}),
+            },
+        });
+
         const data = await this.userImportDomain.exportByAdmin(
-            status,
-            roleId,
-            countryId
+            status?.where as Record<string, IPaginationIn> | undefined,
+            roleId?.where as Record<string, IPaginationEqual> | undefined,
+            countryId?.where as Record<string, IPaginationEqual> | undefined
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({

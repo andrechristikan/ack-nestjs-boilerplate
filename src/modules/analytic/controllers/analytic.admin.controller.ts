@@ -1,3 +1,42 @@
+import { AnalyticWorkspacesMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic-workspaces-membership-list.request.dto';
+import type { AnalyticWorkspacesMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-membership-list.request.dto';
+import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic-workspaces-activity-volume-list.request.dto';
+import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-activity-volume-list.request.dto';
+import { AnalyticProjectsMembershipListRequestSchema } from '@modules/analytic/dtos/request/analytic-projects-membership-list.request.dto';
+import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-projects-membership-list.request.dto';
+import { AnalyticCredentialStuffingListRequestSchema } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
+import { AnalyticAccountTakeoverListRequestSchema } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
+import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
+import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
+import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
+import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
+import { AnalyticSharedFingerprintListRequestSchema } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
+import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
+import { AnalyticSessionAfterAdminListRequestSchema } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
+import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
+import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
+import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
+import { AnalyticRefreshSpikeListRequestSchema } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
+import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
+import { AnalyticBackupCodeNewDeviceListRequestSchema } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
+import { AnalyticApiKeyBurstListRequestSchema } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
+import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
+import { AnalyticFraudRiskScoresListRequestSchema } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
+import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
+import { AnalyticImpossibleTravelListRequestSchema } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
+import type { AnalyticImpossibleTravelListRequestDto } from '@modules/analytic/dtos/request/analytic-impossible-travel-list.request.dto';
+import { AnalyticLoginSpikeIpListRequestSchema } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
+import type { AnalyticLoginSpikeIpListRequestDto } from '@modules/analytic/dtos/request/analytic-login-spike-ip-list.request.dto';
+import { AnalyticNearLockoutListRequestSchema } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
+import type { AnalyticNearLockoutListRequestDto } from '@modules/analytic/dtos/request/analytic-near-lockout-list.request.dto';
+import { AnalyticDeviceProliferationListRequestSchema } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
+import type { AnalyticDeviceProliferationListRequestDto } from '@modules/analytic/dtos/request/analytic-device-proliferation-list.request.dto';
+import { AnalyticLoginTimeAnomalyListRequestSchema } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
+import type { AnalyticLoginTimeAnomalyListRequestDto } from '@modules/analytic/dtos/request/analytic-login-time-anomaly-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import type {
     IAnalyticAccountTakeover,
     IAnalyticAnomalySummary,
@@ -38,13 +77,13 @@ import type {
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import { AnalyticApiKeyActiveExpiredResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-active-expired.response.dto';
 import { AnalyticApiKeyLifecycleResponseSchema } from '@modules/analytic/dtos/response/analytic.api-key-lifecycle.response.dto';
 import { AnalyticBlockedUsersResponseSchema } from '@modules/analytic/dtos/response/analytic.blocked-users.response.dto';
@@ -67,95 +106,9 @@ import { AnalyticVerificationFunnelResponseSchema } from '@modules/analytic/dtos
 import { AnalyticWorkspaceCountResponseSchema } from '@modules/analytic/dtos/response/analytic.workspace-count.response.dto';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    AnalyticAdminAnomalyDeviceProliferationDoc,
-    AnalyticAdminAnomalyDeviceProliferationListDoc,
-    AnalyticAdminAnomalyFailedLoginSpikeDoc,
-    AnalyticAdminAnomalyFailedLoginSpikeListDoc,
-    AnalyticAdminAnomalyImpossibleTravelDoc,
-    AnalyticAdminAnomalyImpossibleTravelListDoc,
-    AnalyticAdminAnomalyLoginSpikeIpDoc,
-    AnalyticAdminAnomalyLoginSpikeIpListDoc,
-    AnalyticAdminAnomalyLoginTimeDoc,
-    AnalyticAdminAnomalyLoginTimeListDoc,
-    AnalyticAdminApiKeysActiveExpiredDoc,
-    AnalyticAdminApiKeysLifecycleDoc,
-    AnalyticAdminApiKeysTypeMixDoc,
-    AnalyticAdminAuthAdminForcePasswordDoc,
-    AnalyticAdminAuthBackupCodeRegenerationDoc,
-    AnalyticAdminAuthConcurrentSessionsDoc,
-    AnalyticAdminAuthForgotPasswordConversionDoc,
-    AnalyticAdminAuthLockoutDoc,
-    AnalyticAdminAuthLoginFrequencyDoc,
-    AnalyticAdminAuthLoginMethodDoc,
-    AnalyticAdminAuthLoginSourceDoc,
-    AnalyticAdminAuthLogoutRateDoc,
-    AnalyticAdminAuthPasswordChangeDoc,
-    AnalyticAdminAuthPasswordExpiryDoc,
-    AnalyticAdminAuthRefreshTokenVolumeDoc,
-    AnalyticAdminAuthSessionRevokeDoc,
-    AnalyticAdminAuthSessionsGeoDoc,
-    AnalyticAdminAuthSessionsUserAgentDoc,
-    AnalyticAdminAuthTwoFactorAdminResetDoc,
-    AnalyticAdminAuthTwoFactorAdoptionDoc,
-    AnalyticAdminAuthTwoFactorAttemptDoc,
-    AnalyticAdminAuthTwoFactorVerifySuccessDoc,
-    AnalyticAdminAuthVerificationFunnelDoc,
-    AnalyticAdminDevicesInactivityDoc,
-    AnalyticAdminDevicesInfoRefreshDoc,
-    AnalyticAdminDevicesPerUserDoc,
-    AnalyticAdminDevicesPlatformDoc,
-    AnalyticAdminDevicesPushTokenDoc,
-    AnalyticAdminDevicesRegistrationDoc,
-    AnalyticAdminDevicesSessionRatioDoc,
-    AnalyticAdminFraudAccountTakeoverDoc,
-    AnalyticAdminFraudAccountTakeoverListDoc,
-    AnalyticAdminFraudApiKeyBurstDoc,
-    AnalyticAdminFraudApiKeyBurstListDoc,
-    AnalyticAdminFraudBackupCodeNewDeviceDoc,
-    AnalyticAdminFraudBackupCodeNewDeviceListDoc,
-    AnalyticAdminFraudCredentialStuffingDoc,
-    AnalyticAdminFraudCredentialStuffingListDoc,
-    AnalyticAdminFraudForgotPasswordTokenAbuseDoc,
-    AnalyticAdminFraudForgotPasswordTokenAbuseListDoc,
-    AnalyticAdminFraudMassRegistrationDoc,
-    AnalyticAdminFraudMassRegistrationListDoc,
-    AnalyticAdminFraudPasswordResetEnumerationDoc,
-    AnalyticAdminFraudPasswordResetEnumerationListDoc,
-    AnalyticAdminFraudRefreshSpikeDoc,
-    AnalyticAdminFraudRefreshSpikeListDoc,
-    AnalyticAdminFraudRiskScoreDoc,
-    AnalyticAdminFraudRiskScoresDoc,
-    AnalyticAdminFraudSessionAfterAdminDoc,
-    AnalyticAdminFraudSessionAfterAdminListDoc,
-    AnalyticAdminFraudSharedFingerprintDoc,
-    AnalyticAdminFraudSharedFingerprintListDoc,
-    AnalyticAdminProjectsCreationDoc,
-    AnalyticAdminProjectsMembershipDoc,
-    AnalyticAdminTermPoliciesAcceptanceRateDoc,
-    AnalyticAdminTermPoliciesTimeToAcceptDoc,
-    AnalyticAdminUsersBlockedDoc,
-    AnalyticAdminUsersChurnDoc,
-    AnalyticAdminUsersClaimUsernameDoc,
-    AnalyticAdminUsersCountryDistributionDoc,
-    AnalyticAdminUsersEmailVerificationDoc,
-    AnalyticAdminUsersMobileChurnDoc,
-    AnalyticAdminUsersMobileVerificationDoc,
-    AnalyticAdminUsersRegistrationsDoc,
-    AnalyticAdminUsersRoleDistributionDoc,
-    AnalyticAdminUsersSelfDeleteDoc,
-    AnalyticAdminUsersSignUpFromDoc,
-    AnalyticAdminUsersSignUpWithDoc,
-    AnalyticAdminUsersStatusDistributionDoc,
-    AnalyticAdminWorkspacesActivityVolumeDoc,
-    AnalyticAdminWorkspacesCreationDoc,
-    AnalyticAdminWorkspacesInviteFunnelDoc,
-    AnalyticAdminWorkspacesJoinOutcomesDoc,
-    AnalyticAdminWorkspacesMembershipDoc,
-    AnalyticAdminWorkspacesVisibilityDoc,
-} from '@modules/analytic/docs/analytic.admin.doc';
+
 import { AnalyticDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import type { AnalyticDateRangeRequestDto } from '@modules/analytic/dtos/request/analytic.date-range.request.dto';
 import { AnalyticOptionalDateRangeRequestSchema } from '@modules/analytic/dtos/request/analytic.optional-date-range.request.dto';
@@ -173,28 +126,11 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import { AnalyticFraudSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-summary.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
-import {
-    AnalyticAccountTakeoverAvailableOrderBy,
-    AnalyticBackupCodeNewDeviceAvailableOrderBy,
-    AnalyticCredentialStuffingAvailableOrderBy,
-    AnalyticDeviceProliferationAvailableOrderBy,
-    AnalyticForgotPasswordAbuseAvailableOrderBy,
-    AnalyticFraudRiskScoreAvailableOrderBy,
-    AnalyticImpossibleTravelAvailableOrderBy,
-    AnalyticKeyCountAvailableOrderBy,
-    AnalyticLoginSpikeIpAvailableOrderBy,
-    AnalyticLoginTimeAnomalyAvailableOrderBy,
-    AnalyticNearLockoutAvailableOrderBy,
-    AnalyticSessionAfterAdminAvailableOrderBy,
-    AnalyticSharedFingerprintAvailableOrderBy,
-    AnalyticUserCountAvailableOrderBy,
-} from '@modules/analytic/constants/analytic.list.constant';
-import { AnalyticFraudRiskScoresRequestSchema } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
-import type { AnalyticFraudRiskScoresRequestDto } from '@modules/analytic/dtos/request/analytic.fraud-risk-scores.request.dto';
+
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
@@ -227,7 +163,7 @@ export class AnalyticAdminController {
         private readonly analyticAnomalyHttpService: AnalyticAnomalyHttpService
     ) {}
 
-    @AnalyticAdminUsersRegistrationsDoc()
+    @Doc({ summary: 'admin get user registration count by date range' })
     @Response('analytic.usersRegistrations', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -252,7 +188,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersChurnDoc()
+    @Doc({ summary: 'admin get user churn rate by date range' })
     @Response('analytic.usersChurn', {
         schema: AnalyticMetricRateResponseSchema,
     })
@@ -277,7 +213,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersBlockedDoc()
+    @Doc({ summary: 'admin get blocked user counts by date range' })
     @Response('analytic.usersBlocked', {
         schema: AnalyticBlockedUsersResponseSchema,
     })
@@ -302,7 +238,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersSignUpWithDoc()
+    @Doc({ summary: 'admin get user sign up method distribution' })
     @Response('analytic.usersSignUpWith', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -327,7 +263,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersSignUpFromDoc()
+    @Doc({ summary: 'admin get user sign up source distribution' })
     @Response('analytic.usersSignUpFrom', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -352,7 +288,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersEmailVerificationDoc()
+    @Doc({ summary: 'admin get user email verification rate' })
     @Response('analytic.usersEmailVerification', {
         schema: AnalyticMetricRateResponseSchema,
     })
@@ -377,7 +313,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersMobileVerificationDoc()
+    @Doc({ summary: 'admin get user mobile verification rate' })
     @Response('analytic.usersMobileVerification', {
         schema: AnalyticMetricRateResponseSchema,
     })
@@ -402,7 +338,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersStatusDistributionDoc()
+    @Doc({ summary: 'admin get user status distribution' })
     @Response('analytic.usersStatusDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -423,7 +359,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.usersStatusDistribution();
     }
 
-    @AnalyticAdminUsersCountryDistributionDoc()
+    @Doc({ summary: 'admin get user country distribution' })
     @Response('analytic.usersCountryDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -444,7 +380,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.usersCountryDistribution();
     }
 
-    @AnalyticAdminUsersRoleDistributionDoc()
+    @Doc({ summary: 'admin get user role distribution' })
     @Response('analytic.usersRoleDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -465,7 +401,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.usersRoleDistribution();
     }
 
-    @AnalyticAdminUsersSelfDeleteDoc()
+    @Doc({ summary: 'admin get user self delete count by date range' })
     @Response('analytic.usersSelfDelete', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -490,7 +426,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersClaimUsernameDoc()
+    @Doc({ summary: 'admin get username claim count by date range' })
     @Response('analytic.usersClaimUsername', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -515,7 +451,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminUsersMobileChurnDoc()
+    @Doc({ summary: 'admin get user mobile number churn by date range' })
     @Response('analytic.usersMobileChurn', {
         schema: AnalyticMobileChurnResponseSchema,
     })
@@ -540,7 +476,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthLoginFrequencyDoc()
+    @Doc({ summary: 'admin get login frequency by date range' })
     @Response('analytic.authLoginFrequency', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -565,7 +501,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthLoginMethodDoc()
+    @Doc({ summary: 'admin get login method distribution' })
     @Response('analytic.authLoginMethod', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -590,7 +526,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthLoginSourceDoc()
+    @Doc({ summary: 'admin get login source distribution' })
     @Response('analytic.authLoginSource', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -615,7 +551,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthLockoutDoc()
+    @Doc({ summary: 'admin get account lockout metrics by date range' })
     @Response('analytic.authLockout', {
         schema: AnalyticLockoutResponseSchema,
     })
@@ -640,7 +576,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthSessionRevokeDoc()
+    @Doc({ summary: 'admin get session revoke count by date range' })
     @Response('analytic.authSessionRevoke', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -665,7 +601,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthConcurrentSessionsDoc()
+    @Doc({ summary: 'admin get concurrent session distribution' })
     @Response('analytic.authConcurrentSessions', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -686,7 +622,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.authConcurrentSessions();
     }
 
-    @AnalyticAdminAuthSessionsGeoDoc()
+    @Doc({ summary: 'admin get session country distribution' })
     @Response('analytic.authSessionsGeo', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -711,7 +647,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthSessionsUserAgentDoc()
+    @Doc({ summary: 'admin get session user agent distribution' })
     @Response('analytic.authSessionsUserAgent', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -736,7 +672,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthRefreshTokenVolumeDoc()
+    @Doc({ summary: 'admin get refresh token volume by date range' })
     @Response('analytic.authRefreshTokenVolume', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -761,7 +697,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthLogoutRateDoc()
+    @Doc({ summary: 'admin get logout count by date range' })
     @Response('analytic.authLogoutRate', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -786,7 +722,10 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthVerificationFunnelDoc()
+    @Doc({
+        summary:
+            'admin get email and mobile verification funnels by date range',
+    })
     @Response('analytic.authVerificationFunnel', {
         schema: AnalyticVerificationFunnelResponseSchema,
     })
@@ -811,7 +750,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthPasswordExpiryDoc()
+    @Doc({ summary: 'admin get password expiry snapshot' })
     @Response('analytic.authPasswordExpiry', {
         schema: AnalyticPasswordExpiryResponseSchema,
     })
@@ -832,7 +771,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.authPasswordExpiry();
     }
 
-    @AnalyticAdminAuthPasswordChangeDoc()
+    @Doc({ summary: 'admin get password change count by date range' })
     @Response('analytic.authPasswordChange', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -857,7 +796,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthForgotPasswordConversionDoc()
+    @Doc({ summary: 'admin get forgot password conversion by date range' })
     @Response('analytic.authForgotPasswordConversion', {
         schema: AnalyticForgotPasswordConversionResponseSchema,
     })
@@ -882,7 +821,9 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthAdminForcePasswordDoc()
+    @Doc({
+        summary: 'admin get admin forced password change count by date range',
+    })
     @Response('analytic.authAdminForcePassword', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -907,7 +848,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthTwoFactorAdoptionDoc()
+    @Doc({ summary: 'admin get two factor adoption snapshot' })
     @Response('analytic.authTwoFactorAdoption', {
         schema: AnalyticTwoFactorAdoptionResponseSchema,
     })
@@ -928,7 +869,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.authTwoFactorAdoption();
     }
 
-    @AnalyticAdminAuthTwoFactorAdminResetDoc()
+    @Doc({ summary: 'admin get admin two factor reset count by date range' })
     @Response('analytic.authTwoFactorAdminReset', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -953,7 +894,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthTwoFactorVerifySuccessDoc()
+    @Doc({ summary: 'admin get two factor verify success count by date range' })
     @Response('analytic.authTwoFactorVerifySuccess', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -978,7 +919,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthBackupCodeRegenerationDoc()
+    @Doc({ summary: 'admin get backup code regeneration count by date range' })
     @Response('analytic.authBackupCodeRegeneration', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -1003,7 +944,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAuthTwoFactorAttemptDoc()
+    @Doc({ summary: 'admin get two factor attempt snapshot' })
     @Response('analytic.authTwoFactorAttempt', {
         schema: AnalyticTwoFactorAttemptResponseSchema,
     })
@@ -1024,7 +965,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.authTwoFactorAttempt();
     }
 
-    @AnalyticAdminDevicesRegistrationDoc()
+    @Doc({ summary: 'admin get device registration count by date range' })
     @Response('analytic.devicesRegistration', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -1049,7 +990,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminDevicesPlatformDoc()
+    @Doc({ summary: 'admin get device platform distribution' })
     @Response('analytic.devicesPlatform', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -1068,7 +1009,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.devicesPlatform();
     }
 
-    @AnalyticAdminDevicesPushTokenDoc()
+    @Doc({ summary: 'admin get device push token coverage rate' })
     @Response('analytic.devicesPushToken', {
         schema: AnalyticMetricRateResponseSchema,
     })
@@ -1087,7 +1028,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.devicesPushToken();
     }
 
-    @AnalyticAdminDevicesInfoRefreshDoc()
+    @Doc({ summary: 'admin get device info refresh count by date range' })
     @Response('analytic.devicesInfoRefresh', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -1112,7 +1053,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminDevicesSessionRatioDoc()
+    @Doc({ summary: 'admin get session to device ratio' })
     @Response('analytic.devicesSessionRatio', {
         schema: AnalyticSessionDeviceRatioResponseSchema,
     })
@@ -1133,7 +1074,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.devicesSessionRatio();
     }
 
-    @AnalyticAdminDevicesPerUserDoc()
+    @Doc({ summary: 'admin get device per user distribution' })
     @Response('analytic.devicesPerUser', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -1152,7 +1093,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.devicesPerUser();
     }
 
-    @AnalyticAdminDevicesInactivityDoc()
+    @Doc({ summary: 'admin get inactive device count' })
     @Response('analytic.devicesInactivity', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -1171,7 +1112,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.devicesInactivity();
     }
 
-    @AnalyticAdminApiKeysLifecycleDoc()
+    @Doc({ summary: 'admin get api key lifecycle counts by date range' })
     @Response('analytic.apiKeysLifecycle', {
         schema: AnalyticApiKeyLifecycleResponseSchema,
     })
@@ -1196,7 +1137,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminApiKeysActiveExpiredDoc()
+    @Doc({ summary: 'admin get active and expired api key counts' })
     @Response('analytic.apiKeysActiveExpired', {
         schema: AnalyticApiKeyActiveExpiredResponseSchema,
     })
@@ -1217,7 +1158,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.apiKeysActiveExpired();
     }
 
-    @AnalyticAdminApiKeysTypeMixDoc()
+    @Doc({ summary: 'admin get api key type distribution' })
     @Response('analytic.apiKeysTypeMix', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -1236,7 +1177,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.apiKeysTypeMix();
     }
 
-    @AnalyticAdminTermPoliciesAcceptanceRateDoc()
+    @Doc({ summary: 'admin get term policy acceptance rate' })
     @Response('analytic.termPoliciesAcceptanceRate', {
         schema: AnalyticTermPolicyAcceptanceRateResponseSchema,
     })
@@ -1261,7 +1202,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminTermPoliciesTimeToAcceptDoc()
+    @Doc({ summary: 'admin get term policy time to accept' })
     @Response('analytic.termPoliciesTimeToAccept', {
         schema: AnalyticTermPolicyTimeToAcceptResponseSchema,
     })
@@ -1286,7 +1227,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminWorkspacesCreationDoc()
+    @Doc({ summary: 'admin get workspace creation count by date range' })
     @Response('analytic.workspacesCreation', {
         schema: AnalyticMetricCountResponseSchema,
     })
@@ -1311,7 +1252,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminWorkspacesVisibilityDoc()
+    @Doc({ summary: 'admin get workspace visibility distribution' })
     @Response('analytic.workspacesVisibility', {
         schema: AnalyticBucketsResponseSchema,
     })
@@ -1332,7 +1273,7 @@ export class AnalyticAdminController {
         return this.analyticDashboardHttpService.workspacesVisibility();
     }
 
-    @AnalyticAdminWorkspacesInviteFunnelDoc()
+    @Doc({ summary: 'admin get workspace invite funnel by date range' })
     @Response('analytic.workspacesInviteFunnel', {
         schema: AnalyticStatusCountResponseSchema,
     })
@@ -1357,7 +1298,7 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminWorkspacesJoinOutcomesDoc()
+    @Doc({ summary: 'admin get workspace join request outcomes by date range' })
     @Response('analytic.workspacesJoinOutcomes', {
         schema: AnalyticStatusCountResponseSchema,
     })
@@ -1382,8 +1323,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminWorkspacesMembershipDoc()
-    @ResponsePaging('analytic.workspacesMembership', {
+    @Doc({ summary: 'admin get member counts per workspace' })
+    @ResponsePagination('analytic.workspacesMembership', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1398,16 +1339,14 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/workspaces/membership')
     async workspacesMembership(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
-        return this.analyticDashboardHttpService.workspacesMembership(
-            pagination
-        );
+        @Query({ schema: AnalyticWorkspacesMembershipListRequestSchema })
+        query: AnalyticWorkspacesMembershipListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
+        return this.analyticDashboardHttpService.workspacesMembership(query);
     }
 
-    @AnalyticAdminWorkspacesActivityVolumeDoc()
-    @ResponsePaging('analytic.workspacesActivityVolume', {
+    @Doc({ summary: 'admin get activity volume per workspace by date range' })
+    @ResponsePagination('analytic.workspacesActivityVolume', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1422,19 +1361,15 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/workspaces/activity-volume')
     async workspacesActivityVolume(
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto,
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        @Query({ schema: AnalyticWorkspacesActivityVolumeListRequestSchema })
+        query: AnalyticWorkspacesActivityVolumeListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return this.analyticDashboardHttpService.workspacesActivityVolume(
-            pagination,
-            query.startDate,
-            query.endDate
+            query
         );
     }
 
-    @AnalyticAdminProjectsCreationDoc()
+    @Doc({ summary: 'admin get project creation counts by date range' })
     @Response('analytic.projectsCreation', {
         schema: AnalyticProjectCreationResponseSchema,
     })
@@ -1459,8 +1394,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminProjectsMembershipDoc()
-    @ResponsePaging('analytic.projectsMembership', {
+    @Doc({ summary: 'admin get member counts per project' })
+    @ResponsePagination('analytic.projectsMembership', {
         schema: AnalyticProjectCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1475,13 +1410,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/projects/membership')
     async projectsMembership(
-        @PaginationOffsetQuery()
-        pagination: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
-        return this.analyticDashboardHttpService.projectsMembership(pagination);
+        @Query({ schema: AnalyticProjectsMembershipListRequestSchema })
+        query: AnalyticProjectsMembershipListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
+        return this.analyticDashboardHttpService.projectsMembership(query);
     }
 
-    @AnalyticAdminFraudCredentialStuffingDoc()
+    @Doc({ summary: 'admin get credential stuffing fraud summary' })
     @Response('analytic.fraudCredentialStuffing', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1505,8 +1440,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudCredentialStuffingListDoc()
-    @ResponsePaging('analytic.fraudCredentialStuffingList', {
+    @Doc({ summary: 'admin get all credential stuffing fraud detections' })
+    @ResponsePagination('analytic.fraudCredentialStuffingList', {
         schema: AnalyticCredentialStuffingResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1521,20 +1456,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/credential-stuffing/list')
     async credentialStuffingList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticCredentialStuffingAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticCredentialStuffing>> {
-        return this.analyticFraudHttpService.credentialStuffingList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticCredentialStuffingListRequestSchema })
+        query: AnalyticCredentialStuffingListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
+        return this.analyticFraudHttpService.credentialStuffingList(query);
     }
 
-    @AnalyticAdminFraudAccountTakeoverDoc()
+    @Doc({ summary: 'admin get account takeover fraud summary' })
     @Response('analytic.fraudAccountTakeover', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1559,8 +1487,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudAccountTakeoverListDoc()
-    @ResponsePaging('analytic.fraudAccountTakeoverList', {
+    @Doc({ summary: 'admin get all account takeover fraud detections' })
+    @ResponsePagination('analytic.fraudAccountTakeoverList', {
         schema: AnalyticAccountTakeoverResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1575,21 +1503,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/account-takeover/list')
     async accountTakeoverList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticAccountTakeover>> {
-        return this.analyticFraudHttpService.accountTakeoverList(
-            query.startDate,
-            query.endDate,
-            pagination
-        );
+        @Query({ schema: AnalyticAccountTakeoverListRequestSchema })
+        query: AnalyticAccountTakeoverListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
+        return this.analyticFraudHttpService.accountTakeoverList(query);
     }
 
-    @AnalyticAdminFraudMassRegistrationDoc()
+    @Doc({ summary: 'admin get mass registration fraud summary' })
     @Response('analytic.fraudMassRegistration', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1613,8 +1533,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudMassRegistrationListDoc()
-    @ResponsePaging('analytic.fraudMassRegistrationList', {
+    @Doc({ summary: 'admin get all mass registration fraud detections' })
+    @ResponsePagination('analytic.fraudMassRegistrationList', {
         schema: AnalyticKeyCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1629,20 +1549,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/mass-registration/list')
     async massRegistrationList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticMassRegistration>> {
-        return this.analyticFraudHttpService.massRegistrationList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticMassRegistrationListRequestSchema })
+        query: AnalyticMassRegistrationListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
+        return this.analyticFraudHttpService.massRegistrationList(query);
     }
 
-    @AnalyticAdminFraudPasswordResetEnumerationDoc()
+    @Doc({ summary: 'admin get password reset enumeration fraud summary' })
     @Response('analytic.fraudPasswordResetEnumeration', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1666,8 +1579,10 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudPasswordResetEnumerationListDoc()
-    @ResponsePaging('analytic.fraudPasswordResetEnumerationList', {
+    @Doc({
+        summary: 'admin get all password reset enumeration fraud detections',
+    })
+    @ResponsePagination('analytic.fraudPasswordResetEnumerationList', {
         schema: AnalyticKeyCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1682,20 +1597,15 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/password-reset-enumeration/list')
     async passwordResetEnumerationList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticKeyCountAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticPasswordResetEnumeration>> {
+        @Query({ schema: AnalyticPasswordResetEnumerationListRequestSchema })
+        query: AnalyticPasswordResetEnumerationListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         return this.analyticFraudHttpService.passwordResetEnumerationList(
-            query.windowMs,
-            pagination
+            query
         );
     }
 
-    @AnalyticAdminFraudSharedFingerprintDoc()
+    @Doc({ summary: 'admin get shared device fingerprint fraud summary' })
     @Response('analytic.fraudSharedFingerprint', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1714,8 +1624,10 @@ export class AnalyticAdminController {
         return this.analyticFraudHttpService.sharedFingerprintSummary();
     }
 
-    @AnalyticAdminFraudSharedFingerprintListDoc()
-    @ResponsePaging('analytic.fraudSharedFingerprintList', {
+    @Doc({
+        summary: 'admin get all shared device fingerprint fraud detections',
+    })
+    @ResponsePagination('analytic.fraudSharedFingerprintList', {
         schema: AnalyticSharedFingerprintResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1730,15 +1642,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/shared-fingerprint/list')
     async sharedFingerprintList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticSharedFingerprint>> {
-        return this.analyticFraudHttpService.sharedFingerprintList(pagination);
+        @Query({ schema: AnalyticSharedFingerprintListRequestSchema })
+        query: AnalyticSharedFingerprintListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
+        return this.analyticFraudHttpService.sharedFingerprintList(query);
     }
 
-    @AnalyticAdminFraudSessionAfterAdminDoc()
+    @Doc({ summary: 'admin get session after admin action fraud summary' })
     @Response('analytic.fraudSessionAfterAdmin', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1763,8 +1673,10 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudSessionAfterAdminListDoc()
-    @ResponsePaging('analytic.fraudSessionAfterAdminList', {
+    @Doc({
+        summary: 'admin get all session after admin action fraud detections',
+    })
+    @ResponsePagination('analytic.fraudSessionAfterAdminList', {
         schema: AnalyticSessionAfterAdminResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1779,21 +1691,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/session-after-admin/list')
     async sessionAfterAdminList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticDateRangeRequestSchema })
-        query: AnalyticDateRangeRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdmin>> {
-        return this.analyticFraudHttpService.sessionAfterAdminList(
-            query.startDate,
-            query.endDate,
-            pagination
-        );
+        @Query({ schema: AnalyticSessionAfterAdminListRequestSchema })
+        query: AnalyticSessionAfterAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
+        return this.analyticFraudHttpService.sessionAfterAdminList(query);
     }
 
-    @AnalyticAdminFraudForgotPasswordTokenAbuseDoc()
+    @Doc({ summary: 'admin get forgot password token abuse fraud summary' })
     @Response('analytic.fraudForgotPasswordTokenAbuse', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1817,8 +1721,10 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudForgotPasswordTokenAbuseListDoc()
-    @ResponsePaging('analytic.fraudForgotPasswordTokenAbuseList', {
+    @Doc({
+        summary: 'admin get all forgot password token abuse fraud detections',
+    })
+    @ResponsePagination('analytic.fraudForgotPasswordTokenAbuseList', {
         schema: AnalyticForgotPasswordAbuseResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1833,20 +1739,15 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/forgot-password-token-abuse/list')
     async forgotPasswordTokenAbuseList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticForgotPasswordAbuseAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticForgotPasswordAbuse>> {
+        @Query({ schema: AnalyticForgotPasswordAbuseListRequestSchema })
+        query: AnalyticForgotPasswordAbuseListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         return this.analyticFraudHttpService.forgotPasswordTokenAbuseList(
-            query.windowMs,
-            pagination
+            query
         );
     }
 
-    @AnalyticAdminFraudRefreshSpikeDoc()
+    @Doc({ summary: 'admin get refresh token spike fraud summary' })
     @Response('analytic.fraudRefreshSpike', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1870,8 +1771,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudRefreshSpikeListDoc()
-    @ResponsePaging('analytic.fraudRefreshSpikeList', {
+    @Doc({ summary: 'admin get all refresh token spike fraud detections' })
+    @ResponsePagination('analytic.fraudRefreshSpikeList', {
         schema: AnalyticUserCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1886,20 +1787,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/refresh-spike/list')
     async refreshSpikeList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticUserCountAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticRefreshSpike>> {
-        return this.analyticFraudHttpService.refreshSpikeList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticRefreshSpikeListRequestSchema })
+        query: AnalyticRefreshSpikeListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
+        return this.analyticFraudHttpService.refreshSpikeList(query);
     }
 
-    @AnalyticAdminFraudBackupCodeNewDeviceDoc()
+    @Doc({ summary: 'admin get backup code on new device fraud summary' })
     @Response('analytic.fraudBackupCodeNewDevice', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1923,8 +1817,10 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminFraudBackupCodeNewDeviceListDoc()
-    @ResponsePaging('analytic.fraudBackupCodeNewDeviceList', {
+    @Doc({
+        summary: 'admin get all backup code on new device fraud detections',
+    })
+    @ResponsePagination('analytic.fraudBackupCodeNewDeviceList', {
         schema: AnalyticBackupCodeNewDeviceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1939,20 +1835,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/backup-code-new-device/list')
     async backupCodeNewDeviceList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticBackupCodeNewDeviceAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticBackupCodeNewDevice>> {
-        return this.analyticFraudHttpService.backupCodeNewDeviceList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticBackupCodeNewDeviceListRequestSchema })
+        query: AnalyticBackupCodeNewDeviceListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
+        return this.analyticFraudHttpService.backupCodeNewDeviceList(query);
     }
 
-    @AnalyticAdminFraudApiKeyBurstDoc()
+    @Doc({ summary: 'admin get api key burst fraud summary' })
     @Response('analytic.fraudApiKeyBurst', {
         schema: AnalyticFraudSummaryResponseSchema,
     })
@@ -1974,8 +1863,8 @@ export class AnalyticAdminController {
         return this.analyticFraudHttpService.apiKeyBurstSummary(query.windowMs);
     }
 
-    @AnalyticAdminFraudApiKeyBurstListDoc()
-    @ResponsePaging('analytic.fraudApiKeyBurstList', {
+    @Doc({ summary: 'admin get all api key burst fraud detections' })
+    @ResponsePagination('analytic.fraudApiKeyBurstList', {
         schema: AnalyticUserCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -1990,20 +1879,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/api-key-burst/list')
     async apiKeyBurstList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticUserCountAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticApiKeyBurst>> {
-        return this.analyticFraudHttpService.apiKeyBurstList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticApiKeyBurstListRequestSchema })
+        query: AnalyticApiKeyBurstListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
+        return this.analyticFraudHttpService.apiKeyBurstList(query);
     }
 
-    @AnalyticAdminFraudRiskScoreDoc()
+    @Doc({ summary: 'admin get fraud risk score of a user (report-only)' })
     @Response('analytic.fraudRiskScore', {
         schema: AnalyticFraudRiskScoreResponseSchema,
     })
@@ -2025,8 +1907,8 @@ export class AnalyticAdminController {
         return this.analyticFraudHttpService.riskScore(userId);
     }
 
-    @AnalyticAdminFraudRiskScoresDoc()
-    @ResponsePaging('analytic.fraudRiskScores', {
+    @Doc({ summary: 'admin get all user fraud risk scores' })
+    @ResponsePagination('analytic.fraudRiskScores', {
         schema: AnalyticFraudRiskScoreResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2041,20 +1923,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/fraud/risk-scores')
     async riskScores(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        @Query({ schema: AnalyticFraudRiskScoresRequestSchema })
-        query: AnalyticFraudRiskScoresRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticFraudRiskScore>> {
-        return this.analyticFraudHttpService.riskScores(
-            query.minScore,
-            pagination
-        );
+        @Query({ schema: AnalyticFraudRiskScoresListRequestSchema })
+        query: AnalyticFraudRiskScoresListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
+        return this.analyticFraudHttpService.riskScores(query);
     }
 
-    @AnalyticAdminAnomalyImpossibleTravelDoc()
+    @Doc({ summary: 'admin get impossible travel anomaly summary' })
     @Response('analytic.anomalyImpossibleTravel', {
         schema: AnalyticAnomalySummaryResponseSchema,
     })
@@ -2079,8 +1954,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAnomalyImpossibleTravelListDoc()
-    @ResponsePaging('analytic.anomalyImpossibleTravelList', {
+    @Doc({ summary: 'admin get all impossible travel anomaly detections' })
+    @ResponsePagination('analytic.anomalyImpossibleTravelList', {
         schema: AnalyticImpossibleTravelResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2095,21 +1970,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/impossible-travel/list')
     async impossibleTravelList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticImpossibleTravelAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
-        return this.analyticAnomalyHttpService.impossibleTravelList(
-            query.startDate,
-            query.endDate,
-            pagination
-        );
+        @Query({ schema: AnalyticImpossibleTravelListRequestSchema })
+        query: AnalyticImpossibleTravelListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
+        return this.analyticAnomalyHttpService.impossibleTravelList(query);
     }
 
-    @AnalyticAdminAnomalyLoginSpikeIpDoc()
+    @Doc({ summary: 'admin get login spike by ip anomaly summary' })
     @Response('analytic.anomalyLoginSpikeIp', {
         schema: AnalyticAnomalySummaryResponseSchema,
     })
@@ -2133,8 +2000,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAnomalyLoginSpikeIpListDoc()
-    @ResponsePaging('analytic.anomalyLoginSpikeIpList', {
+    @Doc({ summary: 'admin get all login spike by ip anomaly detections' })
+    @ResponsePagination('analytic.anomalyLoginSpikeIpList', {
         schema: AnalyticLoginSpikeIpResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2149,20 +2016,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/login-spike-ip/list')
     async loginSpikeIpList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticLoginSpikeIpAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticWindowRequestSchema })
-        query: AnalyticWindowRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIp>> {
-        return this.analyticAnomalyHttpService.loginSpikeIpList(
-            query.windowMs,
-            pagination
-        );
+        @Query({ schema: AnalyticLoginSpikeIpListRequestSchema })
+        query: AnalyticLoginSpikeIpListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
+        return this.analyticAnomalyHttpService.loginSpikeIpList(query);
     }
 
-    @AnalyticAdminAnomalyFailedLoginSpikeDoc()
+    @Doc({ summary: 'admin get failed login spike anomaly summary' })
     @Response('analytic.anomalyFailedLoginSpike', {
         schema: AnalyticAnomalySummaryResponseSchema,
     })
@@ -2183,8 +2043,8 @@ export class AnalyticAdminController {
         return this.analyticAnomalyHttpService.failedLoginSpikeSummary();
     }
 
-    @AnalyticAdminAnomalyFailedLoginSpikeListDoc()
-    @ResponsePaging('analytic.anomalyFailedLoginSpikeList', {
+    @Doc({ summary: 'admin get all failed login spike anomaly detections' })
+    @ResponsePagination('analytic.anomalyFailedLoginSpikeList', {
         schema: AnalyticNearLockoutResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2199,15 +2059,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/failed-login-spike/list')
     async failedLoginSpikeList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticNearLockoutAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
-        return this.analyticAnomalyHttpService.failedLoginSpikeList(pagination);
+        @Query({ schema: AnalyticNearLockoutListRequestSchema })
+        query: AnalyticNearLockoutListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
+        return this.analyticAnomalyHttpService.failedLoginSpikeList(query);
     }
 
-    @AnalyticAdminAnomalyDeviceProliferationDoc()
+    @Doc({ summary: 'admin get device proliferation anomaly summary' })
     @Response('analytic.anomalyDeviceProliferation', {
         schema: AnalyticAnomalySummaryResponseSchema,
     })
@@ -2228,8 +2086,8 @@ export class AnalyticAdminController {
         return this.analyticAnomalyHttpService.deviceProliferationSummary();
     }
 
-    @AnalyticAdminAnomalyDeviceProliferationListDoc()
-    @ResponsePaging('analytic.anomalyDeviceProliferationList', {
+    @Doc({ summary: 'admin get all device proliferation anomaly detections' })
+    @ResponsePagination('analytic.anomalyDeviceProliferationList', {
         schema: AnalyticDeviceProliferationResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2244,17 +2102,13 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/device-proliferation/list')
     async deviceProliferationList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticDeviceProliferationAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferation>> {
-        return this.analyticAnomalyHttpService.deviceProliferationList(
-            pagination
-        );
+        @Query({ schema: AnalyticDeviceProliferationListRequestSchema })
+        query: AnalyticDeviceProliferationListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
+        return this.analyticAnomalyHttpService.deviceProliferationList(query);
     }
 
-    @AnalyticAdminAnomalyLoginTimeDoc()
+    @Doc({ summary: 'admin get login time anomaly summary' })
     @Response('analytic.anomalyLoginTime', {
         schema: AnalyticAnomalySummaryResponseSchema,
     })
@@ -2279,8 +2133,8 @@ export class AnalyticAdminController {
         );
     }
 
-    @AnalyticAdminAnomalyLoginTimeListDoc()
-    @ResponsePaging('analytic.anomalyLoginTimeList', {
+    @Doc({ summary: 'admin get all login time anomaly detections' })
+    @ResponsePagination('analytic.anomalyLoginTimeList', {
         schema: AnalyticLoginTimeAnomalyResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -2295,17 +2149,9 @@ export class AnalyticAdminController {
     @RequestThrottle({ user: true })
     @Get('/anomaly/login-time/list')
     async loginTimeList(
-        @PaginationOffsetQuery({
-            availableOrderBy: AnalyticLoginTimeAnomalyAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
-        query: AnalyticOptionalDateRangeRequestDto
-    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
-        return this.analyticAnomalyHttpService.loginTimeList(
-            query.startDate,
-            query.endDate,
-            pagination
-        );
+        @Query({ schema: AnalyticLoginTimeAnomalyListRequestSchema })
+        query: AnalyticLoginTimeAnomalyListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
+        return this.analyticAnomalyHttpService.loginTimeList(query);
     }
 }

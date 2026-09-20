@@ -40,7 +40,7 @@ Constraint when changing this surface: `rules/http.md` (Swagger section).
   - [DocGuard](#docguard)
 - [Published errors](#published-errors)
   - [DocResponseError](#docresponseerror)
-  - [Accumulation shape](#accumulation-shape)
+  - [DocResponseError shape](#docresponseerror-shape)
 - [Swagger JSON](#swagger-json)
 - [Schema Documentation](#schema-documentation)
   - [.meta()](#meta)
@@ -417,11 +417,11 @@ A module marked `@Global()` changes nothing about this. Its errors reach the kit
 
 ### DocResponseError
 
-`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one status. Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema`). Kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts` (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, and related groups).
+`DocResponseError(httpStatus, ...entries)` is the kit emitter for non-success responses of one status. Each entry is a `statusCode` plus its i18n `messagePath` (and optional `schema`). Common kit `DocResponseError` calls live in `src/common/doc/constants/doc.constant.ts` (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`, and related groups). Module `*Protected` / auth kits live as `Doc<Module>ErrorResponses` in that module's `constants/<module>.constant.ts`. Each entry is a bare `DocResponseError(...)` MethodDecorator — never a pre-composed `applyDecorators` blob.
 
-### Accumulation shape
+### DocResponseError shape
 
-Every primitive that documents errors goes through `accumulateResponseEntries` on the decorated method and re-emits that status in full, so entries from different primitives at one status compose instead of replacing each other. Order inside `applyDecorators` does not change what the endpoint documents. Deduping key is `httpStatus:statusCode:messagePath`.
+Every primitive that documents responses goes through `DocResponseError` on the decorated method and re-emits that status in full, so entries from different primitives at one status compose instead of replacing each other. Order inside `applyDecorators` does not change what the endpoint documents. Deduping key is `httpStatus:statusCode:messagePath`.
 
 - One entry at a status emits a plain schema with field examples.
 - Two or more emit one shared response-envelope schema plus named OpenAPI `examples` keyed by `messagePath`, each value the full envelope (`statusCode`, `message`, `metadata`).

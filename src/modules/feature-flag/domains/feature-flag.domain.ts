@@ -2,7 +2,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
@@ -124,7 +124,7 @@ export class FeatureFlagDomain {
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
             pagination
         );
@@ -132,7 +132,7 @@ export class FeatureFlagDomain {
 
     async getListCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
     }
 

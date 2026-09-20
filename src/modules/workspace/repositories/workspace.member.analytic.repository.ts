@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
     IAnalyticRoleCount,
@@ -37,7 +37,7 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
 
     async membershipDistributionOffset(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const { where, skip, limit } = params;
         const scopedWhere = where ?? {};
 

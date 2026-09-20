@@ -1,3 +1,8 @@
+import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
+import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
+import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
+import { UserExportRequestSchema } from '@modules/user/dtos/request/user.export.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     Body,
     Controller,
@@ -8,14 +13,17 @@ import {
     Patch,
     Post,
     Put,
+    Query,
     UploadedFile,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
     ResponseFile,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
 import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
@@ -26,52 +34,29 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import type {
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
+
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    PaginationOffsetQuery,
-    PaginationQueryFilterEqualString,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import {
-    UserDefaultAvailableOrderBy,
-    UserDefaultAvailableSearch,
-    UserDefaultStatus,
-} from '@modules/user/constants/user.list.constant';
-import type {
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
 import type {
     IResponseFileReturn,
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserAdminCreateDoc,
-    UserAdminExportDoc,
-    UserAdminGetDoc,
-    UserAdminImportDoc,
-    UserAdminListDoc,
-    UserAdminResetTwoFactorDoc,
-    UserAdminUpdatePasswordDoc,
-    UserAdminUpdateStatusDoc,
-} from '@modules/user/docs/user.admin.doc';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
@@ -80,6 +65,7 @@ import {
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
+
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -105,8 +91,8 @@ export class UserAdminController {
         private readonly userImportHttpService: UserImportHttpService
     ) {}
 
-    @UserAdminListDoc()
-    @ResponsePaging('user.list', { schema: UserListResponseSchema })
+    @Doc({ summary: 'get all users' })
+    @ResponsePagination('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -119,30 +105,12 @@ export class UserAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: UserDefaultAvailableSearch,
-            availableOrderBy: UserDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        @PaginationQueryFilterInEnum<EnumUserStatus>(
-            'status',
-            UserDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('roleId')
-        roleId?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('countryId')
-        countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUserList>> {
-        return this.userHttpService.getListOffsetByAdmin(
-            pagination,
-            status,
-            roleId,
-            countryId
-        );
+        @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+    ): Promise<IResponsePaginationReturn<IUserList>> {
+        return this.userHttpService.getListOffsetByAdmin(query);
     }
 
-    @UserAdminGetDoc()
+    @Doc({ summary: 'get detail an user' })
     @Response('user.get', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -162,7 +130,7 @@ export class UserAdminController {
         return this.userHttpService.getOne(userId);
     }
 
-    @UserAdminCreateDoc()
+    @Doc({ summary: 'create a user' })
     @Response('user.create', { schema: DatabaseIdResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -183,7 +151,7 @@ export class UserAdminController {
         return this.userHttpService.createByAdmin(body, createdBy);
     }
 
-    @UserAdminUpdateStatusDoc()
+    @Doc({ summary: 'update status of user' })
     @Response('user.updateStatus')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -210,7 +178,7 @@ export class UserAdminController {
         );
     }
 
-    @UserAdminUpdatePasswordDoc()
+    @Doc({ summary: 'update password of user' })
     @Response('user.updatePassword')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -234,7 +202,7 @@ export class UserAdminController {
         );
     }
 
-    @UserAdminResetTwoFactorDoc()
+    @Doc({ summary: 'Reset user' })
     @Response('user.twoFactor.resetByAdmin')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -258,7 +226,7 @@ export class UserAdminController {
         );
     }
 
-    @UserAdminImportDoc()
+    @Doc({ summary: 'import users via csv file' })
     @Response('user.import')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -290,7 +258,7 @@ export class UserAdminController {
         await this.userImportHttpService.importByAdmin(data, createdBy);
     }
 
-    @UserAdminExportDoc()
+    @Doc({ summary: 'export users via csv file' })
     @ResponseFile()
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -305,20 +273,9 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(
-        @PaginationQueryFilterInEnum<EnumUserStatus>(
-            'status',
-            UserDefaultStatus
-        )
-        status?: Record<string, IPaginationIn>,
-        @PaginationQueryFilterEqualString('roleId')
-        roleId?: Record<string, IPaginationEqual>,
-        @PaginationQueryFilterEqualString('countryId')
-        countryId?: Record<string, IPaginationEqual>
+        @Query({ schema: UserExportRequestSchema })
+        query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        return this.userImportHttpService.exportByAdmin(
-            status,
-            roleId,
-            countryId
-        );
+        return this.userImportHttpService.exportByAdmin(query);
     }
 }

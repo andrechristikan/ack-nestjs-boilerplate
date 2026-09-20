@@ -1,9 +1,14 @@
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import type { Prisma } from '@generated/prisma-client/client';
+import type { AnalyticWorkspacesMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-membership-list.request.dto';
+import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic-workspaces-activity-volume-list.request.dto';
+import type { AnalyticProjectsMembershipListRequestDto } from '@modules/analytic/dtos/request/analytic-projects-membership-list.request.dto';
 import { AnalyticDashboardDomain } from '@modules/analytic/domains/analytic.dashboard.domain';
 import type {
     IAnalyticApiKeyActiveExpired,
@@ -34,7 +39,9 @@ import { Injectable } from '@nestjs/common';
 export class AnalyticDashboardHttpService {
     constructor(
         private readonly analyticDashboardDomain: AnalyticDashboardDomain,
-        private readonly analyticDateDomain: AnalyticDateDomain
+        private readonly analyticDateDomain: AnalyticDateDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async usersRegistrations(
@@ -702,19 +709,30 @@ export class AnalyticDashboardHttpService {
     }
 
     async workspacesMembership(
-        params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        query: AnalyticWorkspacesMembershipListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.WorkspaceMemberWhereInput>(
+                query,
+                {}
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticDashboardDomain.workspacesMembership(params);
     }
 
     async workspacesActivityVolume(
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
-        startDate?: Date,
-        endDate?: Date
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+        query: AnalyticWorkspacesActivityVolumeListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {}
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
+            (query.startDate as Date | undefined) ?? null,
+            (query.endDate as Date | undefined) ?? null
         );
 
         return this.analyticDashboardDomain.workspacesActivityVolume(
@@ -741,8 +759,15 @@ export class AnalyticDashboardHttpService {
     }
 
     async projectsMembership(
-        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
+        query: AnalyticProjectsMembershipListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ProjectMemberWhereInput>(
+                query,
+                {}
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticDashboardDomain.projectsMembership(params);
     }
 }

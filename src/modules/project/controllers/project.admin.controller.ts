@@ -1,33 +1,29 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
+import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import type { Project } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import {
-    ProjectDefaultAvailableOrderBy,
-    ProjectDefaultAvailableSearch,
-} from '@modules/project/constants/project.list.constant';
-import {
-    ProjectAdminGetDoc,
-    ProjectAdminListDoc,
-} from '@modules/project/docs/project.admin.doc';
+
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
@@ -44,8 +40,11 @@ import { ApiTags } from '@nestjs/swagger';
 export class ProjectAdminController {
     constructor(private readonly projectHttpService: ProjectHttpService) {}
 
-    @ProjectAdminListDoc()
-    @ResponsePaging('project.admin.list', {
+    @Doc({
+        summary:
+            'admin list all projects (read-only); optional workspaceId filter',
+    })
+    @ResponsePagination('project.admin.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -60,18 +59,15 @@ export class ProjectAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: ProjectDefaultAvailableSearch,
-            availableOrderBy: ProjectDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        @Query('workspaceId', { schema: RequestMongoIdSchema.optional() })
-        workspaceId?: string
-    ): Promise<IResponsePagingReturn<Project>> {
-        return this.projectHttpService.getListForAdmin(pagination, workspaceId);
+        @Query({ schema: ProjectAdminListRequestSchema })
+        query: ProjectAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<Project>> {
+        return this.projectHttpService.getListForAdmin(query);
     }
 
-    @ProjectAdminGetDoc()
+    @Doc({
+        summary: 'admin get a project by id (read-only, includes soft-deleted)',
+    })
     @Response('project.admin.get', {
         schema: ProjectResponseSchema,
     })

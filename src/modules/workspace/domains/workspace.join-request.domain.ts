@@ -5,7 +5,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceJoinRejectReason,
@@ -179,7 +179,7 @@ export class WorkspaceJoinRequestDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
+    ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(

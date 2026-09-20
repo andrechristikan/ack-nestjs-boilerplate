@@ -1,6 +1,6 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogAnalyticDomain } from '@modules/activity-log/domains/activity-log.analytic.domain';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import type {
@@ -815,7 +815,7 @@ export class AnalyticDashboardDomain {
 
     workspacesMembership(
         params: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const token = this.pageToken(params);
         const metric = `workspaces.membership:${token}`;
 
@@ -830,7 +830,7 @@ export class AnalyticDashboardDomain {
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticWorkspaceCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const token = this.pageToken(params);
         const metric = `workspaces.activity:${token}`;
 
@@ -854,7 +854,7 @@ export class AnalyticDashboardDomain {
 
     projectsMembership(
         params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticProjectCount>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const token = this.pageToken(params);
         const metric = `projects.membership:${token}`;
 

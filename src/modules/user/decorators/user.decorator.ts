@@ -1,4 +1,5 @@
 import {
+    DocUserErrorResponses,
     UserGuardIsVerifiedMetaKey,
     UserStoreKey,
 } from '@modules/user/constants/user.constant';
@@ -15,12 +16,15 @@ import { RequestContextMissingException } from '@common/request/exceptions/reque
 
 /**
  * Applies the user guard; pass `false` to skip the email-verified requirement.
+ * Documents user kits without `auth.error.accessTokenUnauthorized`.
  * @public
  */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
-        SetMetadata(UserGuardIsVerifiedMetaKey, isVerified)
+        SetMetadata(UserGuardIsVerifiedMetaKey, isVerified),
+        DocUserErrorResponses.unauthorized,
+        DocUserErrorResponses.forbidden
     );
 }
 

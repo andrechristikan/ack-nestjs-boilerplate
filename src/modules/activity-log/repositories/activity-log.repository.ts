@@ -6,7 +6,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IActivityLog,
     IActivityLogCreate,
@@ -53,7 +53,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildUserScopedWhere(userId, where);
 
         return this.paginationService.offset<
@@ -100,7 +100,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>> {
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             userId,

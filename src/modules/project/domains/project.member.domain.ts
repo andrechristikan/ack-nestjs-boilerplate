@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
@@ -110,7 +110,7 @@ export class ProjectMemberDomain {
     async getMembersList(
         project: Project,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
+    ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.projectMemberRepository.findWithPaginationCursor(
             project.id,
             pagination

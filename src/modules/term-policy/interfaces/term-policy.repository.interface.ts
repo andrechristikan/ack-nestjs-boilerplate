@@ -4,7 +4,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
@@ -26,21 +26,21 @@ export interface ITermPolicyRepository {
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>>;
+    ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>>;
+    ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findUserAccepted(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
-    ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>>;
+    ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
     findOneById(termPolicyId: string): Promise<TermPolicy | null>;
     findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;

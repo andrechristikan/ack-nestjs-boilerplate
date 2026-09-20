@@ -5,7 +5,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
     IRoleCreate,
@@ -31,7 +31,7 @@ export class RoleRepository implements IRoleRepository {
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.offset<
             IRoleWithPolicyCount,
             Prisma.RoleWhereInput
@@ -51,7 +51,7 @@ export class RoleRepository implements IRoleRepository {
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.paginationService.cursor<
             IRoleWithPolicyCount,
             Prisma.RoleWhereInput

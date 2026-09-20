@@ -5,7 +5,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
@@ -99,7 +99,7 @@ export class ProjectDomain {
         workspaceId: string,
         workspaceMember: WorkspaceMember,
         pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
-    ): Promise<IResponsePagingReturn<Project>> {
+    ): Promise<IResponsePaginationReturn<Project>> {
         const isWorkspaceOwner =
             this.projectUtil.isWorkspaceOwner(workspaceMember);
         const memberUserId = isWorkspaceOwner ? null : workspaceMember.userId;
@@ -230,7 +230,7 @@ export class ProjectDomain {
     async getListForAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
-    ): Promise<IResponsePagingReturn<Project>> {
+    ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetForAdmin(
             pagination,
             workspaceId

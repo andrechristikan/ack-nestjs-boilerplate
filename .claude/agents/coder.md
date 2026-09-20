@@ -30,11 +30,12 @@ You never write `src/` without a red spec first. A dispatch does not grant an ex
 neither do you.
 
 The TDD spec is a **unit** spec (`rules/testing.md`). Do not write an integration spec, an
-e2e spec, or a load test. Controllers, processors, repositories, contracts and Swagger
-doc factories (`*.doc.ts`) are outside the coverage set. Do not write a spec for those
-layers. When the behaviour lives on a domain, the TDD subject is that domain class. A
-repository's place in the cycle is the double in that domain spec. A contract row is the
-`src/` that turns the consumer spec green. A seed has no TDD cycle.
+e2e spec, or a load test. Controllers, processors, repositories, contracts, and OpenAPI
+composition on `@Doc` / `@Response*` / `*Protected` / `FileUpload*` are outside the coverage
+set. Do not write a spec for those layers. When the behaviour lives on a domain, the TDD
+subject is that domain class. A repository's place in the cycle is the double in that domain
+spec. A contract row is the `src/` that turns the consumer spec green. A seed has no TDD
+cycle.
 
 ## The dispatch is the SCOPE (HARD)
 

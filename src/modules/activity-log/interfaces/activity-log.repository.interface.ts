@@ -3,7 +3,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IActivityLog,
     IActivityLogCreate,
@@ -17,7 +17,7 @@ export interface IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>>;
+    ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findUserScopedWithPaginationCursor(
         userId: string,
         {
@@ -32,7 +32,7 @@ export interface IActivityLogRepository {
             where,
             ...params
         }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IActivityLog>>;
+    ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findByWorkspaceWithPaginationCursor(
         workspaceId: string,
         userId: string | null,

@@ -4,7 +4,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { AuthJwtAccessTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-access-token-invalid.exception';
@@ -57,7 +57,7 @@ export class TermPolicyAcceptanceDomain {
     async getListUserAccepted(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
-    ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+    ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         return this.termPolicyRepository.findUserAccepted(userId, pagination);
     }
 

@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumNotificationChannel,
@@ -37,7 +37,7 @@ export class NotificationDomain {
     async getListCursor(
         userId: string,
         pagination: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<Notification>> {
+    ): Promise<IResponsePaginationReturn<Notification>> {
         return this.notificationRepository.findWithPaginationCursor(
             userId,
             pagination

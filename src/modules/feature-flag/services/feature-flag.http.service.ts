@@ -1,13 +1,18 @@
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
+import {
+    FeatureFlagDefaultAvailableOrderBy,
+    FeatureFlagDefaultAvailableSearch,
+} from '@modules/feature-flag/constants/feature-flag.list.constant';
+import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
+import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
@@ -15,13 +20,27 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class FeatureFlagHttpService {
-    constructor(private readonly featureFlagDomain: FeatureFlagDomain) {}
+    constructor(
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+        query: FeatureFlagAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.FeatureFlagWhereInput>(
+                query,
+                {
+                    availableSearch: FeatureFlagDefaultAvailableSearch,
+                    availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         const { data, ...others } =
-            await this.featureFlagDomain.getListByAdmin(pagination);
+            await this.featureFlagDomain.getListByAdmin(params);
 
         return {
             data,
@@ -30,10 +49,20 @@ export class FeatureFlagHttpService {
     }
 
     async getListCursor(
-        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+        query: FeatureFlagSystemListRequestDto
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.FeatureFlagWhereInput>(
+                query,
+                {
+                    availableSearch: FeatureFlagDefaultAvailableSearch,
+                    availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         const { data, ...others } =
-            await this.featureFlagDomain.getListCursor(pagination);
+            await this.featureFlagDomain.getListCursor(params);
 
         return {
             data,

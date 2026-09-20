@@ -4,7 +4,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
@@ -21,7 +21,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
     async findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
@@ -30,7 +30,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.cursor<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput

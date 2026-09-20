@@ -1,29 +1,28 @@
-import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
+import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { SessionCursorAvailableOrderBy } from '@modules/session/constants/session.list.constant';
-import {
-    SessionSharedListDoc,
-    SessionSharedRevokeDoc,
-} from '@modules/session/docs/session.shared.doc';
+
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionHttpService } from '@modules/session/services/session.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user.session')
@@ -34,8 +33,8 @@ import { ApiTags } from '@nestjs/swagger';
 export class SessionSharedController {
     constructor(private readonly sessionHttpService: SessionHttpService) {}
 
-    @SessionSharedListDoc()
-    @ResponsePaging('session.list', { schema: SessionResponseSchema })
+    @Doc({ summary: 'get all user Sessions' })
+    @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
@@ -43,16 +42,14 @@ export class SessionSharedController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableOrderBy: SessionCursorAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.SessionWhereInput>,
+        @Query({ schema: SessionSharedListRequestSchema })
+        query: SessionSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string
-    ): Promise<IResponsePagingReturn<ISessionList>> {
-        return this.sessionHttpService.getListCursor(userId, pagination);
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
+        return this.sessionHttpService.getListCursor(userId, query);
     }
 
-    @SessionSharedRevokeDoc()
+    @Doc({ summary: 'revoke user Session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()

@@ -1,5 +1,5 @@
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationCreate,
@@ -18,7 +18,7 @@ export interface INotificationRepository {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<Notification>>;
+    ): Promise<IResponsePaginationReturn<Notification>>;
     findIsReadById(
         userId: string,
         notificationId: string

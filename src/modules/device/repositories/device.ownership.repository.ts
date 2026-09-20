@@ -7,7 +7,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
@@ -184,7 +184,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IDeviceOwnership>> {
+    ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
 
         return this.paginationService.offset<
@@ -228,7 +228,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>> {
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const today = this.helperDateService.create();
 
         return this.paginationService.cursor<

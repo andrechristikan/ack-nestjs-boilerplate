@@ -7,7 +7,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
@@ -67,7 +67,7 @@ export class ProjectRepository implements IProjectRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
-    ): Promise<IResponsePagingReturn<Project>> {
+    ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
@@ -92,7 +92,7 @@ export class ProjectRepository implements IProjectRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
-    ): Promise<IResponsePagingReturn<Project>> {
+    ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {

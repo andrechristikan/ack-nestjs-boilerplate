@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
 import {
+    DocPolicyErrorResponses,
     PolicyRequiredMetaKey,
     PolicyStoreKey,
 } from '@modules/policy/constants/policy.constant';
@@ -15,7 +16,7 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
 import type { Policy } from '@generated/prisma-client/client';
 
 /**
- * Protects a route, requiring the caller to hold the given policies.
+ * Protects a route, requiring the caller to hold the given policies, and documents policy kits.
  * @public
  */
 export function PolicyProtected(
@@ -23,7 +24,9 @@ export function PolicyProtected(
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(PolicyGuard),
-        SetMetadata(PolicyRequiredMetaKey, requiredPolicies)
+        SetMetadata(PolicyRequiredMetaKey, requiredPolicies),
+        DocPolicyErrorResponses.forbidden,
+        DocPolicyErrorResponses.predefinedNotFound
     );
 }
 

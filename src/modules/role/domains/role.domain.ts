@@ -5,7 +5,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumRoleType,
@@ -58,7 +58,7 @@ export class RoleDomain {
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationOffsetByAdmin(
             pagination,
             type
@@ -68,7 +68,7 @@ export class RoleDomain {
     async getListCursorBySystem(
         pagination: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>> {
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>> {
         return this.roleRepository.findWithPaginationCursorBySystem(
             pagination,
             type

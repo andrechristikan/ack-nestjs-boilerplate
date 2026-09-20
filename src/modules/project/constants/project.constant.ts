@@ -2,6 +2,10 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
+import { HttpStatus } from '@nestjs/common';
+import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /**
  * Request-store key holding the project the project guard resolved.
@@ -26,6 +30,54 @@ export const ProjectWorkspaceOwnerStoreKey = 'ProjectWorkspaceOwnerStore';
  * @public
  */
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
+
+/**
+ * Project guard error kit for `@ProjectProtected`.
+ * @public
+ */
+export const DocProjectErrorResponses = {
+    notFound: DocResponseError(
+        HttpStatus.NOT_FOUND,
+        {
+            statusCode: EnumWorkspaceStatusCodeError.notFound,
+            messagePath: 'workspace.error.notFound',
+        },
+        {
+            statusCode: EnumProjectStatusCodeError.notFound,
+            messagePath: 'project.error.notFound',
+        }
+    ),
+} as const;
+
+/**
+ * Project member guard error kit for role-less `@ProjectMemberProtected`.
+ * @public
+ */
+export const DocProjectMemberErrorResponses = {
+    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumProjectStatusCodeError.notFound,
+        messagePath: 'project.error.notFound',
+    }),
+    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.memberForbidden,
+        messagePath: 'project.error.memberForbidden',
+    }),
+} as const;
+
+/**
+ * Project role guard error kit for role-gated `@ProjectMemberProtected`.
+ * @public
+ */
+export const DocProjectRoleErrorResponses = {
+    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
+        statusCode: EnumProjectStatusCodeError.notFound,
+        messagePath: 'project.error.notFound',
+    }),
+    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
+        statusCode: EnumProjectStatusCodeError.roleForbidden,
+        messagePath: 'project.error.roleForbidden',
+    }),
+} as const;
 
 /**
  * Matches a `Project` that is not soft-deleted, including documents written before this field

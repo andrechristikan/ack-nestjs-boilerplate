@@ -1,24 +1,13 @@
-import {
-    PaginationCursorQuery,
-    PaginationQueryFilterInEnum,
-} from '@common/pagination/decorators/pagination.decorator';
-import type {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { ResponsePaging } from '@common/response/decorators/response.decorator';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { TermPolicyPublicListRequestDto } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
+import { TermPolicyPublicListRequestSchema } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { ResponsePagination } from '@common/response/decorators/response.decorator';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import {
-    TermPolicyDefaultAvailableOrderBy,
-    TermPolicyDefaultType,
-} from '@modules/term-policy/constants/term-policy.list.constant';
-import { TermPolicyPublicListDoc } from '@modules/term-policy/docs/term-policy.public.doc';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyHttpService } from '@modules/term-policy/services/term-policy.http.service';
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @ApiTags('modules.public.termPolicy')
@@ -31,23 +20,16 @@ export class TermPolicyPublicController {
         private readonly termPolicyHttpService: TermPolicyHttpService
     ) {}
 
-    @TermPolicyPublicListDoc()
-    @ResponsePaging('termPolicy.list', {
+    @Doc({ summary: 'Retrieve list of publish terms and policies' })
+    @ResponsePagination('termPolicy.list', {
         schema: TermPolicyResponseSchema,
     })
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableOrderBy: TermPolicyDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
-        @PaginationQueryFilterInEnum<EnumTermPolicyType>(
-            'type',
-            TermPolicyDefaultType
-        )
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
-        return this.termPolicyHttpService.getListPublished(pagination, type);
+        @Query({ schema: TermPolicyPublicListRequestSchema })
+        query: TermPolicyPublicListRequestDto
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        return this.termPolicyHttpService.getListPublished(query);
     }
 }

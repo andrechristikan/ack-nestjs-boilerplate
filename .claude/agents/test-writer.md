@@ -86,9 +86,9 @@ The full set is `rules/testing.md`; these are the ones a run trips on.
 - **`vi.mock()` goes AFTER imports**, never before.
 - `include` is `test/**/*.spec.ts`. A colocated spec in `src/` is NEVER executed while
   `coverage.include` still counts its subject as uncovered.
-- **Controllers, processors, repositories, contracts and Swagger doc factories (`*.doc.ts`)
+- **Controllers, processors, repositories, and contracts
   are deliberately NOT in the coverage set.** If you want a unit spec for a controller,
-  processor, repository, or `*.doc.ts` factory, the logic is probably in the wrong layer —
+  processor, repository, or contract table, the logic is probably in the wrong layer —
   report that instead of writing it. A repository is the double in a domain spec. A contract
   is exercised by its consumer. The doc kit in `src/common/doc/` is in the coverage set.
 

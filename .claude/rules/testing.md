@@ -38,7 +38,7 @@ Every DI collaborator is a double. The subject is the one class that is real
   `select` shape and does not prove the query against MongoDB. Those files sit outside the
   coverage set.
 - A controller and a processor are route or job delegation. They have no unit spec.
-- A Swagger doc factory (`*.doc.ts`) is `applyDecorators` of the doc kit. It has no unit spec.
+- OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec.
 - A contract is a lookup table. The consumer's unit spec exercises it.
 
 TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists.
@@ -143,7 +143,7 @@ the work is done.
 `coverage.include` is every `src/**/*.ts`, minus a denylist in `vitest.config.ts`:
 
 `*.module.ts` · `*.enum.ts` · `*.interface.ts` · `*.constant.ts` · `*.contract.ts` ·
-`*.controller.ts` · `*.processor.ts` · `*.repository.ts` · `*.doc.ts` · `src/generated/**` ·
+`*.controller.ts` · `*.processor.ts` · `*.repository.ts` · `src/generated/**` ·
 `src/migration/**` · `src/router/**` · `src/configs/**` · `src/languages/**` · the root
 `src/*.ts` files
 
@@ -151,14 +151,13 @@ Everything else is measured: services, domains, utils, caches, queues, guards, p
 interceptors, filters, middlewares, strategies, indicators, factories, decorators
 (including the doc kit in `src/common/doc/`), validations, exceptions and DTOs.
 
-**Controllers, processors, repositories, contracts and Swagger doc factories (`*.doc.ts`)
-are not in the coverage set.** A controller and a processor are delegation, a repository is
-a Prisma call shape, a contract is a lookup table, and a `*.doc.ts` factory is
-`applyDecorators` of the doc kit — specs there would assert the mock, restatement, or
-TypeScript already proved. If you find yourself wanting a controller, processor, or
-repository spec, the logic is probably in the wrong layer. A contract is exercised by the
-consumer that reads it (a domain or a pipe), not by a spec of the table. A doc factory is
-wired by the controller; it is not a unit subject.
+**Controllers, processors, repositories, and contracts are not in the coverage set.** A
+controller and a processor are delegation, a repository is a Prisma call shape, and a
+contract is a lookup table — specs there would assert the mock, restatement, or TypeScript
+already proved. If you find yourself wanting a controller, processor, or repository spec,
+the logic is probably in the wrong layer. A contract is exercised by the consumer that reads
+it (a domain or a pipe), not by a spec of the table. OpenAPI composition on `@Doc` /
+`@Response*` / `*Protected` / `FileUpload*` is not a unit subject.
 
 **The denylist decides WHAT gets a spec for `/ack-spec`, and an excluded file gets NONE
 (HARD).** Wanting coverage on an excluded path is a request to change `vitest.config.ts`,
@@ -175,8 +174,8 @@ A spec lives at its final path under `test/` and stays as the regression net. TD
 **unit** cycle. When the behaviour lives on a domain, the TDD subject is that domain class
 (`rules/architecture.md`).
 
-Seeds, controllers, processors, repositories, contracts and Swagger doc factories
-(`*.doc.ts`) have no TDD cycle (the coverage denylist excludes them). A contract row is the
+Seeds, controllers, processors, repositories, and contracts have no TDD cycle (the coverage
+denylist excludes them). A contract row is the
 `src/` that turns the consumer's unit spec green. A repository's presence in that cycle is
 the double in the domain spec.
 

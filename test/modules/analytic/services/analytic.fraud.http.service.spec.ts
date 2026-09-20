@@ -1,3 +1,5 @@
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,6 +14,10 @@ describe('AnalyticFraudHttpService', () => {
         mock<AnalyticFraudDomain>();
     const analyticDateDomain: MockProxy<AnalyticDateDomain> =
         mock<AnalyticDateDomain>();
+    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
+        mock<PaginationQueryUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -35,12 +41,24 @@ describe('AnalyticFraudHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        paginationQueryUtil.offset.mockReturnValue({
+            params: pagination,
+            storePatch: {},
+        } as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticFraudHttpService,
                 { provide: AnalyticFraudDomain, useValue: analyticFraudDomain },
                 { provide: AnalyticDateDomain, useValue: analyticDateDomain },
+                {
+                    provide: PaginationQueryUtil,
+                    useValue: paginationQueryUtil,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
@@ -96,10 +114,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.credentialStuffingList.mockResolvedValue(page);
 
-            const result = await service.credentialStuffingList(
+            const result = await service.credentialStuffingList({
                 windowMs,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -111,7 +130,7 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.credentialStuffingList.mockResolvedValue(page);
 
-            await service.credentialStuffingList(undefined, pagination);
+            await service.credentialStuffingList({ page: 1, perPage: 20 });
 
             expect(
                 analyticFraudDomain.credentialStuffingList
@@ -167,11 +186,12 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.accountTakeoverList.mockResolvedValue(page);
 
-            const result = await service.accountTakeoverList(
+            const result = await service.accountTakeoverList({
                 startDate,
                 endDate,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -223,10 +243,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.massRegistrationList.mockResolvedValue(page);
 
-            const result = await service.massRegistrationList(
+            const result = await service.massRegistrationList({
                 windowMs,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -238,7 +259,7 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.massRegistrationList.mockResolvedValue(page);
 
-            await service.massRegistrationList(undefined, pagination);
+            await service.massRegistrationList({ page: 1, perPage: 20 });
 
             expect(
                 analyticFraudDomain.massRegistrationList
@@ -290,10 +311,11 @@ describe('AnalyticFraudHttpService', () => {
                 page
             );
 
-            const result = await service.passwordResetEnumerationList(
+            const result = await service.passwordResetEnumerationList({
                 windowMs,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -307,7 +329,10 @@ describe('AnalyticFraudHttpService', () => {
                 page
             );
 
-            await service.passwordResetEnumerationList(undefined, pagination);
+            await service.passwordResetEnumerationList({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(
                 analyticFraudDomain.passwordResetEnumerationList
@@ -352,7 +377,10 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.sharedFingerprintList.mockResolvedValue(page);
 
-            const result = await service.sharedFingerprintList(pagination);
+            const result = await service.sharedFingerprintList({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -409,11 +437,12 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.sessionAfterAdminList.mockResolvedValue(page);
 
-            const result = await service.sessionAfterAdminList(
+            const result = await service.sessionAfterAdminList({
                 startDate,
                 endDate,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -466,10 +495,11 @@ describe('AnalyticFraudHttpService', () => {
                 page
             );
 
-            const result = await service.forgotPasswordTokenAbuseList(
+            const result = await service.forgotPasswordTokenAbuseList({
                 windowMs,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -483,7 +513,10 @@ describe('AnalyticFraudHttpService', () => {
                 page
             );
 
-            await service.forgotPasswordTokenAbuseList(undefined, pagination);
+            await service.forgotPasswordTokenAbuseList({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(
                 analyticFraudDomain.forgotPasswordTokenAbuseList
@@ -534,7 +567,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.refreshSpikeList.mockResolvedValue(page);
 
-            const result = await service.refreshSpikeList(windowMs, pagination);
+            const result = await service.refreshSpikeList({
+                windowMs,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(analyticFraudDomain.refreshSpikeList).toHaveBeenCalledWith(
@@ -547,7 +584,7 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.refreshSpikeList.mockResolvedValue(page);
 
-            await service.refreshSpikeList(undefined, pagination);
+            await service.refreshSpikeList({ page: 1, perPage: 20 });
 
             expect(analyticFraudDomain.refreshSpikeList).toHaveBeenCalledWith(
                 null,
@@ -599,10 +636,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.backupCodeNewDeviceList.mockResolvedValue(page);
 
-            const result = await service.backupCodeNewDeviceList(
+            const result = await service.backupCodeNewDeviceList({
                 windowMs,
-                pagination
-            );
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -614,7 +652,7 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.backupCodeNewDeviceList.mockResolvedValue(page);
 
-            await service.backupCodeNewDeviceList(undefined, pagination);
+            await service.backupCodeNewDeviceList({ page: 1, perPage: 20 });
 
             expect(
                 analyticFraudDomain.backupCodeNewDeviceList
@@ -665,7 +703,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.apiKeyBurstList.mockResolvedValue(page);
 
-            const result = await service.apiKeyBurstList(windowMs, pagination);
+            const result = await service.apiKeyBurstList({
+                windowMs,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(analyticFraudDomain.apiKeyBurstList).toHaveBeenCalledWith(
@@ -678,7 +720,7 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.apiKeyBurstList.mockResolvedValue(page);
 
-            await service.apiKeyBurstList(undefined, pagination);
+            await service.apiKeyBurstList({ page: 1, perPage: 20 });
 
             expect(analyticFraudDomain.apiKeyBurstList).toHaveBeenCalledWith(
                 null,
@@ -727,7 +769,11 @@ describe('AnalyticFraudHttpService', () => {
             };
             analyticFraudDomain.riskScores.mockResolvedValue(page);
 
-            const result = await service.riskScores(30, pagination);
+            const result = await service.riskScores({
+                minScore: 30,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(analyticFraudDomain.riskScores).toHaveBeenCalledWith(
@@ -740,7 +786,11 @@ describe('AnalyticFraudHttpService', () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudDomain.riskScores.mockResolvedValue(page);
 
-            await service.riskScores(undefined, pagination);
+            await service.riskScores({
+                minScore: undefined,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(analyticFraudDomain.riskScores).toHaveBeenCalledWith(
                 null,

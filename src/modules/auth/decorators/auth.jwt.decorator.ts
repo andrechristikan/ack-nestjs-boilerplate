@@ -1,8 +1,13 @@
 import { UseGuards, applyDecorators } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import {
+    DocAuthJwtAccessErrorResponses,
+    DocAuthJwtRefreshErrorResponses,
+} from '@modules/auth/constants/auth.constant';
 import { AuthJwtAccessGuard } from '@modules/auth/guards/jwt/auth.jwt.access.guard';
 import { AuthJwtRefreshGuard } from '@modules/auth/guards/jwt/auth.jwt.refresh.guard';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
@@ -50,11 +55,15 @@ export const AuthJwtToken = createParamDecorator(
 );
 
 /**
- * Protects a route with JWT access token authentication.
+ * Protects a route with JWT access token authentication and documents Bearer access + kits.
  * @public
  */
 export function AuthJwtAccessProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(AuthJwtAccessGuard));
+    return applyDecorators(
+        UseGuards(AuthJwtAccessGuard),
+        ApiBearerAuth('accessToken'),
+        DocAuthJwtAccessErrorResponses.unauthorized
+    );
 }
 
 /**
@@ -62,5 +71,9 @@ export function AuthJwtAccessProtected(): MethodDecorator {
  * @public
  */
 export function AuthJwtRefreshProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(AuthJwtRefreshGuard));
+    return applyDecorators(
+        UseGuards(AuthJwtRefreshGuard),
+        ApiBearerAuth('refreshToken'),
+        DocAuthJwtRefreshErrorResponses.unauthorized
+    );
 }

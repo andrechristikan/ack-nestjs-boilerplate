@@ -9,7 +9,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { SessionListSelect } from '@modules/session/constants/session.constant';
 import type {
     ISession,
@@ -38,7 +38,7 @@ export class SessionRepository implements ISessionRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<ISessionList>> {
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.offset<
             ISessionList,
             Prisma.SessionWhereInput
@@ -59,7 +59,7 @@ export class SessionRepository implements ISessionRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<ISessionList>> {
+    ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.cursor<
             ISessionList,
             Prisma.SessionWhereInput

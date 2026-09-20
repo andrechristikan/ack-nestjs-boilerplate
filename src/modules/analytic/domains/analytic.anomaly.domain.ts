@@ -1,7 +1,7 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
     AnalyticDeviceProliferationAvailableOrderBy,
@@ -232,7 +232,7 @@ export class AnalyticAnomalyDomain {
         startDate: Date | null,
         endDate: Date | null,
         params: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticImpossibleTravel>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
         const rows = await this.computeImpossibleTravel(startDate, endDate);
         const { skip, limit, orderBy } = params;
         const sorted = this.analyticSortUtil.sortRows(
@@ -286,7 +286,7 @@ export class AnalyticAnomalyDomain {
     async loginSpikeIpList(
         windowMs: number | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginSpikeIp>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
         const configured = this.configService.get<number>(
             'analytic.anomaly.loginSpikeIp.windowInMs'
         )!;
@@ -344,7 +344,7 @@ export class AnalyticAnomalyDomain {
 
     async failedLoginSpikeList(
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const maxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         )!;
@@ -389,7 +389,7 @@ export class AnalyticAnomalyDomain {
 
     async deviceProliferationList(
         params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticDeviceProliferation>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         const z = this.configService.get<number>(
             'analytic.anomaly.deviceProliferation.zScoreThreshold'
         )!;
@@ -439,7 +439,7 @@ export class AnalyticAnomalyDomain {
         startDate: Date | null,
         endDate: Date | null,
         params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticLoginTimeAnomaly>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
         const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
         const { skip, limit, orderBy } = params;
         const sorted = this.analyticSortUtil.sortRows(

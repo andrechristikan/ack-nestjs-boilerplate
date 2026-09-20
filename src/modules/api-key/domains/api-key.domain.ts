@@ -6,7 +6,7 @@ import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumApiKeyType,
@@ -96,7 +96,7 @@ export class ApiKeyDomain {
         pagination: IPaginationQueryOffsetParams<Prisma.ApiKeyWhereInput>,
         isActive?: Record<string, IPaginationEqual>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IApiKeyList>> {
+    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
             isActive,

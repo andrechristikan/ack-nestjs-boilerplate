@@ -13,7 +13,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { FileService } from '@common/file/services/file.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import type { IActivityLogStagedEvent } from '@modules/activity-log/interfaces/activity-log.interface';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -92,14 +92,14 @@ export class TermPolicyDomain {
         pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.termPolicyRepository.find(pagination, type, status);
     }
 
     async getListPublished(
         pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.termPolicyRepository.findPublished(pagination, type);
     }
 

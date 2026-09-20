@@ -8,7 +8,7 @@ import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
     EnumWorkspaceInviteStatus,
@@ -245,7 +245,7 @@ export class WorkspaceInviteDomain {
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceInviteList>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         await this.assertInvitationAllowed();
 
         return this.workspaceInviteRepository.findWithPaginationCursor(

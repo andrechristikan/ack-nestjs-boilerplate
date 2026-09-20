@@ -270,7 +270,7 @@ installs them once:
 - **The suite is unit specs** under `test/**/*.spec.ts` (`rules/testing.md`). A domain spec
   doubles the repository; a repository is not a unit subject. Integration (adapter plus real
   engine) and e2e (running app) are other kinds and are not this suite. Seeds, controllers,
-  processors, repositories, contracts and Swagger doc factories (`*.doc.ts`) never have a
+  processors, repositories, contracts never have a
   TDD cycle.
 - **Build the correct shape and change every call site.** No deprecated-but-kept field, no
   `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent

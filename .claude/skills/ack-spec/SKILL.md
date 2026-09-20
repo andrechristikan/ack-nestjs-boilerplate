@@ -65,7 +65,7 @@ reaches past its own scope: a global mock, a shared fixture, a relocated helper,
 `coverage.enabled` is `false` in `vitest.config.ts`, so `pnpm test` never applies the
 threshold. Report the totals with the command that produced them.
 
-Controllers, processors, repositories, contracts, Swagger doc factories (`*.doc.ts`), and
+Controllers, processors, repositories, contracts, and
 the paths on the coverage denylist sit outside the coverage set — a gap there is not an
 `/ack-spec` gap (`rules/testing.md`). The doc kit in `src/common/doc/` is measured. Changing
 the denylist is an owner change to `vitest.config.ts`.

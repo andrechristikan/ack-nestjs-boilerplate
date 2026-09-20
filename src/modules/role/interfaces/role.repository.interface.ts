@@ -3,7 +3,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     IRole,
     IRoleCreate,
@@ -21,14 +21,14 @@ export interface IRoleRepository {
             ...params
         }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>>;
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
         {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IRoleWithPolicyCount>>;
+    ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
     findOneByName(name: string): Promise<IRole | null>;

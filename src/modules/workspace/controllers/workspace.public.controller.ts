@@ -1,3 +1,4 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
@@ -6,10 +7,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import {
-    WorkspacePublicInvitePreviewDoc,
-    WorkspacePublicPreviewDoc,
-} from '@modules/workspace/docs/workspace.public.doc';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
@@ -29,7 +26,10 @@ export class WorkspacePublicController {
         private readonly workspaceInviteHttpService: WorkspaceInviteHttpService
     ) {}
 
-    @WorkspacePublicInvitePreviewDoc()
+    @Doc({
+        summary:
+            'safe, unauthenticated preview of a workspace invite (workspace name, inviter, offered role); never the token or internal ids',
+    })
     @Response('workspace.invite.preview', {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
@@ -44,7 +44,10 @@ export class WorkspacePublicController {
         return this.workspaceInviteHttpService.previewInvite(inviteToken);
     }
 
-    @WorkspacePublicPreviewDoc()
+    @Doc({
+        summary:
+            'public workspace profile by slug, so a non-member can obtain the workspace id a join request needs',
+    })
     @Response('workspace.preview', {
         schema: WorkspacePreviewResponseSchema,
     })

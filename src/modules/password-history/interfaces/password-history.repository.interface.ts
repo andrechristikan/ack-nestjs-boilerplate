@@ -3,7 +3,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
 import {
     EnumPasswordHistoryType,
@@ -18,14 +18,14 @@ export interface IPasswordHistoryRepository {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>>;
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findWithPaginationCursor(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IPasswordHistoryList>>;
+    ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findActiveUser(userId: string): Promise<PasswordHistory[]>;
     createInTx(
         tx: IDatabaseTransactionClient,

@@ -1,3 +1,5 @@
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,6 +14,10 @@ describe('AnalyticDashboardHttpService', () => {
         mock<AnalyticDashboardDomain>();
     const analyticDateDomain: MockProxy<AnalyticDateDomain> =
         mock<AnalyticDateDomain>();
+    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
+        mock<PaginationQueryUtil>();
+    const requestStoreService: MockProxy<RequestStoreService> =
+        mock<RequestStoreService>();
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
@@ -25,6 +31,10 @@ describe('AnalyticDashboardHttpService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        paginationQueryUtil.offset.mockReturnValue({
+            params: pagination,
+            storePatch: {},
+        } as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -34,6 +44,14 @@ describe('AnalyticDashboardHttpService', () => {
                     useValue: analyticDashboardDomain,
                 },
                 { provide: AnalyticDateDomain, useValue: analyticDateDomain },
+                {
+                    provide: PaginationQueryUtil,
+                    useValue: paginationQueryUtil,
+                },
+                {
+                    provide: RequestStoreService,
+                    useValue: requestStoreService,
+                },
             ],
         }).compile();
 
@@ -1063,7 +1081,10 @@ describe('AnalyticDashboardHttpService', () => {
                 page
             );
 
-            const result = await service.workspacesMembership(pagination);
+            const result = await service.workspacesMembership({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -1092,11 +1113,12 @@ describe('AnalyticDashboardHttpService', () => {
                 page
             );
 
-            const result = await service.workspacesActivityVolume(
-                pagination,
+            const result = await service.workspacesActivityVolume({
                 startDate,
-                endDate
-            );
+                endDate,
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(
@@ -1144,7 +1166,10 @@ describe('AnalyticDashboardHttpService', () => {
             };
             analyticDashboardDomain.projectsMembership.mockResolvedValue(page);
 
-            const result = await service.projectsMembership(pagination);
+            const result = await service.projectsMembership({
+                page: 1,
+                perPage: 20,
+            });
 
             expect(result).toEqual(page);
             expect(

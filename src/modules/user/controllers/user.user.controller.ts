@@ -1,3 +1,4 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
@@ -9,7 +10,6 @@ import {
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { UserUserDeleteSelfDoc } from '@modules/user/docs/user.user.doc';
 import { UserHttpService } from '@modules/user/services/user.http.service';
 import { Controller, Delete } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -23,7 +23,7 @@ import { EnumRoleType } from '@generated/prisma-client/client';
 export class UserUserController {
     constructor(private readonly userHttpService: UserHttpService) {}
 
-    @UserUserDeleteSelfDoc()
+    @Doc({ summary: 'user delete their account' })
     @Response('user.deleteSelf')
     @TermPolicyAcceptanceProtected()
     @RoleProtected(EnumRoleType.user)

@@ -1,6 +1,6 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { HelloPublicDoc } from '@modules/hello/docs/hello.public.doc';
 import { HelloResponseSchema } from '@modules/hello/dtos/response/hello.response.dto';
 import type { HelloResponseDto } from '@modules/hello/dtos/response/hello.response.dto';
 import { HelloHttpService } from '@modules/hello/services/hello.http.service';
@@ -15,7 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class HelloPublicController {
     constructor(private readonly helloHttpService: HelloHttpService) {}
 
-    @HelloPublicDoc()
+    @Doc({ summary: 'hello test api' })
     @Response('hello.hello', {
         cache: true,
         schema: HelloResponseSchema,

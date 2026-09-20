@@ -2,7 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { UserAdminNearLockoutSelect } from '@modules/user/constants/user.constant';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 import type { IUserAnalyticRepository } from '@modules/user/interfaces/user.analytic-repository.interface';
@@ -169,7 +169,7 @@ export class UserAnalyticRepository implements IUserAnalyticRepository {
     async listNearLockoutOffset(
         minAttempt: number,
         params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticNearLockout>> {
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const { where, ...rest } = params;
         return this.paginationService.offset<
             IUserNearLockout,

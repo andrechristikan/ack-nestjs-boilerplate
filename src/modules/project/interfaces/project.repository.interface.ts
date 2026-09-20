@@ -3,7 +3,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
@@ -27,14 +27,14 @@ export interface IProjectRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
-    ): Promise<IResponsePagingReturn<Project>>;
+    ): Promise<IResponsePaginationReturn<Project>>;
     findWithPaginationOffsetForAdmin(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
         workspaceId?: string
-    ): Promise<IResponsePagingReturn<Project>>;
+    ): Promise<IResponsePaginationReturn<Project>>;
     create(
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,

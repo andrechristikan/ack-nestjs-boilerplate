@@ -1,8 +1,33 @@
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { Prisma } from '@generated/prisma-client/client';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+import {
+    AnalyticAccountTakeoverAvailableOrderBy,
+    AnalyticBackupCodeNewDeviceAvailableOrderBy,
+    AnalyticCredentialStuffingAvailableOrderBy,
+    AnalyticForgotPasswordAbuseAvailableOrderBy,
+    AnalyticFraudRiskScoreAvailableOrderBy,
+    AnalyticKeyCountAvailableOrderBy,
+    AnalyticSessionAfterAdminAvailableOrderBy,
+    AnalyticSharedFingerprintAvailableOrderBy,
+    AnalyticUserCountAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
+import type { AnalyticAccountTakeoverListRequestDto } from '@modules/analytic/dtos/request/analytic-account-takeover-list.request.dto';
+import type { AnalyticApiKeyBurstListRequestDto } from '@modules/analytic/dtos/request/analytic-api-key-burst-list.request.dto';
+import type { AnalyticBackupCodeNewDeviceListRequestDto } from '@modules/analytic/dtos/request/analytic-backup-code-new-device-list.request.dto';
+import type { AnalyticCredentialStuffingListRequestDto } from '@modules/analytic/dtos/request/analytic-credential-stuffing-list.request.dto';
+import type { AnalyticForgotPasswordAbuseListRequestDto } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
+import type { AnalyticFraudRiskScoresListRequestDto } from '@modules/analytic/dtos/request/analytic-fraud-risk-scores-list.request.dto';
+import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic-mass-registration-list.request.dto';
+import type { AnalyticPasswordResetEnumerationListRequestDto } from '@modules/analytic/dtos/request/analytic-password-reset-enumeration-list.request.dto';
+import type { AnalyticRefreshSpikeListRequestDto } from '@modules/analytic/dtos/request/analytic-refresh-spike-list.request.dto';
+import type { AnalyticSessionAfterAdminListRequestDto } from '@modules/analytic/dtos/request/analytic-session-after-admin-list.request.dto';
+import type { AnalyticSharedFingerprintListRequestDto } from '@modules/analytic/dtos/request/analytic-shared-fingerprint-list.request.dto';
 import { AnalyticFraudDomain } from '@modules/analytic/domains/analytic.fraud.domain';
 import type {
     IAnalyticAccountTakeover,
@@ -20,13 +45,14 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDateDomain } from '@modules/analytic/domains/analytic.date.domain';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class AnalyticFraudHttpService {
     constructor(
         private readonly analyticFraudDomain: AnalyticFraudDomain,
-        private readonly analyticDateDomain: AnalyticDateDomain
+        private readonly analyticDateDomain: AnalyticDateDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async credentialStuffingSummary(
@@ -39,12 +65,21 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    credentialStuffingList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticCredentialStuffing>> {
+    async credentialStuffingList(
+        query: AnalyticCredentialStuffingListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticCredentialStuffingAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.credentialStuffingList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -65,14 +100,20 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    accountTakeoverList(
-        startDate: Date | undefined,
-        endDate: Date | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticAccountTakeover>> {
+    async accountTakeoverList(
+        query: AnalyticAccountTakeoverListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.PasswordHistoryWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticAccountTakeoverAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
+            (query.startDate as Date | undefined) ?? null,
+            (query.endDate as Date | undefined) ?? null
         );
         return this.analyticFraudDomain.accountTakeoverList(
             range.startDate,
@@ -91,12 +132,17 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    massRegistrationList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticMassRegistration>> {
+    async massRegistrationList(
+        query: AnalyticMassRegistrationListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+            });
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.massRegistrationList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -112,12 +158,20 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    passwordResetEnumerationList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticPasswordResetEnumeration>> {
+    async passwordResetEnumerationList(
+        query: AnalyticPasswordResetEnumerationListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ForgotPasswordWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticKeyCountAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.passwordResetEnumerationList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -130,9 +184,18 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    sharedFingerprintList(
-        params: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticSharedFingerprint>> {
+    async sharedFingerprintList(
+        query: AnalyticSharedFingerprintListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticSharedFingerprintAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.sharedFingerprintList(params);
     }
 
@@ -152,14 +215,20 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    sessionAfterAdminList(
-        startDate: Date | undefined,
-        endDate: Date | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticSessionAfterAdmin>> {
+    async sessionAfterAdminList(
+        query: AnalyticSessionAfterAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticSessionAfterAdminAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
         const range = this.analyticDateDomain.requireRange(
-            startDate ?? null,
-            endDate ?? null
+            (query.startDate as Date | undefined) ?? null,
+            (query.endDate as Date | undefined) ?? null
         );
         return this.analyticFraudDomain.sessionAfterAdminList(
             range.startDate,
@@ -179,12 +248,21 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    forgotPasswordTokenAbuseList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ForgotPasswordWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticForgotPasswordAbuse>> {
+    async forgotPasswordTokenAbuseList(
+        query: AnalyticForgotPasswordAbuseListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ForgotPasswordWhereInput>(
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticForgotPasswordAbuseAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.forgotPasswordTokenAbuseList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -199,12 +277,20 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    refreshSpikeList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticRefreshSpike>> {
+    async refreshSpikeList(
+        query: AnalyticRefreshSpikeListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticRefreshSpike>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticUserCountAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.refreshSpikeList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -219,12 +305,21 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    backupCodeNewDeviceList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticBackupCodeNewDevice>> {
+    async backupCodeNewDeviceList(
+        query: AnalyticBackupCodeNewDeviceListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticBackupCodeNewDevice>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {
+                    availableOrderBy:
+                        AnalyticBackupCodeNewDeviceAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.backupCodeNewDeviceList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -239,12 +334,20 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    apiKeyBurstList(
-        windowMs: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticApiKeyBurst>> {
+    async apiKeyBurstList(
+        query: AnalyticApiKeyBurstListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticApiKeyBurst>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.ActivityLogWhereInput>(
+                query,
+                {
+                    availableOrderBy: AnalyticUserCountAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         return this.analyticFraudDomain.apiKeyBurstList(
-            windowMs ?? null,
+            (query.windowMs as number | undefined) ?? null,
             params
         );
     }
@@ -257,10 +360,18 @@ export class AnalyticFraudHttpService {
         return { data };
     }
 
-    riskScores(
-        minScore: number | undefined,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-    ): Promise<IResponsePagingReturn<IAnalyticFraudRiskScore>> {
-        return this.analyticFraudDomain.riskScores(minScore ?? null, params);
+    async riskScores(
+        query: AnalyticFraudRiskScoresListRequestDto
+    ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableOrderBy: AnalyticFraudRiskScoreAvailableOrderBy,
+            });
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
+        return this.analyticFraudDomain.riskScores(
+            (query.minScore as number | undefined) ?? null,
+            params
+        );
     }
 }

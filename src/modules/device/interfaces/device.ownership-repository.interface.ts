@@ -4,7 +4,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Prisma } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
@@ -45,7 +45,7 @@ export interface IDeviceOwnershipRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
         isRevoked?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IDeviceOwnership>>;
+    ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,
         sessionId: string,
@@ -53,7 +53,7 @@ export interface IDeviceOwnershipRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipWithSession>>;
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
     findTokensByUserId(userId: string): Promise<IDeviceOwnershipWithDevice[]>;
     existsActive(userId: string, deviceOwnershipId: string): Promise<boolean>;
     touchInTx(

@@ -1,26 +1,21 @@
-import { PaginationOffsetQuery } from '@common/pagination/decorators/pagination.decorator';
-import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
+import { FeatureFlagAdminListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
+
 import type {
-    IResponsePagingReturn,
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import {
-    FeatureFlagDefaultAvailableOrderBy,
-    FeatureFlagDefaultAvailableSearch,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
-import {
-    FeatureFlagAdminListDoc,
-    FeatureFlagAdminUpdateMetadataDoc,
-    FeatureFlagAdminUpdateStatusDoc,
-} from '@modules/feature-flag/docs/feature-flag.admin.doc';
+
 import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
@@ -31,14 +26,23 @@ import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Body, Controller, Get, Param, Patch, Put } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Put,
+    Query,
+} from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
+
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.featureFlag')
@@ -51,8 +55,8 @@ export class FeatureFlagAdminController {
         private readonly featureFlagHttpService: FeatureFlagHttpService
     ) {}
 
-    @FeatureFlagAdminListDoc()
-    @ResponsePaging('featureFlag.list', {
+    @Doc({ summary: 'admin get all Feature Flags' })
+    @ResponsePagination('featureFlag.list', {
         schema: FeatureFlagResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -67,16 +71,13 @@ export class FeatureFlagAdminController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationOffsetQuery({
-            availableSearch: FeatureFlagDefaultAvailableSearch,
-            availableOrderBy: FeatureFlagDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
-        return this.featureFlagHttpService.getListByAdmin(pagination);
+        @Query({ schema: FeatureFlagAdminListRequestSchema })
+        query: FeatureFlagAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+        return this.featureFlagHttpService.getListByAdmin(query);
     }
 
-    @FeatureFlagAdminUpdateStatusDoc()
+    @Doc({ summary: 'admin update Feature Flag status' })
     @Response('featureFlag.updateStatus', {
         schema: FeatureFlagResponseSchema,
     })
@@ -103,7 +104,7 @@ export class FeatureFlagAdminController {
         );
     }
 
-    @FeatureFlagAdminUpdateMetadataDoc()
+    @Doc({ summary: 'admin update Feature Flag metadata' })
     @Response('featureFlag.updateMetadata', {
         schema: FeatureFlagResponseSchema,
     })

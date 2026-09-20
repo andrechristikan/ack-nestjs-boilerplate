@@ -5,7 +5,7 @@ import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumWorkspaceMemberRole,
     Prisma,
@@ -34,7 +34,7 @@ export interface IWorkspaceMemberRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>>;
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,
         {

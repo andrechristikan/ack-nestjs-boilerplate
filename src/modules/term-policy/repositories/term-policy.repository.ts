@@ -8,7 +8,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
@@ -41,7 +41,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.offset<
             TermPolicy,
             Prisma.TermPolicyWhereInput
@@ -61,7 +61,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
         return this.paginationService.cursor<
             TermPolicy,
             Prisma.TermPolicyWhereInput
@@ -81,7 +81,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
-    ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+    ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
         return this.paginationService.cursor<
             ITermPolicyUserAcceptance,
             Prisma.TermPolicyUserAcceptanceWhereInput

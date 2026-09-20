@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import type { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { ICountryRepository } from '@modules/country/interfaces/country.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
@@ -16,7 +16,7 @@ export class CountryRepository implements ICountryRepository {
 
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.CountryWhereInput>
-    ): Promise<IResponsePagingReturn<Country>> {
+    ): Promise<IResponsePaginationReturn<Country>> {
         return this.paginationService.cursor<Country, Prisma.CountryWhereInput>(
             this.databaseService.client.country,
             pagination
