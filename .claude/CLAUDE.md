@@ -110,6 +110,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds, and the run surface that change makes stale (CI, docker, scripts); rules first when a rule changes; offers reviewer and reviewer-e2e; always asks about docs |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; fixes a confirmed no-flow bug through coder |
 | `ack-docs` | check and repair `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, and `CODE_OF_CONDUCT.md`, and `.github/**` except `copilot-instructions.md` |
+| `ack-pr-desc` | write a public PR or version/release description — runs alone, at the end |
 | `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md` through `harness-writer` |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from
@@ -126,7 +127,11 @@ flowchart LR
   docs --> code
   config["/ack-claude-config"] --> spec
   config --> code
+  prdesc["/ack-pr-desc"]
 ```
+
+`/ack-pr-desc` runs alone at the end — it asks `pr` or `version`, then fetches and moves a
+local compare ref.
 
 **`/ack-code` interrogates, then a rule change through `harness-writer` before any `src/`
 work.** Explorer and planner run only while the work is still open. A pinned repair — files,
@@ -143,8 +148,8 @@ change in the code → `/ack-code`; the spec is wrong → `/ack-spec`.
 **The close-out asks, it does not assume.** `/ack-code` always asks whether to update docs,
 then offers `reviewer` and `reviewer-e2e`. `doc-writer` may also run during the build once
 the behaviour has landed. `reviewer` and `reviewer-e2e` never run unasked. `ack-spec`,
-`ack-docs` and `ack-claude-config` run no review of their own. A docs-only pass is
-`/ack-docs`.
+`ack-spec`, `ack-docs`, `ack-pr-desc` and `ack-claude-config` run no review of their own. A
+docs-only pass is `/ack-docs`.
 
 **A test run is always scoped to the module the work actually CHANGED** —
 `pnpm test <module>` (a Vitest path filter). No skill except `/ack-spec` runs the full
@@ -168,7 +173,7 @@ coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `explorer`, `planner`, `coder`, `seed-writer`, `reviewer`, `reviewer-e2e`, `doc-writer`,
-`test-writer`, `harness-writer`.
+`pr-desc-writer`, `test-writer`, `harness-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
 project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
@@ -205,10 +210,9 @@ installs them once:
 - `caveman` — the reply style every agent uses when reporting back. Install with
   `claude plugin marketplace add JuliusBrussee/caveman`, then
   `claude plugin install caveman@caveman`.
-- `avoid-ai-writing` — de-AI pass on `docs/*.md`, the root `README.md`, `SECURITY.md`,
-  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `.github/` markdown, loaded only by
-  `doc-writer`. Install with
-  `claude plugin marketplace add conorbronsdon/avoid-ai-writing`,
+- `avoid-ai-writing` — prose audit for `doc-writer` and `pr-desc-writer`. De-AI pass on
+  `docs/*.md`, the root people files, `.github/` markdown, and PR / version description
+  documents. Install with `claude plugin marketplace add conorbronsdon/avoid-ai-writing`,
   then `claude plugin install avoid-ai-writing@conorbronsdon-skills`. Enabling it in
   `.claude/settings.json` does not install it.
 
@@ -237,7 +241,10 @@ installs them once:
   it. `doc-writer` is the exception: `docs/*.md`, the root people files, and `.github/**`
   except `copilot-instructions.md` are its subject.
 - Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
-  for agent reports and PR description documents, `graphify-out/` for the knowledge graph.
+  for agent reports and PR / version description documents, `graphify-out/` for the knowledge
+  graph. Those trees are named here so a session knows where they go. A PR or version
+  description, `docs/*.md`, and `.claude/**` never cite a working-artifact file, a local-only
+  git ref, or a machine path (`rules/authoring.md`).
 - **A commit message is one conventional subject line**, `<type>(<scope>): <description>`,
   with no body and no footer — no blank line, no paragraph, no trailer, not even a co-author
   or tool trailer. Detail that does not fit the subject goes in the PR description. `type` is
@@ -266,10 +273,11 @@ installs them once:
 - `lint-staged` restages what `prettier --write` touches, so the index does not survive the
   hook and a granular commit series is not possible here. Say so before planning one.
 - **Diff base.** Always diff with no second ref and no `..` — `git diff <base>` includes
-  uncommitted and staged work, which `<base>..HEAD` silently omits. Reviewing inward (code
-  review, gates, spec work) stays on the current checkout with git READ-ONLY: no fetch, no
-  pull, no invented merge base. Publishing outward (a PR document) is the one exception, and
-  it diffs a LOCAL `main` / `develop` ref, never `origin/*`.
+  uncommitted and staged work, which `<base>..HEAD` silently omits. Reviewing stays on the
+  current checkout with git READ-ONLY: no fetch, no pull, no invented merge base.
+  **`/ack-pr-desc` is the exception:** it fetches and moves a local compare ref so a PR or
+  version description can diff against an up-to-date base or tag range. Every other skill
+  and agent stays read-only.
 
 ## How to work here
 
@@ -292,7 +300,7 @@ installs them once:
 - **Reply language.** English is the default for this session, every skill, and every
   agent that speaks to the owner. If the owner starts, asks, or runs the turn in another
   language, match that language for the rest of the exchange. Artifacts stay English:
-  code, identifiers, comments, commit messages, `docs/*.md`, PR descriptions, and
+  code, identifiers, comments, commit messages, `docs/*.md`, PR and version descriptions, and
   everything under `.claude/**` and `.superpowers/**`. An agent hand-back to the session
   stays English (`rules/agent-communication.md`).
 - When something is wrong, say so and give a recommendation. Never fix it silently, and never

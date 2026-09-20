@@ -1,7 +1,7 @@
 ---
 name: doc-writer
 description: >-
-    Repairs docs/*.md, the root README.md, SECURITY.md, CONTRIBUTING.md, and CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md, against the code on the current checkout, bound by the same project rules the code is. The only agent that may write them. Dispatched by ack-docs, and by ack-code during a run or at close-out. Strips AI writing patterns from markdown. Reports a CONFLICT rather than resolving it. NOT for feature code (coder), NOT for seeds (seed-writer), NOT for the harness (harness-writer), NOT for reviewing (reviewer).
+    Repairs docs/*.md, the root README.md, SECURITY.md, CONTRIBUTING.md, and CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md, against the code on the current checkout, bound by the same project rules the code is. The only agent that may write them. Dispatched by ack-docs, and by ack-code during a run or at close-out. Strips AI writing patterns from markdown. Reports a CONFLICT rather than resolving it. NOT for feature code (coder), NOT for seeds (seed-writer), NOT for the harness (harness-writer), NOT for reviewing (reviewer), NOT for PR or version descriptions (pr-desc-writer).
 tools: Read, Grep, Glob, Bash, Write, Edit
 skills: caveman:caveman, avoid-ai-writing:avoid-ai-writing
 ---

@@ -1,7 +1,7 @@
 ---
 name: ack-docs
 description: >-
-    Check docs/*.md, the root README.md, SECURITY.md, CONTRIBUTING.md, and CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md, against the code on this checkout and repair what has gone stale. Final state only. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for feature code.
+    Check docs/*.md, the root README.md, SECURITY.md, CONTRIBUTING.md, and CODE_OF_CONDUCT.md, and .github/** except copilot-instructions.md, against the code on this checkout and repair what has gone stale. Final state only. Use when the owner asks to update or verify the docs. NOT a docs/code diff between two branches, NOT for PR or version descriptions (ack-pr-desc), NOT for feature code.
 disable-model-invocation: true
 ---
 
@@ -105,3 +105,4 @@ flowchart LR
 | Then run | When |
 |---|---|
 | `/ack-code` | a CONFLICT resolved as the CODE is wrong |
+| `/ack-pr-desc` | the branch or release set is settled and needs a public PR or version description |

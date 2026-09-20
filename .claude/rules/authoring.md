@@ -38,7 +38,7 @@ token` is a changelog line. Grep finds the word; only reading finds the violatio
 
 **The test:** would this sentence exist if the thing had ALWAYS been this way? If it only makes
 sense because something used to be different, it is history. History lives in `git log`, in the
-PR description, and in the issue tracker.
+PR or version description, and in the issue tracker.
 
 ### The negation trap
 
@@ -94,7 +94,8 @@ Verification aid:
 ## Language
 
 Every artifact is written in ENGLISH — code, identifiers, comments, commit messages,
-`docs/*.md`, `.claude/**`, `.superpowers/**`, PR descriptions. Reply language to the owner
+`docs/*.md`, `.claude/**`, `.superpowers/**`, PR and version descriptions. Reply language to
+the owner
 is `CLAUDE.md` → How to work here: English by default, match the language of the turn.
 Something the owner said reaches an artifact only as the RULE or the FACT it produced, in
 English — never as a quote, never with a date, and never attributed. "Final state only"
@@ -102,6 +103,41 @@ governs that: an artifact carries what is true, not who decided it or when.
 
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
+
+## Working artifacts stay out of published trees (HARD)
+
+A working artifact exists to run a session. It is not the product.
+
+Working artifacts and machine-only paths:
+
+- `.superpowers/` specs and plans
+- `generated/` reports and description documents (the file being written is the output, not a source)
+- `graphify-out/`
+- `.claude/worktrees/` and `.worktrees/`
+- local-only git refs (`pr-desc/*`)
+- absolute filesystem paths
+
+A tree may be named as a destination: where a spec is written, where a PR or version
+description is written, what gitignores. A specific file, ref, or path from those trees is
+never cited as a source.
+
+This binds every published tree:
+
+| Tree | What it publishes |
+|---|---|
+| `docs/*.md`, the root people files, `.github/**` except `copilot-instructions.md` | the product |
+| `.claude/**` | how the project works |
+| `generated/docs/pr-*.md` | the branch against its base (public PR description) |
+| `generated/docs/version-*.md` | a version or tag range (public release description) |
+
+A PR or version description is public paste-ready prose. It never cites `.claude/**`,
+working artifacts, machine paths, or local-only git refs. Behaviour and upgrade steps only —
+no file dumps, no internal Known Open section. A `.claude/**` path in the diff is one line
+in the hand-back.
+
+The compare base or version named in the document is what the owner picked (`develop`,
+`main`, `v1.2.0`). The local tracking ref used to produce the diff is not written into the
+document.
 
 ## Documentation prose (`docs/*.md`, root people files, `.github/` markdown)
 

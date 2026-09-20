@@ -1,7 +1,7 @@
 ---
 name: ack-code
 description: >-
-    Build or repair src/ behaviour test-first, write seeds, repair the run surface this change makes stale (CI, docker, scripts, compose, package.json), and run the mechanical checks. A rule change lands first through harness-writer. Explorer and planner run only while the work is still open. coder is always TDD. doc-writer may run, and the docs question is always asked at close-out. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for a .claude-only pass (ack-claude-config).
+    Build or repair src/ behaviour test-first, write seeds, repair the run surface this change makes stale (CI, docker, scripts, compose, package.json), and run the mechanical checks. A rule change lands first through harness-writer. Explorer and planner run only while the work is still open. coder is always TDD. doc-writer may run, and the docs question is always asked at close-out. Use when the owner wants application code, a seed, or the work judged. NOT for covering existing code (ack-spec), NOT for a docs-only pass (ack-docs), NOT for a PR or version description (ack-pr-desc), NOT for a .claude-only pass (ack-claude-config).
 disable-model-invocation: true
 ---
 
@@ -36,6 +36,7 @@ A shape you decide in conversation is bound by the same rows.
 |---|---|
 | specs for code that already exists, or a coverage gap | `/ack-spec` |
 | a docs-only pass of `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, or `CODE_OF_CONDUCT.md`, or `.github/**` except `copilot-instructions.md` | `/ack-docs` |
+| a PR or version description document | `/ack-pr-desc` |
 | `.claude/**` only | `/ack-claude-config` |
 
 A request that is both a rule change and `src/` work stays here: rules first, then code.
@@ -261,3 +262,7 @@ flowchart LR
 |---|---|
 | `/ack-spec` | a coverage gap beyond the TDD specs, or a suite that is wrong against the code |
 | `/ack-docs` | a full docs pass, or the owner declined `doc-writer` here and still wants the docs updated |
+| `/ack-pr-desc` | the branch or release set is settled and needs a public PR or version description |
+
+`/ack-pr-desc` is NOT a step here. Run it on its own once the branch or release set is
+settled — it fetches and moves a local ref.

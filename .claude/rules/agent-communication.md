@@ -12,7 +12,7 @@ Does NOT apply to persisted artifacts — those stay normal English prose per
 `rules/authoring.md`:
 
 - Source and test code, comments
-- `generated/docs/report-*.md`, `generated/docs/pr-*.md`
+- `generated/docs/report-*.md`, `generated/docs/pr-*.md`, `generated/docs/version-*.md`
 - `docs/*.md`, commits, PR/MR body text
 
 Hand-back still carries every fact the skill needs. Compression shrinks wording, never

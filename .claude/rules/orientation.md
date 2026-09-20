@@ -124,6 +124,7 @@ table is the index so none is skipped:
 | `coder` | `testing.md` `testing-spec-style.md` (TDD spec of this plan or pin), `agent-communication.md` |
 | `seed-writer` | `seeding.md`, `agent-communication.md` |
 | `doc-writer` | `authoring.md`, `agent-communication.md` |
+| `pr-desc-writer` | `authoring.md`, `agent-communication.md` |
 | `harness-writer` | `authoring.md`, `agent-communication.md` |
 | `reviewer` | `agent-communication.md` |
 | `reviewer-e2e` | `agent-communication.md`. Every HTTP path also: `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
@@ -131,6 +132,7 @@ table is the index so none is skipped:
 | `ack-code` | the map, then the extras of whoever it dispatches |
 | `ack-spec` | `testing.md` `testing-spec-style.md` |
 | `ack-docs` / `ack-claude-config` | `authoring.md` |
+| `ack-pr-desc` | `authoring.md` |
 
 A skill takes this map before it dispatches. An agent takes the four, its extras, then every
 surface row the work touches — the FILE, not a memory of it.
@@ -146,6 +148,6 @@ the question in hand and the rule file does not settle it. One file, the one the
 names. Never the `docs/` tree.
 
 Every other agent — `coder`, `seed-writer`, `test-writer`, `reviewer`, `reviewer-e2e`,
-`harness-writer` — does not read `docs/` or `.github/**` (except `copilot-instructions.md`,
-which `harness-writer` owns) to do its job. `doc-writer` is the exception: those files are
-its subject.
+`harness-writer`, `pr-desc-writer` — does not read `docs/` or `.github/**` (except
+`copilot-instructions.md`, which `harness-writer` owns) to do its job. `doc-writer` is the
+exception: those files are its subject.
