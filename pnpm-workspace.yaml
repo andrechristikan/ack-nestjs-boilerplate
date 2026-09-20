@@ -11,3 +11,18 @@ allowBuilds:
     prisma: true
     protobufjs: true
     unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@commitlint/cli@21.2.3'
+  - '@commitlint/config-conventional@21.2.3'
+  - '@commitlint/config-validator@21.2.3'
+  - '@commitlint/ensure@21.2.3'
+  - '@commitlint/format@21.2.3'
+  - '@commitlint/is-ignored@21.2.3'
+  - '@commitlint/lint@21.2.3'
+  - '@commitlint/load@21.2.3'
+  - '@commitlint/parse@21.2.3'
+  - '@commitlint/read@21.2.3'
+  - '@commitlint/resolve-extends@21.2.3'
+  - '@commitlint/rules@21.2.3'
+  - '@commitlint/types@21.2.3'
+  - '@nestjs/terminus@12.1.0'
