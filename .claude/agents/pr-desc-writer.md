@@ -92,30 +92,41 @@ not read.
 An existing output file is REPLACED whole — write from what the range says now. You never keep a
 section you did not re-verify this run.
 
-## Shape — mode `pr`
+## Shape — mode `pr` (HARD)
 
-```
-# <branch name>
-## Summary
-## Changes
-## Breaking Changes
-## How to test
-## Upgrade notes
-## Related
-```
+**The shape is `.github/pull_request_template.md`.** Read that file every run. Do not invent
+headings. Output a filled body that pastes into a GitHub PR — same section order, same
+checkbox labels. Drop HTML comments from the template; keep the markdown structure.
 
-- **Summary** — 2–5 lines: what changed and why, naming the module(s).
-- **Changes** — user-facing bullets per behaviour or module. Not a file list.
-- **Breaking Changes** — what callers must update, or `n/a`.
-- **How to test** — concrete commands and steps (`pnpm test <module>`, boot, manual path).
-  Not a layering or harness checklist.
-- **Upgrade notes** — omit the heading when empty. Include only when the diff requires
-  something outside a normal deploy: `pnpm db:migrate`, a seed command, new or changed env
-  keys (name + purpose), a queue drain, or similar.
-- **Related** — compare base the owner picked; issue links only when the diff or branch name
-  makes them obvious. No invented issue numbers.
+Optional file banner only (not pasted into GitHub): one line `# <branch name>` then a blank
+line, then the template body starting at `## Summary`.
+
+Fill from the diff:
+
+| Section | What you write |
+|---|---|
+| **Summary** | 2–5 lines: what changed and why; name the module(s). |
+| **Related Issue** | `Closes #N` only when the branch name or commits make it obvious; otherwise `n/a`. Never invent an issue number. Name the compare base (`main` / `develop`) in one short clause if useful. |
+| **Scope → Type of change** | Tick every type the diff supports; leave the rest unchecked. |
+| **Scope → Module(s)** | Tick every `src/modules/<name>` the product diff owns; use `common` / shared or Other when that fits. Keep the template's module list as written — do not add rows that are not on the template; put extras under Other. |
+| **Scope → Entry points** | Tick and complete HTTP / Queue / CLI / Other from the diff. |
+| **Out of scope** | What this branch deliberately does not touch, when the diff makes that clear; otherwise a short honest line. |
+| **How Has This Been Tested?** | |
+| → **Checks** | Leave unchecked unless the dispatch says those commands already ran green this session. |
+| → **Tests** | Tick kinds the diff supports (e.g. Unit test + scope from `test/` paths). Do not claim a run you did not see. |
+| → **How to run** | Concrete local steps to exercise the change. |
+| → **Database / seed** | Tick from schema / `src/migration/` / seed diffs; spell the owner commands (`pnpm db:migrate`, `pnpm db:generate`, seed CLI). |
+| → **Environment** | Tick and list new or changed env keys (name + purpose); note `.env.example` when the diff touches it. |
+| → **Mandatory** | Keep only subsections whose surface the diff touches. Leave those checkboxes **unchecked** — they are the author's attestation on submit, not something you certify from the diff alone. Omit subsections the diff does not touch. |
+| **Breaking Changes** | What callers must update, or `n/a`. |
+| **Additional Notes** | Upgrade or reviewer notes that do not fit Database / Environment (queue drain, Vault rollout, compare-base caveat). Omit the section when empty. |
+
+No parallel "Changes" / "Upgrade notes" / "How to test" headings — those map into Summary,
+Scope, How Has This Been Tested?, and Additional Notes on the template.
 
 ## Shape — mode `version`
+
+Not the PR template. Lean release notes:
 
 ```
 # <version or range>
@@ -125,9 +136,11 @@ section you did not re-verify this run.
 ## Upgrade notes
 ```
 
-Same rules as `pr` for Summary, Changes, Breaking Changes, and Upgrade notes. No How to test.
-No Related. Upgrade notes stay even when short — version readers need the upgrade path; write
-`None.` when the release needs no extra step.
+- **Summary** — 2–5 lines for the release.
+- **Changes** — user-facing bullets per behaviour or module. Not a file list.
+- **Breaking Changes** — what callers must update, or `n/a`.
+- **Upgrade notes** — always present. `pnpm db:migrate`, seed commands, env keys, or `None.`
+  when the release needs no extra step.
 
 ## Style
 
@@ -141,6 +154,8 @@ stay untouched.
 ## Boundaries
 
 - The document file only. No `src/`, no `test/`, no `docs/*.md`, no `.claude/`, no `prisma/`.
+- Mode `pr` **reads** `.github/pull_request_template.md` as the shape source; it does not edit
+  that file.
 - Git stays read-only. No schema, DB, or seed commands.
 - Never stage or commit.
 

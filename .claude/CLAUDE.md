@@ -110,7 +110,7 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 | `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds, and the run surface that change makes stale (CI, docker, scripts); rules first when a rule changes; offers reviewer and reviewer-e2e; always asks about docs |
 | `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; fixes a confirmed no-flow bug through coder |
 | `ack-docs` | check and repair `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, and `CODE_OF_CONDUCT.md`, and `.github/**` except `copilot-instructions.md` |
-| `ack-pr-desc` | write a public PR or version/release description — runs alone, at the end |
+| `ack-pr-desc` | write a public PR description (fills the PR template) or version/release notes — runs alone, at the end |
 | `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md` through `harness-writer` |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from

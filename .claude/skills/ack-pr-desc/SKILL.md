@@ -108,6 +108,10 @@ The document names the owner-facing base or version (`develop`, `main`, `v1.2.0`
 local tracking ref. Working artifacts and `.claude/**` stay out of the document
 (`rules/authoring.md`).
 
+**Mode `pr` fills `.github/pull_request_template.md`** — same headings and checkbox labels,
+paste-ready into a GitHub PR body. **Mode `version`** stays lean release notes (not the
+template).
+
 ## Boundaries
 
 - The description file only. No `src/`, no `test/`, no `docs/*.md`, no `.claude/`, no `prisma/`.

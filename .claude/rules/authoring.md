@@ -127,13 +127,13 @@ This binds every published tree:
 |---|---|
 | `docs/*.md`, the root people files, `.github/**` except `copilot-instructions.md` | the product |
 | `.claude/**` | how the project works |
-| `generated/docs/pr-*.md` | the branch against its base (public PR description) |
+| `generated/docs/pr-*.md` | the branch against its base — filled `.github/pull_request_template.md` |
 | `generated/docs/version-*.md` | a version or tag range (public release description) |
 
-A PR or version description is public paste-ready prose. It never cites `.claude/**`,
-working artifacts, machine paths, or local-only git refs. Behaviour and upgrade steps only —
-no file dumps, no internal Known Open section. A `.claude/**` path in the diff is one line
-in the hand-back.
+A PR description follows the project pull-request template (same sections and checkbox
+labels). A version description is lean release notes. Both are public paste-ready prose.
+They never cite `.claude/**`, working artifacts, machine paths, or local-only git refs.
+A `.claude/**` path in the diff is one line in the hand-back.
 
 The compare base or version named in the document is what the owner picked (`develop`,
 `main`, `v1.2.0`). The local tracking ref used to produce the diff is not written into the
