@@ -39,4 +39,66 @@ describe('WorkspaceGuard', () => {
             workspace
         );
     });
+
+    it('reads the workspace id from the store key configured under workspace.storeKey', async () => {
+        configService.get.mockImplementation(key =>
+            key === 'workspace.storeKey' ? 'custom-workspace-key' : undefined
+        );
+        requestStoreService.get.mockReturnValue('workspace-id');
+        workspaceDomain.validateWorkspaceGuard.mockResolvedValue(
+            createMock<
+                Awaited<ReturnType<WorkspaceDomain['validateWorkspaceGuard']>>
+            >()
+        );
+        const guard = new WorkspaceGuard(
+            configService,
+            workspaceDomain,
+            requestStoreService
+        );
+
+        await expect(guard.canActivate(context)).resolves.toBe(true);
+
+        expect(requestStoreService.get).toHaveBeenCalledWith(
+            'custom-workspace-key'
+        );
+        expect(workspaceDomain.validateWorkspaceGuard).toHaveBeenCalledWith(
+            'workspace-id'
+        );
+    });
+
+    it('hands undefined to the domain when no workspace id is stored', async () => {
+        configService.get.mockReturnValue('workspace-header');
+        requestStoreService.get.mockReturnValue(undefined);
+        workspaceDomain.validateWorkspaceGuard.mockResolvedValue(
+            createMock<
+                Awaited<ReturnType<WorkspaceDomain['validateWorkspaceGuard']>>
+            >()
+        );
+        const guard = new WorkspaceGuard(
+            configService,
+            workspaceDomain,
+            requestStoreService
+        );
+
+        await expect(guard.canActivate(context)).resolves.toBe(true);
+
+        expect(workspaceDomain.validateWorkspaceGuard).toHaveBeenCalledWith(
+            undefined
+        );
+    });
+
+    it('propagates the domain rejection unchanged and publishes nothing', async () => {
+        const error = new Error('workspace not found');
+        configService.get.mockReturnValue('workspace-header');
+        requestStoreService.get.mockReturnValue('workspace-id');
+        workspaceDomain.validateWorkspaceGuard.mockRejectedValue(error);
+        const guard = new WorkspaceGuard(
+            configService,
+            workspaceDomain,
+            requestStoreService
+        );
+
+        await expect(guard.canActivate(context)).rejects.toBe(error);
+        expect(requestStoreService.set).not.toHaveBeenCalled();
+    });
 });

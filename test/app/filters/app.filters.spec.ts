@@ -10,6 +10,7 @@ import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { AppHttpFilter } from '@app/filters/app.http.filter';
 import { AppValidationImportFilter } from '@app/filters/app.validation-import.filter';
 import { AppValidationFilter } from '@app/filters/app.validation.filter';
+import { AuthTwoFactorAttemptTemporaryLockException } from '@modules/auth/exceptions/auth.two-factor-attempt-temporary-lock.exception';
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { MessageService } from '@common/message/services/message.service';
 import { FileRequiredException } from '@common/file/exceptions/file.required.exception';
@@ -232,5 +233,135 @@ describe('Application error filters', () => {
             expect.objectContaining({ errors: localizedErrors })
         );
         expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
+
+    it('forwards message properties and data and lets request metadata win over exception metadata', async () => {
+        const filter = await resolveFilter(AppBaseExceptionFilter);
+        const exception = Object.assign(
+            new AuthTwoFactorAttemptTemporaryLockException(30),
+            {
+                metadata: { language: 'xx', extra: 'kept' },
+                data: { attempts: 5 },
+            }
+        );
+
+        await filter.catch(exception, host);
+
+        expect(messageService.setMessage).toHaveBeenCalledWith(
+            'auth.error.twoFactorAttemptTemporaryLock',
+            {
+                customLanguage: 'en',
+                properties: { retryAfterSeconds: 30 },
+            }
+        );
+        expect(status).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
+        expect(json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                module: 'auth',
+                data: { attempts: 5 },
+                metadata: { ...metadata, extra: 'kept' },
+            })
+        );
+        expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
+
+    it('reports the exception itself for a 5xx without a raw cause', async () => {
+        const filter = await resolveFilter(AppBaseExceptionFilter);
+        const exception = Object.assign(new FileRequiredException(), {
+            httpStatus: HttpStatus.BAD_GATEWAY,
+        });
+
+        await filter.catch(exception, host);
+
+        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+    });
+
+    it('still responds when Sentry throws while reporting', async () => {
+        vi.mocked(Sentry.captureException).mockImplementation(() => {
+            throw new Error('sentry down');
+        });
+        const baseFilter = await resolveFilter(AppBaseExceptionFilter);
+        const httpFilter = await resolveFilter(AppHttpFilter);
+        const generalFilter = await resolveFilter(AppGeneralFilter);
+
+        await baseFilter.catch(new AppUnknownException(new Error('x')), host);
+        await httpFilter.catch(
+            new HttpException('bad', HttpStatus.BAD_GATEWAY),
+            host
+        );
+        await generalFilter.catch(new Error('y'), host);
+
+        expect(status).toHaveBeenCalledTimes(3);
+        expect(json).toHaveBeenCalledTimes(3);
+    });
+
+    it('falls back to the numeric status when the HTTP status has no name', async () => {
+        const filter = await resolveFilter(AppHttpFilter);
+
+        await filter.catch(new HttpException('odd', 599), host);
+
+        expect(messageService.setMessage).toHaveBeenCalledWith('http.599', {
+            customLanguage: 'en',
+        });
+        expect(json).toHaveBeenCalledWith(
+            expect.objectContaining({ statusCode: 599, statusCodeKey: '599' })
+        );
+    });
+
+    it('camel-cases the status name for a framework 5xx and reports it', async () => {
+        const filter = await resolveFilter(AppHttpFilter);
+        const exception = new HttpException('x', HttpStatus.BAD_GATEWAY);
+
+        await filter.catch(exception, host);
+
+        expect(Sentry.captureException).toHaveBeenCalledWith(exception);
+        expect(json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                statusCodeKey: 'badGateway',
+                module: 'http',
+            })
+        );
+    });
+
+    it('renders the exception status, key, module and metadata on validation failures', async () => {
+        const validationFilter = await resolveFilter(AppValidationFilter);
+        const importFilter = await resolveFilter(AppValidationImportFilter);
+        messageService.setValidationMessage.mockReturnValue([]);
+        messageService.setValidationImportMessage.mockReturnValue([]);
+        const validation = new RequestValidationException([]);
+        const fileImport = new FileImportException([]);
+
+        await validationFilter.catch(validation, host);
+        await importFilter.catch(fileImport, host);
+
+        expect(status).toHaveBeenNthCalledWith(1, validation.httpStatus);
+        expect(json).toHaveBeenNthCalledWith(1, {
+            statusCode: validation.statusCode,
+            statusCodeKey: validation.statusCodeKey,
+            module: validation.module,
+            message: 'localized message',
+            metadata,
+            errors: [],
+        });
+        expect(status).toHaveBeenNthCalledWith(2, fileImport.httpStatus);
+        expect(json).toHaveBeenNthCalledWith(2, {
+            statusCode: fileImport.statusCode,
+            statusCodeKey: fileImport.statusCodeKey,
+            module: fileImport.module,
+            message: 'localized message',
+            metadata,
+            errors: [],
+        });
+        expect(responseMetadataService.setHeaders).toHaveBeenCalledTimes(2);
+        expect(messageService.setMessage).toHaveBeenNthCalledWith(
+            1,
+            validation.messagePath,
+            { customLanguage: 'en' }
+        );
+        expect(messageService.setMessage).toHaveBeenNthCalledWith(
+            2,
+            fileImport.messagePath,
+            { customLanguage: 'en' }
+        );
     });
 });

@@ -70,9 +70,71 @@ describe('WorkspaceMemberGuard', () => {
             requestStoreService
         );
 
-        await guard.canActivate(context);
+        await expect(guard.canActivate(context)).resolves.toBe(true);
         expect(
             workspaceMemberDomain.validateWorkspaceMemberGuard
         ).toHaveBeenCalledWith(null, null);
+    });
+
+    it.each([
+        {
+            name: 'only the workspace is stored',
+            workspace: { id: 'workspace-id' },
+            user: undefined,
+            expected: ['workspace-id', null],
+        },
+        {
+            name: 'only the user is stored',
+            workspace: undefined,
+            user: { id: 'user-id' },
+            expected: [null, 'user-id'],
+        },
+    ])(
+        'passes null for the missing identifier when $name',
+        async ({ workspace, user, expected }) => {
+            requestStoreService.get.mockImplementation(key => {
+                if (key === WorkspaceStoreKey) return workspace;
+                if (key === UserStoreKey) return user;
+                return undefined;
+            });
+            workspaceMemberDomain.validateWorkspaceMemberGuard.mockResolvedValue(
+                createMock<
+                    Awaited<
+                        ReturnType<
+                            WorkspaceMemberDomain['validateWorkspaceMemberGuard']
+                        >
+                    >
+                >()
+            );
+            const guard = new WorkspaceMemberGuard(
+                workspaceMemberDomain,
+                requestStoreService
+            );
+
+            await expect(guard.canActivate(context)).resolves.toBe(true);
+
+            expect(
+                workspaceMemberDomain.validateWorkspaceMemberGuard
+            ).toHaveBeenCalledWith(...expected);
+        }
+    );
+
+    it('propagates the domain rejection unchanged and publishes nothing', async () => {
+        const error = new Error('not a workspace member');
+        requestStoreService.get.mockImplementation(key => {
+            if (key === WorkspaceStoreKey) return { id: 'workspace-id' };
+            if (key === UserStoreKey) return { id: 'user-id' };
+            return undefined;
+        });
+        workspaceMemberDomain.validateWorkspaceMemberGuard.mockRejectedValue(
+            error
+        );
+        const guard = new WorkspaceMemberGuard(
+            workspaceMemberDomain,
+            requestStoreService
+        );
+
+        await expect(guard.canActivate(context)).rejects.toBe(error);
+        expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });

@@ -39,4 +39,62 @@ describe('ProjectGuard', () => {
             project
         );
     });
+
+    it('propagates the domain rejection unchanged and publishes nothing', async () => {
+        const error = new Error('project not found');
+        requestStoreService.get.mockReturnValue({ id: 'workspace-id' });
+        projectDomain.validateProjectGuard.mockRejectedValue(error);
+        const context = createMock<ExecutionContext>({
+            switchToHttp: () => ({
+                getRequest: () => ({ params: { projectId: 'project-id' } }),
+            }),
+        });
+        const guard = new ProjectGuard(projectDomain, requestStoreService);
+
+        await expect(guard.canActivate(context)).rejects.toBe(error);
+        expect(requestStoreService.set).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        {
+            name: 'the workspace is not stored',
+            workspace: undefined,
+            params: { projectId: 'project-id' } as Record<string, string>,
+            expected: [null, 'project-id'],
+        },
+        {
+            name: 'the projectId param is missing',
+            workspace: { id: 'workspace-id' },
+            params: {} as Record<string, string>,
+            expected: ['workspace-id', null],
+        },
+        {
+            name: 'both are missing',
+            workspace: undefined,
+            params: {} as Record<string, string>,
+            expected: [null, null],
+        },
+    ])(
+        'passes null for the missing identifier when $name',
+        async ({ workspace, params, expected }) => {
+            requestStoreService.get.mockReturnValue(workspace);
+            projectDomain.validateProjectGuard.mockResolvedValue(
+                createMock<
+                    Awaited<ReturnType<ProjectDomain['validateProjectGuard']>>
+                >()
+            );
+            const context = createMock<ExecutionContext>({
+                switchToHttp: () => ({
+                    getRequest: () => ({ params }),
+                }),
+            });
+            const guard = new ProjectGuard(projectDomain, requestStoreService);
+
+            await expect(guard.canActivate(context)).resolves.toBe(true);
+
+            expect(projectDomain.validateProjectGuard).toHaveBeenCalledWith(
+                ...expected
+            );
+        }
+    );
 });

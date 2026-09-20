@@ -65,4 +65,29 @@ describe('WorkspaceRoleGuard', () => {
             workspaceMemberDomain.validateWorkspaceRoleGuard
         ).toHaveBeenCalledWith(undefined, []);
     });
+
+    it('throws the domain error synchronously and unchanged', () => {
+        const error = new Error('role not allowed');
+        reflector.get.mockReturnValue([EnumWorkspaceMemberRole.owner]);
+        requestStoreService.get.mockReturnValue(undefined);
+        workspaceMemberDomain.validateWorkspaceRoleGuard.mockImplementation(
+            () => {
+                throw error;
+            }
+        );
+        const guard = new WorkspaceRoleGuard(
+            reflector,
+            workspaceMemberDomain,
+            requestStoreService
+        );
+
+        let thrown: unknown;
+        try {
+            guard.canActivate(context);
+        } catch (e) {
+            thrown = e;
+        }
+
+        expect(thrown).toBe(error);
+    });
 });

@@ -1,7 +1,10 @@
 import { createMock } from '@golevelup/ts-vitest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RequestStoreService } from '@common/request/services/request.store.service';
-import { UserGuardIsVerifiedMetaKey } from '@modules/user/constants/user.constant';
+import {
+    UserGuardIsVerifiedMetaKey,
+    UserStoreKey,
+} from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import type { UserDomain } from '@modules/user/domains/user.domain';
 import type { ExecutionContext } from '@nestjs/common';
@@ -48,7 +51,7 @@ describe('UserGuard', () => {
             false
         );
         expect(requestStoreService.set).toHaveBeenCalledWith(
-            expect.any(String),
+            UserStoreKey,
             user
         );
     });
@@ -63,5 +66,27 @@ describe('UserGuard', () => {
             'user-id',
             true
         );
+    });
+
+    it('passes a null user id when the request carries no user', async () => {
+        reflector.get.mockReturnValue(undefined);
+        const context = createMock<ExecutionContext>({
+            switchToHttp: () => ({
+                getRequest: () => ({}),
+            }),
+        });
+
+        await expect(guard.canActivate(context)).resolves.toBe(true);
+
+        expect(userService.validateUserGuard).toHaveBeenCalledWith(null, false);
+    });
+
+    it('propagates the domain rejection unchanged and publishes nothing', async () => {
+        const error = new Error('user rejected');
+        reflector.get.mockReturnValue(undefined);
+        userService.validateUserGuard.mockRejectedValue(error);
+
+        await expect(guard.canActivate(createContext())).rejects.toBe(error);
+        expect(requestStoreService.set).not.toHaveBeenCalled();
     });
 });

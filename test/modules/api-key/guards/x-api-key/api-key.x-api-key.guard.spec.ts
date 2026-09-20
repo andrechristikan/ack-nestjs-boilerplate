@@ -72,4 +72,66 @@ describe('ApiKeyXApiKeyGuard', () => {
             apiKey
         );
     });
+
+    it('passes an empty string to the domain when the header is absent', async () => {
+        const context = createMock<ExecutionContext>({
+            switchToHttp: () =>
+                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
+                    getRequest: () => ({ headers: {} }),
+                }),
+        });
+        apiKeyService.validateXApiKey.mockResolvedValue(apiKey);
+
+        await expect(guard.canActivate(context)).resolves.toBe(true);
+
+        expect(apiKeyService.validateXApiKey).toHaveBeenCalledWith('');
+    });
+
+    it('matches the configured header name case-insensitively', async () => {
+        const moduleRef: TestingModule = await Test.createTestingModule({
+            providers: [
+                ApiKeyXApiKeyGuard,
+                { provide: ApiKeyDomain, useValue: apiKeyService },
+                { provide: RequestStoreService, useValue: requestStoreService },
+                {
+                    provide: ConfigService,
+                    useValue: new ConfigService({
+                        'auth.xApiKey.header': 'X-Custom-Key',
+                    }),
+                },
+            ],
+        }).compile();
+        const customGuard = moduleRef.get(ApiKeyXApiKeyGuard);
+        const context = createMock<ExecutionContext>({
+            switchToHttp: () =>
+                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
+                    getRequest: () => ({
+                        headers: { 'x-custom-key': 'custom-value' },
+                    }),
+                }),
+        });
+        apiKeyService.validateXApiKey.mockResolvedValue(apiKey);
+
+        await expect(customGuard.canActivate(context)).resolves.toBe(true);
+
+        expect(apiKeyService.validateXApiKey).toHaveBeenCalledWith(
+            'custom-value'
+        );
+    });
+
+    it('propagates the domain rejection unchanged and does not store a key', async () => {
+        const error = new Error('invalid api key');
+        const context = createMock<ExecutionContext>({
+            switchToHttp: () =>
+                createMock<ReturnType<ExecutionContext['switchToHttp']>>({
+                    getRequest: () => ({
+                        headers: { 'x-api-key': 'bad' },
+                    }),
+                }),
+        });
+        apiKeyService.validateXApiKey.mockRejectedValue(error);
+
+        await expect(guard.canActivate(context)).rejects.toBe(error);
+        expect(requestStoreService.set).not.toHaveBeenCalled();
+    });
 });

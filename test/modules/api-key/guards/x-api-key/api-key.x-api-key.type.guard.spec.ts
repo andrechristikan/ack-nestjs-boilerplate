@@ -79,4 +79,48 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             [EnumApiKeyType.system]
         );
     });
+
+    it('returns false when the domain rejects the key type', async () => {
+        const context = createMock<ExecutionContext>({
+            getHandler: () => () => undefined,
+            getClass: () => class Host {},
+        });
+        reflector.getAllAndOverride.mockReturnValue([EnumApiKeyType.default]);
+        requestStoreGet.mockReturnValue(apiKey);
+        apiKeyService.validateXApiKeyTypeGuard.mockReturnValue(false);
+
+        await expect(guard.canActivate(context)).resolves.toBe(false);
+    });
+
+    it('propagates the domain error unchanged', async () => {
+        const error = new Error('key type forbidden');
+        const context = createMock<ExecutionContext>({
+            getHandler: () => () => undefined,
+            getClass: () => class Host {},
+        });
+        reflector.getAllAndOverride.mockReturnValue([EnumApiKeyType.system]);
+        requestStoreGet.mockReturnValue(apiKey);
+        apiKeyService.validateXApiKeyTypeGuard.mockImplementation(() => {
+            throw error;
+        });
+
+        await expect(guard.canActivate(context)).rejects.toBe(error);
+    });
+
+    it('hands null to the domain when no api key is stored', async () => {
+        const context = createMock<ExecutionContext>({
+            getHandler: () => () => undefined,
+            getClass: () => class Host {},
+        });
+        reflector.getAllAndOverride.mockReturnValue([EnumApiKeyType.system]);
+        requestStoreGet.mockReturnValue(null);
+        apiKeyService.validateXApiKeyTypeGuard.mockReturnValue(true);
+
+        await expect(guard.canActivate(context)).resolves.toBe(true);
+
+        expect(apiKeyService.validateXApiKeyTypeGuard).toHaveBeenCalledWith(
+            null,
+            [EnumApiKeyType.system]
+        );
+    });
 });
