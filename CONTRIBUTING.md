@@ -56,8 +56,8 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 |------|---------|
-| Node.js | >= 24.11.0 |
-| pnpm | >= 10.25.0 |
+| Node.js | >= 24.15.0 |
+| pnpm | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | Docker | Latest stable |
 | MongoDB | Replication set (required for transactions) |
 | Redis | Latest stable |
@@ -71,13 +71,17 @@ pnpm install
 # Copy environment file
 cp .env.example .env
 
-# Generate JWT keys, Prisma client, and push schema
-pnpm generate:keys
-pnpm db:generate
-pnpm db:migrate
+# Generate JWT keys and encryption secrets into .env
+pnpm generate:secret --direct-insert
+
+# Generate the Prisma client and src/generated/package/package.ts
+pnpm generate
 
 # Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
 docker-compose up -d
+
+# Push the schema (needs the MongoDB replica set above already running)
+pnpm db:migrate
 
 # Run in development mode
 pnpm start:dev
@@ -92,7 +96,7 @@ For the full onboarding path (including Docker profiles and key material), see [
 This project uses **TypeScript** with strict mode. Please follow these standards:
 
 - Follow **SOLID principles** and **Repository Design Pattern** already established in this codebase
-- Use **Prisma ORM** for all database interactions — do not bypass the repository layer
+- Use **Prisma ORM** for all database interactions. Do not bypass the repository layer
 - All new modules must follow the existing **modular structure** in `src/`
 - Run linter before submitting:
   ```bash
@@ -103,13 +107,13 @@ This project uses **TypeScript** with strict mode. Please follow these standards
   ```bash
   pnpm test
   ```
-- No `any` types unless absolutely unavoidable — justify it in a comment
+- No `any` types unless absolutely unavoidable. Justify it in a comment
 - All public methods/functions should have proper TypeScript typings
-- **Strict null convention** — `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
-- Never use `variable?: string | null` — ambiguous; use `?: string` for input boundary or `string | null` for internal layers
+- **Strict null convention.** `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
+- Never use `variable?: string | null` (ambiguous). Use `?: string` for input boundary or `string | null` for internal layers
 - Response DTO **domain data fields** must use `field: Type | null`, not `field?: Type`. Only structural/wrapper fields (e.g. `data?`, `errors?` on response wrappers) may use `?:`
-- Repository filter params use `Type | null` — normalization `null → {}` is done inside the repository before Prisma, not at the caller
-- `src/configs/` config interfaces use `field: Type | null` — callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
+- Repository filter params use `Type | null`. Normalization `null → {}` is done inside the repository before Prisma, not at the caller
+- `src/configs/` config interfaces use `field: Type | null`. Callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
 
 ---
 
@@ -162,10 +166,19 @@ docs(readme): update docker setup instructions
 4. Push and open a PR against `development` (integration branch). `main` stays the release/default line.
 5. Fill in the PR template so a reviewer can follow the work:
    - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?** (required checks + tests + mandatory when applicable)
-   - **Out of scope**, **Breaking Changes**, **Additional Notes** — when they apply
-6. Wait for review — at least **1 maintainer approval** is required to merge
+   - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
+6. Wait for review. At least **1 maintainer approval** is required to merge
 
-The PR template asks for what a reviewer must verify (boot, tests, seed/env, layering, status codes, i18n). Tick only the rows that apply to your change. Husky and CI still own lint/test gates.
+The PR template asks for what a reviewer verifies:
+
+- boot
+- tests
+- seed/env
+- layering
+- status codes
+- i18n
+
+Tick only the rows that apply to the change. Husky and CI still own lint/test gates.
 
 **PR will be rejected if:**
 - Tests are failing
@@ -200,7 +213,7 @@ Large features should be discussed in an issue **before** any implementation sta
 
 ## Questions?
 
-Open a [Discussion][ref-discussions] — not an issue.
+Open a [Discussion][ref-discussions], not an issue.
 
 <!-- REFERENCES -->
 

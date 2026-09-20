@@ -163,7 +163,8 @@ the STRING is absent, not the behaviour.**
 
 - Git stays READ-ONLY. No fetch, no pull, no checkout.
 - No fixes, no edits, no spec, no e2e test, no HTTP call, no boot.
-- No `docs/*.md`. No schema, DB, or seed commands.
+- No `docs/*.md`. No root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`). No schema, DB, or seed commands.
 - A finding is a flow that no longer reaches its true end, or a rename that strands live
   runtime state with no operational step named — a queue drain, a cursor invalidation, a
   forced re-login, an i18n key renamed on one side only (`rules/naming.md`).

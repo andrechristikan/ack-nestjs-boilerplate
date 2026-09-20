@@ -166,6 +166,23 @@ describe('AnalyticFraudHttpService', () => {
                 analyticFraudDomain.accountTakeoverSummary
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticFraudDomain.accountTakeoverSummary.mockResolvedValue({
+                count: 0,
+            });
+
+            await service.accountTakeoverSummary();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('accountTakeoverList', () => {
@@ -197,6 +214,25 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.accountTakeoverList
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+        });
+
+        it('passes null dates when query dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            const page = { ...offsetPage, data: [] };
+            analyticFraudDomain.accountTakeoverList.mockResolvedValue(page);
+
+            await service.accountTakeoverList({
+                page: 1,
+                perPage: 20,
+            } as never);
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -417,6 +453,23 @@ describe('AnalyticFraudHttpService', () => {
                 analyticFraudDomain.sessionAfterAdminSummary
             ).toHaveBeenCalledWith(startDate, endDate);
         });
+
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticFraudDomain.sessionAfterAdminSummary.mockResolvedValue({
+                count: 0,
+            });
+
+            await service.sessionAfterAdminSummary();
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('sessionAfterAdminList', () => {
@@ -448,6 +501,25 @@ describe('AnalyticFraudHttpService', () => {
             expect(
                 analyticFraudDomain.sessionAfterAdminList
             ).toHaveBeenCalledWith(startDate, endDate, pagination);
+        });
+
+        it('passes null dates when query dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            const page = { ...offsetPage, data: [] };
+            analyticFraudDomain.sessionAfterAdminList.mockResolvedValue(page);
+
+            await service.sessionAfterAdminList({
+                page: 1,
+                perPage: 20,
+            } as never);
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 

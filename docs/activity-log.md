@@ -4,11 +4,19 @@ Activity Log lives in `src/modules/activity-log`.
 
 ## Overview
 
-Activity Log records audited user actions. During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues the prepared events with `ActivityLogDomain.stagePrepared`. The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes staged events after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`. Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
+Activity Log records audited user actions:
 
-An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
+- During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
+- The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`.
+- Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
+- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
 
-**Failed credential logins:** On a credential password mismatch, `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. When the attempt counter is already at the limit, `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. Both requests answer an error, and `onError: true` is what writes their rows. All three contracts in `ActivityLogActionContract` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. i18n descriptions: `activityLog.userLoginFailed` ("Login failed with invalid credentials") and `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached"). Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+**Failed credential logins**
+
+Both paths answer an error; `onError: true` is what writes the rows. All three contracts in `ActivityLogActionContract` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+
+- **Password mismatch.** `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. i18n: `activityLog.userLoginFailed` ("Login failed with invalid credentials").
+- **Attempt limit already reached.** `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. i18n: `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
 
 **Notes:**
 
@@ -61,7 +69,10 @@ An action one user takes on another user writes two rows: one owned by the actor
 
 Global prefix `/api` and version `v1` apply as elsewhere.
 
-The two user-scoped lists return every row whose `userId` is that user, with or without a workspace: the actions the user performed and the target rows written when someone else acted on the user. The two workspace-scoped lists return the rows of one workspace. The shared one is narrowed to the caller's rows; the admin one is narrowed only when `userId` is passed, so a paired workspace action appears there twice, once for each party.
+List scope:
+
+- **User-scoped lists** return every row whose `userId` is that user, with or without a workspace: the actions the user performed and the target rows written when someone else acted on the user.
+- **Workspace-scoped lists** return the rows of one workspace. The shared one is narrowed to the caller's rows; the admin one is narrowed only when `userId` is passed, so a paired workspace action appears there twice, once for each party.
 
 ## Flow
 
@@ -95,7 +106,13 @@ sequenceDiagram
 
 ## Staging an activity
 
-Every caller follows one order: prepare and validate every event before the write it records can commit, then write, then stage the prepared events. A session or device path commits, then writes or purges the session cache, then stages. `prepare` validates the metadata against `ActivityLogActionContract[action].metadata` and checks the user and workspace fields, so a contract failure throws before anything is committed, and a failed write stages nothing. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
+Every caller follows one order:
+
+1. Prepare and validate every event (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
+2. Write (a contract failure throws before anything commits; a failed write stages nothing).
+3. Stage the prepared events.
+
+A session or device path commits, then writes or purges the session cache, then stages. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
 
 ```typescript
 const roleId = this.databaseUtil.createId();
@@ -129,7 +146,13 @@ this.activityLogDomain.stagePrepared(events);
 
 Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the commit, because `sessionCount` exists only once the revoke has run.
 
-`onError: true` is set on `userLoginFailed`, on `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path, and on the five API key admin writes (status, name, dates, reset, delete). An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change. Every other event is success-only.
+`onError: true` is set on:
+
+- `userLoginFailed`
+- `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path
+- the five API key admin writes (status, name, dates, reset, delete)
+
+An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change. Every other event is success-only.
 
 The contract's `user` value decides which user fields `prepare` accepts:
 
@@ -144,7 +167,12 @@ Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`
 
 ## Actor and target rows
 
-When one user acts on another user, the domain prepares two rows. The **actor row** uses the action the actor performed and belongs to the actor. The **target row** uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor. When the actor and the affected user are the same person, the domain prepares the actor row only; each call site makes that comparison itself.
+When one user acts on another user, the domain prepares two rows:
+
+- **Actor row.** Uses the action the actor performed and belongs to the actor.
+- **Target row.** Uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor.
+
+When the actor and the affected user are the same person, the domain prepares the actor row only; each call site makes that comparison itself.
 
 ```mermaid
 flowchart TD

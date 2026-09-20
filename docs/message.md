@@ -4,9 +4,11 @@ i18n lives in `src/common/message`. Message files live in `src/languages/`.
 
 ## Overview
 
-i18n through [nestjs-i18n][ref-nestjs-i18n]. Message files live in `src/languages/{language}` as JSON. English (`en`) is the only language shipped.
+i18n through [nestjs-i18n][ref-nestjs-i18n].
 
-The `MessageModule` is imported globally via `CommonModule` in `src/common/common.module.ts`, making `MessageService` available throughout the application without additional imports.
+- Message files live in `src/languages/{language}` as JSON
+- English (`en`) is the only language shipped
+- `MessageModule` is imported globally via `CommonModule` in `src/common/common.module.ts`, making `MessageService` available throughout the application without additional imports
 
 ## Related Documents
 

@@ -271,6 +271,21 @@ two kits that are mutually exclusive by construction are honest; one kit coverin
 A guard used by a handful of endpoints and not worth a kit leaves its throws off the OpenAPI
 document unless an endpoint opts in with `@DocErrors`.
 
+### OpenAPI security scheme names (HARD)
+
+OpenAPI scheme names are **module constants**, never magic strings at `ApiBearerAuth`,
+`ApiSecurity`, `DocumentBuilder.addBearerAuth`, or `DocumentBuilder.addApiKey`.
+
+- **Scheme VALUES are camelCase:** `'accessToken'`, `'refreshToken'`, `'google'`, `'apple'`,
+  `'xApiKey'`.
+- **Const identifiers are PascalCase** on the owning module's constant file, parallel to
+  `AuthJwtAccessGuardKey`: `AuthJwtAccessDocSecurityName`, `AuthJwtRefreshDocSecurityName`,
+  `AuthSocialGoogleDocSecurityName`, `AuthSocialAppleDocSecurityName`, `ApiKeyDocSecurityName`
+  (`rules/naming.md`).
+- Registration in `src/swagger.ts` and emission on `*Protected` / auth decorators both import
+  those consts. The header name `'x-api-key'` is the apiKey `in: 'header'` transport name and is
+  not this rule's subject.
+
 **Kit `DocResponseError` calls live in constants — not inline in `*.decorator.ts`.**
 Common kits (`DocGlobalErrorResponses`, `DocPaginationErrorResponses`, `DocFileErrorResponses`,
 …) live in `src/common/doc/constants/doc.constant.ts` and are consumed by `@Doc`,

@@ -1,6 +1,8 @@
 import { UseGuards, applyDecorators } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import {
+    AuthSocialAppleDocSecurityName,
+    AuthSocialGoogleDocSecurityName,
     DocAuthSocialAppleErrorResponses,
     DocAuthSocialGoogleErrorResponses,
 } from '@modules/auth/constants/auth.constant';
@@ -14,7 +16,7 @@ import { AuthSocialGoogleGuard } from '@modules/auth/guards/social/auth.social.g
 export function AuthSocialGoogleProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthSocialGoogleGuard),
-        ApiBearerAuth('google'),
+        ApiBearerAuth(AuthSocialGoogleDocSecurityName),
         DocAuthSocialGoogleErrorResponses.unauthorized
     );
 }
@@ -26,7 +28,7 @@ export function AuthSocialGoogleProtected(): MethodDecorator {
 export function AuthSocialAppleProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthSocialAppleGuard),
-        ApiBearerAuth('apple'),
+        ApiBearerAuth(AuthSocialAppleDocSecurityName),
         DocAuthSocialAppleErrorResponses.unauthorized
     );
 }

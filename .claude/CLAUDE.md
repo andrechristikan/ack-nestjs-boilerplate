@@ -107,10 +107,10 @@ Project skills, in `.claude/skills/`. Each is owner-invoked only and dispatches 
 
 | Skill | For |
 |---|---|
-| `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds; offers reviewer, reviewer-e2e, doc-writer |
-| `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; touches no `src/` |
-| `ack-docs` | check and repair `docs/*.md` and the root `README.md` |
-| `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md`, with agents and skills disabled |
+| `ack-code` | `src/` work, test-first — new behaviour, a repair, seeds, and the run surface that change makes stale (CI, docker, scripts); rules first when a rule changes; offers reviewer and reviewer-e2e; always asks about docs |
+| `ack-spec` | write and repair unit specs against code that exists, to 100% coverage; fixes a confirmed no-flow bug through coder |
+| `ack-docs` | check and repair `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, and `CODE_OF_CONDUCT.md`, and `.github/**` except `copilot-instructions.md` |
+| `ack-claude-config` | rework `.claude/**` and `.github/copilot-instructions.md` through `harness-writer` |
 
 The roster prints to the terminal at session start — a `SessionStart` hook derives it from
 `.claude/skills/*/SKILL.md`, so adding a skill needs no second edit anywhere.
@@ -124,25 +124,27 @@ flowchart LR
   code --> spec["/ack-spec"]
   spec --> code
   docs --> code
-  config["/ack-claude-config"]
+  config["/ack-claude-config"] --> spec
+  config --> code
 ```
 
-**`/ack-code` interrogates, then runs explorer → planner → coder**, then offers
-`reviewer`, `reviewer-e2e`, and `doc-writer`. A request that only judges the checkout skips
-to the offer and the mechanical checks. `explorer` locates, researches, and brainstorms.
-`planner` writes the spec and the plan. `coder` writes `src/`, test-first. The spec and the
-plan are never written by the session and never by `coder`. `planner` runs twice — once in
-`SPEC` mode, once in `PLAN` mode against the approved spec — and the owner approves the spec
-before the plan is written. When the work touches `prisma/*` or `src/migration/**`, `coder`
-dispatches `seed-writer`.
+**`/ack-code` interrogates, then a rule change through `harness-writer` before any `src/`
+work.** Explorer and planner run only while the work is still open. A pinned repair — files,
+cause at `file:line`, the change, no open product question — goes to `coder` with no
+explorer and no planner. A new behaviour still needs an approved spec unless that spec
+already exists in this session. `coder` writes `src/`, test-first, from the plan or from the
+pin, then repairs the run surface this change makes stale. The spec and the plan are never written by the session and never by `coder`. When the
+work touches `prisma/*` or `src/migration/**`, `coder` dispatches `seed-writer`. A request
+that only judges the checkout skips to the close-out and the mechanical checks.
 
-When a suite is red: the code is wrong → `/ack-code`; the spec is wrong → `/ack-spec`.
+When a suite is red: a no-flow bug in the code → `/ack-spec` (it dispatches `coder`); a flow
+change in the code → `/ack-code`; the spec is wrong → `/ack-spec`.
 
-**The close-out is OFFERED, never automatic.** `/ack-code` asks once which of `reviewer`,
-`reviewer-e2e`, and `doc-writer` to run. Nothing picked means nothing dispatched.
-`reviewer-e2e` never runs unasked. `ack-spec`, `ack-docs` and `ack-claude-config` run no
-review of their own. A docs-only pass is `/ack-docs`; a docs update after a code run is the
-`doc-writer` offer.
+**The close-out asks, it does not assume.** `/ack-code` always asks whether to update docs,
+then offers `reviewer` and `reviewer-e2e`. `doc-writer` may also run during the build once
+the behaviour has landed. `reviewer` and `reviewer-e2e` never run unasked. `ack-spec`,
+`ack-docs` and `ack-claude-config` run no review of their own. A docs-only pass is
+`/ack-docs`.
 
 **A test run is always scoped to the module the work actually CHANGED** —
 `pnpm test <module>` (a Vitest path filter). No skill except `/ack-spec` runs the full
@@ -154,8 +156,11 @@ not the exit code and not the global summary.
 
 **A coverage gap is never closed silently.** `/ack-spec` is the skill built for it —
 100% is the bar it exists to reach, so it keeps dispatching `test-writer` until the per-file
-rows say 100 and hands back only the lines that cannot be covered without changing `src/`.
-`coder` writes the TDD spec for the behaviour in its plan. `/ack-code` dispatches
+rows say 100. A confirmed bug that does not change a flow is repaired here through `coder`,
+test-first. A flow change or a decision is asked of the owner or appended to
+`generated/docs/report-src-sweep.md`; that log is additive, and every `/ack-spec` run ends
+by re-reading it and marking gone rows SOLVED rather than deleting them.
+`coder` writes the TDD spec for the behaviour in its plan or pin. `/ack-code` dispatches
 `test-writer` too, for specs that cover code the run did not write — the gap a finished run
 leaves behind, or a tree the owner names.
 A commit touching `src/` or `test/` goes through the hooks, and `pre-commit` does not collect
@@ -163,7 +168,7 @@ coverage, so neither is a way past the threshold.
 
 Agents live in `.claude/agents/` and are dispatched BY a skill, not invoked directly:
 `explorer`, `planner`, `coder`, `seed-writer`, `reviewer`, `reviewer-e2e`, `doc-writer`,
-`test-writer`.
+`test-writer`, `harness-writer`.
 
 An agent never reaches back for a skill: none of them carries the `Skill` tool, and every
 project skill is `disable-model-invocation: true`, so a skill runs only when the owner names
@@ -173,8 +178,10 @@ and `general-purpose` is `allow` in `.claude/settings.json`: an external skill s
 skill's flow.** A project skill dispatches the agents in `.claude/agents/` and nothing else;
 reaching for a generic built-in inside one of those flows is drift, not a shortcut.
 `coder` is the only agent holding the `Agent` tool, and it dispatches `seed-writer` when the
-work touches `prisma/*` or `src/migration/**`, and nothing else. `test-writer` is dispatched by
-`/ack-spec` and by `/ack-code`, never by another agent.
+work touches `prisma/*` or `src/migration/**`, and nothing else. `harness-writer` is
+dispatched by `/ack-claude-config` and by `/ack-code` when a rule must land before `src/`.
+`test-writer` is dispatched by `/ack-spec` and by `/ack-code`, never by another agent.
+`/ack-spec` also dispatches `coder` for a confirmed no-flow repair.
 
 **Every agent is SCOPED to what its dispatch names**, and none of them sweeps the repository
 unless the dispatch asks for that in those words. Anything noticed outside the scope is one
@@ -198,8 +205,10 @@ installs them once:
 - `caveman` — the reply style every agent uses when reporting back. Install with
   `claude plugin marketplace add JuliusBrussee/caveman`, then
   `claude plugin install caveman@caveman`.
-- `avoid-ai-writing` — de-AI pass on `docs/*.md` and the root `README.md`, loaded only by
-  `doc-writer`. Install with `claude plugin marketplace add conorbronsdon/avoid-ai-writing`,
+- `avoid-ai-writing` — de-AI pass on `docs/*.md`, the root `README.md`, `SECURITY.md`,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `.github/` markdown, loaded only by
+  `doc-writer`. Install with
+  `claude plugin marketplace add conorbronsdon/avoid-ai-writing`,
   then `claude plugin install avoid-ai-writing@conorbronsdon-skills`. Enabling it in
   `.claude/settings.json` does not install it.
 
@@ -225,7 +234,8 @@ installs them once:
   **`rules/orientation.md` is the map.** Whoever needs a rule reads that file, then the
   named rule. `docs/*.md` is not session payload. explorer and planner open one named doc
   only when a rule's flow-narrative pointer is the question and the rule does not settle
-  it. `doc-writer` is the exception: those files are its subject.
+  it. `doc-writer` is the exception: `docs/*.md`, the root people files, and `.github/**`
+  except `copilot-instructions.md` are its subject.
 - Working artifacts are gitignored: `.superpowers/` for specs and plans, `generated/docs/`
   for agent reports and PR description documents, `graphify-out/` for the knowledge graph.
 - **A commit message is one conventional subject line**, `<type>(<scope>): <description>`,
@@ -263,18 +273,22 @@ installs them once:
 
 ## How to work here
 
-- **TDD is a hard rule on `/ack-code` and `coder`.** Write the failing spec first, watch it
-  fail because the behaviour is absent, then implement. `coder` carries
-  `superpowers:test-driven-development` and writes that spec itself. `/ack-spec` is the
-  other half: the code already exists and it wins.
+- **TDD is a hard rule on `/ack-code`, on `coder`, and on a no-flow repair `/ack-spec`
+  sends to `coder`.** Write the failing spec first, watch it fail because the behaviour is
+  absent, then implement. Knowing the fix does not skip the red spec. `coder` carries
+  `superpowers:test-driven-development` and writes that spec itself. `/ack-spec` coverage
+  work is the other half: the code already exists and it wins, except a confirmed no-flow
+  bug which `coder` repairs test-first.
 - **The suite is unit specs** under `test/**/*.spec.ts` (`rules/testing.md`). A domain spec
   doubles the repository; a repository is not a unit subject. Integration (adapter plus real
   engine) and e2e (running app) are other kinds and are not this suite. Seeds, controllers,
   processors, repositories, contracts never have a
-  TDD cycle.
+  TDD cycle. The run surface (`package.json` scripts, `scripts/`, `ci/`, docker, compose,
+  GitHub workflows) has no TDD cycle.
 - **Build the correct shape and change every call site.** No deprecated-but-kept field, no
   `v1`/`v2` pair, no compat flag, no bridging shim. Best practice outranks the incumbent
-  pattern.
+  pattern. A command, engine, port, or script this change moves also moves in CI, docker,
+  compose, and `package.json` scripts.
 - **Reply language.** English is the default for this session, every skill, and every
   agent that speaks to the owner. If the owner starts, asks, or runs the turn in another
   language, match that language for the rest of the exchange. Artifacts stay English:
@@ -294,5 +308,7 @@ installs them once:
   `npx <pkg>@<version>` is no guarantee either: with the package present locally it silently
   runs the LOCAL binary.
 - Do not re-create a deleted service or module without reading git history first.
-- **Final state only, in `docs/*.md` and `.claude/**` alike.** Both trees describe how the
-  project works now. The test and the rewrite table: `rules/authoring.md`.
+- **Final state only, in `docs/*.md`, the root people files (`README.md`, `SECURITY.md`,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`), `.github/**` except `copilot-instructions.md`,
+  and `.claude/**` alike.** Those trees describe how the project works now. The test and the
+  rewrite table: `rules/authoring.md`.

@@ -68,8 +68,8 @@ The boilerplate targets:
 - In `production`, Sentry forwards only `warn`, `error`, and `fatal` logs to Sentry Logs; every other environment forwards all levels.
 - Protection decorators stack in a fixed order. A route takes only the slots it needs, and the relative order of the ones it takes stays the same. Activity logging takes no slot: domains stage events and a global interceptor writes them.
     ```typescript
-    @ExampleDoc()
-    @Response('example.get')
+    @Doc({ summary: '…' })
+    @Response('example.get')          // or @ResponsePagination / @ResponseFile
     @TermPolicyAcceptanceProtected(...)
     @PolicyProtected({...})
     @RoleProtected(...)
@@ -84,7 +84,12 @@ The boilerplate targets:
     @HttpCode(HttpStatus.OK)          // @Post only
     @Get('/some-endpoint')
     ```
-    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets sits above it. `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard sees `request.user`; below it, the guard finds no user, skips the flag's `targetUserIds`, and buckets the rollout by the anonymous-ID header instead of the user ID. The constraint when changing this: `.claude/rules/http.md`. See [Authorization Documentation][ref-doc-authorization].
+    Nest evaluates the stack bottom-up, so a decorator that depends on state an earlier one sets sits above it:
+
+    - `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard sees `request.user`
+    - below it, the guard finds no user, skips the flag's `targetUserIds`, and buckets the rollout by the anonymous-ID header instead of the user ID
+
+    The constraint when changing this: `.claude/rules/http.md`. See [Authorization Documentation][ref-doc-authorization].
 - `@HttpCode()` appears only on `@Post` routes: Nest answers `POST` with `201 Created` by default and every other method with `200 OK`.
 - The project uses the `ES256` algorithm for Access Token, and `ES512` for Refresh Token.
 - The project uses Prisma `6.19` with the `prisma-client` generator; `pnpm generate` writes the client into `src/generated/prisma-client`.
@@ -98,7 +103,7 @@ The boilerplate targets:
 - [x] Recovery Codes Method
 - [x] TOTP check on reset password, change password, and backup code regeneration
 - [x] User import and export endpoints with presigned upload
-- [x] `aws-s3-config` seed command that applies access, CORS, and lifecycle policies to the public and private S3 buckets; presign expiration is set in `aws.config.ts`
+- [x] `awsS3Config` seed command that applies access, CORS, and lifecycle policies to the public and private S3 buckets; presign expiration is set in `aws.config.ts`
 - [x] Device awareness, Geo Location with `geoip-lite`
 - [x] Notification System includes silent, inApp, push, and email.
 - [x] Activity Log records user activities staged by domains and written by a global interceptor
@@ -114,13 +119,15 @@ The boilerplate targets:
 - [ ] Login with Github SSO
 - [ ] Mobile number verification by WhatsApp and/or SMS
 - [ ] Versioning System (force the frontend to update, especially mobile)
+- [ ] Move to PostgreSQL
+- [ ] Move to a monorepo (backend application and a separate documentation website)
 
 ### Drop Features
 
 - Sliding session (for example, a refresh token that expires after 7 days of inactivity but can be extended up to a fixed maximum lifetime)
 
 ### Test
-- [x] Unit test
+- [ ] Unit test
 - [ ] Integration Test
 - [ ] E2E Test
 - [ ] Stress Test For Benchmark/Performance
@@ -152,7 +159,7 @@ The project runs on these versions:
 | PNPM           | >= 10.25.0 (pin `pnpm@11.25.0`) |
 | TypeScript     | v6.0.x   |
 | Prisma         | v6.19.x  |
-| MongoDB        | v8+ (compose: `mongo:latest`)   |
+| MongoDB        | v8+ (compose: `mongo:latest`)        |
 | Redis          | v8+ (compose: `redis:latest`)   |
 | Docker         | v28.5.x+ |
 | Docker Compose | v2.40.x+ |
@@ -277,9 +284,13 @@ To run the API inside Compose as well, start with the `apis` profile: `docker-co
 
 ## Database
 
-This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`). Schema sync uses `pnpm db:migrate` (`prisma db push`). There is no `prisma migrate` script.
+This boilerplate ships **MongoDB only** (`prisma/schema.prisma` `provider = "mongodb"`).
 
-Prisma can target other databases in general, but this checkout is not a multi-database starter: ObjectId helpers, replica-set transactions, and seed commands assume MongoDB. Changing provider means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. A provider switch is a fork of that work, not a one-command change.
+- Schema sync uses `pnpm db:migrate` (`prisma db push`)
+- There is no `prisma migrate` script
+- ObjectId helpers, replica-set transactions, and seed commands assume MongoDB
+
+A provider switch means rewriting the schema, `DatabaseUtil` ID helpers, and every Mongo-specific query pattern. That work is a fork, not a one-command change.
 
 For MongoDB setup and seeding, see [Database Documentation][ref-doc-database].
 

@@ -54,7 +54,7 @@ export class WorkspaceJoinRequestHttpService {
                 }
             );
         const status = this.paginationQueryUtil.inEnum(
-            'status',
+            Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
             query.status,
             WorkspaceJoinRequestDefaultStatus
         );

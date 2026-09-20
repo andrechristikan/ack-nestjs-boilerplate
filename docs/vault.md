@@ -263,7 +263,13 @@ Unchanged from here. The app reads `.env` as usual:
 pnpm start:dev
 ```
 
-The seeded `development` secret copies `.env.example`, where the JWT keys and KIDs and the two encryption secrets (`APP_ENCRYPTION_SECRET_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`) are empty, and startup validation rejects them empty. Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
+The seeded `development` secret copies `.env.example`. These fields are empty there, and startup validation rejects them empty:
+
+- JWT keys and KIDs
+- `APP_ENCRYPTION_SECRET_KEY`
+- `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+
+Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
 
 ### Reading the Root Token
 

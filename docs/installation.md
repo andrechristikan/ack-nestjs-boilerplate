@@ -355,7 +355,7 @@ pnpm migration:fresh
 Use this to seed email data for testing email sending features.
 
 ```bash
-pnpm migration template-email-notification --type seed
+pnpm migration templateEmailNotification --type seed
 ```
 
 **Seed term policies:**
@@ -363,7 +363,7 @@ pnpm migration template-email-notification --type seed
 Use this to seed term policies data.
 
 ```bash
-pnpm migration template-termPolicy --type seed
+pnpm migration templateTermPolicy --type seed
 ```
 
 For a complete guide and module details, see [Database Documentation][ref-doc-database].
@@ -418,7 +418,14 @@ pnpm deadcode
 pnpm spell
 ```
 
-`pnpm test` is `TZ=UTC vitest run --passWithNoTests`. It does not collect coverage. `coverage.enabled` is `false` in `vitest.config.ts`. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds on branches, functions, lines, and statements apply. The suite is unit specs. Integration and e2e tests are not collected. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `.github/workflows/linter.yml` runs on `pull_request`. `testTimeout` is 5000ms.
+`pnpm test` is `TZ=UTC vitest run --passWithNoTests`. Behaviour:
+
+- It does not collect coverage. `coverage.enabled` is `false` in `vitest.config.ts`.
+- `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds on branches, functions, lines, and statements apply.
+- The suite is unit specs. Integration and e2e tests are not collected.
+- `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`.
+- `.github/workflows/linter.yml` runs on `pull_request`.
+- `testTimeout` is 5000ms.
 
 Here are useful commands for managing your dependencies:
 

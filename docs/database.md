@@ -100,7 +100,20 @@ Seeding in ACK NestJS Boilerplate is handled using nest-commander. All seed comm
 - Neither script runs the template seeds or the AWS S3 configuration seed. Those are invoked on their own.
 - Every seed is idempotent: re-running `migration:seed` against a database that already holds the rows is safe.
 
-**Seed transactions.** A seed that writes several rows opens one `DatabaseService.withTransaction` in callback form, issues every statement on `tx` one after another, and passes `{ timeout }` read from `database.seedTransactionTimeoutInMs` (60 seconds). The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`. Work that does not touch the database runs before the transaction: key and hash derivation in the `apiKey` seed, and ids, bcrypt password hashes, and verification tokens in the `user` seed. Every other `remove()` that deletes rows runs its delete on `client` with no transaction. The `template-email-notification` and `aws-s3-config` seeds write no database row.
+**Seed transactions.** A seed that writes several rows:
+
+1. opens one `DatabaseService.withTransaction` in callback form
+2. issues every statement on `tx` one after another
+3. passes `{ timeout }` read from `database.seedTransactionTimeoutInMs` (60 seconds)
+
+The same timeout applies to the transactions the `user` and `workspace` seeds open in `remove()`.
+
+Work that does not touch the database runs before the transaction:
+
+- key and hash derivation in the `apiKey` seed
+- ids, bcrypt password hashes, and verification tokens in the `user` seed
+
+Every other `remove()` that deletes rows runs its delete on `client` with no transaction. The `templateEmailNotification` and `awsS3Config` seeds write no database row.
 
 **The seed actor.** `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts`) is a fixed ObjectId. The `user` seed creates the superadmin row with that `_id`, and every seed that writes rows uses it as the actor:
 
@@ -142,16 +155,16 @@ Template seeding uses the same script and commands as Database Seeds, but is spe
 The email template seed imports the templates into AWS SES, checking each one first and importing only the ones SES does not already hold. It requires SES to be initialized and throws when it is not.
 
 **How to Run Email Template Seeds:**
-- Seed: `pnpm migration template-email-notification --type seed`
-- Remove: `pnpm migration template-email-notification --type remove`
+- Seed: `pnpm migration templateEmailNotification --type seed`
+- Remove: `pnpm migration templateEmailNotification --type remove`
 
 #### Term Policy Templates
 
 The term policy template seed uploads each policy document to S3 and writes it onto the matching database record. It requires S3 to be initialized and throws when it is not.
 
 **How to Run Term Policy Template Seeds:**
-- Seed: `pnpm migration template-termPolicy --type seed`
-- Remove: `pnpm migration template-termPolicy --type remove` *(no-op; term policy removal is intentionally skipped)*
+- Seed: `pnpm migration templateTermPolicy --type seed`
+- Remove: `pnpm migration templateTermPolicy --type remove` *(no-op; term policy removal is intentionally skipped)*
 
 
 ### AWS S3 Configuration Seed
@@ -176,7 +189,7 @@ The seed applies the steps in this order because AWS S3 policies depend on each 
 
 ```bash
 # Configure both public and private buckets
-pnpm migration aws-s3-config --type seed
+pnpm migration awsS3Config --type seed
 ```
 
 **Important Notes:**
@@ -544,13 +557,27 @@ Audit fields are stamped automatically by a Prisma Client Extension named `audit
 
 Three roles, wired together in `src/common/database/database.module.ts`:
 
-- `DatabaseClientFactory` (`factories/database.client.factory.ts`) extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
-- `DatabaseExtensionUtil` (`utils/database.extension.util.ts`) holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
-- `DatabaseService` (`services/database.service.ts`) owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
+- **`DatabaseClientFactory`** (`factories/database.client.factory.ts`): extends `PrismaClient<IDatabaseClientOptions, ...>`, holds the connection options (event-emitting `log` levels and `errorFormat`), and returns the extended client from `create()`. `IDatabaseClientOptions` (`interfaces/database.client.interface.ts`) is `Prisma.PrismaClientOptions` with a required `log: Prisma.LogDefinition[]`.
+- **`DatabaseExtensionUtil`** (`utils/database.extension.util.ts`): holds the per-model audit field set (built from `Prisma.ModelName` and `Prisma.<Model>ScalarFieldEnum`) and the stamping methods, and builds the extension in `build()`. Nested writes are walked through `DatabaseModelRelations` (`constants/database.constant.ts`), a relation-field to related-model map per model, typed by `IDatabaseModelRelations` against `Prisma.TypeMap` so a schema change that adds, removes, or retargets a relation fails `pnpm typecheck` until the map matches.
+- **`DatabaseService`** (`services/database.service.ts`): owns the Prisma event log handlers and the connect/disconnect lifecycle, and exposes two public members: `client` and `withTransaction(fn, options?)`, which runs `fn` inside `client.$transaction` with the `tx` client.
 
-The extension carries the `create` / `createMany` / `update` / `updateMany` / `upsert` query hooks and the `softDelete` / `restore` model methods, all registered against `$allModels`. `IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically; the leaf types the extension needs (`IDatabaseRow`, `IDatabaseSoftDeleteArgs`, `IDatabaseRestoreArgs`, and their data shapes) live in `interfaces/database.extension.interface.ts`.
+The extension carries these hooks and methods, all registered against `$allModels`:
 
-`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports `DatabaseService`, `DatabaseUtil`, and `DatabaseExtensionUtil`.
+- query hooks: `create`, `createMany`, `update`, `updateMany`, `upsert`
+- model methods: `softDelete`, `restore`
+
+`IDatabaseClient` (`interfaces/database.client.interface.ts`) is the `ReturnType` of `DatabaseClientFactory['create']`, so the client type follows the extension automatically. Leaf types the extension needs live in `interfaces/database.extension.interface.ts`:
+
+- `IDatabaseRow`
+- `IDatabaseSoftDeleteArgs`
+- `IDatabaseRestoreArgs`
+- and their data shapes
+
+`DatabaseClientToken` (`constants/database.constant.ts`) is a Symbol bound to a `useFactory` provider that calls `DatabaseClientFactory.create()` once, so the extended client is a singleton. The token and the factory stay unexported; `DatabaseModule` exports:
+
+- `DatabaseService`
+- `DatabaseUtil`
+- `DatabaseExtensionUtil`
 
 The same interface file exports `IDatabaseTransactionClient`, the `tx` type for the callback form of `$transaction`; `Prisma.TransactionClient` does not match the extended client, so derive from this instead. The module also owns one shared error: `EnumDatabaseStatusCodeError.uniqueValueGenerationFailed` (`51800`, `enums/database.status-code.enum.ts`) with `DatabaseUniqueValueGenerationFailedException` (`exceptions/database.unique-value-generation-failed.exception.ts`, HTTP 500, message `database.error.uniqueValueGenerationFailed`), thrown directly by a repository when a generated unique value cannot be settled. See [Generated Unique Values](#generated-unique-values).
 

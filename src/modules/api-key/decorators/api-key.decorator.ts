@@ -8,6 +8,7 @@ import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
+    ApiKeyDocSecurityName,
     ApiKeyStoreKey,
     ApiKeyXTypeMetaKey,
     DocApiKeyErrorResponses,
@@ -58,7 +59,7 @@ export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
-        ApiSecurity('xApiKey'),
+        ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
         DocApiKeyErrorResponses.forbidden,
         DocApiKeyErrorResponses.predefinedNotFound
@@ -73,7 +74,7 @@ export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
-        ApiSecurity('xApiKey'),
+        ApiSecurity(ApiKeyDocSecurityName),
         DocApiKeyErrorResponses.unauthorized,
         DocApiKeyErrorResponses.forbidden,
         DocApiKeyErrorResponses.predefinedNotFound

@@ -16,6 +16,12 @@ export const ApiKeyXTypeMetaKey = 'ApiKeyXTypeMetaKey';
 export const ApiKeyStoreKey = 'ApiKeyStore';
 
 /**
+ * OpenAPI apiKey scheme name for X-API-Key Protected routes.
+ * @public
+ */
+export const ApiKeyDocSecurityName = 'xApiKey';
+
+/**
  * X-API-Key guard error kit for `@ApiKeyProtected` / `@ApiKeySystemProtected`.
  * Same shape as `DocFileErrorResponses` / `DocPaginationErrorResponses` — each value is a
  * `DocResponseError` MethodDecorator, not an `applyDecorators` blob.

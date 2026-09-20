@@ -171,7 +171,14 @@ await this.featureFlagDomain.validateFeatureFlagMetadata(
 );
 ```
 
-It throws `predefinedKeyNotFound` (500) when the flag row is missing, `serviceUnavailable` (503) when the flag is disabled, `predefinedKeyTypeInvalid` (500) when the metadata value is not a boolean, and `serviceUnavailable` (503) when the boolean is `false`.
+It throws:
+
+| Condition | statusCode | HTTP |
+|---|---|---|
+| flag row is missing | `predefinedKeyNotFound` | 500 |
+| flag is disabled | `serviceUnavailable` | 503 |
+| metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500 |
+| boolean is `false` | `serviceUnavailable` | 503 |
 
 Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
 

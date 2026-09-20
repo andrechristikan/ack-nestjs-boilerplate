@@ -37,7 +37,7 @@ export class RoleHttpService {
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
         const type = this.paginationQueryUtil.inEnum(
-            'type',
+            Prisma.RoleScalarFieldEnum.type,
             query.type,
             RoleDefaultType
         );
@@ -75,7 +75,7 @@ export class RoleHttpService {
                 availableOrderBy: RoleDefaultAvailableOrderBy,
             });
         const type = this.paginationQueryUtil.inEnum(
-            'type',
+            Prisma.RoleScalarFieldEnum.type,
             query.type,
             RoleDefaultType
         );

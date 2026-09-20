@@ -61,6 +61,30 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 endDate
             );
         });
+
+        it('passes undefined dates when the optional range is empty', async () => {
+            analyticDateDomain.optionalRange.mockReturnValue({
+                startDate: null,
+                endDate: null,
+            });
+            analyticWorkspaceUserDomain.summary.mockResolvedValue({
+                memberCount: 0,
+                projectCount: 0,
+                activityCount: 0,
+            });
+
+            await service.summary('workspace-1');
+
+            expect(analyticDateDomain.optionalRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+            expect(analyticWorkspaceUserDomain.summary).toHaveBeenCalledWith(
+                'workspace-1',
+                undefined,
+                undefined
+            );
+        });
     });
 
     describe('inviteFunnel', () => {
@@ -86,6 +110,21 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 analyticWorkspaceUserDomain.inviteFunnel
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
         });
+
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticWorkspaceUserDomain.inviteFunnel.mockResolvedValue([]);
+
+            await service.inviteFunnel('workspace-1');
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
+        });
     });
 
     describe('joinOutcomes', () => {
@@ -110,6 +149,21 @@ describe('AnalyticWorkspaceUserHttpService', () => {
             expect(
                 analyticWorkspaceUserDomain.joinOutcomes
             ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
+        });
+
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticWorkspaceUserDomain.joinOutcomes.mockResolvedValue([]);
+
+            await service.joinOutcomes('workspace-1');
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
+            );
         });
     });
 
@@ -151,6 +205,23 @@ describe('AnalyticWorkspaceUserHttpService', () => {
                 'workspace-1',
                 startDate,
                 endDate
+            );
+        });
+
+        it('passes null when dates are omitted', async () => {
+            analyticDateDomain.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticWorkspaceUserDomain.activity.mockResolvedValue({
+                count: 0,
+            });
+
+            await service.activity('workspace-1');
+
+            expect(analyticDateDomain.requireRange).toHaveBeenCalledWith(
+                null,
+                null
             );
         });
     });

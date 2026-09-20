@@ -230,3 +230,10 @@ Build the correct shape and change every call site.
   NestJS, Prisma, and TypeScript.
 - Use existing code as a divergence check: when best practice clashes HARD with an established
   pattern here, WARN the owner before applying. Minor local divergence: just proceed.
+- **The run surface is a call site.** A command, engine, port, path, generate step, or script
+  name this change moves also moves in `package.json` (`scripts`, `engines`, `packageManager`),
+  `scripts/`, `ci/` (both dockerfiles and compose helpers), `docker-compose.yml`,
+  `.github/workflows/`, `.github/dependabot.yml`, and the config those commands read
+  (`nest-cli.json`, `vitest.config.ts`, `knip.json`, `tsconfig.json`, `tsconfig.build.json`,
+  `eslint.config.mjs`, `.husky/`). A change that does not move those facts does not sweep
+  those files. `keys/` is not this surface.

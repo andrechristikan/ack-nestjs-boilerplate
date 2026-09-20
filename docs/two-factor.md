@@ -78,7 +78,13 @@ Located in `src/configs/auth.config.ts`:
 
 ### Secret Storage
 
-`AuthTwoFactorDomain` seals every TOTP secret with `HelperEncryptionService.aes256Encrypt`, using `auth.twoFactor.encryption.key`, the purpose `auth.twoFactor.secret`, and the user ID as authenticated data, so a secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
+`AuthTwoFactorDomain` seals every TOTP secret with `HelperEncryptionService.aes256Encrypt`, using:
+
+- `auth.twoFactor.encryption.key`
+- the purpose `auth.twoFactor.secret`
+- the user ID as authenticated data
+
+A secret copied onto another user's row fails to decrypt. `TwoFactor` holds two sealed values:
 
 - `pendingSecret`: written by every setup, never used to verify a login
 - `secret`: the confirmed authenticator; enable moves `pendingSecret` here and clears `pendingSecret`

@@ -2,7 +2,7 @@
 <!-- What changed and why (2–5 lines). Name the module(s). -->
 
 ## Related Issue
-<!-- Closes #123 — or n/a -->
+<!-- Closes #123, or n/a -->
 
 ## Scope
 <!-- What this PR owns, in plain terms. Skip rows that do not apply. -->
@@ -19,6 +19,7 @@
 ### Module(s)
 <!-- Tick every module this PR owns. Matches `src/modules/*`. -->
 - [ ] `activity-log`
+- [ ] `analytic`
 - [ ] `api-key`
 - [ ] `auth`
 - [ ] `country`
@@ -29,10 +30,12 @@
 - [ ] `notification`
 - [ ] `password-history`
 - [ ] `policy`
+- [ ] `project`
 - [ ] `role`
 - [ ] `session`
 - [ ] `term-policy`
 - [ ] `user`
+- [ ] `workspace`
 - [ ] `common` / shared
 - [ ] Other (describe):
 
@@ -86,20 +89,20 @@
 - [ ] Service does **not** open `$transaction` / build Prisma `where` / `select` / `orderBy`
 - [ ] Controller holds **no** business rule and does **not** inject a repository
 - [ ] Repository does **not** throw module exceptions or build i18n `messagePath`
-- [ ] Service has `I*Service` and `implements` it; **no** `I*Repository`
+- [ ] Repository has `I*Repository` and `implements` it; domain / HTTP / processor service has **no** header interface
 - [ ] Repositories / services injected as classes (no `@Inject(TOKEN)` for a single implementor)
 - [ ] Path aliases only — no relative `../` imports in `src/`
-- [ ] Controllers registered in `src/router/…`; processors in `src/queues/queue.module.ts`
+- [ ] Controllers registered in `src/router/http/…`; processors in `<feature>.processor.module.ts`, aggregated by `src/router/processor/router.processor.module.ts`
 - [ ] No `forwardRef` between feature modules
 
 #### HTTP / DTO / Swagger
-- [ ] Request DTO created with `class-validator` + `@ApiProperty` on every field
-- [ ] Response DTO fields intended for the wire carry `@Expose()` (nested needs `@Type`)
+- [ ] Request DTO is a zod `z.strictObject` schema plus `z.infer` type; OpenAPI comes from the schema
+- [ ] Response shape is a zod `z.object` schema on `@Response` / `@ResponsePagination` (undeclared fields are stripped)
 - [ ] Swagger doc factory exists for each new/changed endpoint (`*.doc.ts`)
-- [ ] Decorator order: Doc → TermPolicy → Policy → Role → ActivityLog → User → JWT → FeatureFlag → ApiKey → HttpCode → Method
+- [ ] Decorator order: Doc → Response → TermPolicy → Policy → Role → ProjectMember → Project → WorkspaceMember → Workspace → User → FeatureFlag → JWT → ApiKey → HttpCode → Method (ActivityLog is not a decorator)
 - [ ] Controller normalizes `undefined → null` (`?? null`) before service params that are `T | null`
-- [ ] `@Response` handlers return `IResponseReturn<T>`; `@ResponsePaging` handlers return `IResponsePagingReturn<T>` — never a bare DTO
-- [ ] Paginated lists use `@ResponsePaging` (not `@Response`); `PaginationService` lives in the repository only
+- [ ] `@Response` handlers return `IResponseReturn<T>`; `@ResponsePagination` handlers return `IResponsePaginationReturn<T>` — never a bare DTO
+- [ ] Paginated lists use `@ResponsePagination` (not `@Response`); `PaginationService` lives in the repository only
 
 #### Types / safety
 - [ ] No `any` (param, cast, or generic)

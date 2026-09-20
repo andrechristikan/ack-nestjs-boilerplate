@@ -41,11 +41,11 @@ export class ApiKeyHttpService {
                 availableOrderBy: ApiKeyDefaultAvailableOrderBy,
             });
         const isActive = this.paginationQueryUtil.equalBoolean(
-            'isActive',
+            Prisma.ApiKeyScalarFieldEnum.isActive,
             query.isActive
         );
         const type = this.paginationQueryUtil.inEnum(
-            'type',
+            Prisma.ApiKeyScalarFieldEnum.type,
             query.type,
             ApiKeyDefaultType
         );

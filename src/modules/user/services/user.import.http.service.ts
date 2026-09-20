@@ -11,6 +11,7 @@ import type { IResponseFileReturn } from '@common/response/interfaces/response.i
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
+    Prisma,
 } from '@generated/prisma-client/client';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
@@ -66,16 +67,16 @@ export class UserImportHttpService {
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
         const status = this.paginationQueryUtil.inEnum(
-            'status',
+            Prisma.UserScalarFieldEnum.status,
             query.status,
             UserDefaultStatus
         );
         const roleId = this.paginationQueryUtil.equalString(
-            'roleId',
+            Prisma.UserScalarFieldEnum.roleId,
             query.roleId
         );
         const countryId = this.paginationQueryUtil.equalString(
-            'countryId',
+            Prisma.UserScalarFieldEnum.countryId,
             query.countryId
         );
         this.requestStoreService.merge(PaginationStoreKey, {

@@ -15,7 +15,8 @@ planner.
   configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })` in `imports`, and
   `BullModule` in `exports`. Queue tokens are the `name` values. The factory lives at
   `factories/<module>[.<concern>].queue.factory.ts` and implements `RegisterQueueOptionsFactory`;
-  it sets job defaults and never sets `connection`.
+  it sets job defaults (`attempts`, `backoff`, `keepLogs`, remove ages) and never sets
+  `connection`.
 - **`<module>/queues/<module>[.<concern>].queue.ts`** — one `@Injectable()` queue class per registered queue, holding the `@InjectQueue` for it. Provided and exported by `<feature>.domain.module.ts`. No header interface — unlike a repository (`rules/architecture.md`).
 - **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to. It imports `<Feature>DomainModule` when that feature is not `@Global()` (`rules/nest-wiring.md`).
 - **`src/router/processor/router.processor.module.ts`** — imports every `<Feature>ProcessorModule` and provides nothing itself. Do not invent a second aggregation site (`rules/router.md`).
@@ -33,17 +34,32 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
         super(sentryService);
     }
 
-    async process(job: Job): Promise<IQueueResponse> { … }
+    protected async handle(job: Job): Promise<IQueueResponse> { … }
 }
 ```
 
-- Always `extends QueueProcessorBase` — the base owns the `failed` hook that reports through `SentryService` once, and only when the error is fatal. Its constructor takes `SentryService`, so every processor declares a `sentryService: SentryService` parameter (no access modifier, value import) and passes it to `super(sentryService)`. A processor extending `WorkerHost` directly loses the hook and double-reports across retries.
-- Always return `IQueueResponse`. An ad-hoc `{ ok: false }` or `{ applied: true }` shape breaks the contract the base and the board rely on.
-- `process()` dispatches by `job.name` to a handler; the handler's real work belongs in a `*.processor.service.ts`, not inline in the switch. A processor is a dispatcher, the same way a controller is.
+- Always `extends QueueProcessorBase`. Its constructor takes `SentryService`, so every processor declares a `sentryService: SentryService` parameter (no access modifier, value import) and passes it to `super(sentryService)`. A processor extending `WorkerHost` directly loses the base `process` template and the `failed` hook.
+- **`QueueProcessorBase` owns the concrete `process(job)`.** It is the template: try, await `handle`, catch. Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` and never override `process`.
+- **`handle` is the dispatcher only.** It switches on `job.name` and awaits a `*.processor.service.ts` method. Real work stays in that service, the same way a controller stays a dispatcher (`rules/architecture.md`).
+- Always return `IQueueResponse` from `handle`. An ad-hoc `{ ok: false }` or `{ applied: true }` shape breaks the contract the base and the board rely on.
+- **Every service call inside `handle` is awaited** (`return await this.service.x(…)` or await into a `const` then return). A bare `return this.service.x()` is forbidden — rejection must settle under `handle` so feature remaps in that method run (`rules/code-style.md`).
+- **Feature remaps stay inside `handle`.** `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ's `UnrecoverableError`: a payload that does not decrypt never will. Mapping is not logging; `handle` does not log-and-rethrow (`rules/logging.md`).
 - **The processor service owns no business rule.** It translates the payload and calls a domain, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
 - Mark a non-fatal failure with `QueueException`'s fatal flag so a retryable error does not page anyone.
-- **A failure that no retry can fix is thrown as BullMQ's `UnrecoverableError`**, so BullMQ stops retrying and the base reports it at once. `NotificationEmailProcessor` maps `HelperDecryptFailedException` to it: a payload that does not decrypt never will.
-- **A handler call inside `try` is awaited into a `const` and returned.** A bare `return this.service.x()` hands back the promise before it settles, so its rejection skips the `catch` and any mapping written there never runs (`rules/code-style.md`).
+- **A failure that no retry can fix is thrown as BullMQ's `UnrecoverableError`**, so BullMQ stops retrying and the base reports it at once.
+
+## Job logs (`job.log`)
+
+`QueueProcessorBase.process` writes BullMQ job logs (string lines) by default:
+
+- **Start** — process beginning.
+- **Input** — metadata only: `job.id`, `job.name`, `attemptsMade`, and `maxAttempts` from `job.opts.attempts`. **Never `job.data`.**
+- **Success** — finish line plus `JSON.stringify` of the returned `IQueueResponse`.
+- **Failure** — one failure line in the catch, before rethrow.
+
+If `job.log` itself throws, the base swallows that error (warn at most) and does not fail the job for a logging fault.
+
+Queue factories set `keepLogs` on `defaultJobOptions` so those lines are retained for the retention window.
 
 ## Payloads
 
@@ -64,12 +80,21 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
 
 ## Retries make a job repeatable
 
-The owning queue factory's `createRegisterQueueOptions` sets `attempts` plus an exponential `backoff` per queue from config,
-so a processor's work runs again on failure. A handler that is not safe to repeat needs the
-repeat to be harmless — a conditional write, an upsert, a state check (`rules/concurrency.md`).
+The owning queue factory's `createRegisterQueueOptions` sets `attempts`, an exponential
+`backoff`, and `keepLogs` per queue from config, so a processor's work runs again on failure
+and `job.log` lines survive the retention window. A handler that is not safe to repeat needs
+the repeat to be harmless — a conditional write, an upsert, a state check
+(`rules/concurrency.md`).
 
-`QueueProcessorBase` reports through `SentryService` once, and only when the error is fatal:
-on the final attempt — `job.attemptsMade` already counts the failed attempt when BullMQ fires
-`failed`, so the check is `attemptsMade >= attempts` — or immediately for an
-`UnrecoverableError`. A processor extending `WorkerHost` directly loses that and
-double-reports across retries (`rules/logging.md`).
+## Fatal failures and Sentry
+
+`QueueProcessorBase.onFailed` reports through `SentryService` once, and only when the error is
+fatal: on the final attempt — `job.attemptsMade` already counts the failed attempt when BullMQ
+fires `failed`, so the check is `attemptsMade >= maxAttempts` — or immediately for an
+`UnrecoverableError` / `QueueException.isFatal`. Before `captureException`, the base enriches
+the scope with job `id`, `name`, `attemptsMade`, and `maxAttempts` via `withScope` (or
+equivalent). A processor extending `WorkerHost` directly loses that gate and double-reports
+across retries (`rules/logging.md`).
+
+In the `process` catch, the base may call Nest `Logger.error` once (object-first) for Pino,
+then rethrow. Per-processor log-and-rethrow is forbidden (`rules/logging.md`).

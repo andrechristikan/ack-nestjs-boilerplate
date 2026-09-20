@@ -51,13 +51,24 @@ const { params, storePatch } = this.paginationQueryUtil.offset(query, {
     availableSearch: UserDefaultAvailableSearch,
     availableOrderBy: UserDefaultAvailableOrderBy,
     filters: [
-        this.paginationQueryUtil.inEnum('status', query.status, UserDefaultStatus),
-        this.paginationQueryUtil.equalString('roleId', query.roleId),
+        this.paginationQueryUtil.inEnum(
+            Prisma.UserScalarFieldEnum.status,
+            query.status,
+            UserDefaultStatus
+        ),
+        this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.roleId,
+            query.roleId
+        ),
     ],
 });
 ```
 
 `availableSearch` and `availableOrderBy` allow-lists live as PascalCase constants in `<module>/constants/<module>.list.constant.ts` (`UserDefaultAvailableSearch`, `ApiKeyDefaultAvailableSearch`), beside enum defaults the filters use (`ApiKeyDefaultType`). That file holds a module's list-endpoint constants and nothing else (`rules/naming.md`).
+
+Wire / query DTO param names are the camelCase query fields (`status`, `roleId`). Only the Prisma field argument at an allow-list or filter-helper call site is the enum member.
+
+`PaginationQueryUtil` filter helpers are model-agnostic: `field: TField extends string` (or plain `string`). The kit never imports a feature's Prisma model types (`rules/common.md`).
 
 ### Allow-lists and schema shape (HARD)
 
@@ -77,11 +88,28 @@ allow-list, and a list assembled in memory sorts before it slices. `PaginationDe
 allow-list holds, so an in-memory sort applies only the terms whose key the row declares and
 leaves the order it was given when none survives.
 
-**Where the row is a declared interface, the allow-list is typed `(keyof I<Row>)[]`** and the
-sorter takes `sortableKeys: (keyof T)[]`. An untyped list makes a typo compile: the key matches no
-field, the comparison reads `undefined` on both sides, every row ties, and the sort degrades to a
-silent no-op while the document still advertises the misspelled field. Nothing in `tsc`, the
-suite or the emitted document catches that; the type does.
+**Allow-list field typing is dual (HARD):**
+
+| List kind | Allow-list typing | Filter helper `field` argument |
+|---|---|---|
+| Prisma-backed model list | `Prisma.<Model>ScalarFieldEnum` members with `as const satisfies ReadonlyArray<Prisma.<Model>ScalarFieldEnum>` (or an equivalent typed const) | `Prisma.<Model>ScalarFieldEnum.<field>` — never a bare magic string |
+| Computed / analytic list (row is a declared `I*` interface) | `(keyof I<Row>)[]` | N/A when there is no Prisma column; sorter takes `sortableKeys: (keyof T)[]` |
+
+```typescript
+export const UserDefaultAvailableSearch = [
+    Prisma.UserScalarFieldEnum.name,
+    Prisma.UserScalarFieldEnum.username,
+    Prisma.UserScalarFieldEnum.email,
+] as const satisfies ReadonlyArray<Prisma.UserScalarFieldEnum>;
+
+export const AnalyticNearLockoutAvailableOrderBy: (keyof IAnalyticNearLockout)[] =
+    ['createdAt', 'id'];
+```
+
+An untyped list makes a typo compile: the key matches no field, the comparison reads `undefined`
+on both sides, every row ties, and the sort degrades to a silent no-op while the document still
+advertises the misspelled field. Nothing in `tsc`, the suite or the emitted document catches
+that; the type does.
 
 OpenAPI for list query params comes **only** from the zod schema on `@Query({ schema })`
 (`standardSchemaConverter`). `@ResponsePagination` does **not** emit `ApiQuery` for page,

@@ -87,7 +87,7 @@ Install and configure the project.
 27. [File Upload][ref-doc-file-upload]; Single/multiple file uploads, CSV processing, upload decorators
 28. [Presign][ref-doc-presign]; AWS S3 presigned URLs for secure time-limited object access
 29. [Third Party Integration][ref-doc-third-party-integration]; AWS S3/SES, Firebase, Sentry, no-op mode
-30. [Doc][ref-doc-doc]; Swagger/OpenAPI decorators via the Doc Module
+30. [Doc][ref-doc-doc]; Swagger/OpenAPI co-located on `@Doc`, `@Response*` / `FileUpload*`, and `*Protected` kits
 31. [Vault][ref-doc-vault]; Optional secret management via HashiCorp Vault
 
 

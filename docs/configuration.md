@@ -72,8 +72,8 @@ export class CommonModule {}
 
 A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders: cache and Redis keys, S3 object paths and URLs, email links, and the export filename. The consumer fills it at the point of use, and the number of placeholders decides how:
 
-- One placeholder is filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
-- Two or more go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
+- **One placeholder.** Filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
+- **Two or more.** Go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
 
 ### App Configuration
 

@@ -78,9 +78,11 @@ and `log` (Sentry Logs, scrubbed by `beforeSendLog`). Its callers are fixed:
   `AppBaseExceptionFilter` report at 500+ (the base filter reports `rawError` when set),
   `AppGeneralFilter` always reports, `AppValidationFilter` and `AppValidationImportFilter`
   never do (`rules/exceptions.md`). Each filter logs the failure itself, then reports.
-- **`QueueProcessorBase`** reports once: on the final attempt (`job.attemptsMade` already
-  counts the failed attempt when `failed` fires), or immediately for an `UnrecoverableError`,
-  and only when the error is fatal (`rules/queue.md`).
+- **`QueueProcessorBase`** reports once in `onFailed`: on the final attempt
+  (`job.attemptsMade` already counts the failed attempt when `failed` fires), or immediately
+  for an `UnrecoverableError`, and only when the error is fatal. Before `captureException` it
+  enriches the scope with job `id`, `name`, `attemptsMade`, and `maxAttempts` via `withScope`
+  (or equivalent) (`rules/queue.md`).
 - **A domain reports an operator fault that no filter reports**, and only that: a failure
   the caller receives as a non-5xx answer while the cause is a broken deployment.
   `AuthTwoFactorDomain` reporting an undecryptable two-factor secret, while the client gets
@@ -88,6 +90,14 @@ and `log` (Sentry Logs, scrubbed by `beforeSendLog`). Its callers are fixed:
 
 Any other service does not report to Sentry itself and does not log-and-rethrow — that
 produces two records of one failure with different context.
+
+## No log-and-rethrow (HARD)
+
+Catching only to `logger.error` (or warn) and then rethrow is forbidden everywhere in `src/`:
+filters and `QueueProcessorBase` own the single failure log for their transport. A processor
+subclass does not hold a Nest `Logger` for job failures; the base may `logger.error` once in
+its `process` catch for Pino, then rethrow. BullMQ progress lines go through `job.log` on the
+base (`rules/queue.md`), not through Nest `Logger`.
 
 ## Never assert on a logger in a spec
 

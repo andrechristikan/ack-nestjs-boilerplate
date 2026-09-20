@@ -60,7 +60,11 @@ AWS_S3_PRIVATE_CDN=<your_aws_s3_private_cdn>
 
 **No-Op Mode:**
 
-If any of `AWS_S3_IAM_CREDENTIAL_KEY`, `AWS_S3_IAM_CREDENTIAL_SECRET`, or `AWS_S3_REGION` is not set, the S3 integration runs in no-op mode: it is disabled, logs a warning on startup, and S3 operations return safe defaults instead of failing.
+If any of these is not set, the S3 integration runs in no-op mode (disabled, logs a warning on startup, S3 operations return safe defaults instead of failing):
+
+- `AWS_S3_IAM_CREDENTIAL_KEY`
+- `AWS_S3_IAM_CREDENTIAL_SECRET`
+- `AWS_S3_REGION`
 
 For detailed behavior and implementation, see [File Upload][ref-doc-file-upload].
 
@@ -87,7 +91,11 @@ AWS_SES_REGION=ap-southeast-3
 
 **No-Op Mode:**
 
-If any of `AWS_SES_IAM_CREDENTIAL_KEY`, `AWS_SES_IAM_CREDENTIAL_SECRET`, or `AWS_SES_REGION` is not set, the SES integration runs in no-op mode: it is disabled, logs a warning on startup, and email operations return safe defaults instead of failing.
+If any of these is not set, the SES integration runs in no-op mode (disabled, logs a warning on startup, email operations return safe defaults instead of failing):
+
+- `AWS_SES_IAM_CREDENTIAL_KEY`
+- `AWS_SES_IAM_CREDENTIAL_SECRET`
+- `AWS_SES_REGION`
 
 Email processing is handled through the queue system. See [Queue][ref-doc-queue] for details.
 

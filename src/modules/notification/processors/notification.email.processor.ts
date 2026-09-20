@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
 import { EnumQueue } from '@queues/enums/queue.enum';
 import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
@@ -41,8 +40,6 @@ import {
     },
 })
 export class NotificationEmailProcessor extends QueueProcessorBase {
-    private readonly logger = new Logger(NotificationEmailProcessor.name);
-
     constructor(
         private readonly notificationEmailProcessorService: NotificationEmailProcessorService,
         sentryService: SentryService
@@ -51,7 +48,7 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
     }
 
     /** Dispatches each job to its handler by job name. */
-    async process(
+    protected async handle(
         job: Job<unknown, IQueueResponse, EnumNotificationProcess>
     ): Promise<IQueueResponse> {
         try {
@@ -225,11 +222,6 @@ export class NotificationEmailProcessor extends QueueProcessorBase {
                     };
             }
         } catch (error: unknown) {
-            this.logger.error(
-                error,
-                'Failed to process notification email job'
-            );
-
             if (error instanceof HelperDecryptFailedException) {
                 throw new UnrecoverableError(error.message);
             }

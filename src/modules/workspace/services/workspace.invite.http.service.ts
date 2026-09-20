@@ -47,7 +47,7 @@ export class WorkspaceInviteHttpService {
                 }
             );
         const status = this.paginationQueryUtil.inEnum(
-            'status',
+            Prisma.WorkspaceInviteScalarFieldEnum.status,
             query.status,
             WorkspaceInviteDefaultStatus
         );

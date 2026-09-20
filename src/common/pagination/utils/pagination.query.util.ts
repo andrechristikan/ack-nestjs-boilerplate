@@ -60,8 +60,8 @@ export class PaginationQueryUtil {
         private readonly helperArrayService: HelperArrayService
     ) {}
 
-    private equal(
-        field: string,
+    private equal<TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         options?: IPaginationQueryFilterEqualOptions
     ): IPaginationQueryFilterResult | undefined {
@@ -108,8 +108,8 @@ export class PaginationQueryUtil {
         return value.trim();
     }
 
-    private enumFilter<T>(
-        field: string,
+    private enumFilter<T, TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         defaultEnum: T[],
         operator: 'in' | 'notIn',
@@ -157,7 +157,7 @@ export class PaginationQueryUtil {
 
     private buildSearchObject(
         search: string,
-        availableSearch: string[]
+        availableSearch: readonly string[]
     ): { OR: Array<Record<string, Prisma.StringFilter>> } {
         return {
             OR: availableSearch.map(field => ({
@@ -218,7 +218,7 @@ export class PaginationQueryUtil {
 
     private validateOrderBy(
         orderByExtractFromRequest: Record<string, string>[],
-        availableOrderBy: string[]
+        availableOrderBy: readonly string[]
     ): IPaginationOrderBy[] {
         const flatOrderBy = orderByExtractFromRequest.reduce(
             (acc, entry) => ({ ...acc, ...entry }),
@@ -254,7 +254,7 @@ export class PaginationQueryUtil {
 
     private resolveOrderBy(
         orderBy: string | string[] | undefined,
-        availableOrderBy: string[]
+        availableOrderBy: readonly string[]
     ): IPaginationOrderBy[] {
         const orderByExtractFromRequest = this.extractOrderByToArray(orderBy);
 
@@ -451,8 +451,8 @@ export class PaginationQueryUtil {
         }
     }
 
-    equalBoolean(
-        field: string,
+    equalBoolean<TField extends string>(
+        field: TField,
         value: string | boolean | undefined | unknown,
         options?: IPaginationQueryFilterOptions
     ):
@@ -479,8 +479,8 @@ export class PaginationQueryUtil {
             | undefined;
     }
 
-    equalString(
-        field: string,
+    equalString<TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         options?: IPaginationQueryFilterEqualOptions
     ):
@@ -491,8 +491,8 @@ export class PaginationQueryUtil {
             | undefined;
     }
 
-    equalNumber(
-        field: string,
+    equalNumber<TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         options?: IPaginationQueryFilterOptions
     ):
@@ -503,8 +503,8 @@ export class PaginationQueryUtil {
             | undefined;
     }
 
-    notEqual(
-        field: string,
+    notEqual<TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         options?: IPaginationQueryFilterEqualOptions
     ):
@@ -527,8 +527,8 @@ export class PaginationQueryUtil {
         };
     }
 
-    inEnum<T>(
-        field: string,
+    inEnum<T, TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         defaultEnum: T[],
         options?: IPaginationQueryFilterOptions
@@ -538,8 +538,8 @@ export class PaginationQueryUtil {
             | undefined;
     }
 
-    ninEnum<T>(
-        field: string,
+    ninEnum<T, TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         defaultEnum: T[],
         options?: IPaginationQueryFilterOptions
@@ -551,8 +551,8 @@ export class PaginationQueryUtil {
             | undefined;
     }
 
-    dateBetween(
-        field: string,
+    dateBetween<TField extends string>(
+        field: TField,
         value: string | undefined | unknown,
         options?: IPaginationQueryFilterDateOptions
     ):

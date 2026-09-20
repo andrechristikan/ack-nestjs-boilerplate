@@ -1,6 +1,7 @@
 # Authorization Documentation
 
 Decorator locations:
+
 - **UserProtected**: `src/modules/user/decorators`
 - **RoleProtected**: `src/modules/role/decorators`
 - **PolicyProtected**: `src/modules/policy/decorators`
@@ -10,7 +11,14 @@ The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProt
 
 ## Overview
 
-Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each layer on the route handler.
+Guards stack as:
+
+- user
+- role
+- policy
+- term-policy acceptance
+
+NestJS applies each layer on the route handler.
 
 ## Related Documents
 
@@ -67,10 +75,10 @@ Guards stack as: user, role, policy, term-policy acceptance. NestJS applies each
 NestJS evaluates stacked decorators bottom-up, so the guard NEAREST the method executes FIRST. The order encodes which gate rejects first, so a reshuffle changes the error a caller sees even when the application still boots. Every route uses this order, top to bottom in source (the constraint when changing it: `.claude/rules/http.md`):
 
 ```typescript
-@ExampleDoc()                              // 1.  Swagger doc factory
-@Response('example.action')                // 2.  @Response / @ResponsePaging / @ResponseFile
+@Doc({ summary: '…' })                     // 1.  OpenAPI operation + global error kit
+@Response('example.action')                // 2.  @Response / @ResponsePagination / @ResponseFile
 @TermPolicyAcceptanceProtected()           // 3.  Term policy acceptance
-@PolicyProtected({ ... })           // 4.  CASL policy ability
+@PolicyProtected({ ... })                  // 4.  CASL policy ability
 @RoleProtected(EnumRoleType.admin)         // 5.  Role type
 @ProjectMemberProtected(...)               // 6.  Project member role
 @ProjectProtected()                        // 7.  Project resolution from :projectId
@@ -227,13 +235,9 @@ flowchart TD
 @AuthJwtAccessProtected()
 @Get('/list')
 async list(
-  @PaginationOffsetQuery({
-    availableSearch: UserDefaultAvailableSearch,
-    availableOrderBy: UserDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  return this.userHttpService.getListOffsetByAdmin(pagination);
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 ```
 
@@ -345,13 +349,9 @@ flowchart TD
 @AuthJwtAccessProtected()
 @Get('/list')
 async list(
-  @PaginationOffsetQuery({
-    availableSearch: UserDefaultAvailableSearch,
-    availableOrderBy: UserDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
-): Promise<IResponsePagingReturn<UserListResponseDto>> {
-  return this.userHttpService.getListOffsetByAdmin(pagination);
+  @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
+): Promise<IResponsePaginationReturn<IUserList>> {
+  return this.userHttpService.getListOffsetByAdmin(query);
 }
 
 @PolicyProtected({
@@ -485,15 +485,13 @@ For more detailed information about term policies, see [Term Policy Document][re
 @AuthJwtAccessProtected()
 @Get('/acceptance/list')
 async listAccepted(
-  @PaginationCursorQuery({
-    availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+  @Query({ schema: TermPolicyAcceptedListRequestSchema })
+  query: TermPolicyAcceptedListRequestDto,
   @AuthJwtPayload('userId') userId: string
-): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
   return this.termPolicyAcceptanceHttpService.getListUserAccepted(
     userId,
-    pagination
+    query
   );
 }
 ```

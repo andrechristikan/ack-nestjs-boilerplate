@@ -400,7 +400,11 @@ async generate(
 
 ### Multipart Part Presign
 
-`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`). It takes the same required `access` and optional `expiredInSeconds` as the other presign methods, and returns `null` when S3 credentials are not configured. No controller exposes it, so there is no multipart presign route.
+`AwsS3Service.presignPutItemPart({ key, size, uploadId, partNumber }, options)` signs a single `UploadPart` request for an existing multipart upload and returns `IAwsS3PresignPart` (`IAwsS3Presign` plus `partNumber` and `size`).
+
+- Takes the same required `access` and optional `expiredInSeconds` as the other presign methods
+- Returns `null` when S3 credentials are not configured
+- No controller exposes it, so there is no multipart presign route
 
 
 <!-- REFERENCES -->

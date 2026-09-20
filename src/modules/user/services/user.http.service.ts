@@ -48,16 +48,16 @@ export class UserHttpService {
                 availableOrderBy: UserDefaultAvailableOrderBy,
             });
         const status = this.paginationQueryUtil.inEnum(
-            'status',
+            Prisma.UserScalarFieldEnum.status,
             query.status,
             UserDefaultStatus
         );
         const roleId = this.paginationQueryUtil.equalString(
-            'roleId',
+            Prisma.UserScalarFieldEnum.roleId,
             query.roleId
         );
         const countryId = this.paginationQueryUtil.equalString(
-            'countryId',
+            Prisma.UserScalarFieldEnum.countryId,
             query.countryId
         );
         this.requestStoreService.merge(PaginationStoreKey, {

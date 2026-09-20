@@ -216,7 +216,8 @@ ternary branch. The rule file holds the allowed positions.
 
 - No fixes, no edits, no spec, no test run.
 - Git stays read-only. No `lint-staged`, no format write, no staging.
-- No `docs/*.md`.
+- No `docs/*.md`. No root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`).
 - **Never run a seed or anything that writes a real database** — `migration:seed`,
   `migration:remove`, `migration:fresh` and `db:migrate` are all the owner's
   (`rules/prisma-schema.md`).

@@ -115,7 +115,14 @@ export class FeatureFlagCache {
 }
 ```
 
-A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. The current consumers of `CacheMainProvider` are `ApiKeyCache`, `AuthCache`, `FeatureFlagCache`, `AnalyticCache`, `HealthRedisIndicator`, and `ResponseCacheInterceptor`.
+A cache manager is injected into a dedicated cache class, an interceptor, or a health indicator. Current consumers of `CacheMainProvider`:
+
+- `ApiKeyCache`
+- `AuthCache`
+- `FeatureFlagCache`
+- `AnalyticCache`
+- `HealthRedisIndicator`
+- `ResponseCacheInterceptor`
 
 **Building a key from its config pattern.** Every key pattern lives in config, and how it is filled follows the number of placeholders in it:
 
@@ -145,7 +152,13 @@ export class SessionCache {
 }
 ```
 
-`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)). `SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it: the module imports `SessionRepositoryModule`, provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`, and exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`.
+`SessionCache` is the only injection site of `SessionCacheProvider`. `SessionCache` also injects `RedisClientCachedProvider` for the two operations the cache manager cannot express (see [Session Cache](#session-cache)).
+
+`SessionCacheProvider` is registered inside `SessionDomainModule` and stays internal to it. The module:
+
+- imports `SessionRepositoryModule`
+- provides `SessionDomain`, `SessionCache`, `SessionUtil`, and `SessionAnalyticDomain`
+- exports `SessionDomain`, `SessionCache`, and `SessionAnalyticDomain`
 
 Both cache modules register their own `CacheManagerModule.registerAsync` over the shared `RedisClientCachedProvider` with `ttl` from `redis.cache.ttlInMs`, then alias `CACHE_MANAGER` to their named provider with `useExisting`.
 
@@ -161,13 +174,20 @@ Both cache modules register their own `CacheManagerModule.registerAsync` over th
 | `deleteLogins(userId, sessions)` | Deletes exactly the given session entries through `mdel`; nothing when the list is empty |
 | `deleteLoginsByUser(userId)` | Walks every master node with `SCAN` (`MATCH` on the user's key prefix, `COUNT` `SessionCachePurgeScanCount` = 1000, `TYPE string`) and `UNLINK`s each batch it finds |
 
-`SessionDomain` wraps the two deletes. `purgeRevokedLogins` calls `deleteLogins` and serves the paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device. `purgeLoginsByUser` calls `deleteLoginsByUser` and serves the paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset. Both run after the revoke has committed, and both log and swallow a failure, so the committed revoke still answers success. Each path then stages its activity rows. Flow narrative: [Authentication][ref-doc-authentication].
+`SessionDomain` wraps the two deletes:
+
+| Wrapper | Calls | Serves |
+|---|---|---|
+| `purgeRevokedLogins` | `deleteLogins` | Paths that revoke one session or a subset: logout, a single self or admin revoke, device removal, and the sessions a login revokes on a known device |
+| `purgeLoginsByUser` | `deleteLoginsByUser` | Paths that revoke every session of a user: account self-deletion, admin revoke-all, an admin status change to `blocked` or `inactive`, password change, forgot-password reset, admin password reset, two-factor disable, and admin two-factor reset |
+
+Both run after the revoke has committed, and both log and swallow a failure, so the committed revoke still answers success. Each path then stages its activity rows. Flow narrative: [Authentication][ref-doc-authentication].
 
 A refresh rotates the entry with `updateLogin` after its database commit. When the entry is gone (a revoke purged it while the refresh ran), nothing is written and the refresh answers `AuthJwtRefreshTokenInvalidException` (401, `50801`).
 
 ### Redis Failures
 
-Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into two groups:
+Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fails, so a read falls through to the database or to the caller's miss handling. Writes and deletes split into three groups:
 
 | Group | Calls | On a Redis failure |
 |---|---|---|
@@ -177,7 +197,13 @@ Reads through the cache manager (`get`, `ttl`) resolve to a miss when Redis fail
 
 `ResponseCacheInterceptor` inherits the error handling of `@nestjs/cache-manager`'s `CacheInterceptor`, which logs a failed write and runs the handler when the cache lookup fails.
 
-An API key admin write that changes or deletes a key (status, name, dates, reset, delete) runs the database write, then stages its activity row with `onError: true`, then deletes the key's cache entry, in that order. When the delete fails, the request answers 500 with the database change applied and its activity row written. `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
+An API key admin write that changes or deletes a key runs, in order:
+
+1. database write
+2. stages its activity row with `onError: true`
+3. deletes the key's cache entry
+
+Writes covered: status, name, dates, reset, delete. When the delete fails, the request answers 500 with the database change applied and its activity row written. `MigrationApiKeySeed.remove` deletes the `ApiKey` rows first, then the cache entries of the seeded keys.
 
 ## Configuration
 

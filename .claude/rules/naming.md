@@ -131,7 +131,7 @@ provide exist:
 | Interface | `I` + PascalCase | `IUser`, `IUserRepository`, `IPaginationQuery` |
 | Enum type | `Enum` + PascalCase | `EnumQueue`, `EnumUserStatusCodeError`, `EnumPolicyAction` |
 | Enum key AND value | camelCase | `notFound`, `notificationEmail`, `superAdmin` |
-| Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `UserDefaultAvailableSearch` |
+| Constant (object, array, primitive) | PascalCase | `AuthJwtAccessGuardKey`, `AuthJwtAccessDocSecurityName`, `UserDefaultAvailableSearch` |
 | Method / variable / field | camelCase | `findById`, `perPage` |
 | Injected field / constructor param | camelCase of the class | `authDomain: AuthDomain`, `sessionCache: SessionCache` |
 | Exception class | `<Module><Descriptor>Exception` | `UserNotFoundException` |
@@ -195,6 +195,8 @@ interface when the row is a shape; a table whose rows are plain values needs non
 - **Enums are `Enum`-prefixed PascalCase with camelCase keys AND camelCase string values.** `UPPER_SNAKE_CASE` is wrong on both halves. Error-code enums use numeric values instead (`EnumUserStatusCodeError.notFound = 51000`); see `rules/exceptions.md`.
 - **One enum concern per file**, named `<module>.<concern>.enum.ts`. Status-code enums always get their own file: `<module>.status-code.enum.ts`.
 - **Constants are PascalCase for everything** — typed objects, arrays, and lone primitives alike. No `UPPER_SNAKE_CASE`, no `camelCase`.
+- **OpenAPI security scheme names are PascalCase consts whose VALUE is the camelCase scheme string** — `AuthJwtAccessDocSecurityName = 'accessToken'`, `AuthJwtRefreshDocSecurityName`, `AuthSocialGoogleDocSecurityName`, `AuthSocialAppleDocSecurityName`, `ApiKeyDocSecurityName = 'xApiKey'`, parallel to `AuthJwtAccessGuardKey`. They live in the owning module's `<module>.constant.ts`. Never a magic string at `ApiBearerAuth` / `ApiSecurity` / `addBearerAuth` / `addApiKey` (`rules/http.md`).
+- **Prisma-backed list allow-lists use `Prisma.<Model>ScalarFieldEnum` members** in `<module>.list.constant.ts`, typed `as const satisfies ReadonlyArray<Prisma.<Model>ScalarFieldEnum>` (or equivalent). Computed / analytic lists keep `(keyof I*)[]` (`rules/pagination.md`).
 - **DI tokens are rare.** Prefer direct class injection (a repository is injected as a class, never behind `@Inject`). When a token genuinely IS needed, name it PascalCase and wrap the value in `Symbol()`.
 - **An injected field is the class name with the first letter lowercased.** Dropping a layer word is wrong: `authService: AuthDomain` is not the field; `authDomain` is. Same for every injectable — `UserHttpService` → `userHttpService`, `ActivityLogRepository` → `activityLogRepository`, `AuthPasswordUtil` → `authPasswordUtil`, `SessionCache` → `sessionCache`, `NotificationEmailQueue` → `notificationEmailQueue`.
 - **A DTO file exports a `Schema` const and a `Dto` type, and the file name carries `.dto.ts`.** A DTO is the module's request/response transport shape (`rules/dto.md`).

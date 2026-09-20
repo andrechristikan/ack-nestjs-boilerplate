@@ -136,7 +136,7 @@ export class WorkspaceHttpService {
                 availableOrderBy: WorkspaceDefaultAvailableOrderBy,
             });
         const isPublic = this.paginationQueryUtil.equalBoolean(
-            'isPublic',
+            Prisma.WorkspaceScalarFieldEnum.isPublic,
             query.isPublic
         );
         this.requestStoreService.merge(PaginationStoreKey, {

@@ -13,6 +13,7 @@ Decorators, pipes, and services for single and multiple uploads, file validation
 - [Handling Error Documentation][ref-doc-handling-error]
 - [Message Documentation][ref-doc-message]
 - [Presign Documentation][ref-doc-presign]
+- [Doc Documentation][ref-doc-doc]
 
 ## Table of Contents
 
@@ -44,6 +45,8 @@ The defaults come from `src/common/file/constants/file.constant.ts`:
 - `FileMaxMultiple` is `3`
 
 The `options` argument on every decorator is itself optional, but `IFileUploadSingle` and `IFileUploadMultiple` declare their fields as required. Pass the whole object or none of it.
+
+Each decorator also emits multipart OpenAPI (`ApiConsumes('multipart/form-data')` plus a binary `ApiBody` from the field name(s)) and the upload error kit from `DocFileErrorResponses` in `src/common/doc/constants/doc.constant.ts`. Flow: [Doc Documentation][ref-doc-doc].
 
 ### FileUploadSingle
 
@@ -308,11 +311,22 @@ const aws: IAwsS3 | null = await this.awsS3Service.putItem(
 );
 ```
 
-`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`. `putItem` returns `null` when S3 credentials are not configured, and the domain skips the database write in that case. Otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event.
+`options.access` is a required argument on every `AwsS3Service` method that reaches a bucket, and a profile photo is served by URL, so this call names `public`.
+
+`putItem` behaviour:
+
+- returns `null` when S3 credentials are not configured, and the domain skips the database write in that case
+- otherwise the domain prepares `userUpdatePhotoProfile`, stores the S3 reference with one `UserRepository.updatePhotoProfile` update (no transaction), and then stages the event
 
 **Multiple Files Upload:**
 
-`@FileUploadMultiple` wires `FilesInterceptor` for an array of files under one field. Default field is `files`, default max count is `FileMaxMultiple` (`3`), and default size is `FileSizeInBytes` (`10mb`). `FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
+`@FileUploadMultiple` wires `FilesInterceptor` for an array of files under one field. Defaults:
+
+- field: `files`
+- max count: `FileMaxMultiple` (`3`)
+- size: `FileSizeInBytes` (`10mb`)
+
+`FileExtensionPipe` takes that array: it validates every element, and one rejected file rejects the request.
 
 ```typescript
 @FileUploadMultiple({ field: 'files', maxFiles: 3, fileSize: bytes('5mb') })
@@ -516,3 +530,4 @@ See [Message Documentation][ref-doc-message] for complete language configuration
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-message]: message.md
 [ref-doc-presign]: presign.md
+[ref-doc-doc]: doc.md

@@ -7,6 +7,13 @@ import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { MessageService } from '@common/message/services/message.service';
+import { ApiKeyDocSecurityName } from '@modules/api-key/constants/api-key.constant';
+import {
+    AuthJwtAccessDocSecurityName,
+    AuthJwtRefreshDocSecurityName,
+    AuthSocialAppleDocSecurityName,
+    AuthSocialGoogleDocSecurityName,
+} from '@modules/auth/constants/auth.constant';
 
 export default async function (app: NestApplication): Promise<void> {
     const configService = app.get(ConfigService);
@@ -45,23 +52,23 @@ export default async function (app: NestApplication): Promise<void> {
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'accessToken'
+                AuthJwtAccessDocSecurityName
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'refreshToken'
+                AuthJwtRefreshDocSecurityName
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'google'
+                AuthSocialGoogleDocSecurityName
             )
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'apple'
+                AuthSocialAppleDocSecurityName
             )
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
-                'xApiKey'
+                ApiKeyDocSecurityName
             )
             .build();
 

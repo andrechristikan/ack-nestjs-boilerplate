@@ -5,6 +5,8 @@ import { ApiBearerAuth } from '@nestjs/swagger';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import {
+    AuthJwtAccessDocSecurityName,
+    AuthJwtRefreshDocSecurityName,
     DocAuthJwtAccessErrorResponses,
     DocAuthJwtRefreshErrorResponses,
 } from '@modules/auth/constants/auth.constant';
@@ -61,7 +63,7 @@ export const AuthJwtToken = createParamDecorator(
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard),
-        ApiBearerAuth('accessToken'),
+        ApiBearerAuth(AuthJwtAccessDocSecurityName),
         DocAuthJwtAccessErrorResponses.unauthorized
     );
 }
@@ -73,7 +75,7 @@ export function AuthJwtAccessProtected(): MethodDecorator {
 export function AuthJwtRefreshProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtRefreshGuard),
-        ApiBearerAuth('refreshToken'),
+        ApiBearerAuth(AuthJwtRefreshDocSecurityName),
         DocAuthJwtRefreshErrorResponses.unauthorized
     );
 }

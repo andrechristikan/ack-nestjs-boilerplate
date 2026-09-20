@@ -37,12 +37,12 @@ export class TermPolicyHttpService {
                 }
             );
         const type = this.paginationQueryUtil.inEnum(
-            'type',
+            Prisma.TermPolicyScalarFieldEnum.type,
             query.type,
             TermPolicyDefaultType
         );
         const status = this.paginationQueryUtil.inEnum(
-            'status',
+            Prisma.TermPolicyScalarFieldEnum.status,
             query.status,
             TermPolicyDefaultStatus
         );
@@ -77,7 +77,7 @@ export class TermPolicyHttpService {
                 }
             );
         const type = this.paginationQueryUtil.inEnum(
-            'type',
+            Prisma.TermPolicyScalarFieldEnum.type,
             query.type,
             TermPolicyDefaultType
         );

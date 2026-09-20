@@ -43,26 +43,36 @@ src
   └── swagger.ts
 ```
 
-`src/generated/` is written by `pnpm generate` and not tracked by git: `prisma-client/` (the Prisma client, from `pnpm db:generate`) and `package/package.ts` (the `version`, `author`, and `repository` fields of `package.json`, from `pnpm generate:package`). Application code imports both through the `@generated/*` alias.
+`src/generated/` is written by `pnpm generate` and not tracked by git:
 
-The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), and every import between `src/` folders goes through a `tsconfig.json` path alias (`@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@generated/*`, plus `@instrument`, `@swagger`, `@main`, and `@migration` for the root files).
+- `prisma-client/` (the Prisma client, from `pnpm db:generate`)
+- `package/package.ts` (the `version`, `author`, and `repository` fields of `package.json`, from `pnpm generate:package`)
+
+Application code imports both through the `@generated/*` alias.
+
+The project is native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`). Every import between `src/` folders goes through a `tsconfig.json` path alias:
+
+- `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@generated/*`
+- plus `@instrument`, `@swagger`, `@main`, and `@migration` for the root files
 
 ## App Module
 
 **Location:** `src/app/app.module.ts`
 
 The App Module is the root module. It:
-- Imports `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount).
-- Registers five global exception filters: general, application, HTTP, validation, and import validation.
+
+- Imports `CommonModule` (shared infrastructure and global feature modules) and `RouterModule` (HTTP route mounting and the queue processor mount)
+- Registers five global exception filters: general, application, HTTP, validation, and import validation
 
 ## Common Module
 
 **Location:** `src/common/common.module.ts`
 
 CommonModule registers shared infrastructure and the global feature modules. Its `imports` array holds three groups, in this order:
-- Infrastructure: `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer and processor connections), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
-- Shared utilities: `HelperModule`, `PaginationModule`, `FileModule`, and `FirebaseModule`
-- The `@Global()` feature domains: `ActivityLogDomainModule`, `ApiKeyDomainModule`, `AuthDomainModule`, `FeatureFlagDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, and `NotificationDomainModule`
+
+- **Infrastructure:** `ConfigModule` (loading `src/configs/index.ts`), `MessageModule`, `LoggerModule`, `SentryModule` (which exports `SentryService`), `RedisCacheModule`, `QueueModule` (the BullMQ producer and processor connections), `CacheMainModule`, `DatabaseModule`, `RequestModule`, and `ResponseModule`
+- **Shared utilities:** `HelperModule`, `PaginationModule`, `FileModule`, and `FirebaseModule`
+- **The `@Global()` feature domains:** `ActivityLogDomainModule`, `ApiKeyDomainModule`, `AuthDomainModule`, `FeatureFlagDomainModule`, `RoleDomainModule`, `PolicyDomainModule`, `TermPolicyDomainModule`, `SessionDomainModule`, and `NotificationDomainModule`
 
 ## Configs
 
@@ -86,7 +96,7 @@ The migration folder seeds initial data. MongoDB has no migration files; the sch
 - `migration.module.ts`: Registers every seed command as a provider
 - Subfolders for migration bases, data, enums, interfaces, and seeds
 - Populates the reference and bootstrap rows an empty database needs: api keys, countries, feature flags, roles, policies, term policies, users, and workspaces (the eight commands bundled into `pnpm migration:seed`)
-- Ships three on-demand commands that are not part of `pnpm migration:seed`: `aws-s3-config`, `template-email-notification`, and `template-termPolicy`
+- Ships three on-demand commands that are not part of `pnpm migration:seed`: `awsS3Config`, `templateEmailNotification`, and `templateTermPolicy`
 
 ## Queues
 
@@ -210,7 +220,6 @@ module
   # Common (present when the feature needs them)
   ├── caches
   ├── decorators
-  ├── docs
   ├── guards
   # Specialized (a few modules only)
   ├── contracts
@@ -232,10 +241,7 @@ Static rule maps the module reads at runtime, one file per concept, named `<modu
 Handle incoming HTTP requests, delegate to HTTP services, and return responses. Controllers define the API endpoints for the module.
 
 ### Decorators
-Custom decorators to add metadata or modify behavior of classes, methods, or properties within the module.
-
-### Docs
-Documentation files or Swagger decorators for API documentation and reference.
+Custom decorators to add metadata or modify behavior of classes, methods, or properties within the module. OpenAPI for auth and guard kits lives on `*Protected` / auth decorators here; operation metadata and response envelopes live on `@Doc` and `@Response*` from `src/common/`.
 
 ### DTOs (Data Transfer Objects)
 Zod schemas that define the shape of data sent and received on API endpoints, each paired with the type inferred from it. One `*.dto.ts` file holds one schema.
@@ -304,7 +310,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **logs/**: Directory for application logs. Not tracked by git.
 - **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
 - **scripts/**: `generate-secret.ts` (JWT keys, JWKS, and encryption secrets; `pnpm generate:secret`) and `generate-package.ts` (`pnpm generate:package`). Node runs both directly as TypeScript.
-- **test/**: The Vitest spec tree, mirroring `src/` (`test/**/*.spec.ts`). The suite is unit: one class, collaborators doubled. `pnpm test` is `TZ=UTC vitest run --passWithNoTests` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply. `coverage.enabled` is `false` in `vitest.config.ts`. Controllers, processors, repositories, contracts, modules, enums, interfaces, constants, and Swagger doc factories (`*.doc.ts`) sit outside the coverage set. The doc kit in `src/common/doc/` is in it. Integration and e2e tests are not this suite. Specs exist under `test/app/` (app-layer env DTO, exceptions, filters) and `test/modules/analytic/`. There are no specs under `test/modules/analytic/docs/`. `test/setup.ts` (`setupFiles`) mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
+- **test/**: The Vitest spec tree, mirroring `src/` (`test/**/*.spec.ts`). The suite is unit: one class, collaborators doubled. `pnpm test` is `TZ=UTC vitest run --passWithNoTests` and does not collect coverage. `pnpm test:cov` adds `--coverage`, which is when the 100% thresholds apply. `coverage.enabled` is `false` in `vitest.config.ts`. Controllers, processors, repositories, contracts, modules, enums, interfaces, and constants sit outside the coverage set. The doc kit in `src/common/doc/` is in it. Integration and e2e tests are not this suite. Specs exist under `test/app/` (app-layer env DTO, exceptions, filters), `test/common/pagination/` (query util and list query schemas), and `test/modules/analytic/`. `test/setup.ts` (`setupFiles`) mutes Nest `Logger` and `ConsoleLogger` by assigning no-ops onto instance and static methods. Specs do not spy loggers or `console`. `pre-commit` and CI (`.github/workflows/test.yml`, `workflow_dispatch`) run `NODE_ENV=test pnpm test`. `testTimeout` is 5000ms.
 
 ### Files
 
@@ -326,7 +332,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **pnpm-workspace.yaml**: pnpm settings for this single-package repo: `allowBuilds` (the packages permitted to run install scripts, for example `prisma` and `@swc/core`) and `minimumReleaseAgeExclude` (packages exempted from the minimum release-age hold).
 - **tsconfig.json**: TypeScript configuration read by `pnpm typecheck` (`tsc --noEmit`), by knip, by Vitest (`resolve.tsconfigPaths`), and by the editor. It targets native ESM (`module` and `moduleResolution` `nodenext`, `verbatimModuleSyntax`, `isolatedModules`). Its `include` covers `src/**/*`, `test/**/*`, `scripts/**/*`, and `vitest.config.ts`; its `exclude` includes `.vitest`. Path aliases: `@app/*`, `@common/*`, `@configs/*`, `@modules/*`, `@router/*`, `@migration/*`, `@queues/*`, `@test/*`, `@generated/*`, `@instrument`, `@swagger`, `@main`, `@migration`.
 - **tsconfig.build.json**: The build-time TypeScript configuration, named by `nest-cli.json` under `compilerOptions.tsConfigPath`, so `nest build` and `nest start` read it. It extends `tsconfig.json`, narrows `include` to `src/**/*`, and excludes `test`, `scripts`, and `.vitest`.
-- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `test/**/*.spec.ts`, `test/setup.ts` as `setupFiles`, `isolate: false` (workers reused across files; `pool` is unset, so Vitest uses `forks`), `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`), `testTimeout` 5000ms, and v8 coverage over `src/**/*.ts` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, Swagger doc factories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. The doc kit in `src/common/doc/` is in the coverage set. Coverage collection is off unless `--coverage` is passed.
+- **vitest.config.ts**: The Vitest configuration behind `pnpm test` and `pnpm test:cov`: SWC compilation through `unplugin-swc`, the tsconfig path aliases, `test/**/*.spec.ts`, `test/setup.ts` as `setupFiles`, `isolate: false` (workers reused across files; `pool` is unset, so Vitest uses `forks`), `fsModuleCache: true` (transforms persist under `node_modules/.vitest-cache`), `testTimeout` 5000ms, and v8 coverage over `src/**/*.ts` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files excluded) with a 100% threshold on branches, functions, lines, and statements. The doc kit in `src/common/doc/` is in the coverage set. Coverage collection is off unless `--coverage` is passed.
 - **README.md**: Project introduction, feature list, and entry point to the documentation.
 - **CONTRIBUTING.md**: Contribution workflow and standards.
 - **CODE_OF_CONDUCT.md**: Community code of conduct.

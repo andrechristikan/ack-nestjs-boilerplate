@@ -16,6 +16,30 @@ export const AuthJwtAccessGuardKey = 'JwtAccess';
 export const AuthJwtRefreshGuardKey = 'JwtRefresh';
 
 /**
+ * OpenAPI Bearer scheme name for JWT access-token routes.
+ * @public
+ */
+export const AuthJwtAccessDocSecurityName = 'accessToken';
+
+/**
+ * OpenAPI Bearer scheme name for JWT refresh-token routes.
+ * @public
+ */
+export const AuthJwtRefreshDocSecurityName = 'refreshToken';
+
+/**
+ * OpenAPI Bearer scheme name for Google social-auth routes.
+ * @public
+ */
+export const AuthSocialGoogleDocSecurityName = 'google';
+
+/**
+ * OpenAPI Bearer scheme name for Apple social-auth routes.
+ * @public
+ */
+export const AuthSocialAppleDocSecurityName = 'apple';
+
+/**
  * Request-store key holding the verified JWT payload.
  * @public
  */

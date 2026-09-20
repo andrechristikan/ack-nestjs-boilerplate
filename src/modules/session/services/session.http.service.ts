@@ -33,7 +33,7 @@ export class SessionHttpService {
                 availableOrderBy: SessionDefaultAvailableOrderBy,
             });
         const isRevoked = this.paginationQueryUtil.equalBoolean(
-            'isRevoked',
+            Prisma.SessionScalarFieldEnum.isRevoked,
             query.isRevoked
         );
         this.requestStoreService.merge(PaginationStoreKey, {

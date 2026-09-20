@@ -22,19 +22,19 @@ export interface IPaginationQuery {
     perPage: number;
     cursor?: string;
     orderBy: IPaginationOrderBy[];
-    availableSearch: string[];
-    availableOrderBy: string[];
+    availableSearch: readonly string[];
+    availableOrderBy: readonly string[];
 }
 
 export interface IPaginationQueryOffsetOptions {
-    availableOrderBy?: string[];
-    availableSearch?: string[];
+    availableOrderBy?: readonly string[];
+    availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions {
-    availableOrderBy?: string[];
-    availableSearch?: string[];
+    availableOrderBy?: readonly string[];
+    availableSearch?: readonly string[];
     defaultPerPage?: number;
     cursorField?: string;
 }

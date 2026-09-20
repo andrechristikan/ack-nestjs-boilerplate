@@ -37,7 +37,7 @@ export class DeviceHttpService {
                 }
             );
         const isRevoked = this.paginationQueryUtil.equalBoolean(
-            'isRevoked',
+            Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
             query.isRevoked
         );
         this.requestStoreService.merge(PaginationStoreKey, {

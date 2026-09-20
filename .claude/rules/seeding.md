@@ -24,7 +24,8 @@ src/migration/
 └── migration.module.ts            # registers every seed command as a provider
 ```
 
-- A seed is `<module>.<concern>.seed.ts`, class `Migration<Module>Seed`, decorated `@Command({ name: '<module>' })`, and **extends `MigrationSeedBase`** — never `CommandRunner` directly. The base owns the `--type seed|remove` dispatch; a seed only implements `seed()` and `remove()`.
+- A seed is `<module>.<concern>.seed.ts`, class `Migration<Module>Seed`, decorated `@Command({ name })`, and **extends `MigrationSeedBase`** — never `CommandRunner` directly. The base owns the `--type seed|remove` dispatch; a seed only implements `seed()` and `remove()`.
+- **`@Command` `name` is camelCase** matching the module or concern — `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `templateTermPolicy`, `awsS3Config`. Never kebab-case and never a mixed dash form (`template-email-notification`, `template-termPolicy`, `aws-s3-config`).
 - **Every `seed()` has a matching `remove()`.** Seeding without a clean teardown leaves `migration:remove` unable to undo it. The pair is mandatory, not optional.
 - **Static seed rows live in `data/` as a PascalCase const** (`<module>.<concern>.data.ts`), imported by the seed. Every const in that tree is PascalCase, exported or not. A seed whose data is built inline (no external key/reference) needs no `data/` file — do not invent one to be symmetric.
 - **A seed writes its audit fields explicitly.** There is no request actor in a command, so `createdBy` and `updatedBy` on every seeded row — including the update branch of an upsert and every nested row — carry `MigrationUserSuperAdminId`, the fixed id the user seed gives the superadmin. A seeded activity row follows the same contracts a request does (`rules/security.md`): a row one user creates for another writes the pair, and an action with no metadata writes `{}`.
@@ -41,7 +42,7 @@ Bundled today:
 - `migration:seed` — `apiKey → country → featureFlag → role → policy → termPolicy → user → workspace`
 - `migration:remove` — `workspace → user → apiKey → featureFlag → country → policy → role → termPolicy` (**not** a strict reverse of seed; do not invent a reverse that is not in the script)
 
-Extra seeds exist and are registered (`template-email-notification`, `template-termPolicy`, `aws-s3-config`, …) but are **not** part of `migration:seed` / `migration:remove` — run them as separate `migration` commands when needed.
+Extra seeds exist and are registered (`templateEmailNotification`, `templateTermPolicy`, `awsS3Config`, …) but are **not** part of `migration:seed` / `migration:remove` — run them as separate `migration` commands when needed.
 
 Adding a seed with a dependency means placing it correctly in **both** bundled scripts when it belongs in the bundled flow. The `providers` array order is irrelevant to execution.
 

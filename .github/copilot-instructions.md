@@ -46,7 +46,7 @@ Processor ───▶ Processor Service ─┘
 | Type / interface | `I` + PascalCase | `IUser`, `IUserRepository` |
 | Enum type | `Enum` + PascalCase | `EnumQueue` |
 | Enum key AND value | camelCase | `notFound` |
-| Constant | PascalCase | `AuthJwtAccessGuardKey` |
+| Constant | PascalCase | `AuthJwtAccessGuardKey`, `AuthJwtAccessDocSecurityName` |
 | Method / field | camelCase | `findById` |
 | DTO | `…RequestSchema` + `…RequestDto`, `…ResponseSchema` + `…ResponseDto` | `UserCreateRequestSchema` |
 | Queue payload | `I<Module><Action>QueuePayload` (kind **last**) | `INotificationEmailQueuePayload` |
@@ -99,9 +99,10 @@ Guards run bottom-up. Admin routes never carry workspace/project guards. Return 
 
 - **Every JWT-protected handler** (`@AuthJwtAccessProtected` / `@AuthJwtRefreshProtected`) carries `@RequestThrottle({ user: true })`. One call per handler; a sensitive route adds `route:` in that same call. `public` and `system` omit it. Method decorator only; class-level does not compile.
 - **OpenAPI is co-located.** `@Doc` + `@DocErrors` (escape hatch) on the controller; success/errors on `@Response` / `@ResponsePagination` / `@ResponseFile`; auth/guard kits on matching `*Protected`; list queries from zod `@Query({ schema })`; multipart from `FileUpload*`; guard-owned `projectId` from `ProjectProtected` (`ApiParam`). No module `*.doc.ts` factories. `DocResponseError` (internal) merges entries per HTTP status via `DocResponseEntryMetaKey` so stacked kits compose. Paginated success uses `baseSchema: ResponsePaginationSchema`.
+- **OpenAPI security scheme names are module consts** (`AuthJwtAccessDocSecurityName = 'accessToken'`, …, `ApiKeyDocSecurityName = 'xApiKey'`), never magic strings at `ApiBearerAuth` / `ApiSecurity` / `addBearerAuth` / `addApiKey`. Scheme values are camelCase.
 - **Swagger errors follow ownership.** Global on `@Doc`; pagination kits on `@ResponsePagination` (both offset and cursor); upload on `FileUpload*`; download on `@ResponseFile`; guard/auth on `*Protected`. Module-flow errors that must appear use `@DocErrors`. JWT `accessTokenUnauthorized` from `AuthJwtAccessProtected` only — never `UserProtected`.
 - **`@Response` options** are `schema` and `cache` only. Success HTTP status and body `statusCode` follow `@HttpCode` or Nest defaults (`POST` → 201, else 200).
-- **List queries:** kit base `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema`; modules `.extend` `search`/`orderBy` only when allow-lists are non-empty, plus filters; HTTP service uses `PaginationQueryUtil` (pure util — no RequestStore inject). `@ResponsePagination` has no `type` option and emits no `ApiQuery`.
+- **List queries:** kit base `PaginationOffsetQuerySchema` / `PaginationCursorQuerySchema`; modules `.extend` `search`/`orderBy` only when allow-lists are non-empty, plus filters; HTTP service uses `PaginationQueryUtil` (pure util — no RequestStore inject; `field` is string-generic). Prisma-backed `availableSearch` / `availableOrderBy` use `Prisma.<Model>ScalarFieldEnum` with `as const satisfies`; filter helpers take the enum member, not a magic string. Computed / analytic lists keep `(keyof I*)[]`. `@ResponsePagination` has no `type` option and emits no `ApiQuery`.
 - **`@FeatureFlagProtected` takes the bare key.** Workspace-scoped and project-scoped routes on `user` / `shared` / `public` carry `@FeatureFlagProtected('workspace')`. Admin does not.
 - **`@RoleProtected` never lists `superAdmin`.** The bypass runs before the required list.
 - **Activity is not a decorator.** A domain prepares with `ActivityLogDomain.prepare(...)` before the write and stages with `stagePrepared(...)` after it.
@@ -117,7 +118,7 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 ## Database · Queues · Security
 
 - **DB:** a paginated read whose row is narrower than the model passes a `select` (mutually exclusive with `include`, `findMany` only), so a password hash or a session `jti` never leaves the database; only repositories query `databaseService.client`; a domain opens `databaseService.withTransaction` only when the work spans more than one repository and passes `tx` to `*InTx(tx, …)` methods; a multi-statement write on one repository's model opens its transaction inside that repository. Soft delete: `client.<model>.softDelete` / `restore`. `createdBy` / `updatedBy` are stamped from the request actor (nested writes included); pass them explicitly only where there is no HTTP actor.
-- **Queues:** `@QueueProcessor(EnumQueue.X)` + `extends QueueProcessorBase` (constructor passes `sentryService` to `super`). Work in `*.processor.service.ts`. `return await` inside `try`. Unretryable failure → `UnrecoverableError`.
+- **Queues:** `@QueueProcessor(EnumQueue.X)` + `extends QueueProcessorBase` (constructor passes `sentryService` to `super`). Base owns concrete `process` (try / await `handle` / catch + `job.log` metadata-only, never `job.data`; `job.log` faults swallowed). Subclass implements `protected handle` — dispatcher only; `return await` service calls; feature remaps (`HelperDecryptFailedException` → `UnrecoverableError`) inside `handle`. No per-processor log-and-rethrow. `onFailed` fatal gate + Sentry `withScope` job id/name/attemptsMade/maxAttempts. Factories set `keepLogs`.
 - **Crypto:** `node:crypto` through `Helper*` services only. AES-256-GCM via `HelperEncryptionService.aes256Encrypt(value, secret, purpose, context)`. `randomInt` / `randomBytes`, never `Math.random`. Secret comparisons via `sha256Compare` (constant-time). No MD5, no `crypto-js`.
 - **Secrets:** never in a log, a URL, a response, activity metadata, or a plaintext job payload. Add new sensitive keys to `LoggerSensitiveFields`.
 - **Sessions:** invalidate after password change/reset, logout, device removal, self-deletion, lockout, two-factor disable or reset, admin revoke, or role/status change (admin `blocked`/`inactive` revokes every session). Order is commit, purge, stage. A partial revoke purges exactly the revoked ids; a whole-user revoke scans and unlinks every key of that user.
@@ -131,7 +132,7 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 - Default **zero comments**. Banned JSDoc tags: `@param @returns @example @throws @implements …`.
 - Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts`, `*.exception.ts`, `*.constant.ts`, `*.contract.ts` carries a one-line JSDoc plus `@public`.
 - Config: `ConfigService.get('namespace.key')` — never `process.env` in feature code. Durations `In<Unit>` from `ms('…')`; sizes `InBytes` from `bytes('…')`; URLs are `…Pattern` keys with `.replace('{x}', () => value)`.
-- Logger: `private readonly logger = new Logger(ClassName.name)`; errors object-first. Sentry reporting goes through `SentryService` from the filter chain and `QueueProcessorBase`.
+- Logger: `private readonly logger = new Logger(ClassName.name)`; errors object-first. No log-and-rethrow — filters and `QueueProcessorBase` own the single failure log. Sentry reporting goes through `SentryService` from the filter chain and `QueueProcessorBase` (`onFailed` enriches job metadata via `withScope` before `captureException`).
 
 ---
 
@@ -139,6 +140,6 @@ One class per file under `exceptions/`, extends `AppBaseException`; enum `Enum<M
 
 - `prisma/schema.prisma` may be edited; never run `db:migrate`, `db:studio` or `migration:*`.
 - Never stage or commit unless asked. PNPM only.
-- No backward compatibility — correct shape, update every call site.
+- No backward compatibility — correct shape, update every call site, including CI, docker, compose, and `package.json` scripts when those name the change.
 - Specs under `test/**/*.spec.ts` are **unit** (Vitest, `vitest-mock-extended`): every collaborator is a double. A domain spec mocks the repository; a repository is not a unit subject. Integration (real Prisma/Mongo) and e2e (running app) are not this suite. Controllers, processors, repositories, and contracts are outside the coverage set; the doc kit in `src/common/doc/` is inside it. `isolate: false`, `fsModuleCache: true`, `pool: forks`. Nest `Logger` is muted in `test/setup.ts` (no-ops on the class; not `vi.mock('@nestjs/common')` and not a `console` spy). A behaviour lands red-first. `.github/workflows/test.yml` is `workflow_dispatch`.
 - English for code, comments, commits, docs. Verify with `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`.

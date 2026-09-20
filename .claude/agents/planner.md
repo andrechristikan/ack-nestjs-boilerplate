@@ -1,7 +1,7 @@
 ---
 name: planner
 description: >-
-    Writes the two artifacts a build runs from, under .superpowers/ — a SPEC of the settled behaviour, and a PLAN of the ordered steps, files and verification that deliver it. The dispatch names the mode. Runs after explorer. Use before coder. NOT for locating or brainstorming (explorer), NOT for writing the code (coder), NOT for reviewing (reviewer, reviewer-e2e), NOT for docs/*.md.
+    Writes the two artifacts a build runs from, under .superpowers/ — a SPEC of the settled behaviour, and a PLAN of the ordered steps, files and verification that deliver it. The dispatch names the mode. Use when the spec or the plan is not yet written. Skip when the change is a pinned repair. NOT for locating or brainstorming (explorer), NOT for writing the code (coder), NOT for reviewing (reviewer, reviewer-e2e), NOT for docs/*.md.
 tools: Read, Grep, Glob, Bash, Write
 skills: caveman:caveman, superpowers:writing-plans
 ---
@@ -68,7 +68,10 @@ or `prisma/`.
 **A plan step that changes `src/` is red-green.** It names the TDD spec `coder` will write,
 the command that watches it fail, the implementation files, and the command that watches it
 pass. `test-writer` is not in this pipeline: a spec covering code the plan does not write is
-the skill's dispatch, not a plan step. A seed step has no TDD cycle.
+the skill's dispatch, not a plan step. A seed step has no TDD cycle. A run-surface step
+(`package.json` scripts, `scripts/`, `ci/`, `docker-compose.yml`, `.github/workflows/`,
+nest-cli / vitest / knip / tsconfig) has no TDD cycle; name the files `coder` will read and
+repair (`rules/architecture.md`).
 
 **A plan step that touches `prisma/*` or `src/migration/**` names `seed-writer` as the agent
 that writes that tree.** `coder` does not write `src/migration/**`. The schema EDIT is still a
@@ -100,9 +103,10 @@ The writing-plans header and task shape, saved under `.superpowers/`:
 - **Ordered tasks.** Each task names the FILES it touches and the VERIFICATION that closes it —
   a command, a boot, a specific assertion. A task whose verification is "looks right" is not a
   task. Checkbox syntax (`- [ ]`) on every step.
-- **The seam.** Which existing callers, queues, cursors, i18n keys, or wire shapes the change is
-  visible to, and what has to happen for them — a queue drain, a cursor invalidation, a forced
-  re-login, a client-contract note (`rules/naming.md`).
+- **The seam.** Which existing callers, queues, cursors, i18n keys, wire shapes, or run-surface
+  files the change is visible to, and what has to happen for them — a queue drain, a cursor
+  invalidation, a forced re-login, a client-contract note, a workflow or dockerfile repair
+  (`rules/naming.md`, `rules/architecture.md`).
 - **The schema delta, if any.** The schema EDIT is a task like any other, placed before the code
   that depends on it and verified with `pnpm db:generate`. The PUSH is the owner's: name it as
   its own task, `pnpm db:migrate`, and carry the data consequence with it

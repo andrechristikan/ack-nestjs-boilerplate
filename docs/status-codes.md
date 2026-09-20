@@ -2,9 +2,20 @@
 
 Application `statusCode` values, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status. `httpStatus` is a separate field on the same error response. `module` + `statusCodeKey` identify an error more stably than the raw integer, which is why the envelope carries both.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status.
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. A new module takes the next free hundred in the block map below; the allocation procedure is `.claude/rules/status-code.md`. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
+Related fields on the same error response:
+
+- `httpStatus`: separate field
+- `module` + `statusCodeKey`: identify an error more stably than the raw integer, which is why the envelope carries both
+
+The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog.
+
+- A new module takes the next free hundred in the block map below
+- The allocation procedure is `.claude/rules/status-code.md`
+- Error filter flow: [Handling Error](handling-error.md)
+- i18n paths: [Message](message.md)
+- Response shape: [Response](response.md)
 
 ## Block map
 

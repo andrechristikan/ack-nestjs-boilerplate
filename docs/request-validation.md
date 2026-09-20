@@ -144,7 +144,8 @@ userId?: string
 
 ### Query Parameters
 
-Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
+Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
+
 ## Schema Shape
 
 - **A root request schema is `z.strictObject`**, so an unknown key is a validation error rather than a silently dropped one.
@@ -256,11 +257,22 @@ A CSV import composes pipes in order: `FileRequiredPipe()`, `FileExtensionPipe`,
 data: UserImportRequestDto[]
 ```
 
-The pipe caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, rejects an empty file with `FileRequiredExtractFirstException`, and collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+The pipe:
+
+- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`
+- rejects an empty file with `FileRequiredExtractFirstException`
+- collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`
+
+See [File Upload][ref-doc-file-upload].
 
 ## Environment Variables
 
-`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot. An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters. See [Environment][ref-doc-environment].
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error.
+
+- An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
+- An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
+
+See [Environment][ref-doc-environment].
 
 ## Error Message Mapping
 

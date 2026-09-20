@@ -41,7 +41,8 @@ Every DI collaborator is a double. The subject is the one class that is real
 - OpenAPI composition on runtime decorators (`@Doc`, `@Response*`, `*Protected`, `FileUpload*`) has no unit spec.
 - A contract is a lookup table. The consumer's unit spec exercises it.
 
-TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists.
+TDD is this kind (`coder`). `/ack-spec` covers this kind against code that already exists,
+and repairs a confirmed no-flow bug through `coder`.
 
 ### Integration
 
@@ -175,14 +176,18 @@ A spec lives at its final path under `test/` and stays as the regression net. TD
 (`rules/architecture.md`).
 
 Seeds, controllers, processors, repositories, and contracts have no TDD cycle (the coverage
-denylist excludes them). A contract row is the
+denylist excludes them). The run surface has no TDD cycle (`rules/architecture.md`). A contract row is the
 `src/` that turns the consumer's unit spec green. A repository's presence in that cycle is
 the double in the domain spec.
 
 ## The code is the specification (`/ack-spec`)
 
-When the code already exists and the job is to cover it, `src/` wins. `/ack-spec` writes
-those specs through `test-writer` and never changes `src/`.
+When the job is to cover code that already exists, `src/` wins. `/ack-spec` writes those
+specs through `test-writer`.
+
+A **confirmed bug that does not change a flow** is repaired here through `coder`, test-first,
+then reported. A flow change or a decision is asked of the owner or appended to
+`generated/docs/report-src-sweep.md`.
 
 ## Writing the spec itself
 
@@ -195,11 +200,13 @@ never done to reach green — which is what someone who only RUNS the suite need
 
 Which skill is running decides who wins:
 
-- **TDD (`coder` / `/ack-code`):** changing `src/` to turn a failing spec green is the job.
-- **`/ack-spec`:** the existing `src/` wins. **Do NOT change production code to make a spec
-  pass.** If the code is wrong, pin the spec green against current behaviour and report the
-  defect with file and line. The only sanctioned `src/` edit on that path is a typo or syntax
-  fix that cannot change behavior for any input.
+- **TDD (`coder` / `/ack-code`, and `/ack-spec` on a no-flow repair):** changing `src/` to
+  turn a failing spec green is the job.
+- **`/ack-spec` coverage path:** the existing `src/` wins. **Do NOT change production code
+  to make a coverage spec pass.** If the code is a flow change or a decision, pin the spec
+  green against current behaviour and ask or record the defect with file and line. The only
+  sanctioned `src/` edit on the coverage path is a typo or syntax fix that cannot change
+  behavior for any input.
 
 Always:
 

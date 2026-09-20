@@ -1,6 +1,7 @@
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
+    Prisma,
 } from '@generated/prisma-client/client';
 
 /**
@@ -21,10 +22,15 @@ export const TermPolicyDefaultType = Object.values(EnumTermPolicyType);
  * cursor route lists published rows only, so neither key moves a row mid-scroll.
  * @public
  */
-export const TermPolicyDefaultAvailableOrderBy = ['publishedAt', 'version'];
+export const TermPolicyDefaultAvailableOrderBy = [
+    Prisma.TermPolicyScalarFieldEnum.publishedAt,
+    Prisma.TermPolicyScalarFieldEnum.version,
+] as const satisfies ReadonlyArray<Prisma.TermPolicyScalarFieldEnum>;
 
 /**
  * Sort fields the term-policy acceptance list accepts.
  * @public
  */
-export const TermPolicyAcceptanceDefaultAvailableOrderBy = ['createdAt'];
+export const TermPolicyAcceptanceDefaultAvailableOrderBy = [
+    Prisma.TermPolicyUserAcceptanceScalarFieldEnum.createdAt,
+] as const satisfies ReadonlyArray<Prisma.TermPolicyUserAcceptanceScalarFieldEnum>;

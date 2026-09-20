@@ -217,7 +217,14 @@ POST /admin/term-policy/content/presign/generate
 }
 ```
 
-The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it. The response is the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`) against the **private** bucket. Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
+The API derives the S3 key itself from `type`, `version`, and `language`; the client does not supply it.
+
+Response:
+
+- the standard presign payload (`key`, `mime`, `extension`, `presignUrl`, `expiredInSeconds`)
+- against the **private** bucket
+
+Requesting a presign for a type and version already published returns `400` (`statusInvalid`).
 
 ### Create Policy
 
@@ -268,7 +275,13 @@ Publish policy and invalidate all user acceptances:
 ```typescript
 PATCH /admin/term-policy/publish/:termPolicyId
 ```
-Publishing sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts again. Publishing an already-published policy returns `400` (`statusInvalid`); publishing one with no content returns `400` (`contentEmpty`). Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
+Publishing:
+
+- sets `termPolicy[type]` to `false` for every active, non-deleted user, so each one accepts again
+- an already-published policy returns `400` (`statusInvalid`)
+- a policy with no content returns `400` (`contentEmpty`)
+
+Once published, a policy cannot be edited or deleted, and its content files exist in both buckets: the public copy the record points at, and the private original the draft was uploaded to.
 
 ### List Policies
 
@@ -311,26 +324,35 @@ The guard reads the user out of the request store, which `@UserProtected()` fill
   path: '/user/term-policy',
 })
 export class TermPolicySharedController {
+  @Doc({ summary: 'List of terms or policies accepted by the user' })
+  @ResponsePagination('termPolicy.listAccepted', {
+    schema: TermPolicyUserAcceptanceResponseSchema,
+  })
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true })
   @Get('/acceptance/list')
   async listAccepted(
-    @PaginationCursorQuery({
-      availableOrderBy: TermPolicyAcceptanceDefaultAvailableOrderBy,
-    })
-    pagination: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>,
+    @Query({ schema: TermPolicyAcceptedListRequestSchema })
+    query: TermPolicyAcceptedListRequestDto,
     @AuthJwtPayload('userId') userId: string
-  ): Promise<IResponsePagingReturn<ITermPolicyUserAcceptance>> {
+  ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
     return this.termPolicyAcceptanceHttpService.getListUserAccepted(
       userId,
-      pagination
+      query
     );
   }
 
+  @Doc({ summary: 'User accepts term or policy' })
+  @Response('termPolicy.accept')
   @TermPolicyAcceptanceProtected()
   @UserProtected()
   @AuthJwtAccessProtected()
+  @ApiKeyProtected()
+  @RequestThrottle({ user: true })
+  @HttpCode(HttpStatus.OK)
   @Post('/accept')
   async accept(
     @UserCurrent() user: IUser,
@@ -393,11 +415,11 @@ Two seeds cover term policies:
 
 ```
 src/migration/seeds/migration.term-policy.seed.ts           # command: termPolicy
-src/migration/seeds/migration.template-term-policy.seed.ts  # command: template-termPolicy
+src/migration/seeds/migration.template-term-policy.seed.ts  # command: templateTermPolicy
 ```
 
 - `termPolicy` is the seed wired into `pnpm migration:seed` and `pnpm migration:remove`. It upserts the rows in `src/migration/data/migration.term-policy.data.ts`: one version 1 record per type, all `published`, with empty `contents`.
-- `template-termPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
+- `templateTermPolicy` is run on its own. For each type it uploads the bundled `.hbs` document to the private bucket, copies it to the public content path, and upserts a published version 1 record whose single `en` content entry is the public item, so a seeded policy sits in both buckets like any published one. It throws when S3 is not initialized, and its `remove()` is a no-op.
 
 For detailed migration and seeding instructions, see [Database Documentation][ref-doc-database].
 

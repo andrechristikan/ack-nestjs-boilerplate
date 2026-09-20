@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as Sentry from '@sentry/nestjs';
-import type { Log, SeverityLevel } from '@sentry/nestjs';
+import type { Log, Scope, SeverityLevel } from '@sentry/nestjs';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
 /**
@@ -39,6 +39,14 @@ export class SentryService {
             Sentry.logger[level](message, attributes);
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to send log to Sentry');
+        }
+    }
+
+    withScope(callback: (scope: Scope) => void): void {
+        try {
+            Sentry.withScope(callback);
+        } catch (error: unknown) {
+            this.logger.error(error, 'Failed to run Sentry withScope');
         }
     }
 }

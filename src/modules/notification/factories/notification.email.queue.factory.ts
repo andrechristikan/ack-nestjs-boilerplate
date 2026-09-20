@@ -11,6 +11,7 @@ export class NotificationEmailQueueFactory implements RegisterQueueOptionsFactor
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const attempts = this.configService.get<number>('queue.job.attempts');
+        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
         const backoffDelayInMs = this.configService.get<number>(
             'queue.job.emailBackoffDelayInMs'
         );
@@ -24,6 +25,7 @@ export class NotificationEmailQueueFactory implements RegisterQueueOptionsFactor
         return {
             defaultJobOptions: {
                 attempts,
+                keepLogs,
                 backoff: {
                     type: 'exponential',
                     delay: backoffDelayInMs,

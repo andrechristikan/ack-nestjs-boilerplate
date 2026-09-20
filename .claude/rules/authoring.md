@@ -1,6 +1,6 @@
 # Authoring — where a sentence lives
 
-The tree-by-tree placement map is in `.claude/skills/ack-claude-config/SKILL.md` → "Where a
+The tree-by-tree placement map is in `.claude/agents/harness-writer.md` → "Where a
 sentence lives". What follows here is the rationale and mechanics for writing INSIDE those trees
 correctly, not the placement decision itself.
 
@@ -20,8 +20,10 @@ are `docs/`.
 
 ## Final state only (HARD)
 
-**Binds `docs/*.md` AND `.claude/**` alike.** Both trees describe how the project works NOW,
-and nothing else.
+**Binds `docs/*.md`, the root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`), `.github/**` except `copilot-instructions.md`, AND `.claude/**`
+alike.** Those trees describe how the project works
+NOW, and nothing else.
 
 Never written in either tree: an issue, a bug, a bug fix, a defect that was repaired, a change,
 a decision and its reasoning, a rejected alternative, a migration note, a date, a version, or a
@@ -70,11 +72,11 @@ the contrast.
 
 Verification aid, not an oracle:
 
-    grep -nE '\b(MUST|NEVER|FORBIDDEN|ALWAYS)\b' docs/*.md
+    grep -nE '\b(MUST|NEVER|FORBIDDEN|ALWAYS)\b' docs/*.md README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md .github/pull_request_template.md
 
 Two false-positive classes are excluded by READING, not by pattern: enum member names in
 tables (`ABILITY_FORBIDDEN`, `NOT_FOUND`), and identifiers inside code fences. The
-criterion is "no obligation SENTENCE in `docs/` prose".
+criterion is "no obligation SENTENCE in documentation prose".
 
 ## Language
 
@@ -88,7 +90,14 @@ governs that: an artifact carries what is true, not who decided it or when.
 Trigger phrases and examples inside `.claude/**` stay in English too. Routing still matches
 other languages semantically, so English examples cost nothing.
 
-## Documentation prose (`docs/*.md`)
+## Documentation prose (`docs/*.md`, root people files, `.github/` markdown)
+
+Binds `docs/*.md`, the root `README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`, and `.github/pull_request_template.md`.
+
+YAML under `.github/` is not documentation prose. A claim there is still a fact about the
+checkout — a script name, an `engines` range, a path, a URL — and it is repaired when it is
+stale. Workflow logic is not rewritten as prose.
 
 - **No em-dash (`—`) in documentation prose.** Use a period, comma, semicolon, colon, or
   parentheses. Plain hyphens in compound words (`dev-mode`, `in-memory`) are fine; do not

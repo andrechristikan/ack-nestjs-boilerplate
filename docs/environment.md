@@ -52,7 +52,12 @@ ConfigModule.forRoot({
 }),
 ```
 
-`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. An env boolean is `RequestBooleanStringSchema` (a case-sensitive `z.stringbool` accepting exactly `'true'` or `'false'`), an encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters), a port is `z.coerce.number().int()`, and an enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error.
+`AppEnvSchema` is located at `src/app/dtos/app.env.dto.ts`. Field shapes:
+
+- An env boolean is `RequestBooleanStringSchema` (a case-sensitive `z.stringbool` accepting exactly `'true'` or `'false'`)
+- An encryption secret is `RequestEncryptionSecretSchema` (exactly 64 base64url characters)
+- A port is `z.coerce.number().int()`
+- An enum-valued variable is `z.enum` over the matching `Enum*`, so a typo is caught by name rather than surfacing later as a runtime error
 
 If validation fails, the application does not start and reports which environment variables are missing or invalid. The error reaches the `bootstrap().catch()` handler in `src/main.ts`, which writes the stack to `stderr` and calls `process.exit(1)`.
 

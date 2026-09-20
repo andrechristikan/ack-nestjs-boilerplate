@@ -219,7 +219,15 @@ export default registerAs(
 );
 ```
 
-Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`. Both strategies cache JWKS keys and rate-limit fetches to 5 requests per minute, and both enforce `audience`, `issuer`, expiration, and `nbf`. The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
+Signature verification on incoming requests is done by the Passport strategies (`AuthJwtAccessStrategy`, `AuthJwtRefreshStrategy`) against the **JWKS endpoint**, not against the configured `publicKey`.
+
+Both strategies:
+
+- cache JWKS keys
+- rate-limit fetches to 5 requests per minute
+- enforce `audience`, `issuer`, expiration, and `nbf`
+
+The configured `publicKey` is only used by `AuthJwtDomain.validateAccessToken` / `AuthJwtDomain.validateRefreshToken`.
 
 ### JWT Flow
 
@@ -275,7 +283,15 @@ sequenceDiagram
 
 The route itself is gated by `@FeatureFlagProtected('loginWithCredential')` and `@ApiKeyProtected()`, so a disabled flag rejects the request before any credential is read.
 
-Credential checks run in a fixed order and each one throws before the next is reached: user found (`UserNotFoundException`), status active (`UserInactiveForbiddenException`), password set (`UserPasswordNotSetException`), attempt limit not already reached (the lockout below runs, then `UserPasswordAttemptMaxException` is thrown), password matches (`UserLoginDomain.recordLoginFailed` increments the attempt counter and writes a `userLoginFailed` row, then `UserPasswordNotMatchException` is thrown). Every row these two branches write is prepared with `onError: true`, which is what writes it although the request answers an error ([Activity Log][ref-doc-activity-log]). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
+Credential checks run in a fixed order. Each one throws before the next is reached:
+
+1. user found (`UserNotFoundException`)
+2. status active (`UserInactiveForbiddenException`)
+3. password set (`UserPasswordNotSetException`)
+4. attempt limit not already reached (the lockout below runs, then `UserPasswordAttemptMaxException` is thrown)
+5. password matches (`UserLoginDomain.recordLoginFailed` increments the attempt counter and writes a `userLoginFailed` row, then `UserPasswordNotMatchException` is thrown)
+
+Every row these two branches write is prepared with `onError: true`, which is what writes it although the request answers an error ([Activity Log][ref-doc-activity-log]). A match resets the attempt counter first, and only then is password expiry checked (`UserPasswordExpiredException`).
 
 **Lockout.** `UserPasswordDomain.reachMaxPasswordAttempt` prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` for the user, then runs one transaction that:
 
@@ -283,7 +299,17 @@ Credential checks run in a fixed order and each one throws before the next is re
 2. revokes every active session of the user, with the user as the revoking actor;
 3. revokes every live device ownership of the user and clears the push token of each of those devices ([Device][ref-doc-device]).
 
-The transaction runs once. A domain exception raised inside it travels out as it is; every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again. After the commit, the lockout deletes every session key of the user from Redis, then stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`. Both rows are written on every lockout, including one where the user had no active session. `UserAuthDomain` then throws `UserPasswordAttemptMaxException`.
+After the commit:
+
+1. the lockout deletes every session key of the user from Redis
+2. stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`
+
+Both rows are written on every lockout, including one where the user had no active session. `UserAuthDomain` then throws `UserPasswordAttemptMaxException`.
+
+The transaction runs once:
+
+- A domain exception raised inside it travels out as it is.
+- Every other failure, a MongoDB write conflict (`P2034`) included, answers 500 (`AppUnknownException`). On that path nothing is purged and no row is staged, and the attempt counter stays at the limit, so the next login runs the lockout again.
 
 ```mermaid
 sequenceDiagram
@@ -309,7 +335,20 @@ Two branches then short-circuit before any session or token is created:
 - **Email not verified**: a new email verification is issued, the verification email is sent, and the login fails with `UserEmailNotVerifiedException`.
 - **Two-factor enabled**: no session and no tokens are created. The challenge is written to Redis first (`AuthCache.createChallenge`); a Redis failure there answers 500. The response carries `data.isTwoFactorEnable: true` and `data.twoFactor` with `challengeToken`, `challengeExpiresInMs`, `isRequiredSetup`, and `backupCodesRemaining`. When `isRequiredSetup` is true the secret is provisioned in the same response, which also carries `otpauthUrl` and `secret`. See [Two-Factor Authentication (TOTP)](#two-factor-authentication-totp).
 
-Session creation also enforces the device constraint. The device upsert, the device-ownership lookup, the revocation of every still-active session bound to that device-user pair, and the creation of the new session record all happen inside one database transaction. The login activity row is prepared before the transaction. After the commit, the new session key is written (`SessionCache.setLogin`) and exactly the superseded session ids are purged (`SessionDomain.purgeRevokedLogins`) in one parallel batch, alongside the new-device login notification when the device ownership was created rather than reused. The login row is staged once that batch settles. A purge failure is logged and the login still succeeds. A failed session key write answers 500 and stages no row.
+Session creation also enforces the device constraint. Inside one database transaction:
+
+- device upsert
+- device-ownership lookup
+- revocation of every still-active session bound to that device-user pair
+- creation of the new session record
+
+The login activity row is prepared before the transaction. After the commit, in one parallel batch:
+
+- the new session key is written (`SessionCache.setLogin`)
+- exactly the superseded session ids are purged (`SessionDomain.purgeRevokedLogins`)
+- the new-device login notification runs when the device ownership was created rather than reused
+
+The login row is staged once that batch settles. A purge failure is logged and the login still succeeds. A failed session key write answers 500 and stages no row.
 
 #### JWT Refresh Token Flow
 
@@ -527,7 +566,16 @@ async profile(
 }
 ```
 
-`AuthJwtPayload<T, K>(field?)` reads `request.user`, which the authenticating guard wrote. `T` is the payload type and defaults to `IAuthJwtAccessTokenPayload`; `field` is typed as a key of `T`. Without a field it returns the whole payload, and with one it returns that field, non-null. The social login routes read `@AuthJwtPayload<IAuthSocialPayload>('email')`. An empty `request.user` (a route that reads the payload without an authenticating guard), or a named field the payload does not carry, throws `RequestContextMissingException` (500, `50304`).
+`AuthJwtPayload<T, K>(field?)` reads `request.user`, which the authenticating guard wrote.
+
+| Piece | Meaning |
+|---|---|
+| `T` | payload type; defaults to `IAuthJwtAccessTokenPayload` |
+| `field` | typed as a key of `T` |
+
+- Without a field it returns the whole payload; with one it returns that field, non-null
+- The social login routes read `@AuthJwtPayload<IAuthSocialPayload>('email')`
+- An empty `request.user` (a route that reads the payload without an authenticating guard), or a named field the payload does not carry, throws `RequestContextMissingException` (500, `50304`)
 
 #### Getting Raw Token
 
@@ -1087,9 +1135,21 @@ Global prefix `/api` and version `v1` apply as elsewhere.
 
 The admin routes carry `@RoleProtected(EnumRoleType.admin)` and `@PolicyProtected` on `user: [read]` plus `session: [read]` (list) or `session: [read, delete]` (both revoke routes), and no workspace guard. Every session route is throttled with `@RequestThrottle({ user: true })`.
 
-**Revoke one.** `DELETE /shared/user/session/revoke/:sessionId` and the admin `DELETE /admin/user/:userId/session/revoke/:sessionId` check that the session is active, prepare their activity rows, then revoke with a write that matches only a session that is not yet revoked. When that write matches nothing (a concurrent revoke of the same session got there first), the request answers `SessionNotFoundException` (404, `50400`), and nothing is purged or written to the activity log. Otherwise the session's Redis key is deleted, then the rows are staged.
+**Revoke one.** `DELETE /shared/user/session/revoke/:sessionId` and the admin `DELETE /admin/user/:userId/session/revoke/:sessionId`:
 
-**Revoke all (admin).** `DELETE /admin/user/:userId/session/revoke-all` revokes every active session of the user in one transaction (`SessionRepository.revokeActiveByUser`), then deletes every session key of the user from Redis (`SessionDomain.purgeLoginsByUser`), then stages its activity rows. It answers with the message `session.revokeAll`.
+1. check that the session is active
+2. prepare their activity rows
+3. revoke with a write that matches only a session that is not yet revoked
+
+When that write matches nothing (a concurrent revoke of the same session got there first), the request answers `SessionNotFoundException` (404, `50400`), and nothing is purged or written to the activity log. Otherwise the session's Redis key is deleted, then the rows are staged.
+
+**Revoke all (admin).** `DELETE /admin/user/:userId/session/revoke-all`:
+
+1. revokes every active session of the user in one transaction (`SessionRepository.revokeActiveByUser`)
+2. deletes every session key of the user from Redis (`SessionDomain.purgeLoginsByUser`)
+3. stages its activity rows
+
+It answers with the message `session.revokeAll`.
 
 | Case | Exception | statusCode | HTTP |
 |---|---|---|---|

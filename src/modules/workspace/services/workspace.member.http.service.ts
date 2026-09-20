@@ -55,7 +55,7 @@ export class WorkspaceMemberHttpService {
                 }
             );
         const role = this.paginationQueryUtil.inEnum(
-            'role',
+            Prisma.WorkspaceMemberScalarFieldEnum.role,
             query.role,
             WorkspaceMemberDefaultRole
         );

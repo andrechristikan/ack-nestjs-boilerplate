@@ -19,7 +19,7 @@ import { Command } from 'nest-commander';
  * Uploads term policy documents to S3 and writes their published records; removal is a no-op. Throws if S3 is uninitialized.
  */
 @Command({
-    name: 'template-termPolicy',
+    name: 'templateTermPolicy',
     description: 'Seed/Remove Term Policies',
     allowUnknownOptions: false,
 })
