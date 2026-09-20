@@ -5,7 +5,10 @@ import {
     EnumHealthStatus,
 } from '@modules/health/enums/health.enum';
 
-/** Response shape of the AWS health check. */
+/**
+ * Response shape of the AWS health check.
+ * @public
+ */
 export const HealthAwsResponseSchema = HealthResponseSchema.extend({
     status: HealthResponseSchema.shape.status.meta({
         description: 'Overall health status of the checked AWS indicators',
@@ -55,4 +58,8 @@ export const HealthAwsResponseSchema = HealthResponseSchema.extend({
     }),
 });
 
+/**
+ * AWS health check result.
+ * @public
+ */
 export type HealthAwsResponseDto = z.infer<typeof HealthAwsResponseSchema>;

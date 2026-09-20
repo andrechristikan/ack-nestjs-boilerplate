@@ -36,9 +36,9 @@ unfamiliar orientation or the graph looks stale for the surface in hand.
 
 ## A recursive search from the repo root reads other branches (HARD)
 
-`.claude/worktrees/` holds git worktrees of other branches — a full second checkout each, with
-its own `src/`, `docs/` and `.claude/`, and each carrying uncommitted work of its own.
-`git worktree list` names them.
+A git worktree Claude creates lives under `.claude/worktrees/` — a full second checkout of
+another branch, with its own `src/`, `docs/` and `.claude/`, and its own uncommitted work.
+`git worktree list` names the ones that exist.
 
 Two consequences bind every task:
 
@@ -67,13 +67,11 @@ misses cross-file edges the graph already holds.
 ```
 .claude/rules/architecture.md
 .claude/rules/naming.md
-.claude/rules/case-convention.md
 .claude/rules/code-style.md
-.claude/rules/comments.md
 .claude/rules/null-safety.md
 ```
 
-Six, because they bind every file in `src/` regardless of what it does. An agent adds its own
+Four, because they bind every file in `src/` regardless of what it does. An agent adds its own
 standing reads on top — `agent-communication.md` for how it reports, `testing.md` or
 `testing-spec-style.md` for what it may write — and those live in the agent, not here.
 
@@ -86,14 +84,13 @@ thought to list.
 | Touches | Read |
 |---|---|
 | layer placement, module `imports` / `providers` / `exports` | `nest-wiring.md` |
-| another module's service, util, queue class, or repository | `cross-module.md` |
+| another module's domain, util, queue class, or repository | `cross-module.md` |
 | `src/common/` | `common.md` |
 | repository, Prisma query, transaction | `database.md` `concurrency.md` `dates.md` |
 | a schema edit, and the push it hands back | `prisma-schema.md` |
 | controller, route path, guard, decorator stack | `http.md` `router.md` `security.md` |
 | request schema, validation | `validation.md` |
 | response schema, serialization | `dto.md` |
-| Swagger doc factory | `swagger.md` |
 | a paginated list | `pagination.md` |
 | an exception, a status code | `exceptions.md` `status-code.md` |
 | an enum, or a `switch` over one | `enum.md` |
@@ -104,12 +101,53 @@ thought to list.
 | i18n message, language JSON | `i18n.md` |
 | config key, env var | `config.md` |
 | cached value | `cache.md` |
-| logging, Sentry | `logging.md` |
-| credential, token, session, activity log | `security.md` |
+| logging, Sentry, a sensitive key | `logging.md` |
+| credential, token, session, activity log, encryption, hashing, randomness, two-factor | `security.md` |
 | `src/migration/` | `seeding.md` |
 | a spec | `testing.md` `testing-spec-style.md` |
-| `docs/*.md`, `.claude/**` | `authoring.md` |
+| run surface — `package.json` scripts/engines, `scripts/`, `ci/`, `docker-compose.yml`, `.github/workflows/`, `.github/dependabot.yml`, `nest-cli.json`, `vitest.config.ts`, `knip.json`, `tsconfig.json`, `tsconfig.build.json`, `eslint.config.mjs`, `.husky/` | `architecture.md` |
+| `docs/*.md`, root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`), `.github/**` except `copilot-instructions.md`, `.claude/**` | `authoring.md` |
 
 **Both halves bind whoever decides the shape, not only whoever types it.** A plan, a design, or
 an answer given in conversation commits the same violation the code would — earlier, and in a
 form the next reader treats as settled.
+
+## Standing extras by role
+
+The four and the surface table above are the shared map. These extras live on the role, and this
+table is the index so none is skipped:
+
+| Role | Also always reads |
+|---|---|
+| `explorer` | `security.md` (research queries), `agent-communication.md` |
+| `planner` | `agent-communication.md` |
+| `coder` | `testing.md` `testing-spec-style.md` (TDD spec of this plan or pin), `agent-communication.md` |
+| `seed-writer` | `seeding.md`, `agent-communication.md` |
+| `doc-writer` | `authoring.md`, `agent-communication.md` |
+| `pr-desc-writer` | `authoring.md`, `agent-communication.md` |
+| `harness-writer` | `authoring.md`, `agent-communication.md` |
+| `reviewer` | `agent-communication.md` |
+| `reviewer-e2e` | `agent-communication.md`. Every HTTP path also: `http.md` `router.md` `security.md` `validation.md` `dto.md` `exceptions.md` |
+| `test-writer` | `testing.md` `testing-spec-style.md` `agent-communication.md` |
+| `ack-code` | the map, then the extras of whoever it dispatches |
+| `ack-spec` | `testing.md` `testing-spec-style.md` |
+| `ack-docs` / `ack-claude-config` | `authoring.md` |
+| `ack-pr-desc` | `authoring.md` |
+
+A skill takes this map before it dispatches. An agent takes the four, its extras, then every
+surface row the work touches — the FILE, not a memory of it.
+
+## Docs are not a standing read (HARD)
+
+`docs/*.md`, the root people files (`README.md`, `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`), and `.github/**` except `copilot-instructions.md` are for people.
+They are never loaded into a session and never a standing read for an agent.
+
+**explorer and planner** open a named doc only when a rule's "Flow narrative" pointer is
+the question in hand and the rule file does not settle it. One file, the one the rule
+names. Never the `docs/` tree.
+
+Every other agent — `coder`, `seed-writer`, `test-writer`, `reviewer`, `reviewer-e2e`,
+`harness-writer`, `pr-desc-writer` — does not read `docs/` or `.github/**` (except
+`copilot-instructions.md`, which `harness-writer` owns) to do its job. `doc-writer` is the
+exception: those files are its subject.

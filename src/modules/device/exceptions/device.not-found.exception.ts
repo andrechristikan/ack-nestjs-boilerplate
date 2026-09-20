@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 
+/**
+ * Raised when the requested device ownership does not exist.
+ * @public
+ */
 export class DeviceNotFoundException extends AppBaseException {
     readonly module = 'device';
     readonly statusCode = EnumDeviceStatusCodeError.notFound;

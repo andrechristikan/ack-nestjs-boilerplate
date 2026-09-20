@@ -1,25 +1,20 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumProjectMemberRole,
-    Prisma,
-    ProjectMember,
-} from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import type { ProjectMember } from '@generated/prisma-client/client';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
+import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectMemberRepository {
+export class ProjectMemberRepository implements IProjectMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findOneByProjectAndUser(
@@ -52,7 +47,7 @@ export class ProjectMemberRepository {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
+    ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor<
             IProjectMember,
             Prisma.ProjectMemberWhereInput
@@ -70,88 +65,64 @@ export class ProjectMemberRepository {
         });
     }
 
-    async createAssigned(
+    async create(
         projectId: string,
-        workspaceId: string,
-        actorId: string,
         userId: string,
         role: EnumProjectMemberRole,
-        requestLog: IRequestLog
+        createdBy: string
     ): Promise<IProjectMember> {
-        const [member] = await this.databaseService.client.$transaction([
-            this.databaseService.client.projectMember.create({
-                data: {
-                    projectId,
-                    userId,
-                    role,
-                    createdBy: actorId,
+        return this.databaseService.client.projectMember.create({
+            data: {
+                projectId,
+                userId,
+                role,
+                createdBy,
+            },
+            include: {
+                user: {
+                    select: UserRefSelect,
                 },
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectMemberAssigned,
-                    requestLog
-                )
-            ),
-        ]);
+            },
+        });
+    }
 
-        return member;
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        userId: string,
+        role: EnumProjectMemberRole,
+        createdBy: string
+    ): Promise<IProjectMember> {
+        return tx.projectMember.create({
+            data: {
+                projectId,
+                userId,
+                role,
+                createdBy,
+            },
+            include: {
+                user: {
+                    select: UserRefSelect,
+                },
+            },
+        });
     }
 
     async updateRole(
-        workspaceId: string,
-        actorId: string,
         targetMemberId: string,
-        newRole: EnumProjectMemberRole,
-        requestLog: IRequestLog
+        newRole: EnumProjectMemberRole
     ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.projectMember.update({
-                where: { id: targetMemberId },
-                data: {
-                    role: newRole,
-                    updatedBy: actorId,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.projectMemberRoleUpdated,
-                    requestLog
-                )
-            ),
-        ]);
+        await this.databaseService.client.projectMember.update({
+            where: { id: targetMemberId },
+            data: {
+                role: newRole,
+            },
+        });
     }
 
-    async removeMember(
-        workspaceId: string,
-        actorId: string,
-        targetMemberId: string,
-        action:
-            | typeof EnumActivityLogAction.projectMemberRemoved
-            | typeof EnumActivityLogAction.projectMemberLeft,
-        requestLog: IRequestLog
-    ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.projectMember.delete({
-                where: { id: targetMemberId },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    action,
-                    requestLog
-                )
-            ),
-        ]);
+    async removeMember(targetMemberId: string): Promise<void> {
+        await this.databaseService.client.projectMember.delete({
+            where: { id: targetMemberId },
+        });
     }
 }

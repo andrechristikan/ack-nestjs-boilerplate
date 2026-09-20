@@ -12,14 +12,19 @@ import { MigrationTemplateTermPolicySeed } from '@migration/seeds/migration.temp
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';
-import { UserModule } from '@modules/user/user.module';
+import { UserDomainModule } from '@modules/user/user.domain.module';
 import { WorkspaceRepositoryModule } from '@modules/workspace/workspace.repository.module';
 
 /**
  * Registers all `nest-commander` seed/remove commands for initial data migration.
  */
 @Module({
-    imports: [CommonModule, AwsModule, UserModule, WorkspaceRepositoryModule],
+    imports: [
+        CommonModule,
+        AwsModule,
+        UserDomainModule,
+        WorkspaceRepositoryModule,
+    ],
     providers: [
         MigrationApiKeySeed,
         MigrationCountrySeed,

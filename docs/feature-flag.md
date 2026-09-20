@@ -1,24 +1,25 @@
 # Feature Flag Documentation
 
-This documentation explains the features and usage of **Feature Flag Module**: Located at `src/modules/feature-flag`
+Feature Flag lives in `src/modules/feature-flag`.
 
 ## Overview
 
-Feature flag module provides dynamic feature management for controlling application functionality. Supports gradual rollouts, per-user targeting, A/B testing, and metadata-based feature configuration with caching for optimal performance.
+Flags gate routes and code paths. Targeting uses rollout percentage, a per-user allow-list (`targetUserIds`), and metadata sub-keys. Results are cached.
 
 ## Related Documents
 
-- [Cache Documentation][ref-doc-cache]
-- [Authorization Documentation][ref-doc-authorization]
+- [Cache Documentation][ref-doc-cache] - Flag result caching
+- [Authorization Documentation][ref-doc-authorization] - Decorator stack with `@FeatureFlagProtected`
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Features](#features)
 - [Flow](#flow)
 - [Usage](#usage)
   - [With Decorators](#with-decorators)
-  - [With Service](#with-service)
+  - [With FeatureFlagCache](#with-featureflagcache)
 - [Metadata](#metadata)
 - [Targeting](#targeting)
 - [Rollout Percentage](#rollout-percentage)
@@ -56,15 +57,15 @@ flowchart TD
     J -->|Yes| L{isEnable = true?}
     L -->|No| K[Throw: serviceUnavailable]
     L -->|Yes| S{User exists in request?}
-    S -->|Yes| S1{userId in targetUsers relation?}
+    S -->|Yes| S1{userId in targetUserIds?}
     S1 -->|Yes| T[Allow access]
-    S1 -->|No| U[Hash 'key:userId' with MD5]
+    S1 -->|No| U[Hash 'key:userId' with SHA-256]
     S -->|No| N1{rolloutPercent >= 100?}
     N1 -->|Yes| T
     N1 -->|No| N2[Read x-anonymous-id header]
     N2 --> N3{Present and well formed?}
     N3 -->|No| K
-    N3 -->|Yes| U2[Hash 'key:anonymousId' with MD5]
+    N3 -->|Yes| U2[Hash 'key:anonymousId' with SHA-256]
     U --> V[Calculate percentage from hash]
     U2 --> V
     V --> W{Percentage < rolloutPercent?}
@@ -79,61 +80,66 @@ flowchart TD
 
 ## Usage
 
-## With Decorators
+### With Decorators
 
-**Important:** `@FeatureFlagProtected()` does NOT provide authentication. Apply authentication guards separately if required. A flag is never an authorization boundary.
+`@FeatureFlagProtected()` provides no authentication; authentication comes from the guards stacked with it. A flag is never an authorization boundary.
 
-`@FeatureFlagProtected()` takes a **bare flag key**. A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500), and an empty segment is rejected with `predefinedKeyEmpty` (500). Metadata sub-keys are asserted in the service, not by the decorator (see [Metadata](#metadata)).
+`@FeatureFlagProtected()` takes a **bare flag key**. A key containing a dot is rejected with `predefinedKeyLengthExceeded` (500), and an empty segment is rejected with `predefinedKeyEmpty` (500). Metadata sub-keys are asserted in the owning domain, not by the decorator (see [Metadata](#metadata)).
 
 ```typescript
-@Controller('auth')
-export class AuthController {
-  // Feature check
-  @FeatureFlagProtected('loginWithGoogle')
-  @Post('google')
-  async loginWithGoogle() {
-    // Route accessible only if loginWithGoogle is enabled
-  }
+@Response('user.loginWithSocialGoogle', { schema: UserLoginResponseSchema })
+@AuthSocialGoogleProtected()
+@FeatureFlagProtected('loginWithGoogle')
+@ApiKeyProtected()
+@Post('/login/social/google')
+async loginWithGoogle(
+  @AuthJwtPayload<IAuthSocialPayload>('email') email: string,
+  @Body({ schema: UserCreateSocialRequestSchema }) body: UserCreateSocialRequestDto
+): Promise<IResponseReturn<IUserLoginOutcome>> {
+  return this.userAuthHttpService.loginWithSocial(
+    email,
+    EnumUserLoginWith.socialGoogle,
+    body
+  );
+}
 
-  @FeatureFlagProtected('changePassword')
-  @Post('forgot-password')
-  async forgotPassword() {
-    // Route accessible only if changePassword is enabled.
-    // The forgotAllowed metadata sub-key is asserted inside the service.
-  }
+@Response('user.forgotPassword')
+@FeatureFlagProtected('changePassword')
+@ApiKeyProtected()
+@Post('/password/forgot')
+async forgotPassword(
+  @Body({ schema: UserForgotPasswordRequestSchema }) body: UserForgotPasswordRequestDto
+): Promise<void> {
+  await this.userPasswordHttpService.forgotPassword(body);
 }
 ```
 
-`@FeatureFlagProtected()` must sit **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making target-user allow-listing and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
+`forgotAllowed` on `changePassword` is asserted inside the password domain, not by the decorator.
 
-### With Service
+`@FeatureFlagProtected()` sits **above** `@AuthJwtAccessProtected()` in the decorator stack. NestJS evaluates stacked decorators bottom-up, so the decorator nearest the HTTP method runs first; sitting above the JWT decorator is what makes the flag guard run *after* the JWT strategy has populated `request.user`. Without that ordering the guard never sees a user and always takes the anonymous branch, making `targetUserIds` and any rollout below 100% inert. See [Authorization Documentation][ref-doc-authorization] for the full stack.
 
-`FeatureFlagCacheService` is the cache-through reader, exported by `FeatureFlagModule`:
+### With FeatureFlagCache
+
+`FeatureFlagCache` is the cache-through reader, exported by `FeatureFlagDomainModule`. `UserAuthDomain` reads social sign-up metadata through it:
 
 ```typescript
-@Injectable()
-export class YourService {
-  constructor(
-    private readonly featureFlagCacheService: FeatureFlagCacheService
-  ) {}
-
-  async example() {
-    // Get feature flag with cache
-    const flag =
-      await this.featureFlagCacheService.getByKeyAndCache('loginWithGoogle');
-
-    // Get metadata only
-    const metadata =
-      await this.featureFlagCacheService.getMetadataByKeyAndCache('changePassword');
-  }
-}
+const featureFlag =
+  await this.featureFlagCache.getMetadataByKeyAndCache<{
+    signUpAllowed: boolean;
+  }>(
+    loginWith === EnumUserLoginWith.socialGoogle
+      ? 'loginWithGoogle'
+      : 'loginWithApple'
+  );
 ```
 
-`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain service applies on update.
+`FeatureFlagDomain` is the other reader: `getByKeyAndCache` on evaluation, `deleteCacheByKey` after an admin update.
+
+`FeatureFlagUtil` sits beside it and holds the metadata shape checks (`checkMetadataKey`) the domain applies on update.
 
 ## Metadata
 
-Metadata provides granular control within a single feature flag:
+Metadata on a single flag:
 
 ```typescript
 // Feature flag with metadata
@@ -141,60 +147,60 @@ Metadata provides granular control within a single feature flag:
   key: 'changePassword',
   isEnable: true,
   metadata: {
-    forgotAllowed: true,  // Can be toggled independently
-    resetAllowed: false
+    forgotAllowed: true
   }
 }
 ```
 
 **Constraints:**
-- No nested objects allowed
+- No nested objects
 - Supported value types: `boolean`, `number`, `string`, and homogeneous `string[]` or `number[]`
-- Arrays must be homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
-- An array value is data only, never a gate value. A nested-key gate (below) must resolve to a boolean
-- Metadata keys must be camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
+- Arrays are homogeneous. A mixed array (`[1, 'a']`), a nested array, and `boolean[]` are rejected
+- An array value is data only, never a gate value. A nested-key gate (below) resolves to a boolean
+- Metadata keys are camelCase, matching `/^[a-z][a-zA-Z0-9]*$/`
 - Metadata keys cannot be added/removed (schema consistency)
 - Only values can be modified. On update, an array value cannot change element type (`string[]` to `number[]` is rejected), and an empty array counts as an empty value and is rejected
 
 **Metadata sub-key gating:**
 
-A metadata sub-key is asserted in the service, not by the route decorator. Call `FeatureFlagService.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key actually governs the behaviour:
+A metadata sub-key is asserted in the owning domain, not by the route decorator. The domain calls `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key governs the behaviour:
 
 ```typescript
-await this.featureFlagService.validateFeatureFlagMetadata(
+await this.featureFlagDomain.validateFeatureFlagMetadata(
   'changePassword',
   'forgotAllowed'
 );
 ```
 
-It throws `predefinedKeyNotFound` (500) when the flag row is missing, `serviceUnavailable` (503) when the flag is disabled, `predefinedKeyTypeInvalid` (500) when the metadata value is not a boolean, and `serviceUnavailable` (503) when the boolean is `false`.
+It throws:
 
-Metadata is per-feature config (small on/off and typed values). Per-user targeting uses the `FeatureFlag.targetUsers` relation (see [Targeting](#targeting)), not metadata.
+| Condition | statusCode | HTTP |
+|---|---|---|
+| flag row is missing | `predefinedKeyNotFound` | 500 |
+| flag is disabled | `serviceUnavailable` | 503 |
+| metadata value is not a boolean | `predefinedKeyTypeInvalid` | 500 |
+| boolean is `false` | `serviceUnavailable` | 503 |
+
+Metadata is per-feature config (small on/off and typed values). For per-user targeting use `targetUserIds` (see [Targeting](#targeting)), not metadata.
 
 ## Targeting
 
-`FeatureFlag.targetUsers` is an allow-list stored as `FeatureFlagUser` rows. A targeted user always receives the feature, bypassing the rollout percentage.
+`targetUserIds` is an allow-list of user ids that always receive the feature, bypassing the rollout percentage.
 
 ```typescript
 {
   key: 'newFeature',
-  targetUsers: [{ userId: 'userIdA' }, { userId: 'userIdB' }],
+  targetUserIds: ['userIdA', 'userIdB'],
   rolloutPercent: 30
 }
 ```
 
-**How it works:**
 1. Only evaluated when the request has an authenticated user.
-2. The relation rows are converted to user IDs during evaluation. If `userId` matches one, access is granted and rollout is skipped.
+2. If `userId` is in `targetUserIds`, access is granted and rollout is skipped.
 3. Otherwise the user falls back to rollout percentage.
 4. Anonymous requests (no user) skip targeting and go straight to the anonymous rollout branch (see [Rollout Percentage](#rollout-percentage)).
 
-The `targetUsers` relation is managed through dedicated target-user endpoints and defaults to empty. Status updates only change `isEnable` and `rolloutPercent`.
-
-**Admin target-user endpoints:**
-- `PUT /feature-flag/:featureFlagId/user` adds a user to the allow-list. Adding an existing user is idempotent. The body is `{ "userId": "<uuid>" }`.
-- `DELETE /feature-flag/:featureFlagId/user/:userId` removes a user from the allow-list. Removing a missing user is idempotent.
-- Both endpoints invalidate the feature-flag cache.
+`targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty. Omit the field to keep the current list; send `[]` to clear it.
 
 ## Rollout Percentage
 
@@ -206,29 +212,19 @@ Controls gradual feature deployment using deterministic hashing:
 }
 ```
 
-**How it works:**
-1. The flag key and the caller identifier are combined then hashed using MD5 (`key:identifier`)
-2. Hash converted to percentage (0-99)
-3. Compared against `rolloutPercent`
-4. The same identifier always gets the same result per flag (deterministic)
-5. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%)
+The flag key and the caller identifier are combined and hashed with SHA-256 (`HelperHashService.sha256Hash('key:identifier')`). The first 8 hex characters of the digest, read as an integer, modulo 100 give the percentage (0-99), then compared against `rolloutPercent`. The same identifier always gets the same result per flag. Salting by flag key keeps each flag independent (a user in flag A's 30% is not automatically in flag B's 30%).
 
-**Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not represented in `targetUsers`.
+**Authenticated callers** use `userId` as the identifier. Rollout runs only when the user is not in `targetUserIds`.
 
 **Anonymous callers** are handled separately:
 
 - `rolloutPercent >= 100` passes without any identifier.
 - Below 100, the identifier comes from the `x-anonymous-id` request header. Its name, max length (100) and allowed charset (`/^[a-zA-Z0-9-_]+$/`) live in `src/configs/feature-flag.config.ts`.
-- The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller that wants a stable bucket must send a stable `x-anonymous-id`.
-
-**Use cases:**
-- A/B testing
-- Gradual rollouts
-- Canary deployments
+- The evaluation **fails closed** with 503 when that header is absent, empty, over length, or does not match the pattern. An anonymous caller lands in the same bucket only while it sends the same `x-anonymous-id`.
 
 ## Caching
 
-Feature flags are cached for performance. Configuration in `src/configs/feature-flag.config.ts`:
+Feature flags are cached. Configuration in `src/configs/feature-flag.config.ts`:
 ```typescript
 {
   keyPattern: 'FeatureFlag:{key}',
@@ -242,7 +238,7 @@ Feature flags are cached for performance. Configuration in `src/configs/feature-
 ```
 
 **Cache operations:**
-- Automatic cache on first read
+- Cache on first read
 - Cache invalidation on updates
 - Key format: `FeatureFlag:{key}`
 - Best-effort: cache read/write/delete failures are logged and fall through to the database, so a cache outage never breaks evaluation. There is no fail-open: an unknown flag key still returns 500 (`predefinedKeyNotFound`) and a disabled flag still returns 503 (`serviceUnavailable`).
@@ -254,13 +250,12 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Feature flags cannot be added via admin API
 - Feature flags cannot be deleted
 - Metadata keys cannot be modified (add/remove)
-- Only values can be updated: `isEnable`, `rolloutPercent`, metadata values
-- Target users can be added or removed through dedicated target-user endpoints
+- Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
 
 
 ## Contribution
 
-Special thanks to [Gzerox][ref-contributor-gzerox] for main contributor for this feature.
+Thanks to [Gzerox][ref-contributor-gzerox] for this feature.
 
 
 <!-- REFERENCES -->

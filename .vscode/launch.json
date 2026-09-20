@@ -5,17 +5,18 @@
             "type": "node",
             "request": "launch",
             "name": "Debug Nest Framework",
-            "args": ["${workspaceFolder}/src/main.ts"],
+            "preLaunchTask": "Build Project",
+            "program": "${workspaceFolder}/dist/main.js",
             "runtimeArgs": [
                 "--nolazy",
-                "-r",
-                "ts-node/register",
-                "-r",
-                "tsconfig-paths/register"
+                "--enable-source-maps",
+                "--import",
+                "./dist/instrument.js"
             ],
             "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "envFile": "${workspaceFolder}/.env",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }
     ]

@@ -1,4 +1,5 @@
 import eslintConfigPrettier from 'eslint-config-prettier';
+import security from 'eslint-plugin-security';
 import tsEsLintPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import tsEslint from 'typescript-eslint';
@@ -7,6 +8,16 @@ const rules = tsEslint.configs.recommended
     .map(config => config.rules)
     .filter(rules => rules !== undefined)
     .reduce((a, b) => ({ ...b, ...a }), {});
+
+const securityRules = {
+    ...Object.fromEntries(
+        Object.keys(security.configs.recommended.rules).map(rule => [
+            rule,
+            'error',
+        ])
+    ),
+    'security/detect-object-injection': 'off',
+};
 
 // Enhanced code quality rules
 const codeQualityRules = {
@@ -37,6 +48,51 @@ const codeQualityRules = {
     eqeqeq: ['error', 'always', { null: 'ignore' }],
     'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 1 }],
     curly: ['error', 'all'],
+    'no-restricted-properties': [
+        'error',
+        {
+            object: 'Math',
+            property: 'random',
+            message:
+                'Use randomInt from node:crypto through HelperStringService or HelperNumberService.',
+        },
+    ],
+    'no-restricted-imports': [
+        'error',
+        {
+            paths: [
+                {
+                    name: 'lodash',
+                    message: 'Use named imports from lodash-es.',
+                },
+                {
+                    name: 'lodash-es',
+                    importNames: ['default'],
+                    message:
+                        'Use named imports from lodash-es, not a default import.',
+                },
+                {
+                    name: 'crypto-js',
+                    message: 'Use node:crypto through the Helper* services.',
+                },
+                {
+                    name: 'crypto',
+                    message: "Import from 'node:crypto'.",
+                },
+            ],
+            patterns: [
+                {
+                    regex: '^@generated/prisma-client/internal(/|$)',
+                    message:
+                        'Import the Prisma client from @generated/prisma-client/client, enums, models, browser or commonInputTypes, never from internal/.',
+                },
+                {
+                    regex: '^lodash/',
+                    message: 'Use named imports from lodash-es.',
+                },
+            ],
+        },
+    ],
 };
 
 // Import ordering rules
@@ -60,10 +116,12 @@ export default [
             '.github/*',
             '.husky/*',
             'coverage/*',
+            '.vitest/*',
             'dist/*',
             'docs/*',
             'node_modules/*',
             'src/metadata.ts',
+            'src/generated/**',
             'generated/*',
             'logs/*',
             'keys/*',
@@ -89,10 +147,12 @@ export default [
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
+            security,
         },
         rules: {
             ...rules,
             ...codeQualityRules,
+            ...securityRules,
             ...importOrderRules,
         },
     },
@@ -117,10 +177,12 @@ export default [
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
+            security,
         },
         rules: {
             ...rules,
             ...codeQualityRules,
+            ...securityRules,
             ...importOrderRules,
             '@typescript-eslint/explicit-function-return-type': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -144,12 +206,55 @@ export default [
         },
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
+            security,
         },
         rules: {
             ...rules,
             ...codeQualityRules,
+            ...securityRules,
             ...importOrderRules,
             'no-console': 'off',
+        },
+    },
+    {
+        name: 'ts/vitest-config',
+        files: ['vitest.config.ts'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            parser: tsParser,
+            parserOptions: {
+                project: 'tsconfig.json',
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+        linterOptions: {
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: true,
+        },
+        plugins: {
+            '@typescript-eslint': tsEsLintPlugin,
+            security,
+        },
+        rules: {
+            ...rules,
+            ...codeQualityRules,
+            ...securityRules,
+            ...importOrderRules,
+        },
+    },
+    {
+        name: 'security/non-literal-fs-allowed',
+        files: [
+            'src/modules/notification/domains/notification.template.*.domain.ts',
+            'src/modules/term-policy/domains/term-policy.template.domain.ts',
+            'scripts/**/*.ts',
+        ],
+        plugins: {
+            security,
+        },
+        rules: {
+            'security/detect-non-literal-fs-filename': 'off',
         },
     },
     {

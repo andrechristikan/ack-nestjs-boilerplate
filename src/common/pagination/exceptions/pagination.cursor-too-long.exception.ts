@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
+/**
+ * Raised when a pagination cursor exceeds the maximum length.
+ * @public
+ */
 export class PaginationCursorTooLongException extends AppBaseException {
     readonly module = 'pagination';
     readonly statusCode = EnumPaginationStatusCodeError.cursorTooLong;

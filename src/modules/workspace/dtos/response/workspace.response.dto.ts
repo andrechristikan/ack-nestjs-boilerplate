@@ -3,10 +3,9 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Base workspace shape: the stored workspace row.
+ * @public
  */
-export const WorkspaceResponseSchema = DatabaseResponseSchema.omit({
-    deletedBy: true,
-}).extend({
+export const WorkspaceResponseSchema = DatabaseResponseSchema.extend({
     name: z.string().meta({
         description: 'Workspace name',
         example: 'Acme',
@@ -26,4 +25,8 @@ export const WorkspaceResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored workspace.
+ * @public
+ */
 export type WorkspaceResponseDto = z.infer<typeof WorkspaceResponseSchema>;

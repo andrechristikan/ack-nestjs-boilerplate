@@ -1,24 +1,23 @@
 # Configuration Documentation
 
-This documentation explains the features and usage of **Config Module**: Located at `src/configs`
+Config lives in `src/configs`.
 
 ## Overview
 
-This document provides a detailed explanation of how configuration works in the ACK NestJS Boilerplate project, including the configuration files structure and their interfaces.
-
-The project uses a modular configuration approach through the NestJS `ConfigModule`. Configuration is split into multiple dedicated files for different aspects of the application, making it easier to maintain and understand.
+NestJS `ConfigModule` loads one `registerAs` file per concern from `src/configs`. Each file has a TypeScript interface.
 
 ## Related Documents
 
-- [Environment Documentation][ref-doc-environment] - For detailed environment variable configuration and validation
-- [Database Documentation][ref-doc-database] - For database configuration usage
-- [Cache Documentation][ref-doc-cache] - For Redis configuration usage
+- [Environment Documentation][ref-doc-environment] - Env var names and validation (`AppEnvSchema`)
+- [Database Documentation][ref-doc-database] - MongoDB and Prisma usage
+- [Cache Documentation][ref-doc-cache] - Redis cache usage
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Related Documents](#related-documents)
 - [Configuration Structure](#configuration-structure)
+  - [Patterns and their placeholders](#patterns-and-their-placeholders)
 - [App Configuration](#app-configuration)
 - [Auth Configuration](#auth-configuration)
 - [Database Configuration](#database-configuration)
@@ -44,10 +43,11 @@ The project uses a modular configuration approach through the NestJS `ConfigModu
 - [File Configuration](#file-configuration)
 - [Workspace Configuration](#workspace-configuration)
 - [Project Configuration](#project-configuration)
+- [Analytic Configuration](#analytic-configuration)
 
 ## Configuration Structure
 
-All configuration files are located in the `src/configs` directory. Each configuration module uses the `registerAs` function from `@nestjs/config` and provides a TypeScript interface for type safety.
+All configuration files are in `src/configs`. Each file uses `registerAs` from `@nestjs/config` and a TypeScript interface. Env var names and validation live in [Environment Documentation][ref-doc-environment]; this page documents the typed config objects the app injects.
 
 The configuration modules are imported and registered in `src/configs/index.ts` as an array and this configuration array is then loaded in `src/common/common.module.ts`:
 
@@ -68,14 +68,19 @@ The configuration modules are imported and registered in `src/configs/index.ts` 
 export class CommonModule {}
 ```
 
+### Patterns and their placeholders
+
+A config value whose name ends in `Pattern` or `Path` is a template carrying `{token}` placeholders: cache and Redis keys, S3 object paths and URLs, email links, and the export filename. The consumer fills it at the point of use, and the number of placeholders decides how:
+
+- **One placeholder.** Filled by `String.prototype.replace('{name}', () => value)`. The function form of the replacement stops a value containing `$&` or `$1` from being read as a replacement pattern.
+- **Two or more.** Go through `HelperStringService.fillPattern(pattern, values)`, which scans the pattern once so a substituted value is never re-read as a token. A `{token}` the caller supplied no value for raises `HelperPatternTokenMissingException` (`52202`, 500) naming that token, rather than leaving the literal `{token}` in the key or the link.
+
 ### App Configuration
 
 **File**: `src/configs/app.config.ts`
 **Interface**: `IConfigApp`
 
-This configuration handles the core application settings including environment details, versioning, and server configuration.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -94,12 +99,12 @@ env: EnumAppEnvironment
 timezone: string
 ```
 
-**`version`** - Application version from package.json
+**`version`** - Application version, read from `src/generated/package/package.ts`
 ```typescript
 version: string
 ```
 
-**`author`** - Author information from package.json
+**`author`** - Author information, read from `src/generated/package/package.ts`
 ```typescript
 author: {
   name: string;                   // Author name
@@ -107,7 +112,7 @@ author: {
 }
 ```
 
-**`url`** - Repository URL from package.json
+**`url`** - Repository URL, read from `src/generated/package/package.ts`
 ```typescript
 url: string
 ```
@@ -137,19 +142,19 @@ urlVersion: {
 }
 ```
 
-**`encryptionSecretKey`** - AES-256 encryption secret key
+**`encryptionSecretKey`** - Root secret for application-level encryption
 ```typescript
-encryptionSecretKey: string     // Secret key used to derive AES-256 encryption key for sensitive data
+encryptionSecretKey: string     // From APP_ENCRYPTION_SECRET_KEY: 64 base64url characters (48 random bytes)
 ```
+
+> `src/generated/package/package.ts` is written by `pnpm generate:package` (part of `pnpm generate`) from the `version`, `author`, and `repository` fields of `package.json`. `encryptionSecretKey` is the HKDF key material `HelperEncryptionService` uses for the notification job payloads; the notification queue classes and email domains read it. See [Notification](notification.md).
 
 ### Auth Configuration
 
 **File**: `src/configs/auth.config.ts`
 **Interface**: `IConfigAuth`
 
-This configuration manages JWT authentication settings including token configuration, password policies, social authentication, and two-factor authentication.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -211,7 +216,7 @@ twoFactor: {
   maxAttempt: number;             // Maximum failed two-factor attempts before lock
   lockAttemptDurationInMs: number; // Lock duration after max failed attempts (milliseconds)
   encryption: {
-    key: string;                  // Encryption key for TOTP secrets
+    key: string;                  // Root secret for TOTP secrets, from AUTH_TWO_FACTOR_ENCRYPTION_KEY (64 base64url characters)
   };
 }
 ```
@@ -249,15 +254,13 @@ xApiKey: {
 **File**: `src/configs/database.config.ts`
 **Interface**: `IConfigDatabase`
 
-This configuration manages database connection settings for PostgreSQL.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
 **`url`** - Database connection string
 ```typescript
-url: string                     // PostgreSQL connection URL
+url: string                     // MongoDB connection URL
 ```
 
 **`debug`** - Database debug mode
@@ -265,14 +268,17 @@ url: string                     // PostgreSQL connection URL
 debug: boolean                  // Enable/disable database query logging
 ```
 
+**`seedTransactionTimeoutInMs`** - `withTransaction` timeout for the seed commands
+```typescript
+seedTransactionTimeoutInMs: number  // Timeout every seed passes to withTransaction, in seed() and remove() (ms('60s')); no env var
+```
+
 ### AWS Configuration
 
 **File**: `src/configs/aws.config.ts`
 **Interface**: `IConfigAws`
 
-This configuration handles AWS service integration including S3 and SES services with support for IAM role-based authentication.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -342,9 +348,7 @@ ses: {
 **File**: `src/configs/logger.config.ts`
 **Interface**: `IConfigDebug`
 
-This configuration manages logging settings using Pino logger with customizable log levels and formatting.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -391,9 +395,7 @@ sentry: {
 **File**: `src/configs/request.config.ts`
 **Interface**: `IConfigRequest`
 
-This configuration handles HTTP request settings including body size limits, CORS, and rate limiting.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -435,11 +437,22 @@ cors: {
 > - `allowedOrigin` is populated from `CORS_ALLOWED_ORIGIN` environment variable or configuration
 > - Multiple origins can be specified using comma separation (converted to array)
 > - **Subdomain wildcards** are supported (e.g., `*.example.com` matches `api.example.com` and `example.com`)
-> - **Exact port matching** is supported (e.g., `api.example.com:3000`) — port wildcards are NOT supported
-> - **Protocol-agnostic** — both HTTP and HTTPS are allowed for the same hostname
+> - **Exact port matching** is supported (e.g., `api.example.com:3000`); port wildcards are not supported
+> - **Protocol-agnostic**: both HTTP and HTTPS are allowed for the same hostname
 > - **Credentials** are automatically allowed only for specific origins; wildcard (`*`) disables credentials
-> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
+> - `allowedHeader` is a fixed list in `request.config.ts`, not environment-driven: standard CORS/HTTP headers (including `user-agent`) plus the custom headers `x-custom-lang`, `x-timestamp`, `x-api-key`, `x-timezone`, `x-workspace-id`, `x-anonymous-id`, `x-request-id`, `x-correlation-id`, `x-version`, `x-repo-version`, and `X-Response-Time`
 > - `exposedHeader` is likewise fixed in `request.config.ts`: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and the `-route` and `-user` suffixed variants of the three. A response header that is not in this list is invisible to a cross-origin browser client
+
+**`helmet`** - Strict-Transport-Security parameters for the Helmet profile
+```typescript
+helmet: {
+  maxAgeInSeconds: number;        // HSTS max-age in seconds (365d)
+  includeSubDomains: boolean;     // Appends the includeSubDomains directive (true)
+  preload: boolean;               // Appends the preload directive (false)
+}
+```
+
+> These three are literals in `request.config.ts` and read no environment variable. `RequestHelmetMiddleware` reads them in `use`. The rest of the Helmet options object; which headers are on and which are off; is written as literals in that middleware, not in this config. See [Security and Middleware](security-and-middleware.md).
 
 **`throttle`** - Rate limiting configuration (Redis-backed, shares the cache connection)
 ```typescript
@@ -448,9 +461,9 @@ throttle: {
   user: IRequestThrottlePolicy;                                 // Per-userId limiter, opt-in (100 / 60s, block 60s)
   route: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>; // Per-IP-per-handler tiers, opt-in
   headerPrefix: string;           // Prefix for the suffixed rate-limit headers (default: 'X-RateLimit')
-  keyPattern: string;             // Window log key (default: 'Request:Throttler:{name}:{tracker}')
-  blockKeyPattern: string;        // Block key (default: 'Request:Throttler:Block:{name}:{tracker}')
-  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttler:Seq:{name}:{tracker}')
+  keyPattern: string;             // Window log key (default: 'Request:Throttle:{name}:{tracker}')
+  blockKeyPattern: string;        // Block key (default: 'Request:Throttle:Block:{name}:{tracker}')
+  sequenceKeyPattern: string;     // Sequence counter key (default: 'Request:Throttle:Seq:{name}:{tracker}')
 }
 
 interface IRequestThrottlePolicy {
@@ -475,9 +488,7 @@ Route tiers (`EnumRequestThrottleRoute`), each with `ttlInMs` 60s and `blockDura
 **File**: `src/configs/redis.config.ts`
 **Interface**: `IConfigRedis`
 
-This configuration manages Redis connection settings for caching and queue operations.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -503,7 +514,6 @@ queue: {
 **File**: `src/configs/user.config.ts`
 **Interface**: `IUserConfig`
 
-This configuration handles user-related settings including username patterns and file upload paths.
 
 #### Configuration Keys:
 
@@ -522,6 +532,11 @@ uploadPhotoProfilePath: string  // Path template for user profile photo uploads
 maxDataImport: number           // Maximum rows accepted in a user CSV import (default: 50)
 ```
 
+**`maxDataExport`** - User CSV export row cap
+```typescript
+maxDataExport: number           // Maximum users `UserImportDomain.exportByAdmin` returns (default: 500); one row more raises FileExceedMaxDataExportException
+```
+
 **`default`** - Default role and country assigned to new users
 ```typescript
 default: {
@@ -530,13 +545,15 @@ default: {
 }
 ```
 
-**`onboarding`** - Prisma transaction timeouts for the user onboarding write
+**`onboarding`** - `withTransaction` timeouts `WorkspaceDomain.commitOnboarding` applies to the onboarding compose
 ```typescript
 onboarding: {
-  createTimeoutInMs: number;      // Timeout `UserOnboardingRepository.createWithWorkspace` runs with (ms('10s'))
-  createBulkTimeoutInMs: number;  // Timeout `createManyWithWorkspace` runs with (ms('30s'))
+  createTimeoutInMs: number;      // Single-user compose (`WorkspaceDomain.commitOnboarding`) (ms('10s'))
+  createBulkTimeoutInMs: number;  // Bulk compose (`WorkspaceDomain.commitOnboarding`) (ms('30s'))
 }
 ```
+
+> Single-user callers (`UserHttpService.createByAdmin`, `UserAuthHttpService` sign-up and social create) pass `createTimeoutInMs`. `UserImportHttpService.importByAdmin` passes `createBulkTimeoutInMs`. Both reach `WorkspaceDomain.commitOnboarding` as `timeoutInMs`.
 
 ### Documentation Configuration
 
@@ -544,9 +561,7 @@ onboarding: {
 **File**: `src/configs/doc.config.ts`
 **Interface**: `IConfigDoc`
 
-This configuration manages API documentation settings for Swagger/OpenAPI.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -575,9 +590,7 @@ jsonUrlPattern: string          // Relative path template ('{docPrefix}/json'), 
 **File**: `src/configs/message.config.ts`
 **Interface**: `IConfigMessage`
 
-This configuration handles application messaging and internationalization settings.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -596,9 +609,7 @@ language: string                // Default application language
 **File**: `src/configs/email.config.ts`
 **Interface**: `IConfigEmail`
 
-This configuration manages default email addresses for system communications. Email addresses (`noreply`, `support`, `admin`) come from environment variables and fall back to `null` when unset.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -627,7 +638,6 @@ batchSize: number               // Maximum number of emails per batch (default: 
 **File**: `src/configs/verification.config.ts`
 **Interface**: `IConfigVerification`
 
-This configuration handles user verification processes including email verification.
 
 #### Configuration Keys:
 
@@ -669,7 +679,6 @@ reference: {
 **File**: `src/configs/forgot-password.config.ts`
 **Interface**: `IConfigForgotPassword`
 
-This configuration manages password reset functionality and security policies.
 
 #### Configuration Keys:
 
@@ -706,9 +715,7 @@ reference: {
 **File**: `src/configs/home.config.ts`
 **Interface**: `IConfigHome`
 
-This configuration handles home page and organization information.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -727,13 +734,12 @@ url: string                     // URL for organization/home page
 **File**: `src/configs/session.config.ts`
 **Interface**: `IConfigSession`
 
-This configuration manages user session key patterns for Redis storage.
 
 #### Configuration Keys:
 
 **`keyPattern`** - Session key pattern
 ```typescript
-keyPattern: string              // Redis key pattern for user sessions
+keyPattern: string              // Redis key pattern for user sessions ('User:{userId}:Session:{sessionId}')
 ```
 
 ### Term Policy Configuration
@@ -741,7 +747,6 @@ keyPattern: string              // Redis key pattern for user sessions
 **File**: `src/configs/term-policy.config.ts`
 **Interface**: `IConfigTermPolicy`
 
-This configuration handles terms of service and privacy policy file management.
 
 #### Configuration Keys:
 
@@ -760,7 +765,6 @@ contentPublicPath: string       // Public path for accessing policy content
 **File**: `src/configs/feature-flag.config.ts`
 **Interface**: `IConfigFeatureFlag`
 
-This configuration manages feature flag caching settings.
 
 #### Configuration Keys:
 
@@ -788,7 +792,6 @@ anonymous: {
 **File**: `src/configs/response.config.ts`
 **Interface**: `IConfigResponse`
 
-This configuration handles API response caching and file-export settings.
 
 #### Configuration Keys:
 
@@ -807,9 +810,7 @@ filenameExportPattern: string   // e.g. 'export-{timestamp}.{extension}'
 **File**: `src/configs/firebase.config.ts`  
 **Interface**: `IConfigFirebase`
 
-This configuration manages Firebase integration settings for push notification delivery via FCM.
 
-> **Environment Variables**: See [Environment Documentation](environment.md) for detailed environment variable configuration.
 
 #### Configuration Keys:
 
@@ -836,7 +837,6 @@ privateKey: string | null       // Service account private key (PEM), verbatim f
 **File**: `src/configs/queue.config.ts`
 **Interface**: `IConfigQueue`
 
-This configuration holds the BullMQ default job options applied by `queue.register.module.ts` to every registered queue.
 
 #### Configuration Keys:
 
@@ -858,7 +858,6 @@ job: {
 **File**: `src/configs/health.config.ts`
 **Interface**: `IConfigHealth`
 
-This configuration holds the thresholds consumed by `HealthInstanceIndicator` for the instance health check, plus the graceful-shutdown window `HealthModule` hands to `TerminusModule.forRootAsync`.
 
 #### Configuration Keys:
 
@@ -892,7 +891,6 @@ gracefulShutdownTimeoutInMs: number  // How long Terminus keeps serving after a 
 **File**: `src/configs/notification.config.ts`
 **Interface**: `IConfigNotification`
 
-This configuration holds notification deduplication and push-cleanup settings, consumed by the notification queue classes when they enqueue and by `NotificationPushMaintenanceService` when it runs a sweep.
 
 #### Configuration Keys:
 
@@ -915,13 +913,22 @@ push: {
 **File**: `src/configs/file.config.ts`
 **Interface**: `IConfigFile`
 
-This configuration holds file-import limits consumed by `FileCsvValidationPipe`.
 
 #### Configuration Keys:
 
 **`maxDataImport`** - CSV import row cap
 ```typescript
-maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100)
+maxDataImport: number           // Maximum rows accepted in a CSV import (default: 100); read by `FileCsvValidationPipe`
+```
+
+**`maxDataExport`** - CSV export row cap
+```typescript
+maxDataExport: number           // Default export row cap (default: 1000)
+```
+
+**`maxSizeExportInBytes`** - Export file size cap
+```typescript
+maxSizeExportInBytes: number    // Largest file `ResponseFileInterceptor` sends (bytes('2mb')); a larger buffer raises FileExceedMaxSizeExportException
 ```
 
 ### Workspace Configuration
@@ -929,7 +936,6 @@ maxDataImport: number           // Maximum rows accepted in a CSV import (defaul
 **File**: `src/configs/workspace.config.ts`
 **Interface**: `IConfigWorkspace`
 
-This configuration handles workspace resolution, slug generation, and workspace invitation settings.
 
 #### Configuration Keys:
 
@@ -998,7 +1004,6 @@ joinRequest: {
 **File**: `src/configs/project.config.ts`
 **Interface**: `IConfigProject`
 
-This configuration handles project slug generation.
 
 #### Configuration Keys:
 
@@ -1021,6 +1026,39 @@ slugMaxLength: number           // Maximum slug length (default: 30)
 ```typescript
 slugMaxAttempts: number         // Maximum attempts to generate a unique slug (default: 5)
 ```
+
+### Analytic Configuration
+
+**File**: `src/configs/analytic.config.ts`
+**Interface**: `IConfigAnalytic`
+
+Live metric cache TTLs and key patterns, plus anomaly and fraud detection thresholds. Values are literals built with `ms(...)`; they are not environment-driven. Consumer: `AnalyticCache` and the analytic domains. Flow: [Analytic](analytic.md).
+
+#### Configuration Keys:
+
+**`cache`** - Redis key patterns and TTLs for dashboard, anomaly summary, fraud summary, and risk score entries
+```typescript
+cache: {
+  dashboardTtlInMs: number;       // Dashboard metric TTL (default: 1h)
+  anomalySummaryTtlInMs: number;  // Anomaly summary TTL (default: 5m)
+  fraudSummaryTtlInMs: number;    // Fraud summary TTL (default: 5m)
+  riskScoreTtlInMs: number;       // Per-user risk score TTL (default: 10m)
+  keyPatterns: {
+    dashboard: string;            // Analytic:dashboard:{metric}:{start}:{end}
+    anomaly: string;              // Analytic:anomaly:{signal}:{window}
+    fraud: string;                // Analytic:fraud:{signal}:{window}
+    riskScore: string;            // Analytic:fraud:risk:{userId}
+  };
+  windowTokenPattern: string;          // '{start}:{end}'
+  workspaceWindowTokenPattern: string; // '{workspaceId}:{start}:{end}'
+}
+```
+
+`AnalyticDateUtil` fills the two token patterns and `AnalyticCache` fills the four key patterns. A paginated dashboard metric appends `page=<n>:perPage=<n>` to its metric token, so one page of a list caches under its own key.
+
+**`anomaly`** - Impossible-travel, login-spike, failed-login, device-proliferation, and login-time thresholds used by `AnalyticAnomalyDomain`
+
+**`fraud`** - Credential-stuffing and related signal windows, risk weights, band cutoffs, and band labels used by `AnalyticFraudDomain`
 
 
 <!-- REFERENCES -->

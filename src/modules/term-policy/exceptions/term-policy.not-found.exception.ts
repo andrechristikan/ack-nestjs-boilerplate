@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 
+/**
+ * Raised when the requested term policy does not exist.
+ * @public
+ */
 export class TermPolicyNotFoundException extends AppBaseException {
     readonly module = 'termPolicy';
     readonly statusCode = EnumTermPolicyStatusCodeError.notFound;

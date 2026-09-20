@@ -14,8 +14,9 @@ pnpm-lock.yaml
 # Templates (handlebars / non-source assets)
 **/templates/**
 
-# Coverage & logs
+# Coverage, Vitest output & logs
 coverage/
+.vitest/
 logs/
 *.log
 

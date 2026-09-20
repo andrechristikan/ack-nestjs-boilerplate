@@ -1,15 +1,13 @@
-import {
-    AbilityBuilder,
-    ExtractSubjectType,
-    createMongoAbility,
-} from '@casl/ability';
+import { AbilityBuilder, createMongoAbility } from '@casl/ability';
+import type { ExtractSubjectType } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { EnumPolicyAction, Policy } from '@generated/prisma-client';
-import {
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
+import type {
     IPolicyAbilityRule,
     IPolicyAbilitySubject,
 } from '@modules/policy/interfaces/policy.interface';
-import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
 /**
  * Builds and evaluates CASL ability rules for policy checks.

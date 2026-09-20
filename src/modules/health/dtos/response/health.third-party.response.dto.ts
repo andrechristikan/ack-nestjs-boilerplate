@@ -5,7 +5,10 @@ import {
     EnumHealthStatus,
 } from '@modules/health/enums/health.enum';
 
-/** Response shape of the third-party health check. */
+/**
+ * Response shape of the third-party health check.
+ * @public
+ */
 export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
     status: HealthResponseSchema.shape.status.meta({
         description:
@@ -83,6 +86,10 @@ export const HealthThirdPartyResponseSchema = HealthResponseSchema.extend({
     }),
 });
 
+/**
+ * Third-party health check result.
+ * @public
+ */
 export type HealthThirdPartyResponseDto = z.infer<
     typeof HealthThirdPartyResponseSchema
 >;

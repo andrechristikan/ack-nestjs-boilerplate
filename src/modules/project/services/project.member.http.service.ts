@@ -1,26 +1,45 @@
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma, Project, ProjectMember } from '@generated/prisma-client';
-import { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
-import { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import { IProjectMemberHttpService } from '@modules/project/interfaces/project.member.http.service.interface';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
-import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import { ProjectMemberDefaultAvailableOrderBy } from '@modules/project/constants/project.list.constant';
+import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
+import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectMemberHttpService implements IProjectMemberHttpService {
-    constructor(private readonly projectMemberService: ProjectMemberService) {}
+export class ProjectMemberHttpService {
+    constructor(
+        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getMembersList(
         project: Project,
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
+        query: ProjectMemberListRequestDto
+    ): Promise<IResponsePaginationReturn<IProjectMember>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.ProjectMemberWhereInput>(
+                query,
+                {
+                    availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
+                }
+            );
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
         const { data, ...others } =
-            await this.projectMemberService.getMembersList(project, pagination);
+            await this.projectMemberDomain.getMembersList(project, params);
 
         return {
             data,
@@ -33,10 +52,15 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
         actorId: string,
         { userId, role }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
-        const member = await this.projectMemberService.assignMember(
+        const targetMember =
+            await this.workspaceMemberDomain.getOneByWorkspaceAndUser(
+                project.workspaceId,
+                userId
+            );
+        const member = await this.projectMemberDomain.assignMember(
             project,
             actorId,
-            userId,
+            targetMember,
             role
         );
 
@@ -49,7 +73,7 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
         targetMemberId: string,
         { role }: ProjectMemberUpdateRoleRequestDto
     ): Promise<void> {
-        await this.projectMemberService.updateMemberRole(
+        await this.projectMemberDomain.updateMemberRole(
             project,
             actorId,
             targetMemberId,
@@ -62,7 +86,7 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
         actorId: string,
         targetMemberId: string
     ): Promise<void> {
-        await this.projectMemberService.removeMember(
+        await this.projectMemberDomain.removeMember(
             project,
             actorId,
             targetMemberId
@@ -70,6 +94,6 @@ export class ProjectMemberHttpService implements IProjectMemberHttpService {
     }
 
     async leaveProject(project: Project, member: ProjectMember): Promise<void> {
-        await this.projectMemberService.leaveProject(project, member);
+        await this.projectMemberDomain.leaveProject(project, member);
     }
 }

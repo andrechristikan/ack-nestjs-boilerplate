@@ -23,6 +23,10 @@
             {
                 "include": "**/**/templates/*",
                 "outDir": "dist"
+            },
+            {
+                "include": "generated/prisma-client/*.node",
+                "outDir": "dist"
             }
         ]
     },

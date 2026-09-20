@@ -1,13 +1,14 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Workspace } from '@generated/prisma-client';
-import { IUser } from '@modules/user/interfaces/user.interface';
+import type { Workspace } from '@generated/prisma-client/client';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserStoreKey } from '@modules/user/constants/user.constant';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceStoreKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 /**
  * Confirms the already-authenticated user (loaded by `UserGuard`, which must run before this guard)
@@ -16,20 +17,20 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 @Injectable()
 export class WorkspaceMemberGuard implements CanActivate {
     constructor(
-        private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const workspace = this.requestStoreService.get<Workspace>(
-            WorkspaceStoreKey
-        );
+        const workspace =
+            this.requestStoreService.get<Workspace>(WorkspaceStoreKey);
         const user = this.requestStoreService.get<IUser>(UserStoreKey);
 
-        const member = await this.workspaceMemberService.validateWorkspaceMemberGuard(
-            workspace?.id ?? null,
-            user?.id ?? null
-        );
+        const member =
+            await this.workspaceMemberDomain.validateWorkspaceMemberGuard(
+                workspace?.id ?? null,
+                user?.id ?? null
+            );
 
         this.requestStoreService.set(WorkspaceMemberStoreKey, member);
 

@@ -56,11 +56,12 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 
 | Tool | Version |
 |------|---------|
-| Node.js | >= 24.11.0 |
-| pnpm | >= 10.25.0 |
-| Docker | Latest stable |
-| MongoDB | Replication set (required for transactions) |
-| Redis | Latest stable |
+| Node.js | >= 24.15.0 |
+| pnpm | >= 10.25.0 (pin `pnpm@12.5.1`) |
+| Docker | v28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
+| Docker Compose | v2.40.x+ |
+| MongoDB | v8+ replica set (Compose locally, or Atlas without Docker) |
+| Redis | v8+ (Compose locally, or ElastiCache without Docker) |
 
 ### Steps
 
@@ -71,13 +72,17 @@ pnpm install
 # Copy environment file
 cp .env.example .env
 
-# Generate JWT keys, Prisma client, and push schema
-pnpm generate:keys
-pnpm db:generate
-pnpm db:migrate
+# Generate JWT keys and encryption secrets into .env
+pnpm generate:secret --direct-insert
+
+# Generate the Prisma client and src/generated/package/package.ts
+pnpm generate
 
 # Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
 docker-compose up -d
+
+# Push the schema (needs the MongoDB replica set above already running)
+pnpm db:migrate
 
 # Run in development mode
 pnpm start:dev
@@ -92,7 +97,7 @@ For the full onboarding path (including Docker profiles and key material), see [
 This project uses **TypeScript** with strict mode. Please follow these standards:
 
 - Follow **SOLID principles** and **Repository Design Pattern** already established in this codebase
-- Use **Prisma ORM** for all database interactions — do not bypass the repository layer
+- Use **Prisma ORM** for all database interactions. Do not bypass the repository layer
 - All new modules must follow the existing **modular structure** in `src/`
 - Run linter before submitting:
   ```bash
@@ -103,13 +108,13 @@ This project uses **TypeScript** with strict mode. Please follow these standards
   ```bash
   pnpm test
   ```
-- No `any` types unless absolutely unavoidable — justify it in a comment
+- No `any` types unless absolutely unavoidable. Justify it in a comment
 - All public methods/functions should have proper TypeScript typings
-- **Strict null convention** — `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
-- Never use `variable?: string | null` — ambiguous; use `?: string` for input boundary or `string | null` for internal layers
+- **Strict null convention.** `undefined` is only allowed at the input boundary (Request DTO body/form, Query DTO); all other layers use `T | null`. Exceptions: request lifecycle fields (`__user?`, `__apiKey?`), external spec fields (JWT claims, Prisma generated types), exception/options interfaces (e.g. `IAppBaseExceptionOptions`), response DTO structural/wrapper fields (e.g. `data?` on `ResponseDto<T>`), and service/util additive filter params
+- Never use `variable?: string | null` (ambiguous). Use `?: string` for input boundary or `string | null` for internal layers
 - Response DTO **domain data fields** must use `field: Type | null`, not `field?: Type`. Only structural/wrapper fields (e.g. `data?`, `errors?` on response wrappers) may use `?:`
-- Repository filter params use `Type | null` — normalization `null → {}` is done inside the repository before Prisma, not at the caller
-- `src/configs/` config interfaces use `field: Type | null` — callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
+- Repository filter params use `Type | null`. Normalization `null → {}` is done inside the repository before Prisma, not at the caller
+- `src/configs/` config interfaces use `field: Type | null`. Callers must be explicit. Exception/options bag interfaces outside `src/configs/` may use `field?: Type`
 
 ---
 
@@ -161,11 +166,11 @@ docs(readme): update docker setup instructions
 3. Ensure the husky pre-commit gates pass. The hook runs, in order: `pnpm lint:staged`, `pnpm typecheck`, `pnpm deadcode`, `pnpm spell`, and `NODE_ENV=test pnpm test`
 4. Push and open a PR against `development` (integration branch). `main` stays the release/default line.
 5. Fill in the PR template so a reviewer can follow the work:
-   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?** (required checks + tests + mandatory when applicable)
-   - **Out of scope**, **Breaking Changes**, **Additional Notes** — when they apply
-6. Wait for review — at least **1 maintainer approval** is required to merge
+   - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?**, **Checklist**
+   - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
+6. Wait for review. At least **1 maintainer approval** is required to merge
 
-The PR template asks for what a reviewer must verify (boot, tests, seed/env, layering, status codes, i18n). Tick only the rows that apply to your change. Husky and CI still own lint/test gates.
+The Checklist covers lint, typecheck, boot, seed/env, layering, status codes, and i18n. Tick only the rows that apply. Tests live under How Has This Been Tested?. Husky and CI still own lint/test gates.
 
 **PR will be rejected if:**
 - Tests are failing
@@ -179,10 +184,9 @@ The PR template asks for what a reviewer must verify (boot, tests, seed/env, lay
 
 Open an issue using the **Bug Report** template. Include:
 
-- NestJS and Node.js version
-- Steps to reproduce
-- Expected vs actual behavior
-- Relevant logs or error messages
+- Description, steps to reproduce, expected vs actual behavior
+- Environment (Node, pnpm, Mongo setup, Docker vs manual, project version or commit)
+- Relevant logs, API request/response, or error identity when useful
 
 ---
 
@@ -190,9 +194,10 @@ Open an issue using the **Bug Report** template. Include:
 
 Open an issue using the **Feature Request** template. Include:
 
-- Problem you're solving
+- Problem you are solving
 - Proposed solution
-- Alternatives considered
+- Acceptance criteria
+- Technical notes when useful (API shape, schema/seed, env keys, alternatives)
 
 Large features should be discussed in an issue **before** any implementation starts.
 
@@ -200,7 +205,7 @@ Large features should be discussed in an issue **before** any implementation sta
 
 ## Questions?
 
-Open a [Discussion][ref-discussions] — not an issue.
+Open a [Discussion][ref-discussions], not an issue.
 
 <!-- REFERENCES -->
 

@@ -1,0 +1,372 @@
+# Language Message Documentation
+
+i18n lives in `src/common/message`. Message files live in `src/languages/`.
+
+## Overview
+
+i18n through [nestjs-i18n][ref-nestjs-i18n].
+
+- Message files live in `src/languages/{language}` as JSON
+- English (`en`) is the only language shipped
+- `MessageModule` is imported globally through `CommonModule` in `src/common/common.module.ts`, so `MessageService` is injectable without a local import
+
+## Related Documents
+
+- [Response Documentation][ref-doc-response] - Message paths on success envelopes
+- [Handling Error Documentation][ref-doc-handling-error] - Exception filters that resolve message paths
+- [Request Validation Documentation][ref-doc-request-validation] - Validation message translation
+- [Security and Middleware Documentation][ref-doc-security-and-middleware] - `x-custom-lang` middleware
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Related Documents](#related-documents)
+- [Configuration](#configuration)
+- [Message Files](#message-files)
+- [Usage](#usage)
+  - [Basic Translation](#basic-translation)
+  - [Filter Language](#filter-language)
+  - [Bulk Import Validation Messages](#bulk-import-validation-messages)
+  - [Translation with Variables](#translation-with-variables)
+  - [Custom Language](#custom-language)
+- [Integration](#integration)
+  - [Exception Filters](#exception-filters)
+  - [Response Decorator](#response-decorator)
+  - [Validation Pipe](#validation-pipe)
+- [Adding New Language](#adding-new-language)
+
+## Configuration
+
+Default language is configured via environment variable:
+
+```bash
+APP_LANGUAGE=en
+```
+
+Configuration structure:
+
+```typescript
+// src/configs/message.config.ts
+export default registerAs(
+    'message',
+    (): IConfigMessage => ({
+        availableLanguage: Object.values(EnumMessageLanguage),
+        language: process.env.APP_LANGUAGE!,
+    })
+);
+```
+
+Language options are defined in the enum:
+
+```typescript
+export enum EnumMessageLanguage {
+    en = 'en',
+}
+```
+
+## Message Files
+
+Message files use JSON format with nested structure. Key paths follow the pattern: `filename.field.nested`. Files are located in `src/languages/en/`:
+
+| File | Description |
+|------|-------------|
+| `activityLog.json` | Activity log messages |
+| `analytic.json` | Analytic messages |
+| `apiKey.json` | API key messages |
+| `auth.json` | Authentication messages |
+| `aws.json` | AWS service messages |
+| `country.json` | Country-related messages |
+| `database.json` | Database-related messages |
+| `device.json` | Device management messages |
+| `doc.json` | API documentation messages |
+| `featureFlag.json` | Feature flag messages |
+| `file.json` | File upload messages |
+| `health.json` | Health check messages |
+| `hello.json` | Hello endpoint messages |
+| `helper.json` | Helper kit errors (encryption) |
+| `http.json` | HTTP error messages |
+| `notification.json` | Notification messages |
+| `pagination.json` | Pagination messages |
+| `passwordHistory.json` | Password history messages |
+| `policy.json` | Policy messages |
+| `project.json` | Project messages |
+| `request.json` | Request validation messages |
+| `response.json` | Response serialization error messages |
+| `role.json` | Role messages |
+| `session.json` | Session messages |
+| `termPolicy.json` | Terms & policy messages |
+| `user.json` | User messages |
+| `workspace.json` | Workspace messages |
+
+Example structure:
+
+```json
+// src/languages/en/user.json
+{
+    "updateProfile": "User profile updated successfully.",
+    "error": {
+        "notFound": "Sorry, we couldn't find the user you requested."
+    }
+}
+```
+
+Access pattern:
+
+```typescript
+// Key path: user.updateProfile
+// Output: "User profile updated successfully."
+
+// Key path: user.error.notFound
+// Output: "Sorry, we couldn't find the user you requested."
+```
+
+## Usage
+
+### Basic Translation
+
+Inject `MessageService` and use `setMessage` method:
+
+```typescript
+@Injectable()
+export class UserDomain {
+    constructor(private readonly messageService: MessageService) {}
+
+    getUpdateProfileMessage(): string {
+        return this.messageService.setMessage('user.updateProfile');
+    }
+}
+```
+
+### Filter Language
+
+Use `filterLanguage` to validate if a language is supported before using it:
+
+```typescript
+const validLang = this.messageService.filterLanguage('id');
+// Returns 'id' if supported, undefined if not
+```
+
+### Bulk Import Validation Messages
+
+Use `setValidationImportMessage` to format validation errors for bulk/import operations:
+
+```typescript
+const errors = this.messageService.setValidationImportMessage([
+    { row: 1, errors: validationErrors }
+]);
+// Returns: [{ row: 1, errors: [{ key, property, message }] }]
+```
+
+### Translation with Variables
+
+Pass variables through the `properties` option:
+
+```json
+// src/languages/en/user.json
+{
+    "error": {
+        "verificationEmailResendLimitExceeded": "You have exceeded the limit for resending verification emails. Try again after {minutes} minutes.",
+        "importEmailExist": "There are existing users with the provided email addresses. Email: {emails}"
+    }
+}
+```
+
+```typescript
+const resendLimit = this.messageService.setMessage(
+    'user.error.verificationEmailResendLimitExceeded',
+    { properties: { minutes: 5 } }
+);
+// Output: "You have exceeded the limit for resending verification emails. Try again after 5 minutes."
+
+const importExist = this.messageService.setMessage(
+    'user.error.importEmailExist',
+    { properties: { emails: 'a@example.com, b@example.com' } }
+);
+// Output: "There are existing users with the provided email addresses. Email: a@example.com, b@example.com"
+```
+
+### Custom Language
+
+Override default language using the `customLanguage` option:
+
+```typescript
+const message = this.messageService.setMessage('user.updateProfile', {
+    customLanguage: 'id' // Indonesian
+});
+```
+
+Request-specific language can be set via the `x-custom-lang` header:
+
+```bash
+curl -H "x-custom-lang: id" http://localhost:3000/api/v1/shared/user/profile/get
+```
+
+`RequestCustomLanguageMiddleware` validates the header against the supported languages and writes the resolved value to the request store under `RequestLanguageStoreKey` (falling back to config `message.language`). Response interceptors and exception filters read it from there to localize messages and set `x-custom-lang`. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+
+## Integration
+
+### Exception Filters
+
+Exception filters automatically translate message paths. Application errors are dedicated `AppBaseException` subclasses; the filter resolves each exception's `messagePath` against the message system.
+
+```typescript
+throw new UserEmailExistException();
+// the class internally calls super('user.error.emailExist')
+```
+
+With variables, the exception class accepts constructor params and maps them to `messageProperties` internally:
+
+```typescript
+throw new UserVerificationEmailResendLimitExceededException(resendIn);
+// the class internally calls super('user.error.verificationEmailResendLimitExceeded', { messageProperties: { resendIn } })
+```
+
+### Response Decorator
+
+The `@Response` decorator translates success message paths. See [Response Documentation][ref-doc-response] for details.
+
+```typescript
+@Response('user.create', { schema: DatabaseIdResponseSchema })
+@Post('/create')
+async create(
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+    @AuthJwtPayload('userId') createdBy: string
+): Promise<IResponseReturn<DatabaseIdResponseDto>> {
+    return this.userHttpService.createByAdmin(body, createdBy);
+}
+```
+
+With variables, the HTTP service returns `messageProperties` on the `metadata` field of `IResponseReturn`, and `ResponseInterceptor` feeds them to `MessageService.setMessage` as translation arguments. The controller carries only the `@Response` message path:
+
+```typescript
+// controller
+@Response('notification.markAllAsRead')
+@Post('/update/read')
+async markAllAsRead(
+    @AuthJwtPayload('userId') userId: string
+): Promise<IResponseReturn<void>> {
+    return this.notificationHttpService.markAllAsRead(userId);
+}
+
+// notification.http.service.ts
+async markAllAsRead(userId: string): Promise<IResponseReturn<void>> {
+    const count = await this.notificationDomain.markAllAsRead(userId);
+
+    return {
+        metadata: {
+            messageProperties: {
+                count,
+            },
+        },
+    };
+}
+```
+
+`notification.markAllAsRead` resolves to `"{count} notifications marked as read."`, so `count` fills the placeholder.
+
+### Validation Pipe
+
+Validation issues are translated by `MessageService.setValidationMessage()`, which turns each Standard Schema issue into a `{ key, property, message }` entry. See [Request Validation Documentation][ref-doc-request-validation] for details.
+
+**Message Resolution Strategy:**
+
+1. **Primary**: The issue's own `message` is translated, so a schema raising a message path (`request.error.isPassword.strong`) speaks for itself
+2. **Fallback**: When that translation comes back unchanged, the camelCase issue code is looked up under `request.error.{key}`
+3. `{property}` is interpolated with the last segment of the issue path
+
+**Example message file:**
+
+```json
+// src/languages/en/request.json
+{
+    "error": {
+        "invalidType": "{property} is not of the expected type.",
+        "tooSmall": "{property} is shorter than the minimum allowed.",
+        "invalidFormat": "{property} does not match the expected format."
+    }
+}
+```
+
+**Nested Properties:**
+
+The `property` is the issue path joined with dots, so a field inside a nested object reads as its full path:
+
+```typescript
+// Schema with a nested object
+const AddressSchema = z.strictObject({
+    street: z.string().min(1),
+});
+
+const UserSchema = z.strictObject({
+    address: AddressSchema,
+});
+
+// Validation error output:
+{
+    "key": "tooSmall",
+    "property": "address.street",
+    "message": "street is shorter than the minimum allowed."
+}
+```
+
+An issue with an empty path renders `Unknown`, and an issue carrying no string `code` falls back to the key `custom`.
+
+**Standard validation response:**
+
+```typescript
+// Automatic transformation
+{
+    "statusCode": 50300,
+    "statusCodeKey": "validation",
+    "module": "request",
+    "message": "There are validation errors.",
+    "errors": [
+        {
+            "key": "tooSmall",
+            "property": "username",
+            "message": "username is shorter than the minimum allowed."
+        },
+        {
+            "key": "custom",
+            "property": "email",
+            "message": "email should be a valid email address."
+        }
+    ]
+}
+```
+
+## Adding New Language
+
+1. Create a new language directory:
+
+```bash
+mkdir -p src/languages/id
+```
+
+2. Copy and translate JSON files:
+
+```bash
+cp src/languages/en/*.json src/languages/id/
+```
+
+3. Update the enum:
+
+```typescript
+export enum EnumMessageLanguage {
+    en = 'en',
+    id = 'id', // Add new language
+}
+```
+
+4. Restart the application to load new language files.
+
+
+
+<!-- REFERENCES -->
+
+[ref-nestjs-i18n]: https://nestjs-i18n.com
+
+[ref-doc-response]: response.md
+[ref-doc-handling-error]: handling-error.md
+[ref-doc-request-validation]: request-validation.md
+[ref-doc-security-and-middleware]: security-and-middleware.md

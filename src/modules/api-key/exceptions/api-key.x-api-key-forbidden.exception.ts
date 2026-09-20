@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
+/**
+ * Raised when the request API key is missing or not of an allowed type.
+ * @public
+ */
 export class ApiKeyXApiKeyForbiddenException extends AppBaseException {
     readonly module = 'apiKey';
     readonly statusCode = EnumApiKeyStatusCodeError.xApiKeyForbidden;

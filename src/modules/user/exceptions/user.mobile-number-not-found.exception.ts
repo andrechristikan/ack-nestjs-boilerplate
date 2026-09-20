@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
+/**
+ * Raised when the requested mobile number does not exist.
+ * @public
+ */
 export class UserMobileNumberNotFoundException extends AppBaseException {
     readonly module = 'user';
     readonly statusCode = EnumUserStatusCodeError.mobileNumberNotFound;

@@ -1,3 +1,7 @@
+/**
+ * Job names on the notification and notification email queues.
+ * @public
+ */
 export enum EnumNotificationProcess {
     welcomeByAdmin = 'welcomeByAdmin',
     welcome = 'welcome',
@@ -20,6 +24,10 @@ export enum EnumNotificationProcess {
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
+/**
+ * Job names on the notification push queue.
+ * @public
+ */
 export enum EnumNotificationPushProcess {
     cleanupTokens = 'cleanupTokens',
     cleanupStaleTokens = 'cleanupStaleTokens',
@@ -33,6 +41,10 @@ export enum EnumNotificationPushProcess {
     workspaceJoinRejected = 'workspaceJoinRejected',
 }
 
+/**
+ * Kinds of stored notification, each with its own type and channels.
+ * @public
+ */
 export enum EnumNotificationKind {
     welcome = 'welcome',
     welcomeSocial = 'welcomeSocial',

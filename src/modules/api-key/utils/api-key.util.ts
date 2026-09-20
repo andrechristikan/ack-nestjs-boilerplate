@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ApiKey, EnumApiKeyType } from '@generated/prisma-client';
-import { IApiKeyCreated } from '@modules/api-key/interfaces/api-key.interface';
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyCreated } from '@modules/api-key/interfaces/api-key.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 
 @Injectable()
 export class ApiKeyUtil {
@@ -55,12 +56,10 @@ export class ApiKeyUtil {
         },
         currentDate: Date
     ): boolean {
-        return (
-            apiKey &&
-            apiKey.isActive &&
-            !this.isExpired(apiKey, currentDate) &&
-            !this.isNotYetActive(apiKey, currentDate)
-        );
+        const isExpired = this.isExpired(apiKey, currentDate);
+        const isNotYetActive = this.isNotYetActive(apiKey, currentDate);
+
+        return apiKey && apiKey.isActive && !isExpired && !isNotYetActive;
     }
 
     validateType(
@@ -70,12 +69,15 @@ export class ApiKeyUtil {
         return apiKey && allowed.includes(apiKey.type);
     }
 
-    mapActivityLogMetadata(apiKey: ApiKey): IActivityLogMetadata {
+    mapActivityLogMetadata(
+        apiKey: Pick<ApiKey, 'id' | 'name' | 'type'>,
+        timestamp: Date
+    ): IActivityLogMetadata {
         return {
             apiKeyId: apiKey.id,
             apiKeyName: apiKey.name,
             apiKeyType: apiKey.type,
-            timestamp: apiKey.updatedAt ?? apiKey.createdAt,
+            timestamp,
         };
     }
 }

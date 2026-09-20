@@ -1,5 +1,5 @@
-import { Request } from 'express';
-import { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type { Request } from 'express';
+import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 
 export interface IRequestGeoLocation {
@@ -11,30 +11,30 @@ export interface IRequestGeoLocation {
 }
 
 export interface IRequestUserAgentBrowser {
-    name?: string | null;
-    version?: string | null;
-    major?: string | null;
-    type?: string | null;
+    name: string | null;
+    version: string | null;
+    major: string | null;
+    type: string | null;
 }
 
 export interface IRequestUserAgentCpu {
-    architecture?: string | null;
+    architecture: string | null;
 }
 
 export interface IRequestUserAgentDevice {
-    type?: string | null;
-    vendor?: string | null;
-    model?: string | null;
+    type: string | null;
+    vendor: string | null;
+    model: string | null;
 }
 
 export interface IRequestUserAgentEngine {
-    name?: string | null;
-    version?: string | null;
+    name: string | null;
+    version: string | null;
 }
 
 export interface IRequestUserAgentOs {
-    name?: string | null;
-    version?: string | null;
+    name: string | null;
+    version: string | null;
 }
 
 export interface IRequestUserAgent {
@@ -56,12 +56,8 @@ export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
 
 export interface IRequestLog {
     userAgent: IRequestUserAgent;
-    ipAddress?: string | null;
-    geoLocation?: IRequestGeoLocation | null;
-}
-
-export interface IRequestIsValidUuidPipeOptions {
-    optional: boolean;
+    ipAddress: string | null;
+    geoLocation: IRequestGeoLocation | null;
 }
 
 export interface IRequestThrottlePolicy {

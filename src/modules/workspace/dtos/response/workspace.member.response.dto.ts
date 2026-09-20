@@ -2,11 +2,12 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base workspace-member shape: the row binding a user to the workspace they belong to.
+ * @public
  */
 export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -54,6 +55,10 @@ export const WorkspaceMemberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Workspace member with the user it binds.
+ * @public
+ */
 export type WorkspaceMemberResponseDto = z.infer<
     typeof WorkspaceMemberResponseSchema
 >;

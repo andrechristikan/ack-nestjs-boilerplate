@@ -1,6 +1,7 @@
 {
     "list": "Sessions retrieved successfully.",
     "revoke": "Session revoked successfully.",
+    "revokeAll": "All sessions revoked successfully.",
     "error": {
         "notFound": "Sorry, we couldn't find the session.",
         "forbidden": "You cannot revoke your current session."

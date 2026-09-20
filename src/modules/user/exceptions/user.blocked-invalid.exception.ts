@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
+/**
+ * Raised when an admin action targets a blocked user.
+ * @public
+ */
 export class UserBlockedInvalidException extends AppBaseException {
     readonly module = 'user';
     readonly statusCode = EnumUserStatusCodeError.blockedInvalid;

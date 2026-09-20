@@ -1,6 +1,6 @@
 # Request Validation Documentation
 
-This documentation explains the features and usage of **Request Module**: Located at `src/common/request`
+Request validation lives in `src/common/request`.
 
 ## Overview
 
@@ -8,11 +8,11 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 ## Related Documents
 
-- [Message Documentation][ref-doc-message] - For internationalization and error message translation
-- [Handling Error Documentation][ref-doc-handling-error] - For exception handling and response formatting
-- [Doc Documentation][ref-doc-doc] - For API documentation generated from the same schemas
-- [Response Documentation][ref-doc-response] - For the outbound half, where a response schema serializes the payload
-- [File Upload Documentation][ref-doc-file-upload] - For file validation pipes
+- [Language Message Documentation][ref-doc-message] - Validation and error message i18n
+- [Handling Error Documentation][ref-doc-handling-error] - `RequestValidationException` filter path
+- [Doc Documentation][ref-doc-doc] - OpenAPI built from the same schemas
+- [Response Documentation][ref-doc-response] - Outbound schemas that serialize the payload
+- [File Upload Documentation][ref-doc-file-upload] - File validation pipes
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 - [Schema Shape](#schema-shape)
 - [Composing Schemas](#composing-schemas)
 - [Shared Validations](#shared-validations)
-- [Validation Pipes](#validation-pipes)
+- [File Validation Pipes](#file-validation-pipes)
 - [CSV Import Validation](#csv-import-validation)
 - [Environment Variables](#environment-variables)
 - [Error Message Mapping](#error-message-mapping)
@@ -47,7 +47,12 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 }
 ```
 
-The subclass adds one rule on top of the framework pipe: a `body` argument arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked. Binding a body is therefore always `@Body({ schema: <Module><Action>RequestSchema })`. The constraint when writing one: `rules/validation.md`.
+The subclass adds two rules on top of the framework pipe:
+
+- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
+- **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
+
+The pipe also strips prototype-polluting keys from the value before validating.
 
 **Processing flow**:
 ```
@@ -73,13 +78,17 @@ Standardized error response (HTTP 422)
 The schema is bound on `@Body()`; the parameter is typed with the inferred DTO type:
 
 ```typescript
-@Controller('users')
+@Controller({
+  version: '1',
+  path: '/user',
+})
 export class UserAdminController {
   @Post('/create')
   create(
-    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto
+    @Body({ schema: UserCreateRequestSchema }) body: UserCreateRequestDto,
+    @AuthJwtPayload('userId') createdBy: string
   ) {
-    return this.userHttpService.create(body);
+    return this.userHttpService.createByAdmin(body, createdBy);
   }
 }
 ```
@@ -87,6 +96,10 @@ export class UserAdminController {
 **Schema example** (`src/modules/user/dtos/request/user.claim-username.request.dto.ts`):
 
 ```typescript
+/**
+ * Validates the body for claiming a username, lower-cased.
+ * @public
+ */
 export const UserClaimUsernameRequestSchema = z.strictObject({
     username: z
         .string()
@@ -107,39 +120,31 @@ export type UserClaimUsernameRequestDto = z.infer<
 >;
 ```
 
-Each request schema lives in `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check can never drift apart.
+Each request schema lives in its own file under `<module>/dtos/request/` and exports the `<Module><Action>RequestSchema` constant next to the `<Module><Action>RequestDto` type inferred from it, so the type and the runtime check cannot drift apart. Both carry a one-line JSDoc summary and `@public`.
 
 ### Path Parameters Validation
 
-A path param is validated by pipes on the param itself, not by a schema:
+A path param is validated by a zod schema bound on `@Param`, the same way a body uses `@Body({ schema })`:
 
 ```typescript
-@Get('/get/:user')
+@Get('/get/:userId')
 findOne(
-  @Param('user', RequestRequiredPipe, RequestIsValidObjectIdPipe) user: string
+  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
 ) {
-  return this.userHttpService.get(user);
+  return this.userHttpService.getOne(userId);
 }
+```
+
+`RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
+
+```typescript
+@Query('userId', { schema: RequestMongoIdSchema.optional() })
+userId?: string
 ```
 
 ### Query Parameters
 
-Pagination, search, and filtering arrive through the `@Pagination*` decorators of `src/common/pagination/` (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a pipe:
-
-```typescript
-@Get('/list')
-async list(
-  @PaginationOffsetQuery({
-    availableSearch: ProjectDefaultAvailableSearch,
-    availableOrderBy: ProjectDefaultAvailableOrderBy,
-  })
-  pagination: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-  @Query('workspaceId', new RequestIsValidUuidPipe({ optional: true }))
-  workspaceId?: string
-) {
-  return this.projectHttpService.getListForAdmin(pagination, workspaceId);
-}
-```
+Pagination, search, and filtering arrive through list request schemas on `@Query({ schema })` plus `PaginationQueryUtil` in the HTTP service (see [Pagination][ref-doc-pagination]). A single extra filter is read with `@Query()` and validated by a schema on the query parameter, as above.
 
 ## Schema Shape
 
@@ -201,7 +206,7 @@ export const UserChangePasswordRequestSchema =
 
 ## Shared Validations
 
-Checks too detailed for a chained method live as plain functions in `src/common/request/validations/` and are called from `.superRefine()`.
+Checks too detailed for a chained method live as plain functions or shared zod schemas in `src/common/request/validations/` and are called from `.superRefine()` or bound on `@Param` / `@Query`.
 
 **`validateEmail`** (`request.custom-email.validation.ts`) walks an address part by part (`@` count, domain length, domain labels, TLD, local part) and returns the i18n path of the first rule it fails, so the client is told which rule broke rather than that the address is invalid:
 
@@ -224,40 +229,25 @@ email: z
 
 A module-specific check goes in that module's `validations/` folder instead.
 
-## Validation Pipes
+Shared schemas:
 
-Pipes validate a single param, body field, or query value. A multi-field payload uses a schema.
+- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
+- `RequestRequiredStringSchema` — non-empty string
+- `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
+- `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `RequestMessageLanguageSchema` — a member of `EnumMessageLanguage`, carrying its own `.meta()` for the OpenAPI document
 
-**RequestRequiredPipe**
-Throws `RequestParamRequiredException` when the value is missing or empty:
+## File Validation Pipes
 
-```typescript
-@Get('/get/:user')
-findOne(@Param('user', RequestRequiredPipe) user: string) {
-  return this.userHttpService.get(user);
-}
-```
-
-**RequestIsValidUuidPipe**
-Validates UUID path parameters:
-
-```typescript
-@Get(':userId')
-findOne(@Param('userId', RequestIsValidUuidPipe) userId: string) {
-  return this.userService.findById(userId);
-}
-```
-
-**File validation pipes**
-`FileExtensionPipe` validates the upload extension. See [File Upload][ref-doc-file-upload].
+Upload routes use file pipes from `src/common/file/pipes/`, not request param pipes. `FileRequiredPipe()` throws `FileRequiredException` when the upload is missing. `FileExtensionPipe` validates the extension. See [File Upload][ref-doc-file-upload].
 
 ## CSV Import Validation
 
-A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
+A CSV import composes pipes in order: `FileRequiredPipe()`, `FileExtensionPipe`, `FileCsvParsePipe` parses the buffer into rows, then `FileCsvValidationPipe(schema)` validates every row against a request schema.
 
 ```typescript
 @UploadedFile(
-  RequestRequiredPipe,
+  FileRequiredPipe(),
   FileExtensionPipe([EnumFileExtensionDocument.csv]),
   FileCsvParsePipe,
   FileCsvValidationPipe(UserImportRequestSchema, {
@@ -267,11 +257,22 @@ A CSV import composes two pipes in order: `FileCsvParsePipe` parses the buffer i
 data: UserImportRequestDto[]
 ```
 
-The pipe caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`, rejects an empty file with `FileRequiredExtractFirstException`, and collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`. See [File Upload][ref-doc-file-upload].
+The pipe:
+
+- caps the row count at the `file.maxDataImport` config value (100, overridable per pipe through `maxDataImportConfigKey`) by throwing `FileExceedMaxDataImportException`
+- rejects an empty file with `FileRequiredExtractFirstException`
+- collects every per-row failure, keyed by row index, into one `FileImportException` handled by `AppValidationImportFilter`
+
+See [File Upload][ref-doc-file-upload].
 
 ## Environment Variables
 
-`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error. An env boolean is exactly `'true'` or `'false'`; every other spelling fails the boot. See [Environment][ref-doc-environment].
+`AppEnvSchema` (`src/app/dtos/app.env.dto.ts`) is the zod schema `ConfigModule.forRoot()` validates `process.env` against at boot, so a missing or malformed variable stops the process instead of surfacing later as a runtime error.
+
+- An env boolean is `RequestBooleanStringSchema`, exactly `'true'` or `'false'`; every other spelling fails the boot
+- An encryption secret is `RequestEncryptionSecretSchema`, exactly 64 base64url characters
+
+See [Environment][ref-doc-environment].
 
 ## Error Message Mapping
 
@@ -308,7 +309,11 @@ Messages are translated using [nestjs-i18n][ref-nestjs-i18n] through the [Messag
     "tooBig": "{property} is longer than the maximum allowed.",
     "invalidFormat": "{property} does not match the expected format.",
     "invalidValue": "{property} is not one of the allowed values.",
+    "notMultipleOf": "{property} is not a multiple of the required step.",
     "unrecognizedKeys": "The request contains fields that are not allowed.",
+    "invalidUnion": "{property} does not match any of the allowed shapes.",
+    "invalidKey": "{property} contains a key that is not allowed.",
+    "invalidElement": "{property} contains an element that is not allowed.",
     "custom": "{property} failed a validation rule.",
     "isPassword": {
       "strong": "{property} must be a strong password containing uppercase, lowercase, numbers, and special characters."
@@ -361,7 +366,7 @@ See [Handling Error][ref-doc-handling-error] for the complete error handling flo
 [ref-standard-schema]: https://standardschema.dev
 [ref-nestjs-i18n]: https://nestjs-i18n.com
 
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-handling-error]: handling-error.md
 [ref-doc-doc]: doc.md
 [ref-doc-file-upload]: file-upload.md

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates the body for changing a project slug.
+ * @public
+ */
 export const ProjectUpdateSlugRequestSchema = z.strictObject({
     slug: z.string().min(1).meta({
         description:
@@ -8,6 +12,10 @@ export const ProjectUpdateSlugRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Body for changing a project slug.
+ * @public
+ */
 export type ProjectUpdateSlugRequestDto = z.infer<
     typeof ProjectUpdateSlugRequestSchema
 >;

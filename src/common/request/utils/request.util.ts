@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { getClientIp } from '@supercharge/request-ip';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
-import {
+import type {
     IRequestApp,
     IRequestGeoLocation,
     IRequestLog,
@@ -54,22 +54,31 @@ export class RequestUtil {
             version: result.os.version ?? null,
         };
 
+        const browserGroup = this.groupOrNull(browser, [
+            browser.name,
+            browser.version,
+            browser.major,
+            browser.type,
+        ]);
+        const cpuGroup = this.groupOrNull(cpu, [cpu.architecture]);
+        const deviceGroup = this.groupOrNull(device, [
+            device.type,
+            device.vendor,
+            device.model,
+        ]);
+        const engineGroup = this.groupOrNull(engine, [
+            engine.name,
+            engine.version,
+        ]);
+        const osGroup = this.groupOrNull(os, [os.name, os.version]);
+
         return {
             ua: result.ua ?? null,
-            browser: this.groupOrNull(browser, [
-                browser.name,
-                browser.version,
-                browser.major,
-                browser.type,
-            ]),
-            cpu: this.groupOrNull(cpu, [cpu.architecture]),
-            device: this.groupOrNull(device, [
-                device.type,
-                device.vendor,
-                device.model,
-            ]),
-            engine: this.groupOrNull(engine, [engine.name, engine.version]),
-            os: this.groupOrNull(os, [os.name, os.version]),
+            browser: browserGroup,
+            cpu: cpuGroup,
+            device: deviceGroup,
+            engine: engineGroup,
+            os: osGroup,
         };
     }
 

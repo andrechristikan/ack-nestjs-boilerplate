@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client';
-import {
+import { Prisma } from '@generated/prisma-client/client';
+import { DatabaseModelRelations } from '@common/database/constants/database.constant';
+import type {
+    IDatabaseData,
     IDatabaseModelContext,
     IDatabaseRestoreArgs,
-    IDatabaseRow,
     IDatabaseSoftDeleteArgs,
 } from '@common/database/interfaces/database.extension.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -12,29 +13,201 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 
 @Injectable()
 export class DatabaseExtensionUtil {
-    private readonly modelFields: Map<string, Set<string>>;
-    private readonly modelRelations: Map<string, Map<string, string>>;
+    private readonly modelFields: Map<Prisma.ModelName, Set<string>>;
 
     constructor(
         private readonly requestStoreService: RequestStoreService,
         private readonly helperDateService: HelperDateService
     ) {
         this.modelFields = new Map(
-            Prisma.dmmf.datamodel.models.map(model => [
-                model.name,
-                new Set(model.fields.map(field => field.name)),
-            ])
-        );
-        this.modelRelations = new Map(
-            Prisma.dmmf.datamodel.models.map(model => [
-                model.name,
-                new Map(
-                    model.fields
-                        .filter(field => field.kind === 'object')
-                        .map(field => [field.name, field.type])
+            Object.values(Prisma.ModelName).map(model => [
+                model,
+                new Set<string>(
+                    Object.values(Prisma[`${model}ScalarFieldEnum`])
                 ),
             ])
         );
+    }
+
+    /**
+     * Whether the model owns the audit field, per its `Prisma.<Model>ScalarFieldEnum`. False when no
+     * model is given.
+     */
+    private modelHasField(
+        model: Prisma.ModelName | undefined,
+        field: 'createdBy' | 'updatedBy'
+    ): boolean {
+        if (!model) {
+            return false;
+        }
+
+        const fields = this.modelFields.get(model);
+
+        return fields?.has(field) ?? false;
+    }
+
+    /**
+     * Whether the value is a plain writable payload object. Arrays and Dates are excluded because
+     * neither can carry audit fields.
+     */
+    private isWritePayload(value: unknown): value is IDatabaseData {
+        return (
+            typeof value === 'object' &&
+            value !== null &&
+            !Array.isArray(value) &&
+            !(value instanceof Date)
+        );
+    }
+
+    /**
+     * Normalizes a write argument to a payload list, so single and createMany writes take one code
+     * path.
+     */
+    private toWritePayloads(value: unknown): IDatabaseData[] {
+        if (Array.isArray(value)) {
+            return value.filter(item => this.isWritePayload(item));
+        }
+
+        const isPayload = this.isWritePayload(value);
+
+        return isPayload ? [value] : [];
+    }
+
+    /**
+     * Fills `createdBy` and `updatedBy` on every payload of a create write, then recurses into nested
+     * writes. A field the caller already set is left alone.
+     */
+    private stampCreate(
+        model: Prisma.ModelName | undefined,
+        data: unknown,
+        actor: string
+    ): void {
+        const payloads = this.toWritePayloads(data);
+
+        for (const payload of payloads) {
+            const hasCreatedByField = this.modelHasField(model, 'createdBy');
+            if (hasCreatedByField && payload.createdBy == null) {
+                payload.createdBy = actor;
+            }
+            const hasUpdatedByField = this.modelHasField(model, 'updatedBy');
+            if (hasUpdatedByField && payload.updatedBy == null) {
+                payload.updatedBy = actor;
+            }
+
+            this.stampRelations(model, payload, actor);
+        }
+    }
+
+    /**
+     * Fills `updatedBy` on every payload of an update write, then recurses into nested writes. A field
+     * the caller already set is left alone.
+     */
+    private stampUpdate(
+        model: Prisma.ModelName | undefined,
+        data: unknown,
+        actor: string
+    ): void {
+        const payloads = this.toWritePayloads(data);
+
+        for (const payload of payloads) {
+            const hasUpdatedByField = this.modelHasField(model, 'updatedBy');
+            if (hasUpdatedByField && payload.updatedBy == null) {
+                payload.updatedBy = actor;
+            }
+
+            this.stampRelations(model, payload, actor);
+        }
+    }
+
+    /**
+     * Walks the payload relation fields and stamps each nested write against the RELATED model,
+     * resolved from `DatabaseModelRelations`.
+     */
+    private stampRelations(
+        model: Prisma.ModelName | undefined,
+        payload: IDatabaseData,
+        actor: string
+    ): void {
+        if (!model) {
+            return;
+        }
+
+        const relations: Readonly<Record<string, Prisma.ModelName>> =
+            DatabaseModelRelations[model];
+
+        for (const [field, relatedModel] of Object.entries(relations)) {
+            const value = payload[field];
+            const isPayload = this.isWritePayload(value);
+            if (!isPayload) {
+                continue;
+            }
+
+            this.stampNestedWrite(relatedModel, value, actor);
+        }
+    }
+
+    /**
+     * Stamps every write verb a relation container can hold: create, createMany, connectOrCreate,
+     * upsert, update, updateMany.
+     */
+    private stampNestedWrite(
+        model: Prisma.ModelName,
+        container: IDatabaseData,
+        actor: string
+    ): void {
+        this.stampCreate(model, container.create, actor);
+
+        const createMany = container.createMany;
+        const isCreateManyPayload = this.isWritePayload(createMany);
+        if (isCreateManyPayload) {
+            this.stampCreate(model, createMany.data, actor);
+        }
+
+        const connectOrCreatePayloads = this.toWritePayloads(
+            container.connectOrCreate
+        );
+
+        for (const entry of connectOrCreatePayloads) {
+            this.stampCreate(model, entry.create, actor);
+        }
+
+        const upsertPayloads = this.toWritePayloads(container.upsert);
+
+        for (const entry of upsertPayloads) {
+            this.stampCreate(model, entry.create, actor);
+            this.stampUpdate(model, entry.update, actor);
+        }
+
+        const updatePayloads = this.toWritePayloads(container.update);
+
+        for (const entry of updatePayloads) {
+            this.stampNestedUpdateEntry(model, entry, actor);
+        }
+
+        const updateManyPayloads = this.toWritePayloads(container.updateMany);
+
+        for (const entry of updateManyPayloads) {
+            this.stampNestedUpdateEntry(model, entry, actor);
+        }
+    }
+
+    /**
+     * Stamps one nested update entry. A nested to-many update is `{ where, data }`; a to-one update
+     * is the payload itself.
+     */
+    private stampNestedUpdateEntry(
+        model: Prisma.ModelName,
+        entry: IDatabaseData,
+        actor: string
+    ): void {
+        const data = entry.data;
+        const isDataPayload = this.isWritePayload(data);
+        if (isDataPayload) {
+            this.stampUpdate(model, data, actor);
+            return;
+        }
+
+        this.stampUpdate(model, entry, actor);
     }
 
     /**
@@ -141,162 +314,5 @@ export class DatabaseExtensionUtil {
                 },
             },
         });
-    }
-
-    /**
-     * Whether the model owns the field, per the Prisma DMMF. False for an unknown model.
-     */
-    private modelHasField(model: string | undefined, field: string): boolean {
-        if (!model) {
-            return false;
-        }
-
-        return this.modelFields.get(model)?.has(field) ?? false;
-    }
-
-    /**
-     * Whether the value is a plain writable payload object. Arrays and Dates are excluded because
-     * neither can carry audit fields.
-     */
-    private isDatabaseRow(value: unknown): value is IDatabaseRow {
-        return (
-            typeof value === 'object' &&
-            value !== null &&
-            !Array.isArray(value) &&
-            !(value instanceof Date)
-        );
-    }
-
-    /**
-     * Normalizes a write payload to a row list, so single and createMany writes take one code path.
-     */
-    private toDatabaseRows(value: unknown): IDatabaseRow[] {
-        if (Array.isArray(value)) {
-            return value.filter(item => this.isDatabaseRow(item));
-        }
-
-        return this.isDatabaseRow(value) ? [value] : [];
-    }
-
-    /**
-     * Fills `createdBy` and `updatedBy` on every row of a create payload, then recurses into nested
-     * writes. A field the caller already set is left alone.
-     */
-    private stampCreate(
-        model: string | undefined,
-        data: unknown,
-        actor: string
-    ): void {
-        for (const row of this.toDatabaseRows(data)) {
-            if (
-                this.modelHasField(model, 'createdBy') &&
-                row.createdBy == null
-            ) {
-                row.createdBy = actor;
-            }
-            if (
-                this.modelHasField(model, 'updatedBy') &&
-                row.updatedBy == null
-            ) {
-                row.updatedBy = actor;
-            }
-
-            this.stampRelations(model, row, actor);
-        }
-    }
-
-    /**
-     * Fills `updatedBy` on every row of an update payload, then recurses into nested writes. A field
-     * the caller already set is left alone.
-     */
-    private stampUpdate(
-        model: string | undefined,
-        data: unknown,
-        actor: string
-    ): void {
-        for (const row of this.toDatabaseRows(data)) {
-            if (
-                this.modelHasField(model, 'updatedBy') &&
-                row.updatedBy == null
-            ) {
-                row.updatedBy = actor;
-            }
-
-            this.stampRelations(model, row, actor);
-        }
-    }
-
-    /**
-     * Walks the row's relation fields and stamps each nested write against the RELATED model,
-     * resolved from the DMMF rather than the parent's field set.
-     */
-    private stampRelations(
-        model: string | undefined,
-        row: IDatabaseRow,
-        actor: string
-    ): void {
-        const relations = model ? this.modelRelations.get(model) : undefined;
-        if (!relations) {
-            return;
-        }
-
-        for (const [field, relatedModel] of relations) {
-            const value = row[field];
-            if (!this.isDatabaseRow(value)) {
-                continue;
-            }
-
-            this.stampNestedWrite(relatedModel, value, actor);
-        }
-    }
-
-    /**
-     * Stamps every write verb a relation container can hold: create, createMany, connectOrCreate,
-     * upsert, update, updateMany.
-     */
-    private stampNestedWrite(
-        model: string,
-        container: IDatabaseRow,
-        actor: string
-    ): void {
-        this.stampCreate(model, container.create, actor);
-
-        if (this.isDatabaseRow(container.createMany)) {
-            this.stampCreate(model, container.createMany.data, actor);
-        }
-
-        for (const entry of this.toDatabaseRows(container.connectOrCreate)) {
-            this.stampCreate(model, entry.create, actor);
-        }
-
-        for (const entry of this.toDatabaseRows(container.upsert)) {
-            this.stampCreate(model, entry.create, actor);
-            this.stampUpdate(model, entry.update, actor);
-        }
-
-        for (const entry of this.toDatabaseRows(container.update)) {
-            this.stampNestedUpdateEntry(model, entry, actor);
-        }
-
-        for (const entry of this.toDatabaseRows(container.updateMany)) {
-            this.stampNestedUpdateEntry(model, entry, actor);
-        }
-    }
-
-    /**
-     * Stamps one nested update entry. A nested to-many update is `{ where, data }`; a to-one update
-     * is the payload itself.
-     */
-    private stampNestedUpdateEntry(
-        model: string,
-        entry: IDatabaseRow,
-        actor: string
-    ): void {
-        if (this.isDatabaseRow(entry.data)) {
-            this.stampUpdate(model, entry.data, actor);
-            return;
-        }
-
-        this.stampUpdate(model, entry, actor);
     }
 }

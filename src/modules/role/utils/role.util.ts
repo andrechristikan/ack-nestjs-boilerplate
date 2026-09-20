@@ -1,15 +1,15 @@
-import { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Injectable } from '@nestjs/common';
-import { Role } from '@generated/prisma-client';
+import type { IRole } from '@modules/role/interfaces/role.interface';
 
 @Injectable()
 export class RoleUtil {
-    mapActivityLogMetadata(role: Role): IActivityLogMetadata {
+    mapActivityLogMetadata(role: IRole, timestamp: Date): IActivityLogMetadata {
         return {
             roleId: role.id,
             roleName: role.name,
             roleType: role.type,
-            timestamp: role.updatedAt ?? role.createdAt,
+            timestamp,
         };
     }
 }

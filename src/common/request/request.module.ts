@@ -1,4 +1,5 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';

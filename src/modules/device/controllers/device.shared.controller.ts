@@ -1,31 +1,25 @@
-import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import type { DeviceSharedListRequestDto } from '@modules/device/dtos/request/device.shared-list.request.dto';
+import { DeviceSharedListRequestSchema } from '@modules/device/dtos/request/device.shared-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
+
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import {
-    DeviceSharedListDoc,
-    DeviceSharedRefreshDoc,
-    DeviceSharedRemoveDoc,
-} from '@modules/device/docs/device.shared.doc';
-import { DeviceCursorAvailableOrderBy } from '@modules/device/constants/device.list.constant';
-import {
-    DeviceRefreshRequestDto,
-    DeviceRefreshRequestSchema,
-} from '@modules/device/dtos/request/device.refresh.request.dto';
+
+import { DeviceRefreshRequestSchema } from '@modules/device/dtos/request/device.refresh.request.dto';
+import type { DeviceRefreshRequestDto } from '@modules/device/dtos/request/device.refresh.request.dto';
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
-import { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
+import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
@@ -38,7 +32,9 @@ import {
     HttpStatus,
     Param,
     Post,
+    Query,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.shared.user.device')
@@ -49,8 +45,8 @@ import { ApiTags } from '@nestjs/swagger';
 export class DeviceSharedController {
     constructor(private readonly deviceHttpService: DeviceHttpService) {}
 
-    @DeviceSharedListDoc()
-    @ResponsePaging('device.list', {
+    @Doc({ summary: 'get all user devices' })
+    @ResponsePagination('device.list', {
         schema: DeviceOwnershipResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -60,21 +56,15 @@ export class DeviceSharedController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableOrderBy: DeviceCursorAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>,
+        @Query({ schema: DeviceSharedListRequestSchema })
+        query: DeviceSharedListRequestDto,
         @AuthJwtPayload('userId') userId: string,
         @AuthJwtPayload('sessionId') sessionId: string
-    ): Promise<IResponsePagingReturn<IDeviceOwnershipDetail>> {
-        return this.deviceHttpService.getListCursor(
-            userId,
-            sessionId,
-            pagination
-        );
+    ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        return this.deviceHttpService.getListCursor(userId, sessionId, query);
     }
 
-    @DeviceSharedRefreshDoc()
+    @Doc({ summary: 'Refresh device information' })
     @Response('device.refresh')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -92,7 +82,7 @@ export class DeviceSharedController {
         await this.deviceHttpService.refresh(userId, deviceOwnershipId, body);
     }
 
-    @DeviceSharedRemoveDoc()
+    @Doc({ summary: 'remove a user device' })
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -102,11 +92,7 @@ export class DeviceSharedController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') userId: string,
-        @Param(
-            'deviceOwnershipId',
-            RequestRequiredPipe,
-            RequestIsValidUuidPipe
-        )
+        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
         deviceOwnershipId: string
     ): Promise<void> {
         await this.deviceHttpService.remove(userId, deviceOwnershipId);

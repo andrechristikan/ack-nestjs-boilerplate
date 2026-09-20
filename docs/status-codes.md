@@ -1,24 +1,36 @@
 # Status Codes
 
-This document catalogs every application `statusCode` in the boilerplate, grouped by module.
+Application `statusCode` values, grouped by module.
 
-`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status — `httpStatus` is a separate field on the same error response. Clients should prefer `module` + `statusCodeKey` over the raw integer.
+`statusCode` is the field on `AppBaseException` / `ResponseErrorDto`. It is **not** an HTTP status.
 
-The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog. Allocate new codes in those enums using the next free hundred in the block map below. Error filter flow: [Handling Error](handling-error.md). i18n paths: [Message](message.md). Response shape: [Response](response.md).
+Related fields on the same error response:
+
+- `httpStatus`: separate field
+- `module` + `statusCodeKey`: identify an error more stably than the raw integer, which is why the envelope carries both
+
+The machine registry is the `*.status-code.enum.ts` files under `src/`. This page is the human catalog.
+
+- A new module takes the next free hundred in the block map below
+- Every status code is five digits; a new member inside an existing block takes the next sequential number with no gaps
+- Scan the `*.status-code.enum.ts` files under `src/` before allocating; reuse a member that already means what you need
+- Error filter flow: [Handling Error](handling-error.md)
+- i18n paths: [Language Message](language-message.md)
+- Response shape: [Response](response.md)
 
 ## Block map
 
 | Base | Module | Range | Members |
 |---|---|---|---|
 | `50000` | `app` | `50000` | 1 |
-| `50100` | `file` | `50100`–`50103` | 4 |
+| `50100` | `file` | `50100`–`50109` | 10 |
 | `50200` | `pagination` | `50200`–`50215` | 16 |
 | `50300` | `request` | `50300`–`50304` | 5 |
 | `50400` | `session` | `50400`–`50401` | 2 |
 | `50500` | `role` | `50500`–`50504` | 5 |
 | `50600` | `feature-flag` | `50600`–`50606` | 7 |
 | `50700` | `api-key` | `50700`–`50708` | 9 |
-| `50800` | `auth` | `50800`–`50814` | 15 |
+| `50800` | `auth` | `50800`–`50816` | 17 |
 | `50900` | `country` | `50900`–`50902` | 3 |
 | `51000` | `user` | `51000`–`51027` | 28 |
 | `51100` | `policy` | `51100`–`51103` | 4 |
@@ -30,8 +42,11 @@ The machine registry is the `*.status-code.enum.ts` files under `src/`. This pag
 | `51700` | `project` | `51700`–`51707` | 8 |
 | `51800` | `database` | `51800` | 1 |
 | `51900` | `response` | `51900`–`51902` | 3 |
+| `52000` | `activity-log` | `52000` | 1 |
+| `52100` | `analytic` | `52100` | 1 |
+| `52200` | `helper` | `52200`–`52202` | 3 |
 
-Next free hundred: `52000` (verify by scanning enums before claiming).
+Next free hundred: `52300`. The enum files are the source; this map follows them.
 
 ## `app`
 
@@ -45,8 +60,14 @@ Next free hundred: `52000` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `required` | `50100` | `required` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.required` | This field is required and cannot be left blank. |
 | `extensionInvalid` | `50101` | `extensionInvalid` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `file.error.extensionInvalid` | The file extension is invalid. |
-| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredParseFirst` | Please parse the data before proceeding. |
+| `requiredExtractFirst` | `50102` | `requiredExtractFirst` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.requiredExtractFirst` | Please extract the data before proceeding. |
 | `exceedMaxDataImport` | `50103` | `exceedMaxDataImport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataImport` | The number of data rows exceeds the maximum allowed for import. |
+| `exceedMaxDataExport` | `50104` | `exceedMaxDataExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxDataExport` | The number of data rows exceeds the maximum allowed for export. Please narrow the filter and try again. |
+| `exceedMaxSizeExport` | `50105` | `exceedMaxSizeExport` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxSizeExport` | The exported file exceeds the maximum allowed size. Please narrow the filter and try again. |
+| `exceedMaxSizeUpload` | `50106` | `exceedMaxSizeUpload` | 413 (`PAYLOAD_TOO_LARGE`) | `file.error.exceedMaxSizeUpload` | The uploaded file exceeds the maximum allowed size. |
+| `exceedMaxFiles` | `50107` | `exceedMaxFiles` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.exceedMaxFiles` | The number of uploaded files exceeds the maximum allowed. |
+| `fieldUnexpected` | `50108` | `fieldUnexpected` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.fieldUnexpected` | The uploaded file was sent to a field this endpoint does not accept. |
+| `multipartInvalid` | `50109` | `multipartInvalid` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.multipartInvalid` | The multipart request body is malformed. |
 
 ## `pagination`
 
@@ -75,16 +96,17 @@ Next free hundred: `52000` (verify by scanning enums before claiming).
 |---|---|---|---|---|---|
 | `validation` | `50300` | `validation` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` | There are validation errors. |
 | `timeout` | `50301` | `timeout` | 408 (`REQUEST_TIMEOUT`) | `http.clientError.requestTimeOut` | Request Timeout |
-| `paramRequired` | `50302` | `paramRequired` | 400 (`BAD_REQUEST`) | `request.error.paramRequired` | Required parameter is missing. |
-| `envForbidden` | `50303` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
-| `schemaMissing` | `50304` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
+| `envForbidden` | `50302` | `envForbidden` | 403 (`FORBIDDEN`) | `http.clientError.forbidden` | Forbidden |
+| `schemaMissing` | `50303` | `schemaMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.schemaMissing` | The request could not be validated. Please try again later. |
+| `contextMissing` | `50304` | `contextMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `request.error.contextMissing` | The request could not be processed. Please try again later. |
+
+`contextMissing` is thrown by `RequestContextMissingException` when a store parameter decorator or `@AuthJwtPayload()` finds no value that its guard or middleware writes, or when the named field of that value is absent. See [Security and Middleware](security-and-middleware.md#store-parameter-decorators).
 
 `50300` is the one code shared by more than one exception class, so it does not map to a single `httpStatus`, `messagePath`, or `module`:
 
 | exception | module | httpStatus | messagePath |
 |---|---|---|---|
 | `RequestValidationException` | `request` | 422 (`UNPROCESSABLE_ENTITY`) | `request.error.validation` |
-| `RequestIsMongoIdException` | `request` | 400 (`BAD_REQUEST`) | `request.error.isMongoId` |
 | `FileImportException` | `file` | 422 (`UNPROCESSABLE_ENTITY`) | `file.error.validationDto` |
 
 Read `module` together with `statusCode` when branching on this one: `FileImportException` reports `module: 'file'` while carrying a code from the `request` block.
@@ -151,6 +173,8 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `twoFactorAttemptTemporaryLock` | `50812` | `twoFactorAttemptTemporaryLock` | 429 (`TOO_MANY_REQUESTS`) | `auth.error.twoFactorAttemptTemporaryLock` | Too many incorrect two-factor attempts. Two-factor authentication is temporarily locked. Please try again after {retryAfterSeconds}s. |
 | `twoFactorMethodRequired` | `50813` | `twoFactorMethodRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorMethodRequired` | A two-factor authentication method is required. |
 | `twoFactorSetupRequired` | `50814` | `twoFactorSetupRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorSetupRequired` | Start two-factor setup before confirming the code. |
+| `twoFactorSecretUnavailable` | `50815` | `twoFactorSecretUnavailable` | 409 (`CONFLICT`) | `auth.error.twoFactorSecretUnavailable` | Authenticator codes can't be checked for this account. Sign in with a backup code, then set up two-factor authentication again using another backup code. |
+| `twoFactorBackupCodeRequired` | `50816` | `twoFactorBackupCodeRequired` | 400 (`BAD_REQUEST`) | `auth.error.twoFactorBackupCodeRequired` | Two-factor authentication is already enabled. Provide an unused backup code to set up a new authenticator. |
 
 ## `country`
 
@@ -290,9 +314,33 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 | `paginationShapeInvalid` | `51901` | `paginationShapeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationShapeInvalid` | The server produced a paginated response with an invalid shape. |
 | `paginationTypeInvalid` | `51902` | `paginationTypeInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `response.error.paginationTypeInvalid` | The server produced a paginated response with an unknown pagination type. |
 
+## `activity-log`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `contractInvalid` | `52000` | `contractInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `activityLog.error.contractInvalid` | Activity log contract validation failed |
+
+## `analytic`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `invalidDateRange` | `52100` | `invalidDateRange` | 400 (`BAD_REQUEST`) | `analytic.error.invalidDateRange` | The start date must be before the end date. |
+
+## `helper`
+
+| member | statusCode | statusCodeKey | httpStatus | messagePath | description |
+|---|---|---|---|---|---|
+| `decryptFailed` | `52200` | `decryptFailed` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.decryptFailed` | We couldn't read protected data for this request. |
+| `encryptionSecretInvalid` | `52201` | `encryptionSecretInvalid` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.encryptionSecretInvalid` | We couldn't process protected data for this request. |
+| `patternTokenMissing` | `52202` | `patternTokenMissing` | 500 (`INTERNAL_SERVER_ERROR`) | `helper.error.patternTokenMissing` | We couldn't build a value for this request. Missing pattern token: {token} |
+
+`HelperDecryptFailedException` covers a malformed, tampered, or wrong-key payload; `HelperEncryptionSecretInvalidException` covers a root secret that is not canonical base64url of 48 bytes. `AuthTwoFactorDomain` turns a `decryptFailed` on a stored TOTP secret into `twoFactorSecretUnavailable` (409), and `NotificationEmailProcessor` turns it into a BullMQ `UnrecoverableError`.
+
+`HelperPatternTokenMissingException` carries the offending token in `messageProperties.token`. `HelperStringService.fillPattern` raises it when a `{token}` in the pattern has no entry in the values it was given, which makes a configured pattern and its call site disagree an error rather than a key holding the literal `{token}`.
+
 ## Related documents
 
 - [Handling Error](handling-error.md)
-- [Message](message.md)
+- [Language Message](language-message.md)
 - [Response](response.md)
 - [Request Validation](request-validation.md)

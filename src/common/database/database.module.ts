@@ -1,7 +1,8 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { DatabaseClientToken } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
-import { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';

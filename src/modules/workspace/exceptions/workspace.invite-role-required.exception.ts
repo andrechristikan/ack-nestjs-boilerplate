@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
+/**
+ * Raised when an invite sets only one of project id and project role.
+ * @public
+ */
 export class WorkspaceInviteRoleRequiredException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode = EnumWorkspaceStatusCodeError.inviteRoleRequired;

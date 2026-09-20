@@ -1,15 +1,14 @@
-import {
-    Inject,
-    Injectable,
-    Logger,
-    OnModuleDestroy,
-    OnModuleInit,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseClientToken } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
-import { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import type {
+    IDatabaseClient,
+    IDatabaseTransactionClient,
+    IDatabaseTransactionOptions,
+} from '@common/database/interfaces/database.client.interface';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -44,6 +43,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
      */
     async onModuleDestroy(): Promise<void> {
         await this.disconnect();
+    }
+
+    /**
+     * Opens a Prisma interactive transaction and runs `fn` on the tx-bound client; omitted `options` use Prisma's defaults (`maxWait` 2 s, `timeout` 5 s).
+     */
+    async withTransaction<T>(
+        fn: (tx: IDatabaseTransactionClient) => Promise<T>,
+        options?: IDatabaseTransactionOptions
+    ): Promise<T> {
+        return this.client.$transaction(async tx => fn(tx), options);
     }
 
     /**

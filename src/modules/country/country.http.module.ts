@@ -1,4 +1,4 @@
-import { CountryModule } from '@modules/country/country.module';
+import { CountryDomainModule } from '@modules/country/country.domain.module';
 import { CountryHttpService } from '@modules/country/services/country.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +6,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [CountryHttpService],
     exports: [CountryHttpService],
-    imports: [CountryModule],
+    imports: [CountryDomainModule],
 })
 export class CountryHttpModule {}

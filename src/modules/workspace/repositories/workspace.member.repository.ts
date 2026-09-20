@@ -1,31 +1,29 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationCursorReturn,
     IPaginationIn,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IRequestLog } from '@common/request/interfaces/request.interface';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
-    EnumActivityLogAction,
     EnumWorkspaceMemberRole,
     Prisma,
-    WorkspaceMember,
-} from '@generated/prisma-client';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+} from '@generated/prisma-client/client';
+import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceMemberRepository {
+export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly activityLogUtil: ActivityLogUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     private buildWorkspaceScopedWhere(
@@ -69,9 +67,7 @@ export class WorkspaceMemberRepository {
             where: {
                 userId,
                 role: EnumWorkspaceMemberRole.owner,
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }
@@ -109,13 +105,19 @@ export class WorkspaceMemberRepository {
             ...others
         }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<IWorkspaceMember>> {
+    ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.offset<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,
@@ -132,12 +134,18 @@ export class WorkspaceMemberRepository {
         }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
         role?: Record<string, IPaginationIn>
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            where,
+            role
+        );
+
         return this.paginationService.cursor<
             IWorkspaceMember,
             Prisma.WorkspaceMemberWhereInput
         >(this.databaseService.client.workspaceMember, {
             ...others,
-            where: this.buildWorkspaceScopedWhere(workspaceId, where, role),
+            where: scopedWhere,
             include: {
                 user: {
                     select: UserRefSelect,
@@ -146,86 +154,75 @@ export class WorkspaceMemberRepository {
         });
     }
 
-    async updateRole(
+    async createOwnerInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
-        targetMemberId: string,
-        newRole: EnumWorkspaceMemberRole,
-        requestLog: IRequestLog
-    ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.workspaceMember.update({
-                where: { id: targetMemberId },
-                data: {
-                    role: newRole,
-                    updatedBy: actorId,
-                },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.workspaceMemberRoleUpdated,
-                    requestLog
-                )
-            ),
-        ]);
+        userId: string
+    ): Promise<WorkspaceMember> {
+        return tx.workspaceMember.create({
+            data: {
+                workspaceId,
+                userId,
+                role: EnumWorkspaceMemberRole.owner,
+                createdBy: userId,
+                updatedBy: userId,
+            },
+        });
     }
 
-    async removeMember(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorId: string,
+        userId: string,
+        role: EnumWorkspaceMemberRole,
+        actorId: string
+    ): Promise<WorkspaceMember> {
+        return tx.workspaceMember.create({
+            data: {
+                workspaceId,
+                userId,
+                role,
+                createdBy: actorId,
+                updatedBy: actorId,
+            },
+        });
+    }
+
+    async updateRole(
         targetMemberId: string,
-        action:
-            | typeof EnumActivityLogAction.workspaceMemberRemoved
-            | typeof EnumActivityLogAction.workspaceMemberLeft,
-        requestLog: IRequestLog
+        newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.workspaceMember.delete({
-                where: { id: targetMemberId },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    action,
-                    requestLog
-                )
-            ),
-        ]);
+        await this.databaseService.client.workspaceMember.update({
+            where: { id: targetMemberId },
+            data: {
+                role: newRole,
+            },
+        });
+    }
+
+    async removeMember(targetMemberId: string): Promise<void> {
+        await this.databaseService.client.workspaceMember.delete({
+            where: { id: targetMemberId },
+        });
     }
 
     async transferOwnership(
-        workspaceId: string,
         fromMemberId: string,
-        toMemberId: string,
-        actorId: string,
-        requestLog: IRequestLog
+        toMemberId: string
     ): Promise<void> {
-        await this.databaseService.client.$transaction([
-            this.databaseService.client.workspaceMember.update({
+        await this.databaseService.withTransaction(async tx => {
+            await tx.workspaceMember.update({
                 where: { id: fromMemberId },
                 data: {
                     role: EnumWorkspaceMemberRole.admin,
-                    updatedBy: actorId,
                 },
-            }),
-            this.databaseService.client.workspaceMember.update({
+            });
+            await tx.workspaceMember.update({
                 where: { id: toMemberId },
                 data: {
                     role: EnumWorkspaceMemberRole.owner,
-                    updatedBy: actorId,
                 },
-            }),
-            this.databaseService.client.activityLog.create(
-                this.activityLogUtil.buildCreateArgs(
-                    actorId,
-                    workspaceId,
-                    EnumActivityLogAction.workspaceOwnershipTransferred,
-                    requestLog
-                )
-            ),
-        ]);
+            });
+        });
     }
 }

@@ -2,6 +2,10 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
+/**
+ * Raised when the requested project does not exist.
+ * @public
+ */
 export class ProjectNotFoundException extends AppBaseException {
     readonly module = 'project';
     readonly statusCode = EnumProjectStatusCodeError.notFound;

@@ -5,7 +5,10 @@ import {
     EnumHealthStatus,
 } from '@modules/health/enums/health.enum';
 
-/** Response shape of the instance health check. */
+/**
+ * Response shape of the instance health check.
+ * @public
+ */
 export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
     status: HealthResponseSchema.shape.status.meta({
         description: 'Overall health status of the checked instance indicators',
@@ -55,6 +58,10 @@ export const HealthInstanceResponseSchema = HealthResponseSchema.extend({
     }),
 });
 
+/**
+ * Instance health check result.
+ * @public
+ */
 export type HealthInstanceResponseDto = z.infer<
     typeof HealthInstanceResponseSchema
 >;

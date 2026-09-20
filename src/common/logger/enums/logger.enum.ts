@@ -1,3 +1,7 @@
+/**
+ * Pino log levels, also the method names on `Sentry.logger`.
+ * @public
+ */
 export enum EnumLoggerLevel {
     fatal = 'fatal',
     error = 'error',
@@ -7,6 +11,10 @@ export enum EnumLoggerLevel {
     trace = 'trace',
 }
 
+/**
+ * Severity scale written to the pino `severity` field.
+ * @public
+ */
 export enum EnumLoggerSeverity {
     critical = 'critical',
     error = 'error',

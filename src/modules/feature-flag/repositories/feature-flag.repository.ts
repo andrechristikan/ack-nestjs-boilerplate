@@ -1,18 +1,19 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import {
+import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { FeatureFlag, FeatureFlagUser, Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @Injectable()
-export class FeatureFlagRepository {
+export class FeatureFlagRepository implements IFeatureFlagRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService
@@ -20,7 +21,7 @@ export class FeatureFlagRepository {
 
     async findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
@@ -29,21 +30,18 @@ export class FeatureFlagRepository {
 
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
-    ): Promise<IResponsePagingReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.cursor<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
         >(this.databaseService.client.featureFlag, pagination);
     }
 
-    async findOneByKey(
-        key: string
-    ): Promise<IFeatureFlagWithTargetUsers | null> {
+    async findOneByKey(key: string): Promise<FeatureFlag | null> {
         return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
             },
-            include: { targetUsers: true },
         });
     }
 
@@ -57,7 +55,11 @@ export class FeatureFlagRepository {
 
     async updateStatus(
         id: string,
-        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
+        {
+            isEnable,
+            rolloutPercent,
+            targetUserIds,
+        }: FeatureFlagUpdateStatusRequestDto
     ): Promise<FeatureFlag> {
         return this.databaseService.client.featureFlag.update({
             where: {
@@ -66,6 +68,7 @@ export class FeatureFlagRepository {
             data: {
                 isEnable,
                 rolloutPercent,
+                targetUserIds,
             },
         });
     }
@@ -80,37 +83,6 @@ export class FeatureFlagRepository {
             },
             data: {
                 metadata,
-            },
-        });
-    }
-
-    async addTargetUser(
-        featureFlagId: string,
-        userId: string
-    ): Promise<FeatureFlagUser> {
-        return this.databaseService.client.featureFlagUser.upsert({
-            where: {
-                featureFlagId_userId: {
-                    featureFlagId,
-                    userId,
-                },
-            },
-            create: {
-                featureFlagId,
-                userId,
-            },
-            update: {},
-        });
-    }
-
-    async removeTargetUser(
-        featureFlagId: string,
-        userId: string
-    ): Promise<Prisma.BatchPayload> {
-        return this.databaseService.client.featureFlagUser.deleteMany({
-            where: {
-                featureFlagId,
-                userId,
             },
         });
     }

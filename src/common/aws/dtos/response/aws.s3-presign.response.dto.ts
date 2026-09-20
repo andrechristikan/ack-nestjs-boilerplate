@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 
 /**
  * Response shape for an AWS S3 presigned URL.
+ * @public
  */
 export const AwsS3PresignResponseSchema = z.object({
     key: z.string().meta({
@@ -27,6 +28,10 @@ export const AwsS3PresignResponseSchema = z.object({
     }),
 });
 
+/**
+ * Presigned S3 upload URL with its object details.
+ * @public
+ */
 export type AwsS3PresignResponseDto = z.infer<
     typeof AwsS3PresignResponseSchema
 >;

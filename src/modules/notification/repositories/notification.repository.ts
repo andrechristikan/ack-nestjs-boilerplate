@@ -1,23 +1,24 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
-import { IResponsePagingReturn } from '@common/response/interfaces/response.interface';
-import { NotificationKindRules } from '@modules/notification/constants/notification.notify.constant';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import {
+import type {
     INotificationCreate,
     INotificationCreateEntry,
 } from '@modules/notification/interfaces/notification.interface';
+import type { INotificationRepository } from '@modules/notification/interfaces/notification.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
     EnumNotificationChannel,
-    Notification,
     Prisma,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+import type { Notification } from '@generated/prisma-client/client';
 
 @Injectable()
-export class NotificationRepository {
+export class NotificationRepository implements INotificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
@@ -36,7 +37,7 @@ export class NotificationRepository {
             body,
             pendingChannels,
             deliveredChannels,
-        } = NotificationKindRules[kind];
+        } = NotificationKindContract[kind];
 
         return {
             id,
@@ -69,7 +70,7 @@ export class NotificationRepository {
             where,
             ...params
         }: IPaginationQueryCursorParams<Prisma.NotificationWhereInput>
-    ): Promise<IResponsePagingReturn<Notification>> {
+    ): Promise<IResponsePaginationReturn<Notification>> {
         return this.paginationService.cursor<
             Notification,
             Prisma.NotificationWhereInput
@@ -82,16 +83,16 @@ export class NotificationRepository {
         });
     }
 
-    async existById(
+    async findIsReadById(
         userId: string,
         notificationId: string
-    ): Promise<{ id: string; isRead: boolean } | null> {
+    ): Promise<{ isRead: boolean } | null> {
         return this.databaseService.client.notification.findFirst({
             where: {
                 id: notificationId,
                 userId,
             },
-            select: { id: true, isRead: true },
+            select: { isRead: true },
         });
     }
 
@@ -101,8 +102,10 @@ export class NotificationRepository {
     ): Promise<Notification> {
         const today = this.helperDateService.create();
 
+        const createData = this.buildCreateData(kind, payload, today);
+
         return this.databaseService.client.notification.create({
-            data: this.buildCreateData(kind, payload, today),
+            data: createData,
         });
     }
 
@@ -111,19 +114,26 @@ export class NotificationRepository {
     ): Promise<Notification[]> {
         const today = this.helperDateService.create();
 
-        return this.databaseService.client.$transaction(
-            entries.map(({ kind, payload }) =>
-                this.databaseService.client.notification.create({
-                    data: this.buildCreateData(kind, payload, today),
-                })
-            )
-        );
+        return this.databaseService.withTransaction(async tx => {
+            const created: Notification[] = [];
+            for (const { kind, payload } of entries) {
+                const createData = this.buildCreateData(kind, payload, today);
+                const row = await tx.notification.create({
+                    data: createData,
+                });
+                created.push(row);
+            }
+
+            return created;
+        });
     }
 
     async markAsRead(
         userId: string,
         notificationId: string
     ): Promise<Notification> {
+        const readAt = this.helperDateService.create();
+
         return this.databaseService.client.notification.update({
             where: {
                 id: notificationId,
@@ -132,12 +142,14 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperDateService.create(),
+                readAt,
             },
         });
     }
 
     async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
+        const readAt = this.helperDateService.create();
+
         return this.databaseService.client.notification.updateMany({
             where: {
                 userId,
@@ -145,7 +157,7 @@ export class NotificationRepository {
             },
             data: {
                 isRead: true,
-                readAt: this.helperDateService.create(),
+                readAt,
             },
         });
     }

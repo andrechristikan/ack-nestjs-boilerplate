@@ -1,0 +1,42 @@
+import { AnalyticForgotPasswordAbuseListRequestSchema } from '@modules/analytic/dtos/request/analytic-forgot-password-abuse-list.request.dto';
+
+describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
+    it('parses page, perPage, orderBy, and windowMs', () => {
+        const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({
+            page: 1,
+            perPage: 20,
+            orderBy: 'createdAt:desc',
+            windowMs: 3600000,
+        });
+
+        expect(result).toEqual({
+            page: 1,
+            perPage: 20,
+            orderBy: 'createdAt:desc',
+            windowMs: 3600000,
+        });
+    });
+
+    it('parses an empty object', () => {
+        const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({});
+
+        expect(result).toEqual({});
+    });
+
+    it('coerces a numeric string windowMs into an integer', () => {
+        const result = AnalyticForgotPasswordAbuseListRequestSchema.parse({
+            windowMs: '600000',
+        });
+
+        expect(result).toEqual({ windowMs: 600000 });
+    });
+
+    it('rejects an undeclared key', () => {
+        expect(() =>
+            AnalyticForgotPasswordAbuseListRequestSchema.parse({
+                page: 1,
+                extra: true,
+            })
+        ).toThrow();
+    });
+});

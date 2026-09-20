@@ -1,31 +1,64 @@
-import {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { ITermPolicyHttpService } from '@modules/term-policy/interfaces/term-policy.http.service.interface';
-import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
+import { Prisma } from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
+import {
+    TermPolicyDefaultAvailableOrderBy,
+    TermPolicyDefaultStatus,
+    TermPolicyDefaultType,
+} from '@modules/term-policy/constants/term-policy.list.constant';
+import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
+import type { TermPolicyPublicListRequestDto } from '@modules/term-policy/dtos/request/term-policy.public-list.request.dto';
+import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
+import { TermPolicyDomain } from '@modules/term-policy/domains/term-policy.domain';
 import { Injectable } from '@nestjs/common';
-import { Prisma, TermPolicy } from '@generated/prisma-client';
 
 @Injectable()
-export class TermPolicyHttpService implements ITermPolicyHttpService {
-    constructor(private readonly termPolicyService: TermPolicyService) {}
+export class TermPolicyHttpService {
+    constructor(
+        private readonly termPolicyDomain: TermPolicyDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
-        const { data, ...others } = await this.termPolicyService.getListByAdmin(
-            pagination,
-            type,
-            status
+        query: TermPolicyAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
+                query,
+                {
+                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+                }
+            );
+        const type = this.paginationQueryUtil.inEnum(
+            Prisma.TermPolicyScalarFieldEnum.type,
+            query.type,
+            TermPolicyDefaultType
+        );
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.TermPolicyScalarFieldEnum.status,
+            query.status,
+            TermPolicyDefaultStatus
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(type?.storeFilter ?? {}),
+                ...(status?.storeFilter ?? {}),
+            },
+        });
+
+        const { data, ...others } = await this.termPolicyDomain.getListByAdmin(
+            params,
+            type?.where,
+            status?.where
         );
         return {
             data,
@@ -34,11 +67,30 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
     }
 
     async getListPublished(
-        pagination: IPaginationQueryCursorParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<TermPolicy>> {
+        query: TermPolicyPublicListRequestDto
+    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.TermPolicyWhereInput>(
+                query,
+                {
+                    availableOrderBy: TermPolicyDefaultAvailableOrderBy,
+                }
+            );
+        const type = this.paginationQueryUtil.inEnum(
+            Prisma.TermPolicyScalarFieldEnum.type,
+            query.type,
+            TermPolicyDefaultType
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(type?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } =
-            await this.termPolicyService.getListPublished(pagination, type);
+            await this.termPolicyDomain.getListPublished(params, type?.where);
         return {
             data,
             ...others,
@@ -46,13 +98,9 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
     }
 
     async createByAdmin(
-        body: TermPolicyCreateRequestDto,
-        createdBy: string
+        body: TermPolicyCreateRequestDto
     ): Promise<IResponseReturn<TermPolicy>> {
-        const created = await this.termPolicyService.createByAdmin(
-            body,
-            createdBy
-        );
+        const created = await this.termPolicyDomain.createByAdmin(body);
 
         return { data: created };
     }
@@ -60,8 +108,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
-        const deleted =
-            await this.termPolicyService.deleteByAdmin(termPolicyId);
+        const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
 
         return { data: deleted };
     }
@@ -70,7 +117,7 @@ export class TermPolicyHttpService implements ITermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.termPolicyService.publishByAdmin(termPolicyId, updatedBy);
+        await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 
         return {};
     }

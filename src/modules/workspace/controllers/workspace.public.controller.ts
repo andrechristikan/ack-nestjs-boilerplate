@@ -1,19 +1,14 @@
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { Workspace } from '@generated/prisma-client';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import {
-    WorkspacePublicInvitePreviewDoc,
-    WorkspacePublicPreviewDoc,
-} from '@modules/workspace/docs/workspace.public.doc';
-import {
-    WorkspaceInvitePreviewResponseDto,
-    WorkspaceInvitePreviewResponseSchema,
-} from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
 import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
 import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
@@ -31,7 +26,10 @@ export class WorkspacePublicController {
         private readonly workspaceInviteHttpService: WorkspaceInviteHttpService
     ) {}
 
-    @WorkspacePublicInvitePreviewDoc()
+    @Doc({
+        summary:
+            'safe, unauthenticated preview of a workspace invite (workspace name, inviter, offered role); never the token or internal ids',
+    })
     @Response('workspace.invite.preview', {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
@@ -40,13 +38,16 @@ export class WorkspacePublicController {
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/invite/:inviteToken/preview')
     async invitePreview(
-        @Param('inviteToken', RequestRequiredPipe)
+        @Param('inviteToken', { schema: RequestRequiredStringSchema })
         inviteToken: string
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
         return this.workspaceInviteHttpService.previewInvite(inviteToken);
     }
 
-    @WorkspacePublicPreviewDoc()
+    @Doc({
+        summary:
+            'public workspace profile by slug, so a non-member can obtain the workspace id a join request needs',
+    })
     @Response('workspace.preview', {
         schema: WorkspacePreviewResponseSchema,
     })
@@ -55,7 +56,7 @@ export class WorkspacePublicController {
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
     @Get('/preview/:slug')
     async preview(
-        @Param('slug', RequestRequiredPipe)
+        @Param('slug', { schema: RequestRequiredStringSchema })
         slug: string
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceHttpService.previewWorkspace(slug);

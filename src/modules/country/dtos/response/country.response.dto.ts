@@ -4,6 +4,7 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Base country shape: the stored country row.
+ * @public
  */
 export const CountryResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -27,7 +28,7 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
             description: 'Country code, Alpha 3 code version',
             example: faker.location.countryCode('alpha-3'),
         }),
-    phoneCode: z.array(z.string()).meta({
+    phoneCodes: z.array(z.string()).meta({
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
     }),
@@ -41,4 +42,8 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored country.
+ * @public
+ */
 export type CountryResponseDto = z.infer<typeof CountryResponseSchema>;

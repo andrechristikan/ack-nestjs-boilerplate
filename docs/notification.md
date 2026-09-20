@@ -1,23 +1,24 @@
 # Notification Documentation
 
-This documentation explains the features and usage of **Notification Module**: Located at `src/modules/notification`
+Notification lives in `src/modules/notification`.
 
 ## Overview
 
-The notification module provides a comprehensive multi-channel notification system backed by three dedicated BullMQ queues: one for orchestration, one for email delivery, and one for push delivery.
+Three BullMQ queues: orchestration, email, and push.
 
 Key features:
 - **Multi-Channel Delivery**: `email`, `push`, `inApp`, and `silent` channels
 - **Queue-Based Processing**: Three separate BullMQ queues for orchestration, email, and push, each fed by its own `@Injectable()` queue class in `src/modules/notification/queues/`
 - **User Preference Control**: Per type+channel opt-in/out settings for each user
-- **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES by the four template services, one per domain: `NotificationTemplateAccountService`, `NotificationTemplateSecurityService`, `NotificationTemplateTermPolicyService`, `NotificationTemplateWorkspaceService`
+- **AWS SES Email Templates**: Handlebars `.hbs` templates synced to SES; see [Email Documentation][ref-doc-email]
 - **Firebase FCM Push**: Multicast delivery with batch chunking, rate limiting, and stale token cleanup
 - **Delivery Tracking**: `silent` and `inApp` deliveries are pre-marked at creation time, `push` deliveries record `processedAt`, `sentAt`, and `failureTokens` as the processor runs, and `email` deliveries carry no timestamps at all
 
 ## Related Documents
 
 - [Authentication][ref-doc-authentication] - Session management and push token linking
-- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES setup and no-op mode
+- [Email][ref-doc-email] - SES templates, sync command, and send mapping
+- [Third-Party Integration][ref-doc-third-party] - Firebase and AWS SES credentials / no-op mode
 - [Queue][ref-doc-queue] - Background job processing
 - [Configuration][ref-doc-configuration] - App configuration
 - [Environment][ref-doc-environment] - Environment variables
@@ -32,12 +33,12 @@ Key features:
     - [Orchestration Queue](#orchestration-queue)
     - [Email Queue](#email-queue)
     - [Push Queue](#push-queue)
+    - [Payload Encryption](#payload-encryption)
 - [Push Notifications](#push-notifications)
     - [Push Token Management](#push-token-management)
     - [Token Cleanup Strategy](#token-cleanup-strategy)
     - [FCM Rate Limiting](#fcm-rate-limiting)
 - [Email Notifications](#email-notifications)
-    - [Template System](#template-system)
 - [Delivery Tracking](#delivery-tracking)
 - [User Notification Settings](#user-notification-settings)
 - [Shared HTTP Endpoints](#shared-http-endpoints)
@@ -68,12 +69,19 @@ Each notification record carries one or more `NotificationDelivery` rows, one pe
 
 | Channel | Delivery | `processedAt` / `sentAt` |
 |---------|----------|--------------------------|
-| `email` | Via AWS SES (queued) | Never set. The email channel services send through SES and do not touch the delivery record |
-| `push` | Via Firebase FCM (queued) | Set by the push channel services: `processedAt` before the send, `sentAt` after it |
+| `email` | Via AWS SES (queued) | Never set. The email channel domains send through SES and do not touch the delivery record |
+| `push` | Via Firebase FCM (queued) | Set by the push channel domains: `processedAt` before the send, `sentAt` after it |
 | `inApp` | In-application UI | Pre-filled at notification creation time |
 | `silent` | No external delivery; record-only | Pre-filled at notification creation time |
 
-A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindRules` (`src/modules/notification/constants/notification.notify.constant.ts`), one entry per `EnumNotificationKind`, holding the type, the priority, the i18n title and body keys, and two channel lists: `pendingChannels` and `deliveredChannels`. `NotificationRepository` reads that entry and creates the delivery rows from it.
+A notification can target multiple channels simultaneously. Which channels an event carries is declared in `NotificationKindContract` (`src/modules/notification/contracts/notification.kind.contract.ts`), one entry per `EnumNotificationKind`, holding:
+
+- the type
+- the priority
+- the i18n title and body keys
+- two channel lists: `pendingChannels` and `deliveredChannels`
+
+`NotificationRepository` reads that entry and creates the delivery rows from it.
 
 > **`inApp` and `silent` are considered immediately "delivered"**: they sit in `deliveredChannels`, so their `processedAt` and `sentAt` are both stamped at creation time in the repository and no separate queue job is needed for them. `email` and `push` sit in `pendingChannels` and go through the async queue.
 
@@ -91,13 +99,22 @@ NotificationPushQueue   → EnumQueue.notificationPush   → NotificationPushPro
 
 **Queue:** `EnumQueue.notification` | **Processor:** `NotificationProcessor` | **Service:** `NotificationProcessorService`
 
-Handles the main event orchestration. `NotificationProcessor` dispatches a consumed job by name to `NotificationProcessorService`, which unwraps the job payload and hands it to the domain service that owns the event: `NotificationAccountService` (welcome, verification), `NotificationSecurityService` (passwords, two-factor, new device login), `NotificationTermPolicyService` (policy publication and acceptance), or `NotificationWorkspaceService` (invites and join requests). That domain service then:
+Handles the main event orchestration. `NotificationProcessor` dispatches a consumed job by name to `NotificationProcessorService`, which unwraps the job payload and hands it to the domain that owns the event:
 
-1. Fetches the target user, and for a push-capable event the user's device tokens alongside it. A user that no longer resolves as active ends the job with a skip message rather than an error, so the job is not retried.
+| Domain | Events |
+|---|---|
+| `NotificationAccountDomain` | welcome, verification |
+| `NotificationSecurityDomain` | passwords, two-factor, new device login |
+| `NotificationTermPolicyDomain` | policy publication and acceptance |
+| `NotificationWorkspaceDomain` | invites and join requests |
+
+That domain then:
+
+1. Fetches the target user, and for a push-capable event the user's device tokens alongside it. A user that does not resolve as active ends the job with a skip message rather than an error, so the job is not retried.
 2. Mints the `notificationId` up front with `DatabaseUtil.createId()`.
 3. Creates the `Notification` record (with its delivery rows) **and** dispatches the `notificationEmail` / `notificationPush` jobs in one `Promise.allSettled` batch, all carrying that pre-minted id.
 
-Step 3 is deliberately not sequential: the id is generated before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user actually has at least one device token.
+Step 3 runs both sides in one batch: the id exists before either side runs, so a queued delivery job references a record the same batch is writing. `allSettled` also means a failed dispatch does not undo the notification record, and one channel failing does not stop the other. A push job is only added when the user has at least one device token.
 
 Jobs reach this queue through `NotificationQueue`, which deduplicates on the process name plus whatever identifies that event: the target user for the account and security events, the workspace and the target user for a join request, the invite `reference` for an invite, and the policy type and version for a publication. The TTL is `notification.dedupTtlInMs` (1 second), so two different events for the same user never collapse into one.
 
@@ -131,9 +148,31 @@ Jobs reach this queue through `NotificationQueue`, which deduplicates on the pro
 
 Rate-limited to match the AWS SES sending quota (`AwsSESRateLimitPerDuration` per `AwsSESRateLimitDurationInMs`).
 
-`NotificationEmailProcessorService` routes each job to the email channel service that owns it: `NotificationEmailAccountService`, `NotificationEmailSecurityService`, `NotificationEmailTermPolicyService`, or `NotificationEmailWorkspaceService`. That service calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event, with `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) merged automatically.
+`NotificationEmailProcessorService` routes each job to the email channel domain that owns it:
 
-Jobs reach this queue through `NotificationEmailQueue`, deduplicated through BullMQ's `deduplication` option on the same identifiers the orchestration queue uses: the target user for the account and security events, the invite `reference` for the two invite emails, the workspace and the target user for a join request, and the policy type and version for a publication. Most templates use `notification.dedupTtlInMs` (1 second); a template carrying a time-limited link uses the config value matching that link's expiry or resend window instead: `verification.expiredInMs` for `verificationEmail`, `verification.resendInMs` for `verifiedMobileNumber`, and `forgotPassword.resendInMs` for `forgotPassword`.
+- `NotificationEmailAccountDomain`
+- `NotificationEmailSecurityDomain`
+- `NotificationEmailTermPolicyDomain`
+- `NotificationEmailWorkspaceDomain`
+
+That domain calls `AwsSESService.send()` or `AwsSESService.sendBulk()` using the named SES template for that event, with `defaultTemplateData` (`homeName`, `supportEmail`, `homeUrl`) merged automatically.
+
+Jobs reach this queue through `NotificationEmailQueue`, deduplicated through BullMQ's `deduplication` option on the same identifiers the orchestration queue uses:
+
+| Identifier | Processes |
+|---|---|
+| target user | account and security events |
+| invite `reference` | the two invite emails |
+| workspace and target user | a join request |
+| policy type and version | a publication |
+
+Most templates use `notification.dedupTtlInMs` (1 second). A template carrying a time-limited link uses the config value matching that link's expiry or resend window instead:
+
+| Process | Config |
+|---|---|
+| `verificationEmail` | `verification.expiredInMs` |
+| `verifiedMobileNumber` | `verification.resendInMs` |
+| `forgotPassword` | `forgotPassword.resendInMs` |
 
 ### Push Queue
 
@@ -141,7 +180,11 @@ Jobs reach this queue through `NotificationEmailQueue`, deduplicated through Bul
 
 Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLimitDurationInMs` (60 seconds), keeping safely under the FCM 600k/min ceiling.
 
-`NotificationPushProcessorService` routes each job to the push channel service that owns it: `NotificationPushSecurityService` for the password, two-factor and new-device messages, `NotificationPushWorkspaceService` for the invite and join-request messages, and `NotificationPushMaintenanceService` for the two token-cleanup jobs.
+`NotificationPushProcessorService` routes each job to the push channel domain that owns it:
+
+- `NotificationPushSecurityDomain` for the password, two-factor and new-device messages
+- `NotificationPushWorkspaceDomain` for the invite and join-request messages
+- `NotificationPushMaintenanceDomain` for the two token-cleanup jobs
 
 **Supported push processes (`EnumNotificationPushProcess`):**
 
@@ -160,29 +203,45 @@ Rate-limited to `FirebaseMaxRateLimitPerDuration` (500,000) per `FirebaseRateLim
 
 On `onModuleInit`, `NotificationPushProcessorService` calls `NotificationPushQueue.sendCleanupStaleTokens()`, which registers a recurring `cleanupStaleTokens` job via BullMQ `upsertJobScheduler` (cron `0 0 * * *` from `notification.push.cleanupStaleTokensCron`, in the app's configured timezone). The scheduler carries no `immediately` option, so the first sweep waits for the first cron tick.
 
+### Payload Encryption
+
+A job payload sits in Redis until a worker consumes it, so the queue classes seal every secret-bearing field before `add()`, and only the email channel domain that sends the message opens it. Each field is sealed with `HelperEncryptionService.aes256Encrypt` under `app.encryptionSecretKey` (`APP_ENCRYPTION_SECRET_KEY`), the purpose `NotificationPayloadEncryptionPurpose` (`notification.payload`), and the recipient as authenticated data, so a sealed value copied into another recipient's job fails to open.
+
+| Sealed field | Plain input | Processes | Authenticated data |
+|---|---|---|---|
+| `encryptedPassword` | `password` | `welcomeByAdmin`, `temporaryPasswordByAdmin` | recipient `userId` |
+| `encryptedLink` | `link` | `welcome`, `verificationEmail`, `forgotPassword` | recipient `userId` |
+| `encryptedInviteAcceptLink` | `inviteAcceptLink` | `workspaceInvite` | invited `userId` |
+| `encryptedInviteAcceptLink` | `inviteAcceptLink` | `workspaceInviteUnregistered` (email queue only) | invite `reference` |
+| `encryptedJoinRequestReviewLink` | `joinRequestReviewLink` | `workspaceJoinRequest` | reviewer `userId` |
+
+`NotificationQueue` seals the fields of the orchestration jobs; the orchestration domains pass the sealed value through to the email job unopened. `NotificationEmailQueue` seals the invite link of `workspaceInviteUnregistered`, which skips the orchestration queue. Push jobs carry no secret: `NotificationPushQueue` builds each push payload from an explicit field list (`INotification*PushPayload`) that leaves out passwords and links.
+
+A payload that fails to open (a rotated key, a tampered value, the wrong recipient) raises `HelperDecryptFailedException` (`52200`). Inside `handle`, `NotificationEmailProcessor` maps that to a BullMQ `UnrecoverableError`, so the job fails at once without retries, and `QueueProcessorBase.onFailed` reports it to Sentry. Every other email failure is rethrown as it is and retried.
+
 ## Push Notifications
 
 ### Push Token Management
 
-Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. The orchestration-side domain service reads them through `DeviceOwnershipRepository.findTokensByUserId()` and places them on the push job payload as `notificationTokens`; the push channel service sends to the tokens it receives on the job.
+Push tokens (FCM device tokens) are part of the **Device module** (`src/modules/device`), not stored in the notification module directly. The orchestration-side domains read them through `DeviceDomain.getOwnershipsWithNotificationToken()`, which calls `DeviceOwnershipRepository.findTokensByUserId()`, and place them on the push job payload as `notificationTokens`; the push channel domain sends to the tokens it receives on the job. The lookup returns only device ownerships that are not revoked and whose device holds a token, so a revoked ownership never receives a push.
 
 For push token registration, revocation, and session-linking details, see the [Device documentation][ref-doc-device].
 
 ### Token Cleanup Strategy
 
-After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens` — tokens that FCM identified as invalid (codes in `FirebaseInvalidTokenCodes`). These are:
+After each multicast send, `FirebaseService.sendMulticast()` returns `failureTokens`; tokens that FCM identified as invalid (codes in `FirebaseInvalidTokenCodes`). These are:
 
 1. Stored on the delivery record via `NotificationRepository.updateSentAt()` (`failureTokens` field)
-2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceService.processCleanupTokens()`
+2. Queued as a `cleanupTokens` job in `EnumQueue.notificationPush` through `NotificationPushQueue.sendCleanupTokens()`, deduplicated per user for `notification.push.cleanupDedupTtlInMs` (1 hour), and handled by `NotificationPushMaintenanceDomain.processCleanupTokens()`. It calls `DeviceDomain.cleanupNotificationTokens()`, which resolves the user's devices holding those tokens through `DeviceOwnershipRepository.findDeviceIdsByUserAndTokens()` and clears `notificationToken` and `notificationProvider` on them through `DeviceRepository.clearTokens()`
 
-Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceService` reads that config value and passes it to `DeviceOwnershipRepository.cleanupStaleTokens(thresholdInMs)`, which clears `notificationToken` and `notificationProvider` on every device past the threshold.
+Stale tokens, those whose device has no `lastActiveAt` activity within `notification.push.staleTokenThresholdInMs` (30 days), are pruned daily by the recurring `cleanupStaleTokens` job registered at startup. `NotificationPushMaintenanceDomain` reads that config value and passes it to `DeviceDomain.cleanupStaleNotificationTokens(thresholdInMs)`, which calls `DeviceRepository.clearStaleTokens(thresholdInMs)`. That write clears `notificationToken` and `notificationProvider` on every device past the threshold.
 
 ```mermaid
 graph TD
     A[FCM Multicast Send] --> B{Any failureTokens?}
     B -->|Yes| C[Store failureTokens <br/> on delivery record]
     C --> D[Enqueue cleanupTokens job]
-    D --> E[DeviceOwnershipRepository removes <br/> invalid tokens]
+    D --> E[DeviceRepository clears <br/> invalid tokens]
     B -->|No| F[Record sentAt only]
     
     G[Module Init] --> H[Register daily <br/> cleanupStaleTokens job]
@@ -204,39 +263,13 @@ The push processor is configured with a BullMQ rate limiter:
 
 `FirebaseService.sendMulticast()` also enforces a per-call chunk size of at most `FirebaseMaxSendPushBatchSize` (500) tokens per FCM `sendEachForMulticast` call, with chunks processed via `Promise.allSettled`.
 
-For Firebase configuration and no-op mode (disabled when credentials are missing), see [Third-Party Integration — Firebase][ref-doc-third-party].
+For Firebase configuration and no-op mode (disabled when credentials are missing), see [Third-Party Integration; Firebase][ref-doc-third-party].
 
 ## Email Notifications
 
-### Template System
+Handlebars templates, SES sync (`templateEmailNotification`), and how channel domains call `AwsSESService`: [Email Documentation][ref-doc-email].
 
-Email templates are Handlebars (`.hbs`) files located in `src/modules/notification/templates/`. They are **uploaded to AWS SES** as named templates by four template services split by domain, each providing `emailImport*`, `emailGet*`, and `emailDelete*` per template it owns: `NotificationTemplateAccountService` (welcome and verification), `NotificationTemplateSecurityService` (passwords, two-factor, new device login), `NotificationTemplateTermPolicyService` (policy publication), and `NotificationTemplateWorkspaceService` (invite and join request).
-
-Available templates (one per `EnumNotificationProcess` that uses email):
-
-| Template File | Process |
-|---------------|---------|
-| `notification.welcome.template.hbs` | `welcome` |
-| `notification.welcome-social.template.hbs` | `welcomeSocial` |
-| `notification.welcome-by-admin.template.hbs` | `welcomeByAdmin` |
-| `notification.temporary-password-by-admin.template.hbs` | `temporaryPasswordByAdmin` |
-| `notification.change-password.template.hbs` | `changePassword` |
-| `notification.forgot-password.template.hbs` | `forgotPassword` |
-| `notification.new-device-login.template.hbs` | `newDeviceLogin` |
-| `notification.reset-password.template.hbs` | `resetPassword` |
-| `notification.verification-email.template.hbs` | `verificationEmail` |
-| `notification.verified-email.template.hbs` | `verifiedEmail` |
-| `notification.verified-mobile-number.template.hbs` | `verifiedMobileNumber` |
-| `notification.reset-two-factor-by-admin.template.hbs` | `resetTwoFactorByAdmin` |
-| `notification.publish-term-policy.template.hbs` | `publishTermPolicy` |
-| `notification.workspace-invite.template.hbs` | `workspaceInvite`, `workspaceInviteUnregistered` |
-| `notification.workspace-join-request.template.hbs` | `workspaceJoinRequest` |
-| `notification.workspace-join-accepted.template.hbs` | `workspaceJoinAccepted` |
-| `notification.workspace-join-rejected.template.hbs` | `workspaceJoinRejected` |
-
-Templates are not part of the bundled `migration:seed` / `migration:remove` scripts. They are synced by the standalone `template-email-notification` migration command (`MigrationTemplateEmailNotificationSeed`, registered in `MigrationModule`), which calls the import method on the owning template service (e.g., `NotificationTemplateAccountService.emailImportWelcome()`) on `--type seed` and the matching delete method (e.g., `emailDeleteWelcome()`) on `--type remove`. The seed refuses to run when SES reports itself uninitialized.
-
-For AWS SES configuration and no-op mode, see [Third-Party Integration — SES][ref-doc-third-party].
+The email queue, rate limits, dedup, and sealed payload fields stay in this document under [Email Queue](#email-queue) and [Payload Encryption](#payload-encryption).
 
 ## Delivery Tracking
 
@@ -256,7 +289,7 @@ Each `Notification` record has related `NotificationDelivery` rows in `Notificat
 
 `email` and `push` deliveries are created with no timestamps and go through the queue.
 
-**Only the push channel writes them back.** The email channel services send through SES and never read or update the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. Do not read a null `sentAt` on an `email` row as "not delivered".
+**Only the push channel writes them back.** The email channel domains send through SES and never read or update the delivery record, so an `email` delivery row keeps `processedAt` and `sentAt` null for its whole life. A null `sentAt` on an `email` row says nothing about delivery.
 
 The push lifecycle:
 
@@ -279,20 +312,20 @@ sequenceDiagram
 
 Both skips return a message rather than throwing, so a push job on a deployment with Firebase disabled completes instead of being retried.
 
-The email lifecycle is only: job dequeued, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy.
+The email lifecycle is only: job dequeued, sealed fields opened, `AwsSESService.send()` or `sendBulk()`, done. A send failure is logged and rethrown, so the job retries under the queue's own retry policy; a field that fails to open ends the job without retries (see [Payload Encryption](#payload-encryption)).
 
 ## User Notification Settings
 
 Users control which notification channels are active per type. Settings are stored in `NotificationUserSetting` (one row per `userId + type + channel`).
 
-Allowed type+channel combinations are defined in `NotificationSettingUpdateAllowedCombinations`:
+Allowed type+channel combinations are defined in `NotificationSettingContract` (`src/modules/notification/contracts/notification.setting.contract.ts`):
 
 | Type | Allowed Channels |
 |------|-----------------|
 | `userActivity` | `email`, `inApp`, `push` |
 | `marketing` | `email`, `push` |
 
-`NotificationService.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw `NotificationInvalidTypeException` or `NotificationInvalidChannelException`.
+`NotificationDomain.updateUserSetting()` validates the requested combination before writing. Invalid combinations throw `NotificationInvalidTypeException` or `NotificationInvalidChannelException`.
 
 The request DTO (`NotificationUserSettingRequestDto`) accepts:
 - `type`: `userActivity` | `marketing`
@@ -324,6 +357,7 @@ Special thanks to [ak2g][ref-contributor-ak2g] for contributing to the Notificat
 [ref-doc-authentication]: authentication.md
 [ref-doc-device]: device.md
 [ref-doc-third-party]: third-party-integration.md
+[ref-doc-email]: email.md
 [ref-doc-queue]: queue.md
 [ref-doc-configuration]: configuration.md
 [ref-doc-environment]: environment.md

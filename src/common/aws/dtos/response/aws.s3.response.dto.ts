@@ -4,6 +4,7 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 
 /**
  * HTTP response shape for S3 object metadata — excludes internal streaming data fields.
+ * @public
  */
 export const AwsS3ResponseSchema = z.object({
     bucket: z.string().meta({
@@ -43,4 +44,8 @@ export const AwsS3ResponseSchema = z.object({
     }),
 });
 
+/**
+ * Stored S3 object reference.
+ * @public
+ */
 export type AwsS3ResponseDto = z.infer<typeof AwsS3ResponseSchema>;

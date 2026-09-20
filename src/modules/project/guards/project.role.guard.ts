@@ -1,17 +1,15 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import {
-    EnumProjectMemberRole,
-    Project,
-    WorkspaceMember,
-} from '@generated/prisma-client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
     ProjectRoleMetaKey,
     ProjectStoreKey,
     ProjectWorkspaceOwnerStoreKey,
 } from '@modules/project/constants/project.constant';
-import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
 import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 /**
@@ -24,16 +22,16 @@ import { Reflector } from '@nestjs/core';
 export class ProjectRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly projectMemberService: ProjectMemberService,
+        private readonly projectMemberDomain: ProjectMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const allowedRoles =
-            this.reflector.get<EnumProjectMemberRole[]>(
-                ProjectRoleMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const requiredRoles = this.reflector.get<EnumProjectMemberRole[]>(
+            ProjectRoleMetaKey,
+            context.getHandler()
+        );
+        const allowedRoles = requiredRoles ?? [];
 
         const project = this.requestStoreService.get<Project>(ProjectStoreKey);
         const workspaceMember = this.requestStoreService.get<WorkspaceMember>(
@@ -41,7 +39,7 @@ export class ProjectRoleGuard implements CanActivate {
         );
 
         const isWorkspaceOwner =
-            await this.projectMemberService.validateProjectRoleGuard(
+            await this.projectMemberDomain.validateProjectRoleGuard(
                 project?.id ?? null,
                 workspaceMember,
                 allowedRoles

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumRoleType } from '@generated/prisma-client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
+/**
+ * Validates the body for updating a role description and type.
+ * @public
+ */
 export const RoleUpdateRequestSchema = z.strictObject({
     description: z.string().max(500).optional().meta({
         description: 'Description of role',
@@ -13,4 +17,8 @@ export const RoleUpdateRequestSchema = z.strictObject({
     }),
 });
 
+/**
+ * Body for updating a role description and type.
+ * @public
+ */
 export type RoleUpdateRequestDto = z.infer<typeof RoleUpdateRequestSchema>;

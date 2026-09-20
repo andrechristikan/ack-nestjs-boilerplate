@@ -5,12 +5,13 @@ import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { DeviceResponseSchema } from '@modules/device/dtos/response/device.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /**
  * Base device-ownership shape: the row binding a device to the user who owns it.
+ * @public
  */
 export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -84,6 +85,10 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Device ownership of a user with its device.
+ * @public
+ */
 export type DeviceOwnershipResponseDto = z.infer<
     typeof DeviceOwnershipResponseSchema
 >;

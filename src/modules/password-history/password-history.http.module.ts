@@ -1,4 +1,4 @@
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
+import { PasswordHistoryDomainModule } from '@modules/password-history/password-history.domain.module';
 import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +6,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [PasswordHistoryHttpService],
     exports: [PasswordHistoryHttpService],
-    imports: [PasswordHistoryModule],
+    imports: [PasswordHistoryDomainModule],
 })
 export class PasswordHistoryHttpModule {}

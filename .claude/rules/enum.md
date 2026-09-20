@@ -11,7 +11,7 @@ export enum EnumUserStatus {
 
 - **Type name is `Enum` + PascalCase.** `EnumQueue`, `EnumPolicyAction`, `EnumUserStatus`.
 - **Keys AND string values are camelCase.** `UPPER_SNAKE_CASE` is wrong on both halves
-  (`rules/case-convention.md`).
+  (`rules/naming.md`).
 - A string enum's value normally equals its key. Diverging is allowed only when the wire value
   is genuinely different from the code name, and then it is worth a line saying which is which.
 
@@ -44,11 +44,11 @@ unrelated ones.
 
 ## Prisma-owned enums are imported, never re-declared (HARD)
 
-An enum declared in `prisma/schema.prisma` is imported from `@generated/prisma-client`
-(aliased `@prisma/client`):
+An enum declared in `prisma/schema.prisma` is imported from the generated client entry,
+`@generated/prisma-client/client`:
 
 ```ts
-import { EnumUserStatus } from '@generated/prisma-client';
+import { EnumUserStatus } from '@generated/prisma-client/client';
 ```
 
 A module-local re-declaration of a schema-owned enum is a second source of truth with a
@@ -66,10 +66,11 @@ place a raw string is correct.
 
 ## Enum-typed query filters
 
-A query param filtered against an enum uses `@PaginationQueryFilterInEnum<TEnum>('field',
-<Module>Default<Concern>)`, with the default set as a PascalCase constant under
-`<module>/constants/` (`rules/pagination.md`). Never a hand-parsed `@Query` plus a manual
-`includes` check.
+A query param filtered against an enum is a field on the list zod schema; the HTTP service
+applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant
+under `<module>/constants/` (`rules/pagination.md`). Never a hand-parsed `@Query` plus a manual
+`includes` check. Enum members in code always use `Enum…` — never string literals
+(`EnumPaginationType.offset`, `EnumPaginationFilterDateBetweenType.start`).
 
 ## Adding a member
 

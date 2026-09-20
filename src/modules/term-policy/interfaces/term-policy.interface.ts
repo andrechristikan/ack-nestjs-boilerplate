@@ -1,11 +1,16 @@
-import { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
-import {
-    EnumTermPolicyType,
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import type {
     TermPolicy,
+    TermPolicyContent,
     TermPolicyUserAcceptance,
-} from '@generated/prisma-client';
-import { IUserRef } from '@modules/user/interfaces/user.interface';
+} from '@generated/prisma-client/client';
+import type { IUserRef } from '@modules/user/interfaces/user.interface';
+
+export interface ITermPolicy extends TermPolicy {
+    contents: TermPolicyContent[];
+}
 
 export interface ITermPolicyUserAcceptance extends TermPolicyUserAcceptance {
     user: IUserRef;
@@ -18,7 +23,8 @@ export interface ITermPolicyContentUpload {
     key: string;
 }
 
-export interface ITermPolicyContent extends Omit<IAwsS3, 'data'> {
+/** The persistable columns of one localized content document — the create/update input shape. */
+export interface ITermPolicyContentCreate extends Omit<IAwsS3, 'data'> {
     language: EnumMessageLanguage;
 }
 
@@ -33,4 +39,12 @@ export interface ITermPolicyContentPresign {
     version: number;
     language: EnumMessageLanguage;
     size: number;
+}
+
+export interface ITermPolicyAcceptanceAnalytic {
+    id: string;
+    userId: string;
+    termPolicyId: string;
+    acceptedAt: Date;
+    createdAt: Date;
 }

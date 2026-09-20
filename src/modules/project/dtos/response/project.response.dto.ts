@@ -4,10 +4,9 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 
 /**
  * Base project shape: the stored project row.
+ * @public
  */
-export const ProjectResponseSchema = DatabaseResponseSchema.omit({
-    deletedBy: true,
-}).extend({
+export const ProjectResponseSchema = DatabaseResponseSchema.extend({
     workspaceId: z.string().meta({
         description: 'Identifier of the workspace the project belongs to',
         example: faker.string.uuid(),
@@ -26,4 +25,8 @@ export const ProjectResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored project.
+ * @public
+ */
 export type ProjectResponseDto = z.infer<typeof ProjectResponseSchema>;

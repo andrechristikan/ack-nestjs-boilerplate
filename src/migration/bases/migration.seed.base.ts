@@ -1,5 +1,5 @@
 import { EnumMigrationType } from '@migration/enums/migration.enum';
-import { IMigrationOptions } from '@migration/interfaces/migration.interface';
+import type { IMigrationOptions } from '@migration/interfaces/migration.interface';
 import { Logger } from '@nestjs/common';
 import { CommandRunner, Option } from 'nest-commander';
 

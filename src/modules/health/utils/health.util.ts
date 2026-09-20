@@ -1,6 +1,6 @@
 import { EnumHealthStatus } from '@modules/health/enums/health.enum';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckResult, HealthCheckStatus } from '@nestjs/terminus';
+import type { HealthCheckResult, HealthCheckStatus } from '@nestjs/terminus';
 
 /**
  * Recognizes a Terminus check result and maps its status onto the module's own enum.
@@ -12,17 +12,27 @@ export class HealthUtil {
     }
 
     isHealthCheckResult(value: string | object): value is HealthCheckResult {
-        return (
-            typeof value === 'object' &&
-            'status' in value &&
-            typeof value.status === 'string' &&
-            'info' in value &&
-            this.isIndicatorMap(value.info) &&
-            'error' in value &&
-            this.isIndicatorMap(value.error) &&
-            'details' in value &&
-            this.isIndicatorMap(value.details)
-        );
+        if (typeof value !== 'object') {
+            return false;
+        }
+
+        if (!('status' in value) || typeof value.status !== 'string') {
+            return false;
+        }
+
+        if (
+            !('info' in value) ||
+            !('error' in value) ||
+            !('details' in value)
+        ) {
+            return false;
+        }
+
+        const isInfoMap = this.isIndicatorMap(value.info);
+        const isErrorMap = this.isIndicatorMap(value.error);
+        const isDetailsMap = this.isIndicatorMap(value.details);
+
+        return isInfoMap && isErrorMap && isDetailsMap;
     }
 
     mapStatus(status: HealthCheckStatus): EnumHealthStatus {

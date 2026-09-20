@@ -1,26 +1,31 @@
-import {
-    IPaginationIn,
-    IPaginationQueryCursorParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import {
-    Prisma,
+import { Prisma } from '@generated/prisma-client/client';
+import type {
     Workspace,
     WorkspaceJoinRequest,
-} from '@generated/prisma-client';
-import { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
-import { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
-import { IWorkspaceJoinRequestHttpService } from '@modules/workspace/interfaces/workspace.join-request.http.service.interface';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
+} from '@generated/prisma-client/client';
+import {
+    WorkspaceJoinRequestDefaultAvailableOrderBy,
+    WorkspaceJoinRequestDefaultStatus,
+} from '@modules/workspace/constants/workspace.list.constant';
+import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
+import type { WorkspaceJoinRequestCreateRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-create.request.dto';
+import type { WorkspaceJoinRequestRejectRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-reject.request.dto';
+import { WorkspaceJoinRequestDomain } from '@modules/workspace/domains/workspace.join-request.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHttpService {
+export class WorkspaceJoinRequestHttpService {
     constructor(
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService
+        private readonly workspaceJoinRequestDomain: WorkspaceJoinRequestDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async createJoinRequest(
@@ -28,7 +33,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         { workspaceId, message }: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
         const joinRequest =
-            await this.workspaceJoinRequestService.createJoinRequest(userId, {
+            await this.workspaceJoinRequestDomain.createJoinRequest(userId, {
                 workspaceId,
                 message,
             });
@@ -38,14 +43,34 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
 
     async getJoinRequestsList(
         workspaceId: string,
-        pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePagingReturn<WorkspaceJoinRequest>> {
+        query: WorkspaceJoinRequestListRequestDto
+    ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.cursor<Prisma.WorkspaceJoinRequestWhereInput>(
+                query,
+                {
+                    availableOrderBy:
+                        WorkspaceJoinRequestDefaultAvailableOrderBy,
+                }
+            );
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
+            query.status,
+            WorkspaceJoinRequestDefaultStatus
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(status?.storeFilter ?? {}),
+            },
+        });
+
         const { data, ...others } =
-            await this.workspaceJoinRequestService.getJoinRequestsList(
+            await this.workspaceJoinRequestDomain.getJoinRequestsList(
                 workspaceId,
-                pagination,
-                status
+                params,
+                status?.where
             );
 
         return {
@@ -59,7 +84,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         reviewerId: string,
         workspaceJoinRequestId: string
     ): Promise<void> {
-        await this.workspaceJoinRequestService.acceptJoinRequest(
+        await this.workspaceJoinRequestDomain.acceptJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId
@@ -72,7 +97,7 @@ export class WorkspaceJoinRequestHttpService implements IWorkspaceJoinRequestHtt
         workspaceJoinRequestId: string,
         { rejectReasonCode }: WorkspaceJoinRequestRejectRequestDto
     ): Promise<void> {
-        await this.workspaceJoinRequestService.rejectJoinRequest(
+        await this.workspaceJoinRequestDomain.rejectJoinRequest(
             workspace,
             reviewerId,
             workspaceJoinRequestId,

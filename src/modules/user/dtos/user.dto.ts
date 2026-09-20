@@ -9,13 +9,14 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import { UserTermPolicySchema } from '@modules/user/dtos/user.term-policy.dto';
 import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
 /**
  * Base user shape: the stored user row with its role, term-policy flags, photo and two-factor state.
+ * @public
  */
 export const UserSchema = DatabaseResponseSchema.extend({
     name: z.string().min(1).max(100).nullable().meta({
@@ -108,4 +109,8 @@ export const UserSchema = DatabaseResponseSchema.extend({
     }),
 });
 
+/**
+ * Base user shape without credentials.
+ * @public
+ */
 export type UserDto = z.infer<typeof UserSchema>;

@@ -1,10 +1,8 @@
 import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { Inject, Injectable } from '@nestjs/common';
-import {
-    HealthIndicatorResult,
-    HealthIndicatorService,
-} from '@nestjs/terminus';
-import { Cache } from 'cache-manager';
+import { HealthIndicatorService } from '@nestjs/terminus';
+import type { HealthIndicatorResult } from '@nestjs/terminus';
+import type { Cache } from 'cache-manager';
 
 /**
  * Reports Redis cache reachability as a Terminus health indicator.

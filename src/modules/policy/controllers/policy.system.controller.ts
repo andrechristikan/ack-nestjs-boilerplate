@@ -1,13 +1,10 @@
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySystemProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { PolicySystemListByRoleDoc } from '@modules/policy/docs/policy.system.doc';
-import {
-    PolicyListResponseDto,
-    PolicyListResponseSchema,
-} from '@modules/policy/dtos/response/policy.list.response.dto';
+import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
+import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
 import { PolicyHttpService } from '@modules/policy/services/policy.http.service';
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -20,12 +17,12 @@ import { ApiTags } from '@nestjs/swagger';
 export class PolicySystemController {
     constructor(private readonly policyHttpService: PolicyHttpService) {}
 
-    @PolicySystemListByRoleDoc()
+    @Doc({ summary: 'get all policies granted by a role' })
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
     @ApiKeySystemProtected()
     @Get('/list')
     async listByRole(
-        @Param('roleId', RequestRequiredPipe, RequestIsValidUuidPipe)
+        @Param('roleId', { schema: RequestMongoIdSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyHttpService.listByRole(roleId);

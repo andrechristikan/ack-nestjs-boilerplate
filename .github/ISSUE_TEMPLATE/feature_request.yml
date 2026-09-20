@@ -1,135 +1,83 @@
 name: ✨ Feature Request
 description: Suggest a new feature or improvement
-title: "[FEAT] "
+title: '[FEAT] '
 labels:
-  - feature
+    - feature
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting an improvement.
-        Large features should be discussed here **before** any implementation starts.
-        Usage questions belong in [Discussions](https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions), not issues.
-  - type: checkboxes
-    id: preflight
-    attributes:
-      label: Preflight checklist
-      options:
-        - label: I searched existing issues and this is not a duplicate.
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for suggesting an improvement.
+              Large features should be discussed here **before** any implementation starts.
+              Usage questions belong in [Discussions](https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions), not issues.
+    - type: checkboxes
+      id: preflight
+      attributes:
+          label: Preflight checklist
+          options:
+              - label: I searched existing issues and this is not a duplicate.
+                required: true
+              - label: I read the relevant docs in the `/docs` folder.
+                required: true
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem Statement
+          description: What problem does this feature solve? Why is it needed?
+      validations:
           required: true
-        - label: I read the relevant docs in the `/docs` folder.
+    - type: textarea
+      id: solution
+      attributes:
+          label: Proposed Solution
+          description: Describe the feature you'd like.
+      validations:
           required: true
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem Statement
-      description: What problem does this feature solve? Why is it needed?
-    validations:
-      required: true
-  - type: textarea
-    id: solution
-    attributes:
-      label: Proposed Solution
-      description: Describe the feature you'd like.
-    validations:
-      required: true
-  - type: dropdown
-    id: module
-    attributes:
-      label: Primary affected module
-      description: Main module this request targets. Mentions others in Additional Context if needed.
-      options:
-        - activity-log
-        - api-key
-        - auth
-        - country
-        - device
-        - feature-flag
-        - health
-        - hello
-        - notification
-        - password-history
-        - policy
-        - role
-        - session
-        - term-policy
-        - user
-        - common / shared
-        - new module
-        - other / unknown
-    validations:
-      required: true
-  - type: dropdown
-    id: entry-point
-    attributes:
-      label: Entry point
-      options:
-        - HTTP / endpoint
-        - Queue / job
-        - CLI
-        - Other / unknown
-    validations:
-      required: true
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: What must be true for this feature to be considered complete?
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
-    validations:
-      required: true
-  - type: textarea
-    id: api
-    attributes:
-      label: API Design (if applicable)
-      render: shell
-      placeholder: |
-        METHOD /api/v1/path
-        Request body: { ... }
-        Response: {
-          "data": { ... },
-          "message": "...",
-          ...
-        }
-        Error (ResponseErrorDto): {
-          "statusCode": 51501,
-          "statusCodeKey": "userNotFound",
-          "module": "user",
-          "message": "..."
-        }
-    validations:
-      required: false
-  - type: textarea
-    id: database
-    attributes:
-      label: Database / seed (if applicable)
-      description: New Prisma models/fields/indexes, or seed commands (`migration:seed` / standalone seed)?
-      placeholder: |
-        Schema: …
-        Seed: e.g. pnpm migration <name> --type seed — or none
-    validations:
-      required: false
-  - type: textarea
-    id: environment
-    attributes:
-      label: Environment (if applicable)
-      description: New or changed `.env` keys? Remember to call out `.env.example` updates.
-      placeholder: e.g. FOO_BAR=… — or none
-    validations:
-      required: false
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Any alternative solutions or workarounds you've considered.
-    validations:
-      required: false
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional Context
-      description: Other modules touched, screenshots, references, related issues, or anything else relevant.
-    validations:
-      required: false
+    - type: input
+      id: module
+      attributes:
+          label: Primary module
+          description: Comma-separated `src/modules/<name>` names, or `common` / `new module` / `other`.
+          placeholder: e.g. auth, workspace
+      validations:
+          required: true
+    - type: dropdown
+      id: entry-point
+      attributes:
+          label: Entry point
+          options:
+              - HTTP / endpoint
+              - Queue / job
+              - CLI
+              - Other / unknown
+      validations:
+          required: true
+    - type: textarea
+      id: acceptance
+      attributes:
+          label: Acceptance Criteria
+          description: What must be true for this feature to be considered complete?
+          placeholder: |
+              - [ ] ...
+              - [ ] ...
+      validations:
+          required: true
+    - type: textarea
+      id: technical
+      attributes:
+          label: Technical notes (optional)
+          description: API shape, Prisma/seed impact, `.env` keys, alternatives, or other design notes.
+          placeholder: |
+              API: METHOD /api/v1/path …
+              Schema / seed: …
+              Env: FOO_BAR=… (and `.env.example`)
+              Alternatives: …
+      validations:
+          required: false
+    - type: textarea
+      id: context
+      attributes:
+          label: Additional Context
+          description: Other modules touched, screenshots, references, related issues, or anything else relevant.
+      validations:
+          required: false

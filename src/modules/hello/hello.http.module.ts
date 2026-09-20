@@ -1,4 +1,4 @@
-import { HelloModule } from '@modules/hello/hello.module';
+import { HelloDomainModule } from '@modules/hello/hello.domain.module';
 import { HelloHttpService } from '@modules/hello/services/hello.http.service';
 import { Module } from '@nestjs/common';
 
@@ -6,6 +6,6 @@ import { Module } from '@nestjs/common';
     controllers: [],
     providers: [HelloHttpService],
     exports: [HelloHttpService],
-    imports: [HelloModule],
+    imports: [HelloDomainModule],
 })
 export class HelloHttpModule {}

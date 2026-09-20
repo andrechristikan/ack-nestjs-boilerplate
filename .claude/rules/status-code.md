@@ -2,7 +2,7 @@
 
 A status code is the `statusCode` field on `AppBaseException`, surfaced in `ResponseErrorDto` beside `statusCodeKey` and `module`. It is **not** an HTTP status — `httpStatus` is a separate field.
 
-**The enum files are the machine registry.** Scan them before allocating; never invent a number from memory. This rule file is the procedure and the human layout. Durable prose about error *behavior* stays in `docs/handling-error.md` / `docs/message.md`. The full human catalog of every code is `docs/status-codes.md`.
+**The enum files are the machine registry.** Scan them before allocating; never invent a number from memory. This rule file is the procedure and the human layout. Durable prose about error *behavior* stays in `docs/handling-error.md` / `docs/language-message.md`. The full human catalog of every code is `docs/status-codes.md`.
 
 ```bash
 find src -name '*.status-code.enum.ts' | sort | while read -r f; do
@@ -28,14 +28,14 @@ done
 | Range | Owner |
 |---|---|
 | `50000` | `src/app` — `EnumAppStatusCodeError` |
-| `50100`–`50103` | `src/common/file` |
+| `50100`–`50109` | `src/common/file` |
 | `50200`–`50215` | `src/common/pagination` |
 | `50300`–`50304` | `src/common/request` |
 | `50400`–`50401` | `session` |
 | `50500`–`50504` | `role` |
 | `50600`–`50606` | `feature-flag` |
 | `50700`–`50708` | `api-key` |
-| `50800`–`50814` | `auth` |
+| `50800`–`50816` | `auth` |
 | `50900`–`50902` | `country` |
 | `51000`–`51027` | `user` |
 | `51100`–`51103` | `policy` |
@@ -47,10 +47,13 @@ done
 | `51700`–`51707` | `project` |
 | `51800` | `src/common/database` |
 | `51900`–`51902` | `src/common/response` |
+| `52000` | `activity-log` |
+| `52100` | `analytic` |
+| `52200`–`52202` | `src/common/helper` |
 
 | Note | Detail |
 |---|---|
-| Next free hundred | `52000` (verify by scan before claiming) |
+| Next free hundred | `52300` (verify by scan before claiming) |
 | Prefer | `5xxxx` for feature modules |
 
 ---

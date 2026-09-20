@@ -1,0 +1,46 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Cache } from 'cache-manager';
+import type { ApiKey } from '@generated/prisma-client/client';
+import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+
+/** Reads and writes the cached API key record. */
+@Injectable()
+export class ApiKeyCache {
+    private readonly logger = new Logger(ApiKeyCache.name);
+    private readonly keyPattern: string;
+
+    constructor(
+        @Inject(CacheMainProvider) private cacheManager: Cache,
+        private readonly configService: ConfigService
+    ) {
+        this.keyPattern = this.configService.get<string>(
+            'auth.xApiKey.keyPattern'
+        )!;
+    }
+
+    async getCacheByKey(key: string): Promise<ApiKey | null> {
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
+        const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
+        if (cachedApiKey) {
+            return cachedApiKey;
+        }
+
+        return null;
+    }
+
+    async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
+        try {
+            await this.cacheManager.set(cacheKey, apiKey);
+        } catch (error: unknown) {
+            this.logger.error(error, 'API key cache write failed');
+        }
+    }
+
+    async deleteCacheByKey(key: string): Promise<void> {
+        const cacheKey = this.keyPattern.replace('{key}', () => key);
+        await this.cacheManager.del(cacheKey);
+        return;
+    }
+}

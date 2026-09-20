@@ -1,57 +1,62 @@
 # Activity Log Documentation
 
-This documentation explains the features and usage of **Activity Log Module**: Located at `src/modules/activity-log`
+Activity Log lives in `src/modules/activity-log`.
 
 ## Overview
 
-Activity Log records audited user actions. There are two recording paths:
+Activity Log records audited user actions:
 
-1. **Decorator-driven** - `@ActivityLog` attaches `ActivityLogInterceptor` to a controller method; after the handler runs the interceptor hands the action to `ActivityLogService.create()`, which writes one log for the authenticated actor. This document covers that path.
-2. **Repository-written** - a repository writes the log alongside the Prisma mutation it already performs, either as a nested `activityLogs.create` or as another operation of the same transaction, so the log lands with the mutation. Every `user*`, `workspace*`, and `project*` action in `EnumActivityLogAction` is recorded this way (`userLoginCredential`, `workspaceInviteAccepted`, `projectMemberAssigned`, and the rest), through `ActivityLogUtil.buildCreateArgs`, which resolves the description with the same `ActivityLogUtil.getDescription` and stamps the `workspaceId` the mutation belongs to.
+- During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
+- The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`.
+- Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
+- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
+
+**Failed credential logins**
+
+Both paths answer an error; `onError: true` is what writes the rows. All three contracts in `ActivityLogActionContract` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+
+- **Password mismatch.** `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. i18n: `activityLog.userLoginFailed` ("Login failed with invalid credentials").
+- **Attempt limit already reached.** `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. i18n: `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
 
 **Notes:**
 
-- Logs are recorded for **both success and failure**. On failure the error is serialized: `errorMessage` is merged into `metadata`, and `description` gains ` - Error: <message>` followed by ` - Stack: <stack>` when the error carried a stack.
-- Saving through the interceptor is **non-blocking** (fire-and-forget). A failed write is logged and never breaks the response. A repository-written log is part of the mutation's transaction and rolls back with it.
-- `@ActivityLog` is applied to **admin endpoints only** (`admin*` actions).
-- `@ActivityLog` **requires** `@AuthJwtAccessProtected` so `request.user` is populated before the interceptor runs. The interceptor is a no-op when `request.user` is absent.
-- Do not log secrets (password, token, apiKey) or large objects in metadata.
+- Flush failures are logged and do not change the handler outcome.
+- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogActionContract` declares what it holds. Metadata is returned to the client through a typed response schema.
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - For user context (`request.user`)
-- [Authorization Documentation][ref-doc-authorization] - For decorator order and guards
-- [Response Documentation][ref-doc-response] - For serialization of list responses
-- [Message Documentation][ref-doc-message] - For the i18n description source
-- [Pagination Documentation][ref-doc-pagination] - For the list endpoints
+- [Authentication Documentation][ref-doc-authentication] - User context (`request.user`)
+- [Authorization Documentation][ref-doc-authorization] - Guards and policy abilities
+- [Response Documentation][ref-doc-response] - List response serialization
+- [Language Message Documentation][ref-doc-message] - i18n description source
+- [Pagination Documentation][ref-doc-pagination] - List endpoints
+- [Analytic Documentation][ref-doc-analytic] - Metrics that count activity-log actions
 
 ## Table of Contents
 
-- [Activity Log Documentation](#activity-log-documentation)
-  - [Overview](#overview)
-  - [Related Documents](#related-documents)
-  - [Table of Contents](#table-of-contents)
-  - [Architecture](#architecture)
-  - [Flow](#flow)
-  - [Recording an Activity](#recording-an-activity)
-    - [@ActivityLog Decorator](#activitylog-decorator)
-    - [Metadata](#metadata-dynamic-only)
-    - [Request store (metadata)](#request-store-metadata)
-  - [Data](#data)
-    - [Metadata](#metadata)
-    - [Description](#description)
+- [Overview](#overview)
+- [Related Documents](#related-documents)
+- [Architecture](#architecture)
+- [List Endpoints](#list-endpoints)
+- [Flow](#flow)
+- [Staging an activity](#staging-an-activity)
+- [Actor and target rows](#actor-and-target-rows)
+- [Data](#data)
 
 ## Architecture
 
 | Component | Responsibility |
 |---|---|
-| `@ActivityLog(action)` | Method decorator: attaches the interceptor, stores the action |
-| `ActivityLogInterceptor` | Reads the action off the handler, and on both the success and the error path calls `ActivityLogService.create(userId, action, rawError)` without awaiting it |
-| `RequestStoreService` | Generic per-request carrier (`nestjs-cls` / AsyncLocalStorage); holds both the dynamic metadata and the request log (`RequestLogStoreKey`); shared by all modules |
-| `ActivityLogService` | Write side of the decorator path: reads the dynamic metadata and the request context (`IRequestLog`: IP, user agent, geo) from the request store, serializes any error, and writes the row. Read side: paginated listing for admin and self, user-scoped or workspace-scoped |
+| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
+| `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
+| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
+| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`), request log, and workspace |
+| `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
 | `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
-| `ActivityLogRepository` | Data access (Prisma), including the decorator path's `create` |
-| `ActivityLogUtil` | Builds the i18n description, and builds the create args and the nested `createMany` data a repository-written log is created from |
+| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which runs the insert in its own transaction |
+| `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
+| `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
+| `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
 
 ## List Endpoints
 
@@ -64,7 +69,10 @@ Activity Log records audited user actions. There are two recording paths:
 
 Global prefix `/api` and version `v1` apply as elsewhere.
 
-The two user-scoped lists match rows whose `workspaceId` is null or unset, so an account's own timeline holds the logs that belong to no workspace. A log written inside a workspace mutation appears in the two workspace-scoped lists.
+List scope:
+
+- **User-scoped lists** return every row whose `userId` is that user, with or without a workspace: the actions the user performed and the target rows written when someone else acted on the user.
+- **Workspace-scoped lists** return the rows of one workspace. The shared one is narrowed to the caller's rows; the admin one is narrowed only when `userId` is passed, so a paired workspace action appears there twice, once for each party.
 
 ## Flow
 
@@ -72,155 +80,187 @@ The two user-scoped lists match rows whose `workspaceId` is null or unset, so an
 sequenceDiagram
     participant Client
     participant Controller
-    participant Service
+    participant Domain
     participant Storage as RequestStoreService
     participant Interceptor as ActivityLogInterceptor
-    participant DB
+    participant Repo as ActivityLogRepository
 
     Client->>Controller: HTTP Request
-    Note over Controller: @AuthJwtAccessProtected (required)
-    Note over Controller: @ActivityLog(action)
-    Controller->>Service: Execute business logic
-    Service->>Storage: merge(ActivityLogMetadataStoreKey, { ... })
+    Controller->>Domain: business logic
+    Note over Domain: prepare({ action, userId?, createdBy?, workspaceId?, metadata?, onError? })<br/>validates before the audited write
+    Domain->>Domain: audited write
+    Domain->>Storage: stagePrepared(events)
     alt Success
-        Service-->>Interceptor: result
-        Interceptor->>ActivityLogService: create(userId, action, null) (not awaited)
-        ActivityLogService->>Storage: get(RequestLogStoreKey), get(ActivityLogMetadataStoreKey)
-        ActivityLogService->>DB: create log
-        DB-->>Client: Success Response
+        Domain-->>Interceptor: result
+        Interceptor->>Domain: flushStaged({ isError: false })
+        Domain->>Repo: createMany(rows)
+        Repo-->>Client: Success Response
     else Failure
-        Service-->>Interceptor: throws error
-        Interceptor->>ActivityLogService: create(userId, action, error) (not awaited)
-        ActivityLogService->>Storage: get(RequestLogStoreKey), get(ActivityLogMetadataStoreKey)
-        Note over ActivityLogService: serialize error into metadata + description
-        ActivityLogService->>DB: create log
-        DB-->>Client: Error Response
+        Domain-->>Interceptor: throws
+        Interceptor->>Domain: flushStaged({ isError: true })
+        Note over Domain: Only events with onError true
+        Domain->>Repo: createMany(rows) when any qualify
+        Repo-->>Client: Error Response
     end
 ```
 
-## Recording an Activity
+## Staging an activity
 
-### @ActivityLog Decorator
+Every caller follows one order:
 
-```typescript
-ActivityLog(action: EnumActivityLogAction): MethodDecorator
-```
+1. Prepare and validate every event (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
+2. Write (a contract failure throws before anything commits; a failed write stages nothing).
+3. Stage the prepared events.
 
-- `action` - the recorded action enum, also the i18n key for the description (`activityLog.<action>`).
-
-The decorator takes only `action`. There is no static metadata at decoration time; all metadata is set dynamically from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`.
-
-Place it per the decorator order rules (see [Authorization Documentation][ref-doc-authorization]). It sits above `@AuthJwtAccessProtected` in source so the interceptor runs after JWT has populated `request.user`.
+A session or device path commits, then writes or purges the session cache, then stages. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
 
 ```typescript
-@Response('role.create', { schema: RoleSchema })
-@ActivityLog(EnumActivityLogAction.adminRoleCreate)
-@AuthJwtAccessProtected() // required
-@Post('/create')
-async create(
-    @Body({ schema: RoleCreateRequestSchema }) body: RoleCreateRequestDto
-): Promise<IResponseReturn<RoleDto>> {
-    return this.roleHttpService.create(body);
-}
+const roleId = this.databaseUtil.createId();
+const events = [
+    this.prepareActivityLog(
+        EnumActivityLogAction.adminRoleCreate,
+        { id: roleId, name: data.name, type: data.type },
+        this.helperDateService.create()
+    ),
+];
+const created = await this.roleRepository.create(roleId, data);
+
+this.activityLogDomain.stagePrepared(events);
 ```
 
-### Metadata (dynamic only)
-
-All metadata is dynamic: set at runtime from the service via `RequestStoreService.merge(ActivityLogMetadataStoreKey, ...)`. Use it for entity values resolved during the request. `ActivityLogService.create()` reads it from the request store and, on failure, merges in the serialized error (`{ ...metadata, ...error }`) before writing.
-
-### Request store (metadata)
-
-Dynamic metadata lives in the generic `RequestStoreService` (`@common/request`), backed by `nestjs-cls`. Services call `merge(ActivityLogMetadataStoreKey, metadata)` to shallow-merge into the current request's metadata; the interceptor reads it via `get(ActivityLogMetadataStoreKey)`. The `ActivityLogMetadataStoreKey` constant is the only key used for activity-log metadata.
-
-Request context (IP, user agent, geo) is read from the same store under `RequestLogStoreKey`. It is computed once per request by `RequestUtil.buildRequestLog(req)` in `RequestRequestLogMiddleware`, and read from there rather than recomputed. See [Security and Middleware Documentation][ref-doc-security-and-middleware].
+`userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, empty metadata, and `onError: true`:
 
 ```typescript
-merge<T extends object>(key: string, value: Partial<T>): void; // shallow-merge into the request store
-get<T>(key: string): T | null;                                 // null when none set
+const events = [
+    this.activityLogDomain.prepare({
+        action: EnumActivityLogAction.userLoginFailed,
+        userId,
+        createdBy: userId,
+        onError: true,
+    }),
+];
+await this.userRepository.increasePasswordAttempt(userId);
+
+this.activityLogDomain.stagePrepared(events);
 ```
 
-Build the metadata shape in the module's util, then merge it in the service:
+Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the commit, because `sessionCount` exists only once the revoke has run.
 
-```typescript
-// Service - inject RequestStoreService, merge metadata after the mutation
-async create(body: RoleCreateRequestDto): Promise<IResponseReturn<RoleDto>> {
-    const created = await this.roleRepository.create(body);
+`onError: true` is set on:
 
-    this.requestStoreService.merge<IActivityLogMetadata>(
-        ActivityLogMetadataStoreKey,
-        this.roleUtil.mapActivityLogMetadata(created)
-    );
+- `userLoginFailed`
+- `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path
+- the five API key admin writes (status, name, dates, reset, delete)
 
-    return { data: created };
-}
+An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change. Every other event is success-only.
 
-// Util - owns the metadata shape
-mapActivityLogMetadata(role: Role): IActivityLogMetadata {
-    return {
-        roleId: role.id,
-        roleName: role.name,
-        roleType: role.type,
-        timestamp: role.updatedAt ?? role.createdAt,
-    };
-}
+The contract's `user` value decides which user fields `prepare` accepts:
+
+| `user` | Row owner (`userId`) | `createdBy` | What `prepare` carries |
+|---|---|---|---|
+| `payload` | The JWT user (`request.user.userId`), read by `ActivityLogInterceptor` and resolved at flush | The row owner | Neither `userId` nor `createdBy` |
+| `target` | The `userId` passed to `prepare` | The `createdBy` passed to `prepare`: the acting user, or the row's own user on a self or public path | Both `userId` and `createdBy` |
+
+A missing required field, or a user field passed to a `payload` action, throws `ActivityLogContractInvalidException`. The contract's `workspace` value works the same way: `payload` reads the current workspace from the request store, `target` takes the staged `workspaceId`, and `none` stores `null`.
+
+Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`, filled once per request by `RequestRequestLogMiddleware`. See [Security and Middleware][ref-doc-security-and-middleware].
+
+## Actor and target rows
+
+When one user acts on another user, the domain prepares two rows:
+
+- **Actor row.** Uses the action the actor performed and belongs to the actor.
+- **Target row.** Uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor.
+
+When the actor and the affected user are the same person, the domain prepares the actor row only; each call site makes that comparison itself.
+
+```mermaid
+flowchart TD
+    A[Domain handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
+    B --> C{"affected user<br/>= actor?"}
+    C -->|yes| E[Actor row only]
+    C -->|no| D["prepare target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]
+    D --> G[write, then stagePrepared]
+    E --> G
+    G --> F[ActivityLogInterceptor flushes every staged row in one transaction]
 ```
+
+| Actor action (row of the actor) | Target action (row of the affected user) | Affected user |
+|---|---|---|
+| `adminUserCreate` | `userCreatedByAdmin` | The new user |
+| `adminUserImport` | `userCreatedByAdmin`, one row per imported user | Each new user |
+| `adminUserUpdateStatus` | `userBlocked` (status `blocked`), `userUpdateStatus` (any other status) | The updated user |
+| `adminUserUpdatePassword` | `userUpdatePasswordByAdmin` | The updated user |
+| `adminUserResetTwoFactor` | `userResetTwoFactorByAdmin` | The updated user |
+| `adminSessionRevoke` | `userRevokeSessionByAdmin` | The session owner |
+| `adminSessionRevokeAll` | `userRevokeAllSessionsByAdmin` | The session owner |
+| `adminDeviceRemove` | `userRemoveDeviceByAdmin` | The device owner |
+| `workspaceMemberRoleUpdated` | `workspaceMemberRoleUpdatedByAdmin` | The target member |
+| `workspaceMemberRemoved` | `workspaceMemberRemovedByAdmin` | The removed member |
+| `workspaceOwnershipTransferred` | `workspaceOwnershipTransferredByOwner` | The new owner |
+| `workspaceInviteCreated` | `workspaceInviteCreatedByAdmin` | The active account whose email matches the invite |
+| `workspaceInviteRevoked` | `workspaceInviteRevokedByAdmin` | The active account whose email matches the invite |
+| `workspaceInviteAccepted` | `workspaceInviteAcceptedByInvitee` | The inviter |
+| `workspaceJoinAccepted` | `workspaceJoinAcceptedByAdmin` | The requester |
+| `workspaceJoinRejected` | `workspaceJoinRejectedByAdmin` | The requester |
+| `projectMemberAssigned` | `projectMemberAssignedByAdmin` | The assigned member |
+| `projectMemberRoleUpdated` | `projectMemberRoleUpdatedByAdmin` | The target member |
+| `projectMemberRemoved` | `projectMemberRemovedByAdmin` | The removed member |
+
+- **Invites:** The invite actor row is written whether or not the email has an account. The target row is written only when the email belongs to an active account.
+- **Admin onboarding:** Admin create and admin import also write `userSendVerificationEmail` and `workspaceCreatedByAdmin` (the personal workspace) for each new user. Every per-user row belongs to the new user and has `createdBy` set to the admin; only `adminUserCreate` / `adminUserImport` belongs to the admin. Sign-up writes `userSignedUp` and `userSendVerificationEmail`, social sign-up writes `userCreated`, and both write `workspaceCreated` for a personal workspace or the `workspaceInviteAccepted` pair for an invite token, with the new user as `createdBy`.
+- **Self targets:** The admin single-session revoke and the admin device removal accept the admin's own account and then write the actor row only. Status change, temporary password, two-factor reset, and revoke-all reject the admin's own account with `UserNotSelfException` (400, `51001`) and write no row.
+- **Single-row actions:** An action whose actor is the affected user writes one row under its plain name: every self-service `user…` action, `userRemoveDevice`, `userRevokeSession`, `workspaceCreated`, `workspaceUpdated`, `workspaceVisibilityUpdated`, `workspaceDeleted`, `workspaceSwitched`, `workspaceJoinRequested`, `workspaceMemberLeft`, `projectCreated`, `projectUpdated`, `projectDeleted`, and `projectMemberLeft`. An invite resend writes no row.
+- **Revoke rows first:** An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair. Account self-deletion stages `userRevokeAllSessions` and then `userDeleteSelf`; the credential lockout stages `userRevokeAllSessions` and then `userReachMaxPasswordAttempt`. Both paths write both rows every time, including when no session was revoked. The password and two-factor paths that revoke every session write no revoke-all row.
+- **Counting:** `ActivityLogWorkspaceVolumeContract` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
 
 ## Data
 
-Each log contains:
+Each flushed log contains:
 
-- **userId** - the authenticated actor (from JWT)
-- **user** - related user record (included on read)
-- **action** - `EnumActivityLogAction`
-- **description** - localized text; on failure the error message is appended
-- **ipAddress** - read from the request store `IRequestLog` (may be null); resolved once per request via `@supercharge/request-ip`
-- **userAgent** - read from the request store `IRequestLog` (JSON); parsed once per request via `ua-parser-js`
-- **geoLocation** - read from the request store `IRequestLog` (JSON, may be null): `latitude`, `longitude`, `country`, `region`, `city`; derived from IP via `geoip-lite`
-- **metadata** - dynamic context from the request store (JSON, null when empty)
-- **workspaceId** - the workspace a repository-written log belongs to, taken from the mutation. An interceptor-written log carries none, which is what places it in the user-scoped lists
+- **userId** - the user the entry belongs to: the JWT user for a `payload` action, the staged `userId` for a `target` action
+- **user** - the same user as `userId`, embedded on read
+- **createdBy** - the user who performed the action (see [Actor and target rows](#actor-and-target-rows)); nullable in the response
+- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches MongoDB through `pnpm db:migrate`
+- **description** - localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
+- **ipAddress** - from the request store `IRequestLog` (may be null)
+- **userAgent** - from the request store `IRequestLog` (JSON)
+- **geoLocation** - from the request store `IRequestLog` (JSON, may be null)
+- **metadata** - prepared metadata (JSON, null when empty)
+- **workspaceId** - from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
 - **createdAt** - timestamp
 
 ### Metadata
 
 ```typescript
-type IActivityLogMetadata = Record<string, string | number | Date | boolean>;
+type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 ```
 
-Stored as `null` when empty. On failure `errorMessage` is added; the stack goes to the description rather than the metadata.
+Stored as `null` when empty. Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the event is prepared. Every id in the schemas below is required.
 
-```json
-{
-  "userId": "admin-id",
-  "action": "adminUserUpdateStatus",
-  "geoLocation": {
-    "latitude": -6.2,
-    "longitude": 106.8,
-    "country": "ID",
-    "region": "JK",
-    "city": "Jakarta"
-  },
-  "metadata": {
-    "userId": "user-123",
-    "userName": "John Doe",
-    "oldStatus": "active",
-    "newStatus": "blocked"
-  }
-}
-```
+| Actions | Keys |
+|---|---|
+| `workspaceMemberRoleUpdated`, `workspaceMemberRemoved`, `workspaceOwnershipTransferred`, `workspaceInviteAccepted`, `workspaceJoinAccepted`, `workspaceJoinRejected`, `projectMemberAssigned`, `projectMemberRoleUpdated`, `projectMemberRemoved` | `targetUserId` |
+| `workspaceInviteCreated`, `workspaceInviteRevoked` | `workspaceInviteId`, plus `targetUserId` when the email belongs to an active account |
+| The eleven workspace and project target actions, `workspaceCreatedByAdmin` | `actorUserId` |
+| `adminUserCreate`, `adminUserUpdateStatus`, `adminUserUpdatePassword`, `adminUserResetTwoFactor` | `targetUserId`, `targetUsername`, `timestamp` |
+| `userCreatedByAdmin`, `userBlocked`, `userUpdateStatus`, `userUpdatePasswordByAdmin`, `userResetTwoFactorByAdmin` | `actorUserId`, `timestamp` |
+| `adminUserImport` | `userCount` |
+| `adminSessionRevoke` | `targetUserId`, `targetUsername`, `timestamp`, `sessionId` |
+| `userRevokeSessionByAdmin` | `actorUserId`, `timestamp`, `sessionId` |
+| `adminSessionRevokeAll` | `targetUserId`, `sessionCount` |
+| `userRevokeAllSessionsByAdmin` | `actorUserId`, `sessionCount` |
+| `adminDeviceRemove` | `targetUserId`, `targetUsername`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
+| `userRemoveDeviceByAdmin` | `actorUserId`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
+| `userRemoveDevice` | `deviceOwnershipId`, `deviceId`, `sessionCount` |
+| API key, role, term policy, and notification setting actions | Their own schemas; every key optional |
+| Every other action | None |
 
-**Never** include sensitive or oversized values:
-
-```typescript
-this.requestStoreService.merge<IActivityLogMetadata>(ActivityLogMetadataStoreKey, {
-    password: 'secret123',     // never
-    accessToken: 'jwt_token',  // never
-    entireUserObject: { ... }, // too large
-});
-```
+The response returns `metadata` through `ActivityLogMetadataResponseSchema`, which declares every key above as optional, types `timestamp` as a string, and is `null` when nothing was stored. A stored key the schema does not declare is stripped from the response. The schema lives in `dtos/response/activity-log.metadata.response.dto.ts`.
 
 ### Description
 
-Built by `ActivityLogUtil.getDescription`, which resolves the i18n key `activityLog.<action>` via `MessageService.setMessage`, passing the merged metadata for placeholder interpolation. Strings live in `src/languages/<lang>/activityLog.json`. On failure, ` - Error: <message>` is appended.
+Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>` via `MessageService.setMessage`, passing the prepared metadata for placeholder interpolation. The text is rendered at flush and stored on the row. Strings live in `src/languages/<lang>/activityLog.json`. Target rows use fixed text with no placeholder ("Your workspace role has been updated"); the admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
 
 
 <!-- REFERENCES -->
@@ -228,6 +268,7 @@ Built by `ActivityLogUtil.getDescription`, which resolves the i18n key `activity
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-response]: response.md
-[ref-doc-message]: message.md
+[ref-doc-message]: language-message.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-analytic]: analytic.md

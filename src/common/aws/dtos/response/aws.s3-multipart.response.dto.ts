@@ -1,31 +1,11 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { AwsS3MultipartPartResponseSchema } from '@common/aws/dtos/response/aws.s3-multipart-part.response.dto';
 import { AwsS3ResponseSchema } from '@common/aws/dtos/response/aws.s3.response.dto';
 
 /**
- * Response shape for a single part in an AWS S3 multipart upload.
- */
-export const AwsS3MultipartPartResponseSchema = z.object({
-    eTag: z.string().meta({
-        description: 'ETag from aws after init multipart',
-        example: faker.string.alpha({ length: 10, casing: 'upper' }),
-    }),
-    partNumber: z.number().meta({
-        description: 'Part number in the multipart upload',
-        example: 1,
-    }),
-    size: z.number().meta({
-        description: 'Size of the part in bytes',
-        example: 1024,
-    }),
-});
-
-export type AwsS3MultipartPartResponseDto = z.infer<
-    typeof AwsS3MultipartPartResponseSchema
->;
-
-/**
  * Response shape for an AWS S3 multipart upload session.
+ * @public
  */
 export const AwsS3MultipartResponseSchema = AwsS3ResponseSchema.extend({
     uploadId: z.string().meta({
@@ -46,6 +26,10 @@ export const AwsS3MultipartResponseSchema = AwsS3ResponseSchema.extend({
     }),
 });
 
+/**
+ * S3 multipart upload session with its parts.
+ * @public
+ */
 export type AwsS3MultipartResponseDto = z.infer<
     typeof AwsS3MultipartResponseSchema
 >;

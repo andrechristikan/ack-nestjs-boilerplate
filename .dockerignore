@@ -17,6 +17,7 @@ src/metadata.ts
 # Tests & coverage
 coverage/
 .nyc_output/
+.vitest/
 
 # Logs
 logs/

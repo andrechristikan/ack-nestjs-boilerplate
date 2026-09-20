@@ -1,7 +1,11 @@
 import { HttpStatus } from '@nestjs/common';
-import { IAppBaseExceptionOptions } from '@app/interfaces/app.interface';
-import { IMessageProperties } from '@common/message/interfaces/message.interface';
+import type { IAppBaseExceptionOptions } from '@app/interfaces/app.interface';
+import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 
+/**
+ * Base of every typed application error: module, status code and HTTP status.
+ * @public
+ */
 export abstract class AppBaseException extends Error {
     abstract readonly module: string;
     abstract readonly statusCode: number;

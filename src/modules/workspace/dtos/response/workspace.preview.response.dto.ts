@@ -4,6 +4,7 @@ import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/worksp
 /**
  * Public workspace profile resolved by slug for an unauthenticated caller. Every audit column
  * naming a user is dropped, so a guessable slug reveals nothing about who runs the workspace.
+ * @public
  */
 export const WorkspacePreviewResponseSchema = WorkspaceResponseSchema.pick({
     id: true,
@@ -15,6 +16,10 @@ export const WorkspacePreviewResponseSchema = WorkspaceResponseSchema.pick({
     description: true,
 });
 
+/**
+ * Public workspace profile resolved by slug.
+ * @public
+ */
 export type WorkspacePreviewResponseDto = z.infer<
     typeof WorkspacePreviewResponseSchema
 >;

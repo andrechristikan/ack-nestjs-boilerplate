@@ -1,47 +1,96 @@
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
-import {
+import type {
     IPaginationEqual,
     IPaginationIn,
 } from '@common/pagination/interfaces/pagination.interface';
-import { IResponseFileReturn } from '@common/response/interfaces/response.interface';
-import { EnumTermPolicyType } from '@generated/prisma-client';
-import { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
-import { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
-import { IUserImportHttpService } from '@modules/user/interfaces/user.import.http.service.interface';
-import { UserImportService } from '@modules/user/services/user.import.service';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyType,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
+import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
+import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { UserImportDomain } from '@modules/user/domains/user.import.domain';
+import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserImportHttpService implements IUserImportHttpService {
+export class UserImportHttpService {
     constructor(
-        private readonly userImportService: UserImportService,
-        private readonly fileService: FileService
+        private readonly userImportDomain: UserImportDomain,
+        private readonly userOnboardingDomain: UserOnboardingDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly fileService: FileService,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
     ) {}
 
     async importByAdmin(
         data: UserImportRequestDto[],
         createdBy: string
     ): Promise<void> {
-        await this.userImportService.importByAdmin(
-            data.map(({ email, name, username }) => ({
-                email,
-                name,
-                username,
-            })),
+        const { inputs, passwordHasheds, passwordStrings } =
+            await this.userImportDomain.prepareImportByAdmin(
+                data.map(({ email, name, username }) => ({
+                    email,
+                    name,
+                    username,
+                })),
+                createdBy
+            );
+        const createBulkTimeoutInMs =
+            this.userOnboardingDomain.getCreateBulkTimeoutInMs();
+        const users = await this.workspaceDomain.commitOnboarding(
+            inputs,
+            EnumUserCreateMode.admin,
+            createBulkTimeoutInMs,
+            EnumActivityLogAction.adminUserImport
+        );
+        await this.userImportDomain.notifyImported(
+            users,
+            passwordHasheds,
+            passwordStrings,
             createdBy
         );
     }
 
     async exportByAdmin(
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        const data = await this.userImportService.exportByAdmin(
-            status,
-            roleId,
-            countryId
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.UserScalarFieldEnum.status,
+            query.status,
+            UserDefaultStatus
+        );
+        const roleId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.roleId,
+            query.roleId
+        );
+        const countryId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.countryId,
+            query.countryId
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            filters: {
+                ...(status?.storeFilter ?? {}),
+                ...(roleId?.storeFilter ?? {}),
+                ...(countryId?.storeFilter ?? {}),
+            },
+        });
+
+        const data = await this.userImportDomain.exportByAdmin(
+            status?.where as Record<string, IPaginationIn> | undefined,
+            roleId?.where as Record<string, IPaginationEqual> | undefined,
+            countryId?.where as Record<string, IPaginationEqual> | undefined
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({
@@ -69,8 +118,10 @@ export class UserImportHttpService implements IUserImportHttpService {
             role: user.role.name,
         }));
 
+        const csv = this.fileService.writeCsv<UserExportResponseDto>(users);
+
         return {
-            data: this.fileService.writeCsv<UserExportResponseDto>(users),
+            data: csv,
             extension: EnumFileExtensionDocument.csv,
         };
     }

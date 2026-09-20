@@ -23,6 +23,7 @@ import NotificationConfig from '@configs/notification.config';
 import FileConfig from '@configs/file.config';
 import WorkspaceConfig from '@configs/workspace.config';
 import ProjectConfig from '@configs/project.config';
+import AnalyticConfig from '@configs/analytic.config';
 
 export default [
     AppConfig,
@@ -50,4 +51,5 @@ export default [
     FileConfig,
     WorkspaceConfig,
     ProjectConfig,
+    AnalyticConfig,
 ];

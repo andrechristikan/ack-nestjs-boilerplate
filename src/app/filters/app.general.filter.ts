@@ -1,14 +1,10 @@
-import {
-    ArgumentsHost,
-    Catch,
-    ExceptionFilter,
-    HttpStatus,
-    Logger,
-} from '@nestjs/common';
-import { Response } from 'express';
+import { Catch, HttpStatus, Logger } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import type { Response } from 'express';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
-import * as Sentry from '@sentry/nestjs';
-import { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
+import { SentryService } from '@common/sentry/services/sentry.service';
+import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
 /**
@@ -20,8 +16,14 @@ export class AppGeneralFilter implements ExceptionFilter {
 
     constructor(
         private readonly messageService: MessageService,
-        private readonly responseMetadataService: ResponseMetadataService
+        private readonly responseMetadataService: ResponseMetadataService,
+        private readonly sentryService: SentryService
     ) {}
+
+    private sendToSentry(exception: unknown): void {
+        this.logger.error(exception, 'An unhandled exception occurred');
+        this.sentryService.captureException(exception);
+    }
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx = host.switchToHttp();
@@ -30,8 +32,8 @@ export class AppGeneralFilter implements ExceptionFilter {
         this.sendToSentry(exception);
 
         const statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-        const messagePath = `http.${statusHttp}`;
-        const statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+        const messagePath = 'http.serverError.internalServerError';
+        const statusCode = EnumAppStatusCodeError.unknown;
 
         const metadata = this.responseMetadataService.create();
 
@@ -41,7 +43,7 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode,
-            statusCodeKey: 'unknown',
+            statusCodeKey: EnumAppStatusCodeError[statusCode],
             module: 'app',
             message,
             metadata,
@@ -49,17 +51,6 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         this.responseMetadataService.setHeaders(response, metadata);
         response.status(statusHttp).json(responseBody);
-
-        return;
-    }
-
-    sendToSentry(exception: unknown): void {
-        try {
-            this.logger.error(exception, 'An unhandled exception occurred');
-            Sentry.captureException(exception);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Failed to send exception to Sentry');
-        }
 
         return;
     }

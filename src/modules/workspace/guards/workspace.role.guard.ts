@@ -1,11 +1,13 @@
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumWorkspaceMemberRole, WorkspaceMember } from '@generated/prisma-client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type { WorkspaceMember } from '@generated/prisma-client/client';
 import {
     WorkspaceMemberStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 /**
@@ -16,22 +18,22 @@ import { Reflector } from '@nestjs/core';
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     canActivate(context: ExecutionContext): boolean {
-        const allowedRoles =
-            this.reflector.get<EnumWorkspaceMemberRole[]>(
-                WorkspaceRoleMetaKey,
-                context.getHandler()
-            ) ?? [];
+        const requiredRoles = this.reflector.get<EnumWorkspaceMemberRole[]>(
+            WorkspaceRoleMetaKey,
+            context.getHandler()
+        );
+        const allowedRoles = requiredRoles ?? [];
 
         const member = this.requestStoreService.get<WorkspaceMember>(
             WorkspaceMemberStoreKey
         );
 
-        this.workspaceMemberService.validateWorkspaceRoleGuard(
+        this.workspaceMemberDomain.validateWorkspaceRoleGuard(
             member,
             allowedRoles
         );

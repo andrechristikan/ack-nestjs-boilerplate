@@ -1,21 +1,20 @@
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
-import { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
-import { IUserPasswordHttpService } from '@modules/user/interfaces/user.password.http.service.interface';
-import { IUser } from '@modules/user/interfaces/user.interface';
-import { UserPasswordService } from '@modules/user/services/user.password.service';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
+import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
+import type { IUser } from '@modules/user/interfaces/user.interface';
+import { UserPasswordDomain } from '@modules/user/domains/user.password.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserPasswordHttpService implements IUserPasswordHttpService {
-    constructor(private readonly userPasswordService: UserPasswordService) {}
+export class UserPasswordHttpService {
+    constructor(private readonly userPasswordDomain: UserPasswordDomain) {}
 
     async updatePasswordByAdmin(
         userId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.userPasswordService.updatePasswordByAdmin(userId, updatedBy);
+        await this.userPasswordDomain.updatePasswordByAdmin(userId, updatedBy);
 
         return {};
     }
@@ -30,7 +29,7 @@ export class UserPasswordHttpService implements IUserPasswordHttpService {
             method,
         }: UserChangePasswordRequestDto
     ): Promise<void> {
-        await this.userPasswordService.changePassword(user, {
+        await this.userPasswordDomain.changePassword(user, {
             newPassword,
             oldPassword,
             backupCode,
@@ -42,7 +41,7 @@ export class UserPasswordHttpService implements IUserPasswordHttpService {
     async forgotPassword({
         email,
     }: UserForgotPasswordRequestDto): Promise<void> {
-        await this.userPasswordService.forgotPassword(email);
+        await this.userPasswordDomain.forgotPassword(email);
     }
 
     async resetPassword({
@@ -52,7 +51,7 @@ export class UserPasswordHttpService implements IUserPasswordHttpService {
         code,
         method,
     }: UserForgotPasswordResetRequestDto): Promise<void> {
-        await this.userPasswordService.resetPassword({
+        await this.userPasswordDomain.resetPassword({
             newPassword,
             token,
             backupCode,

@@ -3,6 +3,7 @@ import { UserSchema } from '@modules/user/dtos/user.dto';
 
 /**
  * User row as it appears in an admin list, without credential, sign-up and last-login detail.
+ * @public
  */
 export const UserListResponseSchema = UserSchema.omit({
     passwordExpired: true,
@@ -19,4 +20,8 @@ export const UserListResponseSchema = UserSchema.omit({
     twoFactor: true,
 });
 
+/**
+ * User row as it appears in an admin list.
+ * @public
+ */
 export type UserListResponseDto = z.infer<typeof UserListResponseSchema>;

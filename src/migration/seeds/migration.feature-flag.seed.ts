@@ -1,11 +1,12 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationFeatureFlagData } from '@migration/data/migration.feature-flag.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import { MigrationFeatureFlagData } from '@migration/data/migration.feature-flag.data';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@generated/prisma-client';
+import { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 
 /**
@@ -24,6 +25,7 @@ export class MigrationFeatureFlagSeed
 
     private readonly env: EnumAppEnvironment;
     private readonly featureFlags: Prisma.FeatureFlagCreateInput[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -32,7 +34,10 @@ export class MigrationFeatureFlagSeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.featureFlags = migrationFeatureFlagData[this.env];
+        this.featureFlags = MigrationFeatureFlagData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
@@ -42,16 +47,25 @@ export class MigrationFeatureFlagSeed
         );
 
         try {
-            await this.databaseService.client.$transaction(
-                this.featureFlags.map(featureFlag =>
-                    this.databaseService.client.featureFlag.upsert({
-                        where: {
-                            key: featureFlag.key,
-                        },
-                        create: featureFlag,
-                        update: {},
-                    })
-                )
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const featureFlag of this.featureFlags) {
+                        await tx.featureFlag.upsert({
+                            where: {
+                                key: featureFlag.key,
+                            },
+                            create: {
+                                ...featureFlag,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding feature flags');

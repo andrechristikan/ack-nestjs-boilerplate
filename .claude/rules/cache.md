@@ -1,25 +1,27 @@
 # Cache
 
-Detail in `docs/cache.md`. This file is the rule set.
+This file is the rule set. Flow narrative: `docs/cache.md` — explorer or planner.
 
 ## One Redis connection, two databases
 
 Redis `db:0` is the cache, `db:1` is BullMQ. Both go through the modules that already own the
 connection — `RedisCacheModule.forRoot()` provides the shared Keyv client,
 `CacheMainModule.forRoot()` wires `@nestjs/cache-manager` on top of it, and
-`QueueRegisterModule.forRoot()` owns the BullMQ side. All three are global, composed once in
-`common.module.ts`.
+`QueueModule.forRoot()` owns the two BullMQ connections (`rules/queue.md`). Cache modules are
+global. `QueueModule` carries no `@Global()`; `BullModule.forRootAsync` is already `global: true`.
 
 **Never open a second Redis connection.** Not in a feature module, not in a util, not "just for
 this one lock".
 
-## A module's cache reads and writes live in a cache service
+## A module's cache reads and writes live in a cache class
 
-A feature that caches gets a `<module>[.<concern>].cache.service.ts` domain service holding the
-cache manager and the `keyPattern` it reads from config — `SessionCacheService`,
-`ApiKeyCacheService`, `FeatureFlagCacheService`, `AuthCacheService`. Every get, set and
-delete for that module goes through it, so one class owns the key shape and the invalidation
-path for a given pattern.
+A feature that caches gets a cache class at
+`src/modules/<feature>/caches/<module>[.<concern>].cache.ts` — `SessionCache`,
+`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`, `AnalyticCache`. It holds the cache manager and the
+`keyPattern` it reads from config. It is not a service: no `Service` in the class or file
+name, and it has no header interface (`rules/architecture.md`). `<feature>.domain.module.ts` still
+provides it (`rules/nest-wiring.md`). Every get, set and delete for that module goes
+through it, so one class owns the key shape and the invalidation path for a given pattern.
 
 **A util never touches the cache.** It shapes data and does no IO (`rules/architecture.md`), so
 the cached value reaches it as an argument.
@@ -33,7 +35,7 @@ Caching is decorator-driven on the route:
 @Response('user.profile', { cache: { key: '…', ttl: … } })
 ```
 
-`@Response` / `@ResponsePaging` push `CacheKey` and `CacheTTL` and mount
+`@Response` / `@ResponsePagination` push `CacheKey` and `CacheTTL` and mount
 `ResponseCacheInterceptor` when `options.cache` is present. A hand-mounted
 `@UseInterceptors(CacheInterceptor)` on a route is the wrong path.
 
@@ -53,11 +55,26 @@ Caching is decorator-driven on the route:
   cacheable.
 - **Never cache a response that carries a credential** (`rules/security.md`).
 
-## Cache is best-effort
+## Cache is best-effort, except where it carries authority
 
-A cache read, write, or delete that fails falls through to the database. Nothing about
-correctness may depend on a cache hit, and a cache entry is never a lock
-(`rules/concurrency.md`).
+A cache read that fails falls through to the database. Nothing about correctness may depend on
+a cache hit, and a cache entry is never a lock (`rules/concurrency.md`).
+
+Writes and deletes are not uniformly best-effort. The Keyv store runs with `throwOnErrors`, so
+a Redis failure rejects instead of passing silently, and each caller decides what that means:
+
+- **It fails the request** when the entry IS the authority for what follows: the session cache
+  write on login and on refresh rotation, and the two-factor challenge write. A token the guards
+  cannot read is worse than a failed login.
+- **It fails the request** when a stale entry would keep a revoked credential working: the API
+  key cache delete runs after the database write, sequentially, so the change is audited and the
+  failure is visible.
+- **It is caught and logged** where the entry expires on its own and the database still holds
+  the truth: every session purge after a commit, the challenge and lock clears, and the API key
+  read-through write.
+
+A whole-user session purge scans the user's key pattern (`SCAN` plus `UNLINK`, batched); a
+partial revoke deletes exactly the ids it revoked (`rules/security.md`).
 
 ## Invalidation is part of the write
 
@@ -68,5 +85,5 @@ or say why nothing caches that read.
 ## Keys
 
 A cache or lock key is a `keyPattern` string in a config file. The shape of that string —
-`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/case-convention.md`
+`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/naming.md`
 → "Redis keys", and it is not restated here.

@@ -1,9 +1,10 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
-import { migrationPolicyData } from '@migration/data/migration.policy.data';
-import { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { MigrationPolicyData } from '@migration/data/migration.policy.data';
+import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -28,6 +29,7 @@ export class MigrationPolicySeed
         role: string;
         policies: PolicyRequestDto[];
     }[] = [];
+    private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
         private readonly databaseService: DatabaseService,
@@ -36,7 +38,10 @@ export class MigrationPolicySeed
         super();
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
-        this.rolePolicies = migrationPolicyData[this.env];
+        this.rolePolicies = MigrationPolicyData[this.env];
+        this.seedTransactionTimeoutInMs = this.configService.get<number>(
+            'database.seedTransactionTimeoutInMs'
+        )!;
     }
 
     async seed(): Promise<void> {
@@ -71,19 +76,28 @@ export class MigrationPolicySeed
         this.logger.log(`Found ${rows.length} Policies to seed.`);
 
         try {
-            await this.databaseService.client.$transaction(
-                rows.map(row =>
-                    this.databaseService.client.policy.upsert({
-                        where: {
-                            roleId_subject: {
-                                roleId: row.roleId,
-                                subject: row.subject,
+            await this.databaseService.withTransaction(
+                async tx => {
+                    for (const row of rows) {
+                        await tx.policy.upsert({
+                            where: {
+                                roleId_subject: {
+                                    roleId: row.roleId,
+                                    subject: row.subject,
+                                },
                             },
-                        },
-                        create: row,
-                        update: {},
-                    })
-                )
+                            create: {
+                                ...row,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                            update: {
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    }
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
             this.logger.error(error, 'Error seeding policies');
@@ -98,10 +112,11 @@ export class MigrationPolicySeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Policies...');
 
+        const roleNames = this.rolePolicies.map(rolePolicy => rolePolicy.role);
         const roles = await this.databaseService.client.role.findMany({
             where: {
                 name: {
-                    in: this.rolePolicies.map(rolePolicy => rolePolicy.role),
+                    in: roleNames,
                 },
             },
             select: {

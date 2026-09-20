@@ -1,16 +1,19 @@
+import { Doc } from '@common/doc/decorators/doc.decorator';
 import { AwsS3PresignResponseSchema } from '@common/aws/dtos/response/aws.s3-presign.response.dto';
-import { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { FileUploadSingle } from '@common/file/decorators/file.decorator';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
-import { IFile } from '@common/file/interfaces/file.interface';
+import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
-import { RequestTimeout } from '@common/request/decorators/request.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
+import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
+import {
+    RequestThrottle,
+    RequestTimeout,
+} from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import { Response } from '@common/response/decorators/response.decorator';
-import { IResponseReturn } from '@common/response/interfaces/response.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -19,7 +22,7 @@ import {
     AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
-import {
+import type {
     IAuthJwtAccessTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
@@ -29,73 +32,36 @@ import {
     UserCurrent,
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
-import {
-    UserSharedAddMobileNumberDoc,
-    UserSharedChangePasswordDoc,
-    UserSharedClaimUsernameDoc,
-    UserSharedDeleteMobileNumberDoc,
-    UserSharedGeneratePhotoProfilePresignDoc,
-    UserSharedLogoutDoc,
-    UserSharedProfileDoc,
-    UserSharedRefreshDoc,
-    UserSharedTwoFactorDisableDoc,
-    UserSharedTwoFactorEnableDoc,
-    UserSharedTwoFactorRegenerateBackupDoc,
-    UserSharedTwoFactorSetupDoc,
-    UserSharedTwoFactorStatusDoc,
-    UserSharedUpdateMobileNumberDoc,
-    UserSharedUpdatePhotoProfileDoc,
-    UserSharedUpdateProfileDoc,
-    UserSharedUploadPhotoProfileDoc,
-} from '@modules/user/docs/user.shared.doc';
-import {
-    UserChangePasswordRequestDto,
-    UserChangePasswordRequestSchema,
-} from '@modules/user/dtos/request/user.change-password.request.dto';
-import {
-    UserClaimUsernameRequestDto,
-    UserClaimUsernameRequestSchema,
-} from '@modules/user/dtos/request/user.claim-username.request.dto';
-import {
-    UserGeneratePhotoProfileRequestDto,
-    UserGeneratePhotoProfileRequestSchema,
-} from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
-import {
-    UserAddMobileNumberRequestDto,
-    UserAddMobileNumberRequestSchema,
-    UserUpdateMobileNumberRequestDto,
-    UserUpdateMobileNumberRequestSchema,
-} from '@modules/user/dtos/request/user.mobile-number.request.dto';
-import {
-    UserUpdateProfilePhotoRequestDto,
-    UserUpdateProfilePhotoRequestSchema,
-    UserUpdateProfileRequestDto,
-    UserUpdateProfileRequestSchema,
-} from '@modules/user/dtos/request/user.profile.request.dto';
-import {
-    UserTwoFactorDisableRequestDto,
-    UserTwoFactorDisableRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import {
-    UserTwoFactorRegenerateBackupCodeRequestDto,
-    UserTwoFactorRegenerateBackupCodeRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import {
-    UserTwoFactorEnableRequestDto,
-    UserTwoFactorEnableRequestSchema,
-} from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
+import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
+import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
+import { UserGeneratePhotoProfileRequestSchema } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import type { UserGeneratePhotoProfileRequestDto } from '@modules/user/dtos/request/user.generate-photo-profile.request.dto';
+import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
+import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
+import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
+import { UserTwoFactorDisableRequestSchema } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
+import { UserTwoFactorRegenerateBackupCodeRequestSchema } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
+import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
+import { UserTwoFactorSetupRequestSchema } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
+import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
-import {
-    UserTwoFactorEnableResponseDto,
-    UserTwoFactorEnableResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
+import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
 import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import {
-    UserTwoFactorStatusResponseDto,
-    UserTwoFactorStatusResponseSchema,
-} from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
+import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
-import {
+import type {
     IUser,
     IUserMobileNumber,
     IUserProfile,
@@ -135,7 +101,7 @@ export class UserSharedController {
         private readonly userTwoFactorHttpService: UserTwoFactorHttpService
     ) {}
 
-    @UserSharedRefreshDoc()
+    @Doc({ summary: 'refresh token' })
     @Response('user.refresh', { schema: AuthTokenResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -151,7 +117,7 @@ export class UserSharedController {
         return this.userAuthHttpService.refresh(user, refreshToken);
     }
 
-    @UserSharedProfileDoc()
+    @Doc({ summary: 'get profile' })
     @Response('user.profile', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -166,7 +132,7 @@ export class UserSharedController {
         return this.userProfileHttpService.getProfile(userId);
     }
 
-    @UserSharedUpdateProfileDoc()
+    @Doc({ summary: 'update profile' })
     @Response('user.updateProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -183,7 +149,7 @@ export class UserSharedController {
         await this.userProfileHttpService.updateProfile(userId, body);
     }
 
-    @UserSharedGeneratePhotoProfilePresignDoc()
+    @Doc({ summary: 'generate upload photo profile presign' })
     @Response('user.generatePhotoProfilePresign', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -206,7 +172,7 @@ export class UserSharedController {
         );
     }
 
-    @UserSharedUpdatePhotoProfileDoc()
+    @Doc({ summary: 'update photo profile' })
     @Response('user.updatePhotoProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -223,7 +189,7 @@ export class UserSharedController {
         await this.userProfileHttpService.updatePhotoProfile(userId, body);
     }
 
-    @UserSharedUploadPhotoProfileDoc()
+    @Doc({ summary: 'upload photo profile' })
     @Response('user.uploadPhotoProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -238,7 +204,7 @@ export class UserSharedController {
         @AuthJwtPayload('userId')
         userId: string,
         @UploadedFile(
-            RequestRequiredPipe,
+            FileRequiredPipe(),
             FileExtensionPipe([
                 EnumFileExtensionImage.jpeg,
                 EnumFileExtensionImage.png,
@@ -250,7 +216,7 @@ export class UserSharedController {
         await this.userProfileHttpService.uploadPhotoProfile(userId, file);
     }
 
-    @UserSharedChangePasswordDoc()
+    @Doc({ summary: 'change password' })
     @Response('user.changePassword')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -267,7 +233,7 @@ export class UserSharedController {
         await this.userPasswordHttpService.changePassword(user, body);
     }
 
-    @UserSharedAddMobileNumberDoc()
+    @Doc({ summary: 'user add mobile number' })
     @Response('user.addMobileNumber', {
         schema: UserMobileNumberResponseSchema,
     })
@@ -285,7 +251,7 @@ export class UserSharedController {
         return this.userMobileNumberHttpService.addMobileNumber(userId, body);
     }
 
-    @UserSharedUpdateMobileNumberDoc()
+    @Doc({ summary: 'user update mobile number' })
     @Response('user.updateMobileNumber', {
         schema: UserMobileNumberResponseSchema,
     })
@@ -297,11 +263,7 @@ export class UserSharedController {
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param(
-            'mobileNumberId',
-            RequestRequiredPipe,
-            RequestIsValidUuidPipe
-        )
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
@@ -313,7 +275,7 @@ export class UserSharedController {
         );
     }
 
-    @UserSharedDeleteMobileNumberDoc()
+    @Doc({ summary: 'user delete mobile number' })
     @Response('user.deleteMobileNumber', {
         schema: UserMobileNumberResponseSchema,
     })
@@ -325,11 +287,7 @@ export class UserSharedController {
     @Delete('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
         @AuthJwtPayload('userId') userId: string,
-        @Param(
-            'mobileNumberId',
-            RequestRequiredPipe,
-            RequestIsValidUuidPipe
-        )
+        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
         mobileNumberId: string
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         return this.userMobileNumberHttpService.deleteMobileNumber(
@@ -338,7 +296,7 @@ export class UserSharedController {
         );
     }
 
-    @UserSharedClaimUsernameDoc()
+    @Doc({ summary: 'user claim username' })
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -355,7 +313,7 @@ export class UserSharedController {
         await this.userProfileHttpService.claimUsername(userId, body);
     }
 
-    @UserSharedTwoFactorStatusDoc()
+    @Doc({ summary: 'Get current two-factor authentication status' })
     @Response('user.twoFactor.status', {
         schema: UserTwoFactorStatusResponseSchema,
     })
@@ -371,7 +329,10 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.getTwoFactorStatus(user);
     }
 
-    @UserSharedTwoFactorSetupDoc()
+    @Doc({
+        summary:
+            'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
+    })
     @Response('user.twoFactor.setup', {
         schema: UserTwoFactorSetupResponseSchema,
     })
@@ -383,12 +344,14 @@ export class UserSharedController {
     @HttpCode(HttpStatus.OK)
     @Post('/2fa/setup')
     async setupTwoFactor(
-        @UserCurrent() user: IUser
+        @UserCurrent() user: IUser,
+        @Body({ schema: UserTwoFactorSetupRequestSchema })
+        body: UserTwoFactorSetupRequestDto
     ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userTwoFactorHttpService.setupTwoFactor(user);
+        return this.userTwoFactorHttpService.setupTwoFactor(user, body);
     }
 
-    @UserSharedTwoFactorEnableDoc()
+    @Doc({ summary: 'Enable two-factor authentication' })
     @Response('user.twoFactor.enable', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -407,7 +370,7 @@ export class UserSharedController {
         return this.userTwoFactorHttpService.enableTwoFactor(user, body);
     }
 
-    @UserSharedTwoFactorDisableDoc()
+    @Doc({ summary: 'Disable two-factor authentication' })
     @Response('user.twoFactor.disable')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
@@ -423,7 +386,7 @@ export class UserSharedController {
         await this.userTwoFactorHttpService.disableTwoFactor(user, body);
     }
 
-    @UserSharedTwoFactorRegenerateBackupDoc()
+    @Doc({ summary: 'Regenerate two-factor backup codes' })
     @Response('user.twoFactor.regenerateBackupCodes', {
         schema: UserTwoFactorEnableResponseSchema,
     })
@@ -444,7 +407,10 @@ export class UserSharedController {
         );
     }
 
-    @UserSharedLogoutDoc()
+    @Doc({
+        summary:
+            'Logout from current session, invalidating the access token and deleting the session.',
+    })
     @Response('user.logout')
     @TermPolicyAcceptanceProtected()
     @UserProtected()

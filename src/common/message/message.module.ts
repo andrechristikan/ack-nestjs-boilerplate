@@ -1,4 +1,5 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import * as path from 'path';
 import { HeaderResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
@@ -31,7 +32,10 @@ export class MessageModule {
                             {}
                         ),
                         loaderOptions: {
-                            path: path.join(__dirname, '../../languages'),
+                            path: path.join(
+                                import.meta.dirname,
+                                '../../languages'
+                            ),
                             watch: true,
                         },
                     }),

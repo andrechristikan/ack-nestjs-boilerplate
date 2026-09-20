@@ -1,50 +1,85 @@
-import { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    IPaginationEqual,
-    IPaginationIn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import {
-    IResponsePagingReturn,
+    UserDefaultAvailableOrderBy,
+    UserDefaultAvailableSearch,
+    UserDefaultStatus,
+} from '@modules/user/constants/user.list.constant';
+import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client';
-import {
-    UserCheckEmailRequestDto,
-    UserCheckUsernameRequestDto,
-} from '@modules/user/dtos/request/user.check.request.dto';
-import { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
-import { IUserHttpService } from '@modules/user/interfaces/user.http.service.interface';
-import {
-    IUser,
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import type { UserCheckEmailRequestDto } from '@modules/user/dtos/request/user.check-email.request.dto';
+import type { UserCheckUsernameRequestDto } from '@modules/user/dtos/request/user.check-username.request.dto';
+import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
+import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
+import type {
     IUserCheckEmail,
     IUserCheckUsername,
+    IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-import { UserService } from '@modules/user/services/user.service';
+import { EnumUserCreateMode } from '@modules/user/enums/user.enum';
+import { UserOnboardingDomain } from '@modules/user/domains/user.onboarding.domain';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { WorkspaceDomain } from '@modules/workspace/domains/workspace.domain';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserHttpService implements IUserHttpService {
-    constructor(private readonly userService: UserService) {}
+export class UserHttpService {
+    constructor(
+        private readonly userDomain: UserDomain,
+        private readonly userOnboardingDomain: UserOnboardingDomain,
+        private readonly workspaceDomain: WorkspaceDomain,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
 
     async getListOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
-    ): Promise<IResponsePagingReturn<IUser>> {
-        return this.userService.getListOffsetByAdmin(
-            pagination,
-            status,
-            roleId,
-            countryId
+        query: UserListRequestDto
+    ): Promise<IResponsePaginationReturn<IUserList>> {
+        const { params, storePatch } =
+            this.paginationQueryUtil.offset<Prisma.UserWhereInput>(query, {
+                availableSearch: UserDefaultAvailableSearch,
+                availableOrderBy: UserDefaultAvailableOrderBy,
+            });
+        const status = this.paginationQueryUtil.inEnum(
+            Prisma.UserScalarFieldEnum.status,
+            query.status,
+            UserDefaultStatus
+        );
+        const roleId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.roleId,
+            query.roleId
+        );
+        const countryId = this.paginationQueryUtil.equalString(
+            Prisma.UserScalarFieldEnum.countryId,
+            query.countryId
+        );
+        this.requestStoreService.merge(PaginationStoreKey, {
+            ...storePatch,
+            filters: {
+                ...storePatch.filters,
+                ...(status?.storeFilter ?? {}),
+                ...(roleId?.storeFilter ?? {}),
+                ...(countryId?.storeFilter ?? {}),
+            },
+        });
+
+        return this.userDomain.getListOffsetByAdmin(
+            params,
+            status?.where,
+            roleId?.where,
+            countryId?.where
         );
     }
 
     async getOne(id: string): Promise<IResponseReturn<IUserProfile>> {
-        const user = await this.userService.getOne(id);
+        const user = await this.userDomain.getOne(id);
 
         return { data: user };
     }
@@ -53,12 +88,30 @@ export class UserHttpService implements IUserHttpService {
         { countryId, email, name, roleId, username }: UserCreateRequestDto,
         createdBy: string
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        const id = await this.userService.createByAdmin(
-            { countryId, email, name, roleId, username },
-            createdBy
+        const { input, passwordString } =
+            await this.userDomain.prepareCreateByAdmin(
+                { countryId, email, name, roleId, username },
+                createdBy
+            );
+        const createTimeoutInMs =
+            this.userOnboardingDomain.getCreateTimeoutInMs();
+        const [created] = await this.workspaceDomain.commitOnboarding(
+            [input],
+            EnumUserCreateMode.admin,
+            createTimeoutInMs,
+            EnumActivityLogAction.adminUserCreate
         );
+        if (input.password) {
+            await this.userDomain.notifyWelcomeByAdmin(
+                created.id,
+                passwordString,
+                input.password.passwordCreated,
+                input.password.passwordExpired,
+                createdBy
+            );
+        }
 
-        return { data: { id } };
+        return { data: { id: created.id } };
     }
 
     async updateStatusByAdmin(
@@ -66,7 +119,7 @@ export class UserHttpService implements IUserHttpService {
         { status }: UserUpdateStatusRequestDto,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
-        await this.userService.updateStatusByAdmin(userId, status, updatedBy);
+        await this.userDomain.updateStatusByAdmin(userId, status, updatedBy);
 
         return {};
     }
@@ -76,16 +129,20 @@ export class UserHttpService implements IUserHttpService {
     }: UserCheckUsernameRequestDto): Promise<
         IResponseReturn<IUserCheckUsername>
     > {
-        return { data: await this.userService.checkUsername(username) };
+        const checkUsername = await this.userDomain.checkUsername(username);
+
+        return { data: checkUsername };
     }
 
     async checkEmail({
         email,
     }: UserCheckEmailRequestDto): Promise<IResponseReturn<IUserCheckEmail>> {
-        return { data: await this.userService.checkEmail(email) };
+        const checkEmail = await this.userDomain.checkEmail(email);
+
+        return { data: checkEmail };
     }
 
     async deleteSelf(userId: string): Promise<void> {
-        await this.userService.deleteSelf(userId);
+        await this.userDomain.deleteSelf(userId);
     }
 }

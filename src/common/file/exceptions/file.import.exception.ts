@@ -1,10 +1,11 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
+import type { IMessageValidationImportErrorParam } from '@common/message/interfaces/message.interface';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 
 /**
  * Carries per-row validation issues from a file import for the import filter to format.
+ * @public
  */
 export class FileImportException extends AppBaseException {
     readonly module = 'file';

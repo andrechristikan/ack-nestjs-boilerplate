@@ -1,4 +1,4 @@
-export interface LoggerDebugInfo {
+export interface ILoggerDebugInfo {
     memory: {
         rss: number;
         heapUsed: number;

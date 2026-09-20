@@ -1,22 +1,21 @@
-import { IHelperArrayService } from '@common/helper/interfaces/helper.array.service.interface';
 import { Injectable } from '@nestjs/common';
-import _ from 'lodash';
+import { chunk, intersection, shuffle, uniq } from 'lodash-es';
 
 @Injectable()
-export class HelperArrayService implements IHelperArrayService {
+export class HelperArrayService {
     unique<T>(array: T[]): T[] {
-        return _.uniq(array);
+        return uniq(array);
     }
 
     shuffle<T>(array: T[]): T[] {
-        return _.shuffle(array);
+        return shuffle(array);
     }
 
     chunk<T>(a: T[], size: number): T[][] {
-        return _.chunk<T>(a, size);
+        return chunk<T>(a, size);
     }
 
     intersection<T>(a: T[], b: T[]): T[] {
-        return _.intersection(a, b);
+        return intersection(a, b);
     }
 }

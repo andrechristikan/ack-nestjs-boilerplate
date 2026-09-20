@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
-import { Algorithm } from 'jsonwebtoken';
-import { HashAlgorithm, OTPStrategy } from 'otplib';
+import type { Algorithm } from 'jsonwebtoken';
+import type { HashAlgorithm, OTPStrategy } from 'otplib';
 
 export interface IConfigAuth {
     jwt: {

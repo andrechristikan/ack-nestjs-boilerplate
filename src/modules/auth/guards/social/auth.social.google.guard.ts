@@ -1,8 +1,9 @@
-import { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { AuthSocialGoogleRequiredException } from '@modules/auth/exceptions/auth.social-google-required.exception';
-import { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthService } from '@modules/auth/services/auth.service';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import type { IAuthSocialPayload } from '@modules/auth/interfaces/auth.interface';
+import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { Injectable } from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Guard validating a Google ID token and attaching the social payload to the request. */
@@ -12,7 +13,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
     private readonly googlePrefix: string;
 
     constructor(
-        private readonly authService: AuthService,
+        private readonly authDomain: AuthDomain,
         private readonly configService: ConfigService
     ) {
         this.googleHeader =
@@ -26,15 +27,16 @@ export class AuthSocialGoogleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<IAuthSocialPayload>>();
 
+        const googleHeaderName = this.googleHeader.toLowerCase();
         const requestHeaders =
-            (request.headers[this.googleHeader.toLowerCase()] as string)?.split(
+            (request.headers[googleHeaderName] as string)?.split(
                 `${this.googlePrefix} `
             ) ?? [];
         if (requestHeaders.length !== 2) {
             throw new AuthSocialGoogleRequiredException();
         }
 
-        request.user = await this.authService.validateOAuthGoogle(
+        request.user = await this.authDomain.validateOAuthGoogle(
             requestHeaders[1]
         );
 

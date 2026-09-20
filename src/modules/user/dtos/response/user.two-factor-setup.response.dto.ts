@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /**
  * Secret material handed to the client to register an authenticator app.
+ * @public
  */
 export const UserTwoFactorSetupResponseSchema = z.object({
     secret: z.string().meta({
@@ -16,6 +17,10 @@ export const UserTwoFactorSetupResponseSchema = z.object({
     }),
 });
 
+/**
+ * Authenticator app setup material.
+ * @public
+ */
 export type UserTwoFactorSetupResponseDto = z.infer<
     typeof UserTwoFactorSetupResponseSchema
 >;

@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { IFileService } from '@common/file/interfaces/file.service.interface';
-import { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
+import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import Mime from 'mime';
 import Papa from 'papaparse';
+import { fileTypeFromBuffer } from 'file-type';
 
 @Injectable()
-export class FileService implements IFileService {
+export class FileService {
     constructor(private readonly helperStringService: HelperStringService) {}
 
     writeCsv<T = Record<string, string | number | Date>>(rows: T[]): string {
@@ -60,5 +60,18 @@ export class FileService implements IFileService {
     extractFilenameFromPath(filePath: string): string {
         const parts = filePath.split('/');
         return parts[parts.length - 1];
+    }
+
+    sanitizeFilename(filename: string): string {
+        return filename
+            .replace(/[^ -~]/g, '')
+            .replace(/["\\/]/g, '')
+            .trim();
+    }
+
+    async sniffExtensionFromBuffer(buffer: Buffer): Promise<string | null> {
+        const sniffed = await fileTypeFromBuffer(buffer);
+
+        return sniffed?.ext ?? null;
     }
 }

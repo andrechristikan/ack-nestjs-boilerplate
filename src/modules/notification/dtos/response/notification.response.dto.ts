@@ -4,10 +4,11 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import {
     EnumNotificationPriority,
     EnumNotificationType,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
 
 /**
  * Base notification shape: one stored in-app notification of a user.
+ * @public
  */
 export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
@@ -47,6 +48,10 @@ export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
+/**
+ * Stored in-app notification of a user.
+ * @public
+ */
 export type NotificationResponseDto = z.infer<
     typeof NotificationResponseSchema
 >;

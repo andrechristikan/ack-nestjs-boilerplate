@@ -1,23 +1,21 @@
-import { IHelperNumberService } from '@common/helper/interfaces/helper.number.service.interface';
 import { Injectable } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 
 @Injectable()
-export class HelperNumberService implements IHelperNumberService {
+export class HelperNumberService {
     checkString(number: string): boolean {
         const regex = /^-?\d+$/;
         return regex.test(number);
     }
 
+    /** An n-digit decimal string with a non-zero first digit; valid for 1 to 14 digits. */
     randomDigits(length: number): string {
-        const min: number = Number.parseInt(`1`.padEnd(length, '0'));
-        const max: number = Number.parseInt(`9`.padEnd(length, '9'));
-        return this.randomInRange(min, max).toString();
+        return this.randomInRange(10 ** (length - 1), 10 ** length).toString();
     }
 
+    /** Integer in [ceil(min), floor(max)); throws RangeError when the range is empty or reaches 2^48. */
     randomInRange(min: number, max: number): number {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min) + min);
+        return randomInt(Math.ceil(min), Math.floor(max));
     }
 
     calculatePercent(value: number, total: number): number {

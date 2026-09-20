@@ -1,10 +1,9 @@
-import { IHelperHashService } from '@common/helper/interfaces/helper.hash.service.interface';
 import { Injectable } from '@nestjs/common';
 import { compareSync, genSaltSync, hashSync } from 'bcryptjs';
-import { MD5, SHA256, enc } from 'crypto-js';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 @Injectable()
-export class HelperHashService implements IHelperHashService {
+export class HelperHashService {
     bcryptGenerateSalt(length: number): string {
         return genSaltSync(length);
     }
@@ -17,19 +16,15 @@ export class HelperHashService implements IHelperHashService {
         return compareSync(passwordString, passwordHashed);
     }
 
-    sha256Hash(string: string): string {
-        return SHA256(string).toString(enc.Hex);
+    sha256Hash(value: string): string {
+        return createHash('sha256').update(value, 'utf8').digest('hex');
     }
 
+    /** Constant-time comparison; strings of different byte length are never equal. */
     sha256Compare(hashOne: string, hashTwo: string): boolean {
-        return hashOne === hashTwo;
-    }
+        const one = Buffer.from(hashOne, 'utf8');
+        const two = Buffer.from(hashTwo, 'utf8');
 
-    md5Hash(string: string): string {
-        return MD5(string).toString(enc.Hex);
-    }
-
-    md5Compare(hashOne: string, hashTwo: string): boolean {
-        return hashOne === hashTwo;
+        return one.length === two.length && timingSafeEqual(one, two);
     }
 }

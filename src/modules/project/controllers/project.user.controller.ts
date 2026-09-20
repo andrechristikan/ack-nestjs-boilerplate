@@ -1,75 +1,56 @@
-import { PaginationCursorQuery } from '@common/pagination/decorators/pagination.decorator';
-import { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { RequestThrottle } from '@common/request/decorators/request.throttler.decorator';
-import { RequestIsValidUuidPipe } from '@common/request/pipes/request.is-valid-uuid.pipe';
-import { RequestRequiredPipe } from '@common/request/pipes/request.required.pipe';
+import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
+import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
+import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
+import { ProjectUserListRequestSchema } from '@modules/project/dtos/request/project.user-list.request.dto';
+import { Doc } from '@common/doc/decorators/doc.decorator';
+import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
-    ResponsePaging,
+    ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-import {
-    IResponsePagingReturn,
+
+import type {
+    IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
+
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
-    Prisma,
+} from '@generated/prisma-client/client';
+
+import type {
     Project,
     ProjectMember,
     Workspace,
     WorkspaceMember,
-} from '@generated/prisma-client';
+} from '@generated/prisma-client/client';
+
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
-import {
-    ProjectMemberUserAssignDoc,
-    ProjectMemberUserLeaveDoc,
-    ProjectMemberUserListDoc,
-    ProjectMemberUserRemoveDoc,
-    ProjectMemberUserUpdateRoleDoc,
-    ProjectUserCreateDoc,
-    ProjectUserGetDoc,
-    ProjectUserListDoc,
-    ProjectUserSoftDeleteDoc,
-    ProjectUserUpdateDoc,
-    ProjectUserUpdateSlugDoc,
-} from '@modules/project/docs/project.user.doc';
-import {
-    ProjectCursorAvailableOrderBy,
-    ProjectDefaultAvailableSearch,
-    ProjectMemberDefaultAvailableOrderBy,
-} from '@modules/project/constants/project.list.constant';
-import {
-    ProjectCreateRequestDto,
-    ProjectCreateRequestSchema,
-} from '@modules/project/dtos/request/project.create.request.dto';
-import {
-    ProjectMemberAssignRequestDto,
-    ProjectMemberAssignRequestSchema,
-} from '@modules/project/dtos/request/project.member-assign.request.dto';
-import {
-    ProjectMemberUpdateRoleRequestDto,
-    ProjectMemberUpdateRoleRequestSchema,
-} from '@modules/project/dtos/request/project.member-update-role.request.dto';
-import {
-    ProjectUpdateSlugRequestDto,
-    ProjectUpdateSlugRequestSchema,
-} from '@modules/project/dtos/request/project.update-slug.request.dto';
-import {
-    ProjectUpdateRequestDto,
-    ProjectUpdateRequestSchema,
-} from '@modules/project/dtos/request/project.update.request.dto';
+
+import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/project.create.request.dto';
+import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectMemberAssignRequestSchema } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
+import { ProjectMemberUpdateRoleRequestSchema } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import { ProjectUpdateSlugRequestSchema } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/project.update.request.dto';
+import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
-import { IProjectMember } from '@modules/project/interfaces/project.interface';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import {
     ProjectCurrent,
     ProjectMemberCurrent,
     ProjectMemberProtected,
     ProjectProtected,
 } from '@modules/project/decorators/project.decorator';
+
 import { ProjectMemberHttpService } from '@modules/project/services/project.member.http.service';
 import { ProjectHttpService } from '@modules/project/services/project.http.service';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -80,6 +61,7 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
+
 import {
     Body,
     Controller,
@@ -91,7 +73,9 @@ import {
     Patch,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.user.project')
@@ -105,8 +89,11 @@ export class ProjectUserController {
         private readonly projectMemberHttpService: ProjectMemberHttpService
     ) {}
 
-    @ProjectUserListDoc()
-    @ResponsePaging('project.list', {
+    @Doc({
+        summary:
+            'list projects in the current workspace; workspace owner/admin see all, others only assigned projects',
+    })
+    @ResponsePagination('project.list', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -119,25 +106,20 @@ export class ProjectUserController {
     @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @PaginationCursorQuery({
-            availableSearch: ProjectDefaultAvailableSearch,
-            availableOrderBy: ProjectCursorAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        @Query({ schema: ProjectUserListRequestSchema })
+        query: ProjectUserListRequestDto,
         @WorkspaceCurrent() workspace: Workspace,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember
-    ): Promise<IResponsePagingReturn<Project>> {
+    ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectHttpService.getListForMember(
             workspace.id,
             workspaceMember,
-            pagination
+            query
         );
     }
 
-    @ProjectUserCreateDoc()
-    @Response('project.create', {
-        schema: ProjectResponseSchema,
-    })
+    @Doc({ summary: 'create a project in the current workspace' })
+    @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
@@ -160,7 +142,7 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectUserGetDoc()
+    @Doc({ summary: 'get a project by id, subject to visibility' })
     @Response('project.get', {
         schema: ProjectResponseSchema,
     })
@@ -185,7 +167,10 @@ export class ProjectUserController {
         return this.projectHttpService.getProject(project);
     }
 
-    @ProjectUserUpdateDoc()
+    @Doc({
+        summary:
+            'update a project name/description; workspace owner/admin or project admin',
+    })
     @Response('project.update', {
         schema: ProjectResponseSchema,
     })
@@ -213,7 +198,10 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectUserUpdateSlugDoc()
+    @Doc({
+        summary:
+            'update a project slug; workspace owner/admin or project admin',
+    })
     @Response('project.updateSlug', {
         schema: ProjectResponseSchema,
     })
@@ -241,7 +229,7 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectUserSoftDeleteDoc()
+    @Doc({ summary: 'soft-delete a project; workspace owner/admin only' })
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
     @ProjectProtected()
@@ -263,8 +251,8 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectMemberUserListDoc()
-    @ResponsePaging('project.member.list', {
+    @Doc({ summary: 'list members of a project, subject to visibility' })
+    @ResponsePagination('project.member.list', {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -283,22 +271,18 @@ export class ProjectUserController {
     @RequestThrottle({ user: true })
     @Get('/member/:projectId/list')
     async memberList(
-        @PaginationCursorQuery({
-            availableOrderBy: ProjectMemberDefaultAvailableOrderBy,
-        })
-        pagination: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>,
+        @Query({ schema: ProjectMemberListRequestSchema })
+        query: ProjectMemberListRequestDto,
         @ProjectCurrent() project: Project
-    ): Promise<IResponsePagingReturn<IProjectMember>> {
-        return this.projectMemberHttpService.getMembersList(
-            project,
-            pagination
-        );
+    ): Promise<IResponsePaginationReturn<IProjectMember>> {
+        return this.projectMemberHttpService.getMembersList(project, query);
     }
 
-    @ProjectMemberUserAssignDoc()
-    @Response('project.member.assign', {
-        schema: ProjectMemberResponseSchema,
+    @Doc({
+        summary:
+            'assign a workspace member to a project; assigning admin requires workspace owner/admin',
     })
+    @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
     @ProjectProtected()
@@ -323,7 +307,10 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectMemberUserUpdateRoleDoc()
+    @Doc({
+        summary:
+            'update a project member role; setting/touching admin requires workspace owner/admin',
+    })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
@@ -339,11 +326,7 @@ export class ProjectUserController {
     async memberUpdateRole(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param(
-            'projectMemberId',
-            RequestRequiredPipe,
-            RequestIsValidUuidPipe
-        )
+        @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -356,7 +339,10 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectMemberUserRemoveDoc()
+    @Doc({
+        summary:
+            'remove a project member; project admin cannot remove another admin or self (use leave)',
+    })
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected(EnumProjectMemberRole.admin)
@@ -372,11 +358,7 @@ export class ProjectUserController {
     async memberRemove(
         @ProjectCurrent() project: Project,
         @WorkspaceMemberCurrent() workspaceMember: WorkspaceMember,
-        @Param(
-            'projectMemberId',
-            RequestRequiredPipe,
-            RequestIsValidUuidPipe
-        )
+        @Param('projectMemberId', { schema: RequestMongoIdSchema })
         projectMemberId: string
     ): Promise<void> {
         await this.projectMemberHttpService.removeMember(
@@ -386,7 +368,7 @@ export class ProjectUserController {
         );
     }
 
-    @ProjectMemberUserLeaveDoc()
+    @Doc({ summary: 'leave a project; any project role may leave' })
     @Response('project.member.leave')
     @TermPolicyAcceptanceProtected()
     @ProjectMemberProtected()

@@ -3,6 +3,10 @@ import { faker } from '@faker-js/faker';
 import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import { UserLoginVerifyTwoFactorRequestSchema } from '@modules/user/dtos/request/user.login-verify-two-factor.request.dto';
 
+/**
+ * Validates the body for changing the signed-in user password.
+ * @public
+ */
 export const UserChangePasswordRequestSchema =
     UserLoginVerifyTwoFactorRequestSchema.omit({ challengeToken: true })
         .partial()
@@ -32,6 +36,10 @@ export const UserChangePasswordRequestSchema =
                 }),
         });
 
+/**
+ * Body for changing the signed-in user password.
+ * @public
+ */
 export type UserChangePasswordRequestDto = z.infer<
     typeof UserChangePasswordRequestSchema
 >;

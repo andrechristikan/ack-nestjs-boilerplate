@@ -18,11 +18,13 @@ for name in sorted(os.listdir(dir_)):
     if not os.path.isfile(f):
         continue
     head = open(f).read().split('---')[1]
-    m = re.search(r'^description:\s*(.+)$', head, re.M)
+    # description is a folded block scalar (`>-`) whose text sits on the indented lines below
+    m = re.search(r'^description:[ \t]*(?:[>|][-+]?[ \t]*\n((?:[ \t]+.*(?:\n|$))+)|(.+)$)', head, re.M)
     if not m:
         continue
+    text = ' '.join(line.strip() for line in (m.group(1) or m.group(2)).splitlines() if line.strip())
     # first clause only — up to an em dash or the first sentence end
-    blurb = re.split(r'\s+—\s+|(?<=[a-z])\.\s+', m.group(1).strip())[0]
+    blurb = re.split(r'\s+—\s+|(?<=[a-z])\.\s+', text)[0]
     if len(blurb) > 60:                      # cut on a word boundary, never mid-word
         blurb = blurb[:60].rsplit(' ', 1)[0] + '…'
     rows.append((name, blurb))
